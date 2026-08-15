@@ -39,6 +39,15 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Ar
 .tbtn.act{background:var(--accent);color:#fff;border-color:transparent}
 .fbadge{position:absolute;top:-6px;right:-6px;background:var(--neg);color:#fff;font-size:10px;font-weight:900;min-width:17px;height:17px;border-radius:9px;display:grid;place-items:center;padding:0 4px}
 .count{color:var(--muted);font-size:13px;margin:2px 2px 8px}
+.modeseg{display:flex;gap:4px;background:var(--panel);border:1px solid var(--line);border-radius:13px;padding:4px;margin-top:12px;box-shadow:var(--shadow)}
+.modeseg button{flex:1;border:0;background:transparent;color:var(--muted);font-weight:800;padding:10px;border-radius:10px;cursor:pointer;font-size:14px}
+.modeseg button.on{background:var(--accent);color:#fff}
+.chiprow.catlang{display:flex;gap:8px;overflow-x:auto;padding:6px 0 2px;scrollbar-width:none}
+.chiprow.catlang::-webkit-scrollbar{display:none}
+.owntag{display:inline-block;margin-top:6px;font-size:10px;font-weight:800;padding:2px 8px;border-radius:7px}
+.owntag.own{background:rgba(26,157,90,.15);color:var(--pos)}
+.owntag.no{background:var(--chip);color:var(--muted)}
+.hidden{display:none}
 /* grille / liste */
 .grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
 @media(min-width:560px){.grid{grid-template-columns:repeat(3,1fr)}}
@@ -102,6 +111,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Ar
 .lrow.on::before{content:"● ";color:var(--accent)}
 .poprow{display:flex;justify-content:space-between;align-items:center;margin-top:8px;padding:9px 12px;border-radius:10px;background:var(--chip);font-size:13px;color:var(--muted)}
 .poprow b{color:var(--ink)}
+.gcmp{display:flex;gap:8px;margin-top:6px}
+.gc{flex:1;border:1px solid var(--line);border-radius:12px;padding:10px 12px;background:var(--panel)}
+.gc span{display:block;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px}
+.gc b{font-size:19px;font-weight:900}
+.gc.alt{background:rgba(47,111,237,.06);border-color:var(--accent)}
 .certbox{display:flex;gap:8px;align-items:center;margin-top:12px;flex-wrap:wrap}
 .certbox input{flex:1;min-width:150px;border:1px solid var(--line);background:var(--panel);color:var(--ink);border-radius:10px;padding:10px;font-size:14px}
 .certbox button{border:0;background:var(--accent);color:#fff;border-radius:10px;padding:10px 14px;font-weight:800;cursor:pointer}
@@ -152,6 +166,11 @@ footer .fb b{font-size:14px;color:var(--ink)}
     </div>
   </div>
 
+  <div class="modeseg" id="modeSeg">
+    <button data-m="collection" class="on">Ma collection</button>
+    <button data-m="catalog">Catalogue (toutes langues)</button>
+  </div>
+
   <div class="toolbar">
     <div class="search">
       <span>&#128269;</span>
@@ -162,6 +181,7 @@ footer .fb b{font-size:14px;color:var(--ink)}
     <button class="tbtn" id="viewBtn" title="Affichage">&#9638;</button>
   </div>
 
+  <div class="chiprow catlang hidden" id="catLangRow"></div>
   <div class="count" id="countLine"></div>
   <div id="stage"><div class="loading">Chargement de ta collection&hellip;</div></div>
 </div>
@@ -223,7 +243,8 @@ const COLOR_HEX={Red:"#d64545",Green:"#2f9e57",Blue:"#2f6fed",Purple:"#8b57d6",B
 const TYPE_ORDER=["normal","alternate_art","sp","manga","full_art","textured_foil","jolly_roger_foil","promo","tournament"];
 const CAT_ORDER=["LEADER","CHARACTER","EVENT","STAGE","DON"];
 const SORTS=[["val_desc","Valeur ↓ (décroissant)"],["val_asc","Valeur ↑ (croissant)"],["name","Nom (A→Z)"],["num","Numéro"],["qty","Quantité"]];
-const DEF={q:"",lang:"all",color:"all",type:"all",cat:"all",rarity:"all",character:"all",grade:"all",sort:"val_desc",view:"grid"};
+const DEF={q:"",lang:"all",color:"all",type:"all",cat:"all",rarity:"all",character:"all",grade:"all",sort:"val_desc",view:"grid",mode:"collection",catLang:"all",catQuery:""};
+const CATLANGS=[["all","Toutes"],["JP","Japonais"],["EN","Anglais"],["FR","Français"],["CN","Chinois"]];
 let DATA=[], state=Object.assign({},DEF);
 
 const eur=n=> (n==null?"—":(Number(n).toLocaleString("fr-FR",{minimumFractionDigits:2,maximumFractionDigits:2})+" €"));
@@ -358,7 +379,56 @@ function closeFilters(){ document.getElementById("fmodal").classList.add("hidden
 function resetFilters(){ ["lang","color","type","cat","rarity","character","grade"].forEach(k=>{ state[k==="cat"?"cat":k]="all"; }); state.character="all"; afterFilter(); }
 
 // ---------- Events ----------
-document.getElementById("q").addEventListener("input",e=>{state.q=e.target.value;render()});
+let catTimer=null;
+document.getElementById("q").addEventListener("input",e=>{
+  if(state.mode==="catalog"){ state.catQuery=e.target.value; clearTimeout(catTimer); catTimer=setTimeout(fetchCatalog,320); }
+  else { state.q=e.target.value; render(); }
+});
+function setMode(m){
+  state.mode=m;
+  document.querySelectorAll('#modeSeg button').forEach(b=>b.classList.toggle('on',b.dataset.m===m));
+  const cat=m==="catalog";
+  document.getElementById('catLangRow').classList.toggle('hidden',!cat);
+  ['sortBtn','filterBtn','viewBtn'].forEach(id=>document.getElementById(id).classList.toggle('hidden',cat));
+  document.getElementById('q').placeholder=cat?"Chercher une carte (nom ou numéro), toutes langues…":"Rechercher (nom ou numéro)…";
+  if(cat){ buildCatLang(); fetchCatalog(); } else { document.getElementById('countLine').textContent=''; render(); }
+}
+document.getElementById('modeSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMode(b.dataset.m);});
+function buildCatLang(){
+  const row=document.getElementById('catLangRow'); row.innerHTML="";
+  CATLANGS.forEach(([code,label])=>{
+    const el=document.createElement('div'); el.className="chip"+(state.catLang===code?" on":"");
+    el.innerHTML=(code==="all"?"":FLAG[code]+" ")+label;
+    el.onclick=()=>{ state.catLang=code; buildCatLang(); fetchCatalog(); };
+    row.appendChild(el);
+  });
+}
+async function fetchCatalog(){
+  const stage=document.getElementById('stage'); const cl=document.getElementById('countLine');
+  const term=(state.catQuery||"").replace(/[%*(),]/g," ").trim();
+  if(!term){ cl.textContent=""; stage.className=""; stage.innerHTML='<div class="empty">Tape un nom ou un numéro pour chercher dans tout le catalogue (JP, EN, FR, CN).</div>'; return; }
+  stage.className=""; stage.innerHTML='<div class="loading">Recherche…</div>';
+  let url=SB+"/rest/v1/app_catalog?select=card_number,language,name,image_url,owned&limit=80&order=card_number.asc";
+  if(state.catLang!=="all") url+="&language=eq."+state.catLang;
+  const pat="*"+term+"*";
+  url+="&or=(card_number.ilike."+encodeURIComponent(pat)+",name.ilike."+encodeURIComponent(pat)+")";
+  try{
+    const r=await fetch(url,{headers:{apikey:ANON,Authorization:"Bearer "+ANON}});
+    const rows=await r.json();
+    if(state.mode!=="catalog") return;
+    renderCatalog(Array.isArray(rows)?rows:[]);
+  }catch(e){ stage.innerHTML='<div class="empty">Erreur de recherche.</div>'; }
+}
+function renderCatalog(rows){
+  const stage=document.getElementById('stage'); stage.className="";
+  document.getElementById('countLine').textContent=rows.length+" résultat"+(rows.length>1?"s":"")+(rows.length>=80?" (affine ta recherche)":"");
+  if(!rows.length){ stage.innerHTML='<div class="empty">Aucune carte trouvée.</div>'; return; }
+  stage.innerHTML='<div class="grid">'+rows.map(c=>{
+    const img=c.image_url?('<img loading="lazy" referrerpolicy="no-referrer" src="'+esc(c.image_url)+'" onerror="this.remove()">'):('<div class="ph">'+esc(c.name||c.card_number||"")+'</div>');
+    const badge=c.owned?'<span class="owntag own">✓ Possédée</span>':'<span class="owntag no">Non possédée</span>';
+    return '<div class="card"><div class="imgwrap">'+img+'<div class="badges"><span class="flag">'+(FLAG[c.language]||"")+'</span></div></div><div class="meta"><p class="nm">'+esc(c.name||"")+'</p><div class="sub"><span>'+esc(c.card_number||"")+'</span></div>'+badge+'</div></div>';
+  }).join("")+'</div>';
+}
 document.getElementById("sortBtn").addEventListener("click",openSort);
 document.getElementById("sclose").addEventListener("click",closeSort);
 document.getElementById("filterBtn").addEventListener("click",openFilters);
@@ -393,9 +463,13 @@ async function loadLadder(c){
   const cert=c.cert_number||"";
   const verify=(c.grading_company==="PSA"&&cert)?(' <a href="https://www.psacard.com/cert/'+encodeURIComponent(cert)+'" target="_blank" rel="noreferrer" style="color:var(--accent);font-size:12px">vérifier ↗</a>'):'';
   const popline=(c.population!=null)?('<div class="poprow"><span>Population '+(c.grading_company||"PSA")+' '+(c.grade!=null?String(c.grade).replace(/\.0$/,''):"")+'</span><b>'+Number(c.population).toLocaleString("fr-FR")+(c.pop_higher!=null?(' · '+Number(c.pop_higher).toLocaleString("fr-FR")+' au-dessus'):'')+'</b></div>'):'';
-  const psaline=(c.psa_estimate_eur!=null)?('<div class="sub" style="color:var(--muted);margin:2px 0 8px">Valeur = estimate PSA officiel ('+eur(c.psa_estimate_eur)+'), ancré à ton n° de cert.</div>'):'';
-  box.innerHTML='<div class="dprints"><h4>Gradée — cote par note ('+mk+')</h4>'+psaline+
-    (items?('<div class="ladder">'+items+'</div>'):'<div class="sub" style="color:var(--muted)">Pas encore de cote gradée pour cette carte sur ce marché — valeur de secours affichée en haut.</div>')+
+  const mine=rows.find(p=>p.grading_company===c.grading_company && String(p.grade)===String(c.grade));
+  const salesEur=mine?mine.price_eur:null;
+  const cmp='<div class="gcmp"><div class="gc"><span>Estimate PSA</span><b>'+(c.psa_estimate_eur!=null?eur(c.psa_estimate_eur):"—")+'</b></div><div class="gc alt"><span>Ventes récentes*</span><b>'+(salesEur!=null?eur(salesEur):"—")+'</b></div></div>'+
+    '<div class="sub" style="color:var(--muted);margin:4px 0 8px">*cote de marché (PriceCharting), souvent au-dessus de l’estimate PSA. La valeur affichée en haut = estimate PSA officiel.</div>';
+  box.innerHTML='<div class="dprints"><h4>Gradée — '+(c.grading_company||"PSA")+' '+(c.grade!=null?String(c.grade).replace(/\.0$/,''):"")+'</h4>'+cmp+
+    '<h4 style="font-size:13px;margin:6px 0 2px">Cote marché par note ('+mk+')</h4>'+
+    (items?('<div class="ladder">'+items+'</div>'):'<div class="sub" style="color:var(--muted)">Pas encore de cote de ventes pour cette carte sur ce marché.</div>')+
     popline+
     '<div class="certbox"><span class="s">N° cert.</span><input id="certIn" value="'+esc(cert)+'" placeholder="ex. 165624968"><button id="certSave">Enregistrer</button>'+verify+'</div></div>';
   const btn=document.getElementById("certSave"); if(btn) btn.onclick=()=>saveCert(c.item_id);
