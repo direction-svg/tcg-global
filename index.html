@@ -6,186 +6,246 @@
 <title>TCG GLOBAL — Ma collection One Piece</title>
 <style>
 :root{
-  color-scheme:light;
-  --page:#e8eff8;--page2:#dde8f4;--surface-1:#fff;--surface-2:#f4f8fd;--surface-3:#e9f1fa;
-  --text-primary:#0f1b2d;--text-secondary:#48586e;--muted:#8394a9;--grid:#dce7f3;--border:rgba(28,60,105,.12);
-  --series-1:#2a78d6;--series-2:#eb6834;--series-3:#1baf7a;--series-4:#eda100;--seq-300:#6da7ec;--seq-500:#256abf;
-  --good:#0a8a3a;--accent:#2a78d6;--accent-2:#17a0b8;--shadow:0 1px 2px rgba(28,60,105,.06),0 6px 20px rgba(28,60,105,.07);--radius:16px;
+  --bg:#eaf1fb; --panel:#ffffff; --ink:#0f1e34; --muted:#5b6b85; --line:#dbe6f5;
+  --accent:#2f6fed; --accent2:#5b8cff; --chip:#eef3fb; --chipOn:#2f6fed; --chipOnInk:#fff;
+  --shadow:0 6px 20px rgba(20,50,100,.08); --pos:#1a9d5a; --neg:#d64545; --gold:#e0a53b;
 }
-:root[data-theme="dark"]{color-scheme:dark;--page:#0b1420;--page2:#0e1a2a;--surface-1:#14212f;--surface-2:#182636;--surface-3:#1e2f42;
-  --text-primary:#eef4fb;--text-secondary:#adbdce;--muted:#7387a0;--grid:#243546;--border:rgba(120,160,210,.16);
-  --series-1:#3987e5;--seq-300:#256abf;--seq-500:#3987e5;--good:#22c55e;--accent:#3f92ea;--accent-2:#22b8d0;--shadow:0 2px 24px rgba(0,0,0,.35);}
+:root.dark{
+  --bg:#0c1220; --panel:#141d30; --ink:#e8eefb; --muted:#93a3c2; --line:#233152;
+  --accent:#5b8cff; --accent2:#4570d6; --chip:#1b2740; --chipOn:#5b8cff; --chipOnInk:#0c1220; --shadow:0 6px 20px rgba(0,0,0,.35);
+}
 *{box-sizing:border-box}
-body{margin:0;background:linear-gradient(160deg,var(--page),var(--page2));min-height:100vh;color:var(--text-primary);
-  font-family:system-ui,-apple-system,"Segoe UI",sans-serif;font-size:15px;line-height:1.5;-webkit-tap-highlight-color:transparent}
-.wrap{max-width:1200px;margin:0 auto;padding:0 16px 72px}
-header{position:sticky;top:0;z-index:20;background:color-mix(in srgb,var(--page) 88%,transparent);backdrop-filter:blur(14px);border-bottom:1px solid var(--border)}
-.bar{max-width:1200px;margin:0 auto;padding:12px 16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
-.brand{display:flex;align-items:center;gap:10px;font-weight:800;font-size:16px;white-space:nowrap}
-.logo{width:30px;height:30px;border-radius:9px;display:grid;place-items:center;background:linear-gradient(135deg,var(--accent),var(--accent-2));color:#fff;font-weight:900;box-shadow:var(--shadow)}
-.brand small{color:var(--muted);font-weight:600;font-size:10px;letter-spacing:1.4px;text-transform:uppercase}
-.search{flex:1;position:relative;min-width:150px}
-.search input{width:100%;padding:10px 14px 10px 38px;border-radius:12px;border:1px solid var(--border);background:var(--surface-1);color:var(--text-primary);font-size:15px;outline:none;box-shadow:var(--shadow)}
-.search input:focus{border-color:var(--accent)}
-.search svg{position:absolute;left:12px;top:11px;opacity:.5}
-.tgl{background:var(--surface-1);border:1px solid var(--border);border-radius:10px;padding:8px 10px;cursor:pointer;color:var(--text-secondary)}
-h1{font-size:12px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin:24px 0 12px;font-weight:700}
-.grid{display:grid;gap:14px}
-.card{background:var(--surface-1);border:1px solid var(--border);border-radius:var(--radius);padding:18px;box-shadow:var(--shadow)}
-.top{grid-template-columns:1.5fr 1fr 1fr;margin-top:6px}
-.hero{background:linear-gradient(150deg,var(--surface-1),var(--surface-2));position:relative;overflow:hidden}
-.hero::after{content:"";position:absolute;right:-40px;top:-40px;width:180px;height:180px;border-radius:50%;background:radial-gradient(circle,color-mix(in srgb,var(--accent) 18%,transparent),transparent 70%)}
-.hero .lbl{color:var(--muted);font-size:13px;font-weight:600}
-.hero .val{font-size:38px;font-weight:800;letter-spacing:-1px;margin:6px 0 2px}
-.hero .val span{font-size:20px;color:var(--muted);font-weight:700}
-.hero .sub{color:var(--text-secondary);font-size:12.5px}
-.kpi .lbl{color:var(--muted);font-size:12px;font-weight:600}
-.kpi .num{font-size:26px;font-weight:800;margin-top:4px}
-.kpi .num .u{font-size:14px;color:var(--muted)}
-.kpi .s{color:var(--text-secondary);font-size:12px;margin-top:2px}
-.legend{display:flex;gap:14px;flex-wrap:wrap;margin-top:10px;font-size:12.5px;color:var(--text-secondary)}
-.legend b{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:6px;vertical-align:middle}
-.toolbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px}
-.chip{padding:7px 12px;border-radius:999px;border:1px solid var(--border);background:var(--surface-2);color:var(--text-secondary);font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap}
-.chip.active{background:var(--accent);color:#fff;border-color:var(--accent)}
-.viewtog{display:flex;border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-left:auto}
-.viewtog button{padding:7px 12px;background:var(--surface-2);border:0;color:var(--text-secondary);font-weight:600;font-size:13px;cursor:pointer}
-.viewtog button.active{background:var(--accent);color:#fff}
-.count{color:var(--muted);font-size:13px;font-weight:600;width:100%}
-.gallery{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:13px}
-.gcell{background:var(--surface-2);border:1px solid var(--border);border-radius:14px;overflow:hidden;cursor:pointer;transition:transform .1s}
-.gcell:active{transform:scale(.98)}
-.gimg{position:relative;width:100%;aspect-ratio:5/7;background:linear-gradient(160deg,var(--h1),var(--h2));display:grid;place-items:center;color:#fff;font-size:11px;font-weight:800;text-align:center;padding:4px}
-.gimg img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}
-.gbadge{position:absolute;top:8px;left:8px;font-size:10px;font-weight:800;padding:3px 7px;border-radius:6px;color:#fff;background:linear-gradient(135deg,#e0a028,#cf7a1a);z-index:2}
-.qty{position:absolute;bottom:8px;right:8px;font-size:11px;font-weight:800;padding:2px 7px;border-radius:999px;background:rgba(0,0,0,.55);color:#fff;z-index:2}
-.glang{position:absolute;top:8px;right:8px;z-index:2}
-.ginfo{padding:9px 11px 11px}
-.gname{font-weight:700;font-size:13.5px;line-height:1.25;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.gmeta{color:var(--muted);font-size:11.5px;margin:2px 0 6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.gval{font-weight:800;font-size:15px}
-.gval.na{color:var(--muted);font-weight:600;font-size:12.5px}
-.tablewrap{max-height:70vh;overflow:auto;border-radius:12px;-webkit-overflow-scrolling:touch}
-table{width:100%;border-collapse:collapse;font-size:14px}
-thead th{text-align:left;color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.5px;padding:9px 10px;border-bottom:1px solid var(--border);cursor:pointer;position:sticky;top:0;background:var(--surface-1);z-index:1;white-space:nowrap}
-thead th.n{text-align:right}
-tbody td{padding:8px 10px;border-bottom:1px solid var(--border)}
-td.n{text-align:right;font-variant-numeric:tabular-nums;font-weight:700}
-.thumb{width:34px;height:47px;border-radius:5px;flex:none;position:relative;overflow:hidden;display:grid;place-items:center;font-size:8px;font-weight:800;color:#fff;text-align:center;background:linear-gradient(160deg,var(--h1),var(--h2))}
-.thumb img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
-.cardcell{display:flex;align-items:center;gap:10px}
-.cardcell .nm{font-weight:600}
-.cardcell .meta{color:var(--muted);font-size:12px}
-.pill{font-size:10.5px;font-weight:700;padding:2px 7px;border-radius:999px;white-space:nowrap}
-.pill.jp{background:color-mix(in srgb,var(--series-1) 20%,transparent);color:var(--series-1)}
-.pill.en{background:color-mix(in srgb,var(--series-2) 22%,transparent);color:var(--series-2)}
-.pill.gr{background:linear-gradient(135deg,#e0a028,#cf7a1a);color:#fff}
-.loading{text-align:center;color:var(--muted);padding:50px 0}
-.spin{width:34px;height:34px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:s 1s linear infinite;margin:0 auto 12px}
-@keyframes s{to{transform:rotate(360deg)}}
-footer{color:var(--muted);font-size:11.5px;margin-top:30px;text-align:center;line-height:1.6}
-@media(max-width:820px){.top{grid-template-columns:1fr 1fr}.hero{grid-column:1/-1}.brand small{display:none}}
-@media(max-width:520px){.gallery{grid-template-columns:repeat(2,1fr);gap:11px}.hero .val{font-size:32px}.col-set,.col-var{display:none}}
+html,body{margin:0}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--ink);-webkit-text-size-adjust:100%}
+.wrap{max-width:1100px;margin:0 auto;padding:0 12px 90px}
+header{position:sticky;top:0;z-index:20;background:linear-gradient(180deg,var(--bg) 78%,rgba(234,241,251,0));padding:10px 0 6px;backdrop-filter:blur(6px)}
+.topbar{display:flex;align-items:center;gap:10px}
+.logo{display:flex;align-items:center;gap:8px;font-weight:800;letter-spacing:.3px}
+.logo .mark{width:30px;height:30px;border-radius:9px;background:linear-gradient(135deg,var(--accent),var(--accent2));display:grid;place-items:center;color:#fff;font-weight:900;font-size:13px}
+.grow{flex:1}
+.iconbtn{border:1px solid var(--line);background:var(--panel);color:var(--ink);width:40px;height:40px;border-radius:12px;font-size:17px;cursor:pointer}
+.search{margin-top:10px;display:flex;align-items:center;gap:8px;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:10px 12px;box-shadow:var(--shadow)}
+.search input{border:0;outline:0;background:transparent;color:var(--ink);font-size:16px;width:100%}
+.stats{display:flex;gap:10px;margin-top:10px}
+.stat{flex:1;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:10px 12px;box-shadow:var(--shadow)}
+.stat .k{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
+.stat .v{font-size:20px;font-weight:800;margin-top:2px}
+.stat .v.small{font-size:16px}
+.chiprow{display:flex;gap:8px;overflow-x:auto;padding:10px 0 2px;scrollbar-width:none}
+.chiprow::-webkit-scrollbar{display:none}
+.chip{white-space:nowrap;border:1px solid var(--line);background:var(--chip);color:var(--ink);padding:7px 12px;border-radius:999px;font-size:13px;font-weight:600;cursor:pointer;display:flex;gap:6px;align-items:center}
+.chip .n{opacity:.6;font-weight:700;font-size:11px}
+.chip.on{background:var(--chipOn);color:var(--chipOnInk);border-color:transparent}
+.controls{display:flex;gap:8px;align-items:center;margin-top:6px;flex-wrap:wrap}
+select.sort,.seg{border:1px solid var(--line);background:var(--panel);color:var(--ink);border-radius:12px;padding:9px 10px;font-size:13px;font-weight:600}
+.seg{display:flex;gap:2px;padding:3px}
+.seg button{border:0;background:transparent;color:var(--muted);padding:6px 10px;border-radius:9px;font-weight:700;font-size:13px;cursor:pointer}
+.seg button.on{background:var(--accent);color:#fff}
+.count{color:var(--muted);font-size:13px;margin:8px 2px}
+.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
+@media(min-width:560px){.grid{grid-template-columns:repeat(3,1fr)}}
+@media(min-width:820px){.grid{grid-template-columns:repeat(4,1fr)}}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:16px;overflow:hidden;box-shadow:var(--shadow);position:relative}
+.imgwrap{position:relative;aspect-ratio:5/7;background:linear-gradient(135deg,#dde8fa,#c8d8f2);display:grid;place-items:center}
+:root.dark .imgwrap{background:linear-gradient(135deg,#1a2b45,#16223b)}
+.imgwrap img{width:100%;height:100%;object-fit:contain;display:block}
+.ph{padding:10px;text-align:center;color:#40598a;font-size:12px;font-weight:700}
+.badges{position:absolute;top:6px;left:6px;right:6px;display:flex;justify-content:space-between;pointer-events:none}
+.flag{font-size:15px;filter:drop-shadow(0 1px 1px rgba(0,0,0,.25))}
+.grade{background:var(--gold);color:#3a2a06;font-weight:900;font-size:10px;padding:2px 6px;border-radius:7px}
+.meta{padding:8px 10px 10px}
+.nm{font-weight:800;font-size:13px;line-height:1.15;margin:0 0 2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sub{color:var(--muted);font-size:11px;display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.tp{background:var(--chip);color:var(--muted);padding:1px 6px;border-radius:6px;font-weight:700;font-size:10px}
+.val{font-weight:900;font-size:15px;margin-top:6px}
+.qty{position:absolute;top:6px;right:6px;background:rgba(15,30,52,.82);color:#fff;font-size:10px;font-weight:800;padding:2px 6px;border-radius:7px}
+/* list */
+.list .row{display:flex;gap:12px;align-items:center;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:8px;margin-bottom:8px;box-shadow:var(--shadow)}
+.list .row img{width:44px;height:62px;object-fit:contain;border-radius:6px;background:#dde8fa}
+.list .row .nm{white-space:normal}
+.list .row .r{ margin-left:auto;text-align:right}
+.loading{padding:40px;text-align:center;color:var(--muted)}
+.empty{padding:40px;text-align:center;color:var(--muted)}
+footer{position:fixed;bottom:0;left:0;right:0;background:var(--panel);border-top:1px solid var(--line);display:flex;justify-content:space-around;padding:8px 0 calc(8px + env(safe-area-inset-bottom));z-index:20}
+footer .fb{color:var(--muted);font-size:11px;font-weight:700;display:flex;flex-direction:column;align-items:center;gap:2px}
+footer .fb b{font-size:14px;color:var(--ink)}
 </style>
 </head>
 <body>
-<header><div class="bar">
-  <div class="brand"><div class="logo">OP</div><div>TCG GLOBAL<br><small>Ma collection</small></div></div>
-  <div class="search"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg><input id="q" placeholder="Rechercher…"></div>
-  <button class="tgl" id="tgl">☾</button>
-</div></header>
 <div class="wrap">
-  <div id="app"><div class="loading"><div class="spin"></div>Chargement de ta collection en direct…</div></div>
+<header>
+  <div class="topbar">
+    <div class="logo"><div class="mark">OP</div> TCG GLOBAL</div>
+    <div class="grow"></div>
+    <button class="iconbtn" id="themeBtn" title="Th&egrave;me">&#9790;</button>
+  </div>
+  <div class="search">
+    <span>&#128269;</span>
+    <input id="q" placeholder="Rechercher (nom ou num&eacute;ro)&hellip;" autocomplete="off">
+  </div>
+  <div class="stats">
+    <div class="stat"><div class="k">Valeur collection</div><div class="v" id="stTotal">&mdash;</div></div>
+    <div class="stat"><div class="k">Cartes</div><div class="v small" id="stCount">&mdash;</div></div>
+    <div class="stat"><div class="k">Affich&eacute;es</div><div class="v small" id="stShown">&mdash;</div></div>
+  </div>
+  <div class="chiprow" id="langRow"></div>
+  <div class="chiprow" id="colorRow"></div>
+  <div class="chiprow" id="catRow"></div>
+  <div class="chiprow" id="typeRow"></div>
+  <div class="chiprow" id="rarityRow"></div>
+  <div class="controls">
+    <select class="sort" id="sort">
+      <option value="val_desc">Valeur &darr; (d&eacute;croissant)</option>
+      <option value="val_asc">Valeur &uarr; (croissant)</option>
+      <option value="name">Nom (A&rarr;Z)</option>
+      <option value="num">Num&eacute;ro</option>
+      <option value="qty">Quantit&eacute;</option>
+    </select>
+    <div class="seg" id="gradeSeg">
+      <button data-g="all" class="on">Toutes</button>
+      <button data-g="graded">Grad&eacute;es</button>
+      <button data-g="raw">Brutes</button>
+    </div>
+    <div class="grow"></div>
+    <div class="seg" id="viewSeg">
+      <button data-v="grid" class="on">&#9638; Galerie</button>
+      <button data-v="list">&#9776; Liste</button>
+    </div>
+  </div>
+  <div class="count" id="countLine"></div>
+</header>
+
+<div id="stage"><div class="loading">Chargement de ta collection&hellip;</div></div>
 </div>
+
+<footer>
+  <div class="fb"><b id="fTotal">&mdash;</b>Valeur</div>
+  <div class="fb"><b id="fCount">&mdash;</b>Cartes</div>
+  <div class="fb"><b id="fJP">&mdash;</b>JP</div>
+  <div class="fb"><b id="fGraded">&mdash;</b>Grad&eacute;es</div>
+</footer>
+
 <script>
-const SB_URL="https://bvnjkiivuntbjbmltpkl.supabase.co";
-const SB_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ2bmpraWl2dW50YmpibWx0cGtsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE3MDk4NDgsImV4cCI6MjA5NzI4NTg0OH0.ob6BL-tW60qmn-oYJP1vJrrBTTBuM-iVyrQaK92b_Ao";
-const USD_EUR=0.92;
-const eur=n=>Math.round(n).toLocaleString('fr-FR')+' €';
-function val(c){ const v=(c.is_graded&&c.price_psa10)?c.price_psa10:(c.price_jp??c.price_en??null); return v; }
-function valEur(c){ const v=val(c); return v?v*USD_EUR:null; }
+const SB="https://bvnjkiivuntbjbmltpkl.supabase.co";
+const ANON="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ2bmpraWl2dW50YmpibWx0cGtsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE3MDk4NDgsImV4cCI6MjA5NzI4NTg0OH0.ob6BL-tW60qmn-oYJP1vJrrBTTBuM-iVyrQaK92b_Ao";
+
+const TYPE_LABELS={normal:"Normal",alternate_art:"Alt Art",sp:"SP",manga:"Manga",full_art:"Full Art",jolly_roger_foil:"Jolly Roger",textured_foil:"Textured",promo:"Promo",tournament:"Tournoi"};
+const FLAG={JP:"🇯🇵",EN:"🇺🇸",FR:"🇫🇷",CN:"🇨🇳"};
+const LANGS=[["all","Toutes"],["JP","Japonais"],["EN","Anglais"],["FR","Français"],["CN","Chinois"]];
+
+const CAT_LABELS={LEADER:"Leader",CHARACTER:"Personnage",EVENT:"Event",STAGE:"Stage",DON:"DON!!"};
+const RAR_LABELS={C:"Common",UC:"Uncommon",R:"Rare",SR:"Super Rare",SEC:"Secret Rare",L:"Leader",PR:"Promo",TR:"Treasure Rare",SP:"Special"};
+const RAR_ORDER=["L","C","UC","R","SR","SEC","TR","PR","SP"];
+const COLORS=["Red","Green","Blue","Purple","Black","Yellow"];
+const COLOR_HEX={Red:"#d64545",Green:"#2f9e57",Blue:"#2f6fed",Purple:"#8b57d6",Black:"#33384a",Yellow:"#e0a53b"};
+let DATA=[], state={q:"",lang:"all",color:"all",type:"all",cat:"all",rarity:"all",grade:"all",sort:"val_desc",view:"grid"};
+
+const eur=n=> (n==null?"—":(Number(n).toLocaleString("fr-FR",{minimumFractionDigits:2,maximumFractionDigits:2})+" €"));
+const eur0=n=> (n==null?"—":(Math.round(Number(n)).toLocaleString("fr-FR")+" €"));
+const val=c=> c.market_value_eur==null?0:Number(c.market_value_eur);
 
 async function load(){
-  let rows=[],off=0;
+  let all=[],from=0,step=1000;
   while(true){
-    const r=await fetch(`${SB_URL}/rest/v1/app_collection?select=*&limit=1000&offset=${off}`,{headers:{apikey:SB_KEY,Authorization:'Bearer '+SB_KEY}});
-    if(!r.ok){ document.getElementById('app').innerHTML='<div class="loading">Erreur de chargement ('+r.status+').</div>'; return; }
-    const d=await r.json(); rows=rows.concat(d);
-    if(d.length<1000) break; off+=1000;
+    const r=await fetch(`${SB}/rest/v1/app_collection?select=item_id,card_number,card_name,card_type,category,color,rarity,language,is_graded,grading_company,grade,quantity,market_value_eur,image_url,set_code,variant&order=market_value_eur.desc.nullslast&limit=${step}&offset=${from}`,{headers:{apikey:ANON,Authorization:"Bearer "+ANON}});
+    if(!r.ok){document.getElementById("stage").innerHTML='<div class="empty">Erreur de chargement ('+r.status+').</div>';return;}
+    const b=await r.json(); all=all.concat(b); if(b.length<step)break; from+=step;
   }
-  window.DATA=rows; render();
+  DATA=all; buildFilters(); render();
 }
-const hues=['#2a78d6','#eb6834','#1baf7a','#eda100','#e87ba4','#4a3aa7'];
-function hue(c){const i=((c.card_name||'').charCodeAt(0)+((c.card_number||'').charCodeAt(0)||0))%hues.length;const h=hues[i];return[h,`color-mix(in srgb,${h} 55%,#000)`];}
-function langPill(l){return l==='JP'?'<span class="pill jp">JP</span>':(l==='EN'?'<span class="pill en">EN</span>':'<span class="pill jp">'+l+'</span>');}
-let filter='all',query='',view='gallery',sortKey='val',sortDir=-1;
+
+function buildFilters(){
+  // languages
+  const lc={}; DATA.forEach(c=>lc[c.language]=(lc[c.language]||0)+1);
+  const lr=document.getElementById("langRow"); lr.innerHTML="";
+  LANGS.forEach(([code,label])=>{
+    const n= code==="all"?DATA.length:(lc[code]||0);
+    const el=document.createElement("div"); el.className="chip"+(state.lang===code?" on":"");
+    el.innerHTML=(code==="all"?"":FLAG[code]+" ")+label+' <span class="n">'+n+'</span>';
+    el.onclick=()=>{state.lang=code;buildFilters();render()};
+    lr.appendChild(el);
+  });
+  // colors
+  const colc={}; DATA.forEach(c=>{ if(c.color) c.color.split(";").forEach(x=>colc[x]=(colc[x]||0)+1); });
+  const colr=document.getElementById("colorRow"); colr.innerHTML="";
+  const allCol=document.createElement("div"); allCol.className="chip"+(state.color==="all"?" on":""); allCol.innerHTML='Toutes couleurs'; allCol.onclick=()=>{state.color="all";buildFilters();render()}; colr.appendChild(allCol);
+  COLORS.forEach(col=>{ if(!colc[col])return; const el=document.createElement("div"); el.className="chip"+(state.color===col?" on":""); el.innerHTML='<span style="width:12px;height:12px;border-radius:50%;background:'+COLOR_HEX[col]+';display:inline-block"></span> <span class="n">'+colc[col]+'</span>'; el.title=col; el.onclick=()=>{state.color=col;buildFilters();render()}; colr.appendChild(el); });
+  // categories
+  const cc={}; DATA.forEach(c=>{if(c.category)cc[c.category]=(cc[c.category]||0)+1});
+  const cr=document.getElementById("catRow"); cr.innerHTML="";
+  const catOrder=["LEADER","CHARACTER","EVENT","STAGE","DON"];
+  const allC=document.createElement("div"); allC.className="chip"+(state.cat==="all"?" on":""); allC.innerHTML='Toutes cat&eacute;gories <span class="n">'+DATA.length+'</span>'; allC.onclick=()=>{state.cat="all";buildFilters();render()}; cr.appendChild(allC);
+  catOrder.forEach(k=>{ if(!cc[k])return; const el=document.createElement("div"); el.className="chip"+(state.cat===k?" on":""); el.innerHTML=(CAT_LABELS[k]||k)+' <span class="n">'+cc[k]+'</span>'; el.onclick=()=>{state.cat=k;buildFilters();render()}; cr.appendChild(el); });
+  // types
+  const tc={}; DATA.forEach(c=>tc[c.card_type]=(tc[c.card_type]||0)+1);
+  const order=["normal","alternate_art","sp","manga","full_art","jolly_roger_foil","textured_foil","promo","tournament"];
+  const tr=document.getElementById("typeRow"); tr.innerHTML="";
+  const allT=document.createElement("div"); allT.className="chip"+(state.type==="all"?" on":""); allT.innerHTML='Tous types <span class="n">'+DATA.length+'</span>'; allT.onclick=()=>{state.type="all";buildFilters();render()}; tr.appendChild(allT);
+  order.forEach(t=>{ if(!tc[t])return; const el=document.createElement("div"); el.className="chip"+(state.type===t?" on":""); el.innerHTML=(TYPE_LABELS[t]||t)+' <span class="n">'+tc[t]+'</span>'; el.onclick=()=>{state.type=t;buildFilters();render()}; tr.appendChild(el); });
+  // rarities
+  const rc={}; DATA.forEach(c=>{if(c.rarity)rc[c.rarity]=(rc[c.rarity]||0)+1});
+  const rr=document.getElementById("rarityRow"); rr.innerHTML="";
+  const allR=document.createElement("div"); allR.className="chip"+(state.rarity==="all"?" on":""); allR.innerHTML='Toutes raret&eacute;s'; allR.onclick=()=>{state.rarity="all";buildFilters();render()}; rr.appendChild(allR);
+  RAR_ORDER.forEach(k=>{ if(!rc[k])return; const el=document.createElement("div"); el.className="chip"+(state.rarity===k?" on":""); el.innerHTML=(RAR_LABELS[k]||k)+' <span class="n">'+rc[k]+'</span>'; el.onclick=()=>{state.rarity=k;buildFilters();render()}; rr.appendChild(el); });
+}
+
+function apply(){
+  let a=DATA.slice();
+  if(state.lang!=="all") a=a.filter(c=>c.language===state.lang);
+  if(state.type!=="all") a=a.filter(c=>c.card_type===state.type);
+  if(state.cat!=="all") a=a.filter(c=>c.category===state.cat);
+  if(state.color!=="all") a=a.filter(c=>(c.color||"").split(";").includes(state.color));
+  if(state.rarity!=="all") a=a.filter(c=>c.rarity===state.rarity);
+  if(state.grade==="graded") a=a.filter(c=>c.is_graded);
+  if(state.grade==="raw") a=a.filter(c=>!c.is_graded);
+  if(state.q){const q=state.q.toLowerCase();a=a.filter(c=>(c.card_name||"").toLowerCase().includes(q)||(c.card_number||"").toLowerCase().includes(q));}
+  const s=state.sort;
+  a.sort((x,y)=> s==="val_asc"?val(x)-val(y): s==="name"?(x.card_name||"").localeCompare(y.card_name||""): s==="num"?(x.card_number||"").localeCompare(y.card_number||""): s==="qty"?(y.quantity||1)-(x.quantity||1): val(y)-val(x));
+  return a;
+}
+
+function imgTag(c,big){
+  const ph='<div class=\"ph\">'+(c.card_name||c.card_number||"")+'<br>'+(c.card_number||"")+'</div>';
+  if(!c.image_url) return ph;
+  return '<img loading="lazy" referrerpolicy="no-referrer" src="'+c.image_url+'" onerror="this.parentNode.innerHTML=\''+ph.replace(/'/g,"&#39;")+'\'">';
+}
 
 function render(){
-  const D=window.DATA;
-  // stats
-  let total=0,exs=0,graded=0,byLang={};
-  for(const c of D){ const v=valEur(c)||0; total+=v*c.quantity; exs+=c.quantity; if(c.is_graded)graded++;
-    const lv=(valEur(c)||0)*c.quantity; byLang[c.language]=(byLang[c.language]||0)+lv; }
-  const langCol={JP:'var(--series-1)',EN:'var(--series-2)'};
-  const legend=Object.entries(byLang).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`<span><b style="background:${langCol[k]||'var(--series-3)'}"></b>${k} · ${eur(v)}</span>`).join('');
-  const app=document.getElementById('app');
-  app.innerHTML=`
-  <h1>Vue d'ensemble</h1>
-  <div class="grid top">
-    <div class="card hero"><div class="lbl">Valeur estimée de la collection</div>
-      <div class="val">${eur(total).replace(' €','')} <span>€</span></div>
-      <div class="sub">prix marché live · JP prioritaire, sinon EN · gradées en cote PSA 10</div>
-      <div class="legend">${legend}</div></div>
-    <div class="card kpi"><div class="lbl">Cartes</div><div class="num">${exs.toLocaleString('fr-FR')}</div><div class="s">${D.length.toLocaleString('fr-FR')} déclinaisons</div></div>
-    <div class="card kpi"><div class="lbl">Gradées</div><div class="num">${graded}<span class="u"> PSA</span></div><div class="s">certificats suivis</div></div>
-  </div>
-  <h1>Ma collection</h1>
-  <div class="card">
-    <div class="toolbar">
-      <button class="chip active" data-f="all">Toutes</button>
-      <button class="chip" data-f="graded">Gradées</button>
-      <button class="chip" data-f="JP">JP</button>
-      <button class="chip" data-f="EN">EN</button>
-      <button class="chip" data-f="alt">Alt Art</button>
-      <div class="viewtog"><button id="vG" class="${view==='gallery'?'active':''}">▦ Galerie</button><button id="vL" class="${view==='table'?'active':''}">☰ Liste</button></div>
-      <span class="count" id="count"></span>
-    </div>
-    <div id="cv"></div>
-  </div>
-  <footer>TCG GLOBAL · données en direct depuis ta base · prix convertis USD→EUR (~${USD_EUR}) · les prix japonais se complètent en continu.</footer>`;
-  document.getElementById('q').oninput=e=>{query=e.target.value.toLowerCase();paint();};
-  app.querySelectorAll('.chip').forEach(ch=>ch.onclick=()=>{app.querySelectorAll('.chip').forEach(x=>x.classList.remove('active'));ch.classList.add('active');filter=ch.dataset.f;paint();});
-  document.getElementById('vG').onclick=()=>{view='gallery';render();};
-  document.getElementById('vL').onclick=()=>{view='table';render();};
-  paint();
-}
-function getList(){
-  let l=window.DATA.filter(c=>{
-    if(filter==='graded'&&!c.is_graded)return false;
-    if(filter==='JP'&&c.language!=='JP')return false;
-    if(filter==='EN'&&c.language!=='EN')return false;
-    if(filter==='alt'&&!/alt/i.test(c.variant||''))return false;
-    if(query){const q=query; if(!((c.card_name||'').toLowerCase().includes(q)||(c.card_number||'').toLowerCase().includes(q)||(c.set_code||'').toLowerCase().includes(q)))return false;}
-    return true;});
-  l.sort((a,b)=>sortDir*((valEur(a)||0)-(valEur(b)||0)));
-  return l;
-}
-function gcell(c){const[h1,h2]=hue(c);const v=valEur(c);
-  return `<div class="gcell" style="--h1:${h1};--h2:${h2}"><div class="gimg"><span>${c.card_number||''}</span>${c.image_url?`<img loading="lazy" src="${c.image_url}" onerror="this.remove()">`:''}
-    ${c.is_graded?'<span class="gbadge">PSA 10</span>':''}<span class="glang">${langPill(c.language)}</span>${c.quantity>1?`<span class="qty">×${c.quantity}</span>`:''}</div>
-    <div class="ginfo"><div class="gname">${c.card_name||''}</div><div class="gmeta">${c.card_number||''} · ${c.variant_label||c.variant||''}</div>
-    ${v?`<div class="gval">${eur(v)}</div>`:`<div class="gval na">prix à venir</div>`}</div></div>`;}
-function paint(){
-  const l=getList();
-  document.getElementById('count').textContent=l.length.toLocaleString('fr-FR')+' déclinaisons';
-  const cv=document.getElementById('cv');
-  if(view==='gallery'){ cv.innerHTML='<div class="gallery">'+l.map(gcell).join('')+'</div>'; }
-  else{
-    cv.innerHTML='<div class="tablewrap"><table><thead><tr><th>Carte</th><th class="col-set">Set</th><th class="col-var">Variante</th><th>Lang</th><th class="n">Qté</th><th class="n">Valeur</th></tr></thead><tbody>'+
-      l.map(c=>{const[h1,h2]=hue(c);const v=valEur(c);return `<tr><td><div class="cardcell"><div class="thumb" style="--h1:${h1};--h2:${h2}"><span>${(c.card_number||'').slice(0,7)}</span>${c.image_url?`<img loading="lazy" src="${c.image_url}" onerror="this.remove()">`:''}</div><div><div class="nm">${c.card_name||''} ${c.is_graded?'<span class="pill gr">PSA10</span>':''}</div><div class="meta">${c.card_number||''}</div></div></div></td><td class="col-set">${c.set_code||''}</td><td class="col-var">${c.variant_label||c.variant||''}</td><td>${langPill(c.language)}</td><td class="n">${c.quantity}</td><td class="n">${v?eur(v):'—'}</td></tr>`;}).join('')+'</tbody></table></div>';
+  const a=apply();
+  const stage=document.getElementById("stage");
+  const total=DATA.reduce((s,c)=>s+val(c)*(c.quantity||1),0);
+  const shownTotal=a.reduce((s,c)=>s+val(c)*(c.quantity||1),0);
+  const jp=DATA.filter(c=>c.language==="JP").length, gr=DATA.filter(c=>c.is_graded).length;
+  document.getElementById("stTotal").textContent=eur0(total);
+  document.getElementById("stCount").textContent=DATA.reduce((s,c)=>s+(c.quantity||1),0);
+  document.getElementById("stShown").textContent=a.length;
+  document.getElementById("fTotal").textContent=eur0(total);
+  document.getElementById("fCount").textContent=DATA.length;
+  document.getElementById("fJP").textContent=jp;
+  document.getElementById("fGraded").textContent=gr;
+  document.getElementById("countLine").textContent=a.length+" carte"+(a.length>1?"s":"")+" · "+eur0(shownTotal);
+  if(!a.length){stage.innerHTML='<div class="empty">Aucune carte pour ce filtre.</div>';return;}
+  if(state.view==="grid"){
+    stage.className=""; stage.innerHTML='<div class="grid">'+a.map(c=>{
+      const g=c.is_graded?'<span class="grade">'+(c.grading_company||"")+' '+(c.grade!=null?String(c.grade).replace(/\.0$/,''):'')+'</span>':'<span></span>';
+      const q=(c.quantity>1)?'<span class="qty">x'+c.quantity+'</span>':'';
+      return '<div class="card"><div class="imgwrap">'+imgTag(c)+'<div class="badges"><span class="flag">'+(FLAG[c.language]||"")+'</span>'+g+'</div>'+q+'</div>'+
+      '<div class="meta"><p class="nm">'+(c.card_name||"")+'</p><div class="sub"><span>'+(c.card_number||"")+'</span><span class="tp">'+(TYPE_LABELS[c.card_type]||c.card_type||"")+'</span></div><div class="val">'+eur(val(c))+'</div></div></div>';
+    }).join("")+'</div>';
+  } else {
+    stage.className="list"; stage.innerHTML=a.map(c=>{
+      const g=c.is_graded?'<span class="grade">'+(c.grading_company||"")+' '+(c.grade!=null?String(c.grade).replace(/\.0$/,''):'')+'</span>':'';
+      return '<div class="row">'+imgTag(c)+'<div><p class="nm">'+(c.card_name||"")+'</p><div class="sub"><span>'+FLAG[c.language]+'</span><span>'+(c.card_number||"")+'</span><span class="tp">'+(TYPE_LABELS[c.card_type]||c.card_type||"")+'</span> '+g+'</div></div><div class="r"><div class="val">'+eur(val(c))+'</div>'+(c.quantity>1?'<div class="sub">x'+c.quantity+'</div>':'')+'</div></div>';
+    }).join("");
   }
 }
-document.getElementById('tgl').onclick=()=>{const r=document.documentElement;r.dataset.theme=r.dataset.theme==='dark'?'':'dark';document.getElementById('tgl').textContent=r.dataset.theme==='dark'?'☀':'☾';};
+
+// events
+document.getElementById("q").addEventListener("input",e=>{state.q=e.target.value;render()});
+document.getElementById("sort").addEventListener("change",e=>{state.sort=e.target.value;render()});
+document.getElementById("gradeSeg").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;state.grade=b.dataset.g;[...e.currentTarget.children].forEach(x=>x.classList.toggle("on",x===b));render()});
+document.getElementById("viewSeg").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;state.view=b.dataset.v;[...e.currentTarget.children].forEach(x=>x.classList.toggle("on",x===b));render()});
+document.getElementById("themeBtn").addEventListener("click",()=>{document.documentElement.classList.toggle("dark")});
 load();
 </script>
 </body>
