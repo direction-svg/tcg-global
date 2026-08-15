@@ -94,7 +94,9 @@ select.sort,.seg{border:1px solid var(--line);background:var(--panel);color:var(
 .pstrip{display:flex;gap:10px;overflow-x:auto;padding-bottom:6px;scrollbar-width:none}
 .pstrip::-webkit-scrollbar{display:none}
 .pcard{flex:none;width:108px}
-.pcard .pi{width:108px;height:150px;border-radius:10px;overflow:hidden;background:linear-gradient(135deg,#dde8fa,#c8d8f2);position:relative}
+.pcard .pi{width:108px;height:150px;border-radius:10px;overflow:hidden;background:linear-gradient(135deg,#dde8fa,#c8d8f2);position:relative;border:2px solid transparent}
+.pcard.sel .pi{border-color:var(--accent);box-shadow:0 0 0 3px rgba(47,111,237,.18)}
+.pcard.sel .pl{color:var(--accent);font-weight:700}
 .pcard .pi img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain}
 .pcard .pl{font-size:10px;color:var(--muted);margin-top:5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .pcard .pp{font-size:13px;font-weight:800;margin-top:1px}
@@ -189,7 +191,7 @@ const val=c=> c.market_value_eur==null?0:Number(c.market_value_eur);
 async function load(){
   let all=[],from=0,step=1000;
   while(true){
-    const r=await fetch(`${SB}/rest/v1/app_collection?select=item_id,card_number,card_name,card_type,category,color,rarity,language,is_graded,grading_company,grade,quantity,market_value_eur,image_url,set_code,variant&order=market_value_eur.desc.nullslast&limit=${step}&offset=${from}`,{headers:{apikey:ANON,Authorization:"Bearer "+ANON}});
+    const r=await fetch(`${SB}/rest/v1/app_collection?select=item_id,card_number,card_name,card_type,category,color,rarity,language,is_graded,grading_company,grade,quantity,market_value_eur,image_url,set_code,variant,art_suffix&order=market_value_eur.desc.nullslast&limit=${step}&offset=${from}`,{headers:{apikey:ANON,Authorization:"Bearer "+ANON}});
     if(!r.ok){document.getElementById("stage").innerHTML='<div class="empty">Erreur de chargement ('+r.status+').</div>';return;}
     const b=await r.json(); all=all.concat(b); if(b.length<step)break; from+=step;
   }
@@ -307,19 +309,31 @@ function drow(k,v){ return v?('<div class="drow"><span class="k">'+k+'</span><sp
 function openDetail(c){ detailCard=c; detailTab="col"; const im=document.getElementById("dimg"); im.src=c.image_url||""; im.onerror=function(){this.style.visibility="hidden"}; im.style.visibility="visible"; document.querySelectorAll('.dtabs button').forEach(b=>b.classList.toggle('on',b.dataset.t==='col')); renderDetail(); document.getElementById("dprints").innerHTML=""; document.getElementById("overlay").classList.remove("hidden"); loadPrints(c.card_number); }
 async function loadPrints(number){
   const box=document.getElementById("dprints");
-  box.innerHTML='<div class="dprints"><h4>Autres impressions</h4><div class="sub">Chargement&hellip;</div></div>';
+  box.innerHTML='<div class="dprints"><h4>Choisir la version</h4><div class="sub">Chargement&hellip;</div></div>';
   try{
-    const r=await fetch(SB+'/rest/v1/app_printings?card_number=eq.'+encodeURIComponent(number)+'&select=variant,variant_label,language,rarity,image_url,price_eur&order=price_eur.desc.nullslast',{headers:{apikey:ANON,Authorization:"Bearer "+ANON}});
-    if(detailCard && detailCard.card_number!==number) return;
+    const r=await fetch(SB+'/rest/v1/app_variants?card_number=eq.'+encodeURIComponent(number)+'&select=suffix,label,jp_image_url,price_eur&order=price_eur.desc.nullslast',{headers:{apikey:ANON,Authorization:"Bearer "+ANON}});
+    if(!detailCard || detailCard.card_number!==number) return;
     const rows=await r.json();
     if(!Array.isArray(rows)||!rows.length){ box.innerHTML=""; return; }
+    const cur=detailCard.art_suffix;
     const items=rows.map(p=>{
-      const lbl=p.variant_label||TYPE_LABELS[p.variant]||(p.variant||"").replace(/_/g," ");
-      const img=p.image_url?('<img referrerpolicy="no-referrer" src="'+esc(p.image_url)+'" onerror="this.remove()">'):'';
-      return '<div class="pcard"><div class="pi">'+img+'</div><div class="pl">'+(FLAG[p.language]||"")+' '+esc(lbl)+'</div><div class="pp">'+(p.price_eur!=null?eur(p.price_eur):"&mdash;")+'</div></div>';
+      const img=p.jp_image_url?('<img referrerpolicy="no-referrer" src="'+esc(p.jp_image_url)+'" onerror="this.remove()">'):'';
+      const on=(cur!=null && cur===p.suffix)?' sel':'';
+      return '<div class="pcard'+on+'" data-suf="'+esc(p.suffix)+'" data-img="'+esc(p.jp_image_url||"")+'"><div class="pi">'+img+'</div><div class="pl">'+esc(p.label||(p.suffix?p.suffix:'Normale'))+'</div><div class="pp">'+(p.price_eur!=null&&p.price_eur>0?eur(p.price_eur):"&mdash;")+'</div></div>';
     }).join("");
-    box.innerHTML='<div class="dprints"><h4>Autres impressions ('+rows.length+')</h4><div class="pstrip">'+items+'</div></div>';
+    box.innerHTML='<div class="dprints"><h4>Choisir la version ('+rows.length+')</h4><div class="sub" style="color:var(--muted);margin-bottom:8px">Tape la bonne version pour corriger l&#39;image de ta carte.</div><div class="pstrip">'+items+'</div></div>';
+    box.querySelectorAll('.pcard').forEach(el=>el.addEventListener('click',()=>chooseArt(el.getAttribute('data-suf'), el.getAttribute('data-img'))));
   }catch(e){ box.innerHTML=""; }
+}
+async function chooseArt(suf, imgurl){
+  if(!detailCard) return;
+  try{
+    await fetch(SB+'/rest/v1/rpc/set_owned_art',{method:"POST",headers:{apikey:ANON,Authorization:"Bearer "+ANON,"Content-Type":"application/json"},body:JSON.stringify({p_item:detailCard.item_id,p_suffix:suf})});
+    detailCard.art_suffix=suf;
+    if(imgurl){ detailCard.image_url=imgurl; const di=document.getElementById("dimg"); di.src=imgurl; di.style.visibility="visible"; const d=findCard(detailCard.item_id); if(d) d.image_url=imgurl; }
+    document.querySelectorAll('#dprints .pcard').forEach(x=>x.classList.toggle('sel', x.getAttribute('data-suf')===suf));
+    render();
+  }catch(e){}
 }
 function closeDetail(){ document.getElementById("overlay").classList.add("hidden"); }
 function renderDetail(){ const c=detailCard; if(!c)return; const body=document.getElementById("dbody");
