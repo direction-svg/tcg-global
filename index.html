@@ -89,6 +89,15 @@ select.sort,.seg{border:1px solid var(--line);background:var(--panel);color:var(
 .qtybox .b{font-size:30px;font-weight:900}
 .pill{display:inline-block;padding:3px 9px;border-radius:8px;font-weight:800;font-size:12px}
 .pill.gold{background:var(--gold);color:#3a2a06}
+.dprints{padding:8px 14px 18px}
+.dprints h4{margin:10px 0 8px;font-size:15px}
+.pstrip{display:flex;gap:10px;overflow-x:auto;padding-bottom:6px;scrollbar-width:none}
+.pstrip::-webkit-scrollbar{display:none}
+.pcard{flex:none;width:108px}
+.pcard .pi{width:108px;height:150px;border-radius:10px;overflow:hidden;background:linear-gradient(135deg,#dde8fa,#c8d8f2);position:relative}
+.pcard .pi img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain}
+.pcard .pl{font-size:10px;color:var(--muted);margin-top:5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pcard .pp{font-size:13px;font-weight:800;margin-top:1px}
 footer{position:fixed;bottom:0;left:0;right:0;background:var(--panel);border-top:1px solid var(--line);display:flex;justify-content:space-around;padding:8px 0 calc(8px + env(safe-area-inset-bottom));z-index:20}
 footer .fb{color:var(--muted);font-size:11px;font-weight:700;display:flex;flex-direction:column;align-items:center;gap:2px}
 footer .fb b{font-size:14px;color:var(--ink)}
@@ -147,6 +156,7 @@ footer .fb b{font-size:14px;color:var(--ink)}
     <div class="dhead"><button class="dclose" id="dclose">&times;</button><img id="dimg" referrerpolicy="no-referrer"></div>
     <div class="dtabs"><button data-t="col" class="on">Collection</button><button data-t="det">D&eacute;tails</button></div>
     <div id="dbody"></div>
+    <div id="dprints"></div>
   </div>
 </div>
 
@@ -294,7 +304,23 @@ document.getElementById("themeBtn").addEventListener("click",()=>{document.docum
 let detailCard=null, detailTab="col";
 const LANG_LABELS={JP:"Japonais",EN:"Anglais",FR:"Français",CN:"Chinois"};
 function drow(k,v){ return v?('<div class="drow"><span class="k">'+k+'</span><span class="v">'+v+'</span></div>'):''; }
-function openDetail(c){ detailCard=c; detailTab="col"; const im=document.getElementById("dimg"); im.src=c.image_url||""; im.onerror=function(){this.style.visibility="hidden"}; im.style.visibility="visible"; document.querySelectorAll('.dtabs button').forEach(b=>b.classList.toggle('on',b.dataset.t==='col')); renderDetail(); document.getElementById("overlay").classList.remove("hidden"); }
+function openDetail(c){ detailCard=c; detailTab="col"; const im=document.getElementById("dimg"); im.src=c.image_url||""; im.onerror=function(){this.style.visibility="hidden"}; im.style.visibility="visible"; document.querySelectorAll('.dtabs button').forEach(b=>b.classList.toggle('on',b.dataset.t==='col')); renderDetail(); document.getElementById("dprints").innerHTML=""; document.getElementById("overlay").classList.remove("hidden"); loadPrints(c.card_number); }
+async function loadPrints(number){
+  const box=document.getElementById("dprints");
+  box.innerHTML='<div class="dprints"><h4>Autres impressions</h4><div class="sub">Chargement&hellip;</div></div>';
+  try{
+    const r=await fetch(SB+'/rest/v1/app_printings?card_number=eq.'+encodeURIComponent(number)+'&select=variant,variant_label,language,rarity,image_url,price_eur&order=price_eur.desc.nullslast',{headers:{apikey:ANON,Authorization:"Bearer "+ANON}});
+    if(detailCard && detailCard.card_number!==number) return;
+    const rows=await r.json();
+    if(!Array.isArray(rows)||!rows.length){ box.innerHTML=""; return; }
+    const items=rows.map(p=>{
+      const lbl=p.variant_label||TYPE_LABELS[p.variant]||(p.variant||"").replace(/_/g," ");
+      const img=p.image_url?('<img referrerpolicy="no-referrer" src="'+esc(p.image_url)+'" onerror="this.remove()">'):'';
+      return '<div class="pcard"><div class="pi">'+img+'</div><div class="pl">'+(FLAG[p.language]||"")+' '+esc(lbl)+'</div><div class="pp">'+(p.price_eur!=null?eur(p.price_eur):"&mdash;")+'</div></div>';
+    }).join("");
+    box.innerHTML='<div class="dprints"><h4>Autres impressions ('+rows.length+')</h4><div class="pstrip">'+items+'</div></div>';
+  }catch(e){ box.innerHTML=""; }
+}
 function closeDetail(){ document.getElementById("overlay").classList.add("hidden"); }
 function renderDetail(){ const c=detailCard; if(!c)return; const body=document.getElementById("dbody");
   if(detailTab==="col"){
