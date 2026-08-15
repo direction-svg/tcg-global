@@ -222,6 +222,34 @@ footer .fb b{font-size:14px;color:var(--ink)}
   </div>
 </div>
 
+<div id="catOverlay" class="overlay hidden">
+  <div class="sheet">
+    <div class="dhead"><button class="dclose" id="cdclose">&times;</button><img id="cdimg" referrerpolicy="no-referrer"></div>
+    <div id="cdbody"></div>
+    <div id="cdprints"></div>
+  </div>
+</div>
+
+<div id="cfmodal" class="overlay hidden">
+  <div class="sheet fsheet">
+    <div class="fbar"><b>Filtres catalogue</b><button class="x" id="cfclose">&times;</button></div>
+    <div class="fsec"><h5>Langue</h5><div class="chipwrap" id="cmLang"></div></div>
+    <div class="fsec"><h5>Couleur</h5><div class="chipwrap" id="cmColor"></div></div>
+    <div class="fsec"><h5>Cat&eacute;gorie</h5><div class="chipwrap" id="cmCat"></div></div>
+    <div class="fsec"><h5>Raret&eacute;</h5><div class="chipwrap" id="cmRarity"></div></div>
+    <div class="fsec"><h5>Type</h5><div class="chipwrap" id="cmType"></div></div>
+    <div class="ffoot"><button class="reset" id="cfreset">R&eacute;initialiser</button><button class="apply" id="cfapply">Voir les cartes</button></div>
+  </div>
+</div>
+
+<div id="csmodal" class="overlay hidden">
+  <div class="sheet ssheet">
+    <div class="fbar"><b>Trier</b><button class="x" id="csclose">&times;</button></div>
+    <div id="catSortList"></div>
+    <div style="height:calc(14px + env(safe-area-inset-bottom))"></div>
+  </div>
+</div>
+
 <footer>
   <div class="fb"><b id="fTotal">&mdash;</b>Valeur</div>
   <div class="fb"><b id="fCount">&mdash;</b>Cartes</div>
@@ -244,10 +272,13 @@ const COLOR_HEX={Red:"#d64545",Green:"#2f9e57",Blue:"#2f6fed",Purple:"#8b57d6",B
 const TYPE_ORDER=["normal","alternate_art","sp","manga","full_art","textured_foil","jolly_roger_foil","promo","tournament"];
 const CAT_ORDER=["LEADER","CHARACTER","EVENT","STAGE","DON"];
 const SORTS=[["val_desc","Valeur ↓ (décroissant)"],["val_asc","Valeur ↑ (croissant)"],["name","Nom (A→Z)"],["num","Numéro"],["qty","Quantité"]];
-const DEF={q:"",lang:"all",color:"all",type:"all",cat:"all",rarity:"all",character:"all",grade:"all",sort:"val_desc",view:"grid",mode:"collection",catLang:"all",catQuery:"",catColor:"all",catCat:"all",catRarity:"all"};
+const DEF={q:"",lang:"all",color:"all",type:"all",cat:"all",rarity:"all",character:"all",grade:"all",sort:"val_desc",view:"grid",mode:"collection",catLang:"all",catQuery:"",catColor:"all",catCat:"all",catRarity:"all",catType:"all",catSort:"num"};
 const CATLANGS=[["all","Toutes"],["JP","Japonais"],["EN","Anglais"],["FR","Français"],["CN","Chinois"]];
 const CATCATS=[["all","Toutes catégories"],["LEADER","Leader"],["CHARACTER","Personnage"],["EVENT","Event"],["STAGE","Stage"]];
-const CATRARS=[["all","Toutes raretés"],["L","Leader"],["C","Common"],["UC","Uncommon"],["R","Rare"],["SR","Super Rare"],["SEC","Secret Rare"],["SP","Special"],["P","Promo"]];
+const CATRARS=[["all","Toutes raretés"],["L","Leader"],["C","Common"],["UC","Uncommon"],["R","Rare"],["SR","Super Rare"],["SEC","Secret Rare"],["TR","Treasure Rare"],["SP","Special"],["P","Promo"]];
+const CATTYPES=[["all","Tous types"],["STANDARD","Standard"],["PROMO","Promo"],["BATTLE_EVENT","Battleship"],["PREMIUM_COLLECTION","Premium Collection"],["TOURNAMENT","Tournoi"],["PRODUCT_EXCLUSIVE","Exclusivité produit"]];
+const CATSORTS=[["num","Numéro"],["name","Nom (A→Z)"],["lang","Langue"]];
+let CATROWS=[];
 let DATA=[], state=Object.assign({},DEF);
 
 const eur=n=> (n==null?"—":(Number(n).toLocaleString("fr-FR",{minimumFractionDigits:2,maximumFractionDigits:2})+" €"));
@@ -391,48 +422,53 @@ function setMode(m){
   state.mode=m;
   document.querySelectorAll('#modeSeg button').forEach(b=>b.classList.toggle('on',b.dataset.m===m));
   const cat=m==="catalog";
-  document.getElementById('catLangRow').classList.toggle('hidden',!cat);
-  document.getElementById('catFilters').classList.toggle('hidden',!cat);
-  ['sortBtn','filterBtn','viewBtn'].forEach(id=>document.getElementById(id).classList.toggle('hidden',cat));
+  document.getElementById('catLangRow').classList.add('hidden');
+  document.getElementById('catFilters').classList.add('hidden');
+  document.getElementById('viewBtn').classList.toggle('hidden',cat);
   document.getElementById('q').placeholder=cat?"Chercher une carte (nom ou numéro), toutes langues…":"Rechercher (nom ou numéro)…";
-  if(cat){ buildCatLang(); buildCatFilters(); fetchCatalog(); } else { document.getElementById('countLine').textContent=''; render(); }
-}
-function buildCatFilters(){
-  const box=document.getElementById('catFilters'); box.innerHTML="";
-  const rows=[["catColor",[["all","Toutes couleurs"]].concat(COLORS.map(c=>[c,c]))],["catCat",CATCATS],["catRarity",CATRARS]];
-  rows.forEach(([key,opts])=>{
-    const row=document.createElement('div'); row.className="chiprow catlang";
-    opts.forEach(([code,label])=>{
-      const el=document.createElement('div'); el.className="chip"+(state[key]===code?" on":"");
-      if(key==="catColor"&&code!=="all"){ el.innerHTML='<span style="width:11px;height:11px;border-radius:50%;background:'+(COLOR_HEX[code]||'#888')+';display:inline-block"></span> '+esc(label); }
-      else el.textContent=label;
-      el.onclick=()=>{ state[key]=code; buildCatFilters(); fetchCatalog(); };
-      row.appendChild(el);
-    });
-    box.appendChild(row);
-  });
+  if(cat){ syncCatBadge(); fetchCatalog(); } else { syncBadge(); document.getElementById('countLine').textContent=''; render(); }
 }
 document.getElementById('modeSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMode(b.dataset.m);});
-function buildCatLang(){
-  const row=document.getElementById('catLangRow'); row.innerHTML="";
-  CATLANGS.forEach(([code,label])=>{
-    const el=document.createElement('div'); el.className="chip"+(state.catLang===code?" on":"");
-    el.innerHTML=(code==="all"?"":FLAG[code]+" ")+label;
-    el.onclick=()=>{ state.catLang=code; buildCatLang(); fetchCatalog(); };
-    row.appendChild(el);
+const CATKEYS=["catLang","catColor","catCat","catRarity","catType"];
+function catActiveCount(){ let n=0; CATKEYS.forEach(k=>{ if(state[k]!=="all")n++; }); return n; }
+function syncCatBadge(){ const n=catActiveCount(); const b=document.getElementById("fbadge"); b.textContent=n; b.style.display=n?"grid":"none"; document.getElementById("filterBtn").classList.toggle("act",!!n); }
+function buildCatFilterModal(){
+  const conf=[
+    ["cmLang","catLang", CATLANGS.map(([c,l])=>[c,(c==="all"?"":FLAG[c]+" ")+l])],
+    ["cmColor","catColor", [["all","Toutes"]].concat(COLORS.map(c=>[c,'<span style="width:11px;height:11px;border-radius:50%;background:'+(COLOR_HEX[c]||"#888")+';display:inline-block"></span> '+c]))],
+    ["cmCat","catCat", CATCATS],
+    ["cmRarity","catRarity", CATRARS],
+    ["cmType","catType", CATTYPES]
+  ];
+  conf.forEach(([boxId,key,opts])=>{
+    const box=document.getElementById(boxId); box.innerHTML="";
+    opts.forEach(([code,label])=>{ box.appendChild(makeChip(label,null,state[key]===code,()=>{ state[key]=code; buildCatFilterModal(); syncCatBadge(); fetchCatalog(); })); });
   });
 }
+function openCatFilters(){ buildCatFilterModal(); document.getElementById("cfmodal").classList.remove("hidden"); }
+function closeCatFilters(){ document.getElementById("cfmodal").classList.add("hidden"); }
+function resetCatFilters(){ CATKEYS.forEach(k=>state[k]="all"); buildCatFilterModal(); syncCatBadge(); fetchCatalog(); }
+function buildCatSort(){ const box=document.getElementById("catSortList"); box.innerHTML=""; CATSORTS.forEach(([v,l])=>{ const el=document.createElement("div"); el.className="srow"+(state.catSort===v?" on":""); el.innerHTML='<span>'+l+'</span><span class="tick">✓</span>'; el.onclick=()=>{ state.catSort=v; buildCatSort(); fetchCatalog(); closeCatSort(); }; box.appendChild(el); }); }
+function openCatSort(){ buildCatSort(); document.getElementById("csmodal").classList.remove("hidden"); }
+function closeCatSort(){ document.getElementById("csmodal").classList.add("hidden"); }
+document.getElementById("cfclose").addEventListener("click",closeCatFilters);
+document.getElementById("cfapply").addEventListener("click",closeCatFilters);
+document.getElementById("cfreset").addEventListener("click",resetCatFilters);
+document.getElementById("csclose").addEventListener("click",closeCatSort);
+[["cfmodal",closeCatFilters],["csmodal",closeCatSort]].forEach(([id,fn])=>document.getElementById(id).addEventListener("click",e=>{ if(e.target.id===id)fn(); }));
 async function fetchCatalog(){
   const stage=document.getElementById('stage'); const cl=document.getElementById('countLine');
   const term=(state.catQuery||"").replace(/[%*(),]/g," ").trim();
-  const hasFilter = term || state.catLang!=="all" || state.catColor!=="all" || state.catCat!=="all" || state.catRarity!=="all";
-  if(!hasFilter){ cl.textContent=""; stage.className=""; stage.innerHTML='<div class="empty">Cherche par nom, numéro, ou choisis une langue / couleur / catégorie / rareté ci-dessus.</div>'; return; }
+  const hasFilter = term || state.catLang!=="all" || state.catColor!=="all" || state.catCat!=="all" || state.catRarity!=="all" || state.catType!=="all";
+  if(!hasFilter){ cl.textContent=""; stage.className=""; stage.innerHTML='<div class="empty">Cherche par nom, numéro, ou choisis une langue / couleur / catégorie / rareté / type ci-dessus.</div>'; return; }
   stage.className=""; stage.innerHTML='<div class="loading">Recherche…</div>';
-  let url=SB+"/rest/v1/app_catalog?select=card_number,language,name,image_url,owned,variant,variant_label&limit=120&order=card_number.asc";
+  const ord=state.catSort==="name"?"name.asc":(state.catSort==="lang"?"language.asc,card_number.asc":"card_number.asc");
+  let url=SB+"/rest/v1/app_catalog?select=card_number,language,name,image_url,owned,variant,variant_label,rarity,set_code,set_name,category,origin,printing_id&limit=120&order="+ord;
   if(state.catLang!=="all") url+="&language=eq."+state.catLang;
   if(state.catColor!=="all") url+="&color=ilike."+encodeURIComponent("*"+state.catColor+"*");
   if(state.catCat!=="all") url+="&category=eq."+state.catCat;
   if(state.catRarity!=="all") url+="&rarity=eq."+state.catRarity;
+  if(state.catType!=="all") url+="&origin=eq."+state.catType;
   if(term){ const pat="*"+term+"*"; url+="&or=(card_number.ilike."+encodeURIComponent(pat)+",name.ilike."+encodeURIComponent(pat)+")"; }
   try{
     const r=await fetch(url,{headers:{apikey:ANON,Authorization:"Bearer "+ANON}});
@@ -442,19 +478,51 @@ async function fetchCatalog(){
   }catch(e){ stage.innerHTML='<div class="empty">Erreur de recherche.</div>'; }
 }
 function renderCatalog(rows){
+  CATROWS=rows;
   const stage=document.getElementById('stage'); stage.className="";
   document.getElementById('countLine').textContent=rows.length+" résultat"+(rows.length>1?"s":"")+(rows.length>=120?" (affine ta recherche)":"");
   if(!rows.length){ stage.innerHTML='<div class="empty">Aucune carte trouvée.</div>'; return; }
-  stage.innerHTML='<div class="grid">'+rows.map(c=>{
+  stage.innerHTML='<div class="grid">'+rows.map((c,i)=>{
     const img=c.image_url?('<img loading="lazy" referrerpolicy="no-referrer" src="'+esc(c.image_url)+'" onerror="this.remove()">'):('<div class="ph">'+esc(c.name||c.card_number||"")+'</div>');
     const badge=c.owned?'<span class="owntag own">✓ Possédée</span>':'<span class="owntag no">Non possédée</span>';
     const vl=c.variant_label||c.variant; const vtag=(vl&&String(vl).toLowerCase()!=='normal')?'<span class="tp">'+esc(vl)+'</span>':'';
-    return '<div class="card"><div class="imgwrap">'+img+'<div class="badges"><span class="flag">'+(FLAG[c.language]||"")+'</span></div></div><div class="meta"><p class="nm">'+esc(c.name||"")+'</p><div class="sub"><span>'+esc(c.card_number||"")+'</span>'+vtag+'</div>'+badge+'</div></div>';
+    return '<div class="card" data-idx="'+i+'"><div class="imgwrap">'+img+'<div class="badges"><span class="flag">'+(FLAG[c.language]||"")+'</span></div></div><div class="meta"><p class="nm">'+esc(c.name||"")+'</p><div class="sub"><span>'+esc(c.card_number||"")+'</span>'+vtag+'</div>'+badge+'</div></div>';
   }).join("")+'</div>';
 }
-document.getElementById("sortBtn").addEventListener("click",openSort);
+const ORIGIN_LABELS={STANDARD:"Standard",PROMO:"Promo",BATTLE_EVENT:"Battleship",PREMIUM_COLLECTION:"Premium Collection",TOURNAMENT:"Tournoi",PRODUCT_EXCLUSIVE:"Exclusivité produit"};
+async function openCatDetail(c){
+  if(!c) return;
+  document.getElementById("cdimg").src=c.image_url||""; document.getElementById("cdimg").style.visibility=c.image_url?"visible":"hidden";
+  const vl=c.variant_label||c.variant;
+  document.getElementById("cdbody").innerHTML=
+    '<div class="dval"><div class="b">'+esc(c.name||"")+'</div><div class="s">'+(FLAG[c.language]||"")+' '+(LANG_LABELS[c.language]||c.language)+' · '+esc(c.card_number||"")+'</div><div class="s" style="margin-top:2px">'+(c.owned?'<span class="owntag own">✓ Tu possèdes cette carte</span>':'<span class="owntag no">Non possédée</span>')+'</div></div>'+
+    drow("Rareté", RAR_LABELS[c.rarity]||c.rarity)+drow("Variante", (vl&&String(vl).toLowerCase()!=='normal')?esc(vl):"Normale")+drow("Type", c.origin?(ORIGIN_LABELS[c.origin]||c.origin):"")+drow("Catégorie", CAT_LABELS[c.category]||c.category)+drow("Set", esc((c.set_code||"")+(c.set_name?(" — "+c.set_name):"")))+
+    '<div id="cdprice" class="drow"><span class="k">Prix marché</span><span class="v">…</span></div>';
+  document.getElementById("cdprints").innerHTML="";
+  document.getElementById("catOverlay").classList.remove("hidden");
+  // price via ladder (loose) for the printing
+  if(c.printing_id){
+    try{ const mk=(c.language==="JP")?"JP":"EN";
+      const r=await fetch(SB+'/rest/v1/app_price_ladder?printing_id=eq.'+encodeURIComponent(c.printing_id)+'&grading_company=is.null&market=eq.'+mk+'&select=price_eur',{headers:{apikey:ANON,Authorization:"Bearer "+ANON}});
+      const rows=await r.json(); const p=(Array.isArray(rows)&&rows[0])?rows[0].price_eur:null;
+      const el=document.querySelector('#cdprice .v'); if(el) el.textContent=(p!=null?eur(p):"— (pas encore de cote)");
+    }catch(e){ const el=document.querySelector('#cdprice .v'); if(el) el.textContent="—"; }
+  } else { const el=document.querySelector('#cdprice .v'); if(el) el.textContent="—"; }
+  // autres impressions (même numéro, toutes langues/variantes)
+  try{
+    const r=await fetch(SB+'/rest/v1/app_catalog?card_number=eq.'+encodeURIComponent(c.card_number)+'&select=card_number,language,name,image_url,variant,variant_label,rarity,set_code,set_name,category,origin,owned,printing_id&limit=60',{headers:{apikey:ANON,Authorization:"Bearer "+ANON}});
+    let rows=await r.json(); if(!Array.isArray(rows)) rows=[];
+    const items=rows.map((p,i)=>{ const im=p.image_url?('<img referrerpolicy="no-referrer" src="'+esc(p.image_url)+'" onerror="this.remove()">'):''; const lab=(p.variant_label||p.variant||'Normale'); return '<div class="pcard" data-cpi="'+i+'"><div class="pi">'+im+'</div><div class="pl">'+(FLAG[p.language]||"")+' '+esc(String(lab).slice(0,18))+'</div></div>'; }).join("");
+    document.getElementById("cdprints").innerHTML='<div class="dprints"><h4>Autres impressions ('+rows.length+')</h4><div class="pstrip">'+items+'</div></div>';
+    CATPRINTS=rows;
+    document.querySelectorAll('#cdprints .pcard').forEach(el=>el.addEventListener('click',()=>openCatDetail(CATPRINTS[+el.getAttribute('data-cpi')])));
+  }catch(e){ document.getElementById("cdprints").innerHTML=""; }
+}
+let CATPRINTS=[];
+function closeCatDetail(){ document.getElementById("catOverlay").classList.add("hidden"); }
+document.getElementById("sortBtn").addEventListener("click",()=>{ state.mode==="catalog"?openCatSort():openSort(); });
 document.getElementById("sclose").addEventListener("click",closeSort);
-document.getElementById("filterBtn").addEventListener("click",openFilters);
+document.getElementById("filterBtn").addEventListener("click",()=>{ state.mode==="catalog"?openCatFilters():openFilters(); });
 document.getElementById("fclose").addEventListener("click",closeFilters);
 document.getElementById("fapply").addEventListener("click",closeFilters);
 document.getElementById("freset").addEventListener("click",resetFilters);
@@ -586,7 +654,12 @@ function renderDetail(){ const c=detailCard; if(!c)return; const body=document.g
   }
 }
 function findCard(id){ return DATA.find(c=>String(c.item_id)===String(id)); }
-document.getElementById("stage").addEventListener("click",e=>{const el=e.target.closest("[data-id]"); if(!el)return; const c=findCard(el.dataset.id); if(c)openDetail(c);});
+document.getElementById("stage").addEventListener("click",e=>{
+  if(state.mode==="catalog"){ const el=e.target.closest("[data-idx]"); if(el) openCatDetail(CATROWS[+el.getAttribute("data-idx")]); return; }
+  const el=e.target.closest("[data-id]"); if(!el)return; const c=findCard(el.dataset.id); if(c)openDetail(c);
+});
+document.getElementById("cdclose").addEventListener("click",closeCatDetail);
+document.getElementById("catOverlay").addEventListener("click",e=>{ if(e.target.id==="catOverlay")closeCatDetail(); });
 document.getElementById("dclose").addEventListener("click",closeDetail);
 document.getElementById("overlay").addEventListener("click",e=>{ if(e.target.id==="overlay")closeDetail(); });
 document.querySelectorAll('.dtabs button').forEach(b=>b.addEventListener("click",()=>{ detailTab=b.dataset.t; document.querySelectorAll('.dtabs button').forEach(x=>x.classList.toggle('on',x===b)); renderDetail(); }));
