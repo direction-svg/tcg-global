@@ -103,6 +103,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Ar
 .certbox{display:flex;gap:8px;align-items:center;margin-top:12px;flex-wrap:wrap}
 .certbox input{flex:1;min-width:150px;border:1px solid var(--line);background:var(--panel);color:var(--ink);border-radius:10px;padding:10px;font-size:14px}
 .certbox button{border:0;background:var(--accent);color:#fff;border-radius:10px;padding:10px 14px;font-weight:800;cursor:pointer}
+.linkbtn{display:inline-block;margin:14px 0 0;background:none;border:0;color:var(--accent);font-weight:700;font-size:13px;cursor:pointer;padding:4px 0;text-decoration:underline}
+.varbox{margin-top:8px}
+.varbox.hidden{display:none}
+.vlist{display:flex;flex-direction:column;gap:6px}
+.vrow{display:flex;justify-content:space-between;align-items:center;padding:11px 12px;border:1px solid var(--line);border-radius:10px;background:var(--panel);font-size:14px;cursor:pointer}
+.vrow.on{border-color:var(--accent);background:rgba(47,111,237,.08);font-weight:800}
+.vrow.on::before{content:"✓ ";color:var(--accent)}
 /* modal filtres */
 .fsheet .fbar,.ssheet .fbar{display:flex;align-items:center;justify-content:space-between;padding:16px 16px 8px;position:sticky;top:0;background:var(--bg);z-index:2}
 .fbar b{font-size:18px}
@@ -397,24 +404,55 @@ async function saveCert(item){
 async function loadPrints(number){
   const box=document.getElementById("dprints");
   if(!detailCard) return;
-  if((detailCard.language||"JP")!=="JP"){ box.innerHTML='<div class="dprints"><h4>Autres impressions</h4><div class="sub" style="color:var(--muted)">Le choix d’image par version est pour l’instant disponible sur les cartes japonaises.</div></div>'; return; }
-  box.innerHTML='<div class="dprints"><h4>Choisir la version</h4><div class="sub">Chargement…</div></div>';
+  if((detailCard.language||"JP")!=="JP"){ box.innerHTML='<div class="dprints"><h4>Variantes</h4><div class="sub" style="color:var(--muted)">Le choix de variante / illustration est pour l’instant disponible sur les cartes japonaises.</div></div>'; return; }
+  box.innerHTML='<div class="dprints"><div class="sub">Chargement…</div></div>';
   try{
-    const r=await fetch(SB+'/rest/v1/app_variants?card_number=eq.'+encodeURIComponent(number)+'&select=suffix,label,jp_image_url&order=suffix.asc',{headers:{apikey:ANON,Authorization:"Bearer "+ANON}});
+    const [ri,rv]=await Promise.all([
+      fetch(SB+'/rest/v1/app_variants?card_number=eq.'+encodeURIComponent(number)+'&select=suffix,label,jp_image_url&order=suffix.asc',{headers:{apikey:ANON,Authorization:"Bearer "+ANON}}),
+      fetch(SB+'/rest/v1/app_card_variants?card_number=eq.'+encodeURIComponent(number)+'&select=printing_id,label,price_eur&order=price_eur.desc.nullslast',{headers:{apikey:ANON,Authorization:"Bearer "+ANON}})
+    ]);
     if(!detailCard || detailCard.card_number!==number) return;
-    let rows=await r.json();
-    if(!Array.isArray(rows)) rows=[];
-    rows=rows.filter(p=>p.jp_image_url);
-    if(!rows.length){ box.innerHTML=""; return; }
+    let imgs=await ri.json(); if(!Array.isArray(imgs)) imgs=[]; imgs=imgs.filter(p=>p.jp_image_url);
+    let vars=await rv.json(); if(!Array.isArray(vars)) vars=[];
+    const curV=vars.find(v=>String(v.printing_id)===String(detailCard.printing_id));
+    const vlabel=curV?curV.label:(detailCard.variant_label||detailCard.variant||"—");
+    const vprice=curV&&curV.price_eur!=null?eur(curV.price_eur):eur(val(detailCard));
     const cur=detailCard.art_suffix;
-    const items=rows.map(p=>{
+    const imgItems=imgs.map(p=>{
       const img='<img referrerpolicy="no-referrer" src="'+esc(p.jp_image_url)+'" onerror="this.remove()">';
       const on=(cur!=null && cur===p.suffix)?' sel':'';
       return '<div class="pcard'+on+'" data-suf="'+esc(p.suffix)+'" data-img="'+esc(p.jp_image_url)+'"><div class="pi">'+img+'</div><div class="pl">'+esc(p.label||(p.suffix?p.suffix:'Normale'))+'</div></div>';
     }).join("");
-    box.innerHTML='<div class="dprints"><h4>Choisir la version ('+rows.length+')</h4><div class="sub" style="color:var(--muted);margin-bottom:2px">Tape la bonne illustration pour corriger l’image. Ça ne change pas le prix.</div><div class="pstrip">'+items+'</div></div>';
+    const vItems=vars.map(v=>{
+      const on=(String(v.printing_id)===String(detailCard.printing_id))?' on':'';
+      return '<div class="vrow'+on+'" data-pid="'+esc(v.printing_id)+'" data-price="'+esc(v.price_eur==null?'':v.price_eur)+'"><span>'+esc(v.label)+'</span><b>'+(v.price_eur!=null?eur(v.price_eur):'—')+'</b></div>';
+    }).join("");
+    let html='<div class="dprints">';
+    if(imgs.length){
+      html+='<h4>Illustration de ta carte</h4><div class="sub" style="color:var(--muted);margin-bottom:2px">Ta variante : <b style="color:var(--ink)">'+esc(vlabel)+'</b> · '+vprice+'. Tape l’illustration qui correspond (ne change pas le prix).</div><div class="pstrip">'+imgItems+'</div>';
+    }
+    if(vars.length>1){
+      html+='<button class="linkbtn" id="wrongVar">Ce n’est pas la bonne variante ?</button><div id="varList" class="varbox hidden"><div class="sub" style="margin:2px 0 6px">Choisis ta variante — le prix se cale dessus :</div><div class="vlist">'+vItems+'</div></div>';
+    }
+    html+='</div>';
+    box.innerHTML=html;
     box.querySelectorAll('.pcard').forEach(el=>el.addEventListener('click',()=>chooseArt(el.getAttribute('data-suf'), el.getAttribute('data-img'))));
+    const wv=document.getElementById('wrongVar'); if(wv) wv.onclick=()=>{ document.getElementById('varList').classList.toggle('hidden'); };
+    box.querySelectorAll('.vrow').forEach(el=>el.addEventListener('click',()=>chooseVariant(el.getAttribute('data-pid'))));
   }catch(e){ box.innerHTML=""; }
+}
+async function chooseVariant(pid){
+  if(!detailCard || String(pid)===String(detailCard.printing_id)) return;
+  const item=detailCard.item_id;
+  try{
+    await fetch(SB+'/rest/v1/rpc/set_owned_printing',{method:"POST",headers:{apikey:ANON,Authorization:"Bearer "+ANON,"Content-Type":"application/json"},body:JSON.stringify({p_item:item,p_printing_id:pid})});
+    const r=await fetch(SB+'/rest/v1/app_collection?item_id=eq.'+encodeURIComponent(item)+'&select=*',{headers:{apikey:ANON,Authorization:"Bearer "+ANON}});
+    const rows=await r.json();
+    if(!detailCard || detailCard.item_id!==item) return;
+    if(Array.isArray(rows)&&rows[0]){ Object.assign(detailCard,rows[0]); const d=findCard(item); if(d) Object.assign(d,rows[0]);
+      const di=document.getElementById("dimg"); if(detailCard.image_url){ di.src=detailCard.image_url; di.style.visibility="visible"; } }
+    renderDetail(); loadLadder(detailCard); loadPrints(detailCard.card_number); render();
+  }catch(e){}
 }
 async function chooseArt(suf, imgurl){
   if(!detailCard) return;
