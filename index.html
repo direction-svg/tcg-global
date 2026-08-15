@@ -217,7 +217,7 @@ function esc(s){ return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,
 async function load(){
   let all=[],from=0,step=1000;
   while(true){
-    const r=await fetch(SB+"/rest/v1/app_collection?select=item_id,card_number,card_name,card_type,category,color,rarity,language,is_graded,grading_company,grade,quantity,market_value_eur,image_url,set_code,set_name,variant,art_suffix&order=market_value_eur.desc.nullslast&limit="+step+"&offset="+from,{headers:{apikey:ANON,Authorization:"Bearer "+ANON}});
+    const r=await fetch(SB+"/rest/v1/app_collection?select=item_id,card_number,card_name,card_type,category,color,rarity,language,is_graded,grading_company,grade,quantity,market_value_eur,seed_value_eur,live_value_eur,price_source,price_asof,image_url,set_code,set_name,variant,art_suffix&order=market_value_eur.desc.nullslast&limit="+step+"&offset="+from,{headers:{apikey:ANON,Authorization:"Bearer "+ANON}});
     if(!r.ok){document.getElementById("stage").innerHTML='<div class="empty">Erreur de chargement ('+r.status+').</div>';return;}
     const b=await r.json(); all=all.concat(b); if(b.length<step)break; from+=step;
   }
@@ -394,7 +394,10 @@ function closeDetail(){ document.getElementById("overlay").classList.add("hidden
 function renderDetail(){ const c=detailCard; if(!c)return; const body=document.getElementById("dbody");
   if(detailTab==="col"){
     const g=c.is_graded?('<span class="pill gold">'+(c.grading_company||"")+' '+(c.grade!=null?String(c.grade).replace(/\.0$/,''):'')+(c.cert_number?(' · '+c.cert_number):'')+'</span>'):'Brute';
-    body.innerHTML='<div class="dval"><div class="b">'+eur(val(c))+'</div><div class="s">valeur marchande'+((c.quantity||1)>1?(' · total '+eur(val(c)*(c.quantity||1))):'')+'</div></div>'+
+    const src=c.price_source||"";
+    const asof=c.price_asof?(" · maj "+new Date(c.price_asof).toLocaleDateString("fr-FR",{day:"2-digit",month:"2-digit"})):"";
+    const srcline=src?('<div class="s" style="margin-top:3px">'+(src.indexOf("Logia")>=0?"⚠ ":"● ")+esc(src)+asof+'</div>'):'';
+    body.innerHTML='<div class="dval"><div class="b">'+eur(val(c))+'</div><div class="s">valeur marchande'+((c.quantity||1)>1?(' · total '+eur(val(c)*(c.quantity||1))):'')+'</div>'+srcline+'</div>'+
       '<div class="qtybox"><span class="s">Possédé :</span> <span class="b">'+(c.quantity||1)+'</span></div>'+
       drow("État", g)+drow("Langue", (FLAG[c.language]||"")+' '+(LANG_LABELS[c.language]||c.language))+drow("Nom", esc(c.card_name))+drow("Numéro", esc(c.card_number));
   } else {
