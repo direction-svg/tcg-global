@@ -100,6 +100,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Ar
 .lrow{display:flex;justify-content:space-between;padding:9px 12px;border:1px solid var(--line);border-radius:10px;background:var(--panel);font-size:14px}
 .lrow.on{border-color:var(--accent);background:rgba(47,111,237,.08);font-weight:800}
 .lrow.on::before{content:"● ";color:var(--accent)}
+.poprow{display:flex;justify-content:space-between;align-items:center;margin-top:8px;padding:9px 12px;border-radius:10px;background:var(--chip);font-size:13px;color:var(--muted)}
+.poprow b{color:var(--ink)}
 .certbox{display:flex;gap:8px;align-items:center;margin-top:12px;flex-wrap:wrap}
 .certbox input{flex:1;min-width:150px;border:1px solid var(--line);background:var(--panel);color:var(--ink);border-radius:10px;padding:10px;font-size:14px}
 .certbox button{border:0;background:var(--accent);color:#fff;border-radius:10px;padding:10px 14px;font-weight:800;cursor:pointer}
@@ -232,7 +234,7 @@ function esc(s){ return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,
 async function load(){
   let all=[],from=0,step=1000;
   while(true){
-    const r=await fetch(SB+"/rest/v1/app_collection?select=item_id,printing_id,card_number,card_name,card_type,category,color,rarity,language,is_graded,grading_company,grade,cert_number,quantity,market_value_eur,seed_value_eur,live_value_eur,price_source,price_asof,image_url,set_code,set_name,variant,art_suffix&order=market_value_eur.desc.nullslast&limit="+step+"&offset="+from,{headers:{apikey:ANON,Authorization:"Bearer "+ANON}});
+    const r=await fetch(SB+"/rest/v1/app_collection?select=item_id,printing_id,card_number,card_name,card_type,category,color,rarity,language,is_graded,grading_company,grade,cert_number,quantity,market_value_eur,seed_value_eur,live_value_eur,psa_estimate_eur,population,pop_higher,price_source,price_asof,image_url,set_code,set_name,variant,art_suffix&order=market_value_eur.desc.nullslast&limit="+step+"&offset="+from,{headers:{apikey:ANON,Authorization:"Bearer "+ANON}});
     if(!r.ok){document.getElementById("stage").innerHTML='<div class="empty">Erreur de chargement ('+r.status+').</div>';return;}
     const b=await r.json(); all=all.concat(b); if(b.length<step)break; from+=step;
   }
@@ -390,8 +392,11 @@ async function loadLadder(c){
   }).join("");
   const cert=c.cert_number||"";
   const verify=(c.grading_company==="PSA"&&cert)?(' <a href="https://www.psacard.com/cert/'+encodeURIComponent(cert)+'" target="_blank" rel="noreferrer" style="color:var(--accent);font-size:12px">vérifier ↗</a>'):'';
-  box.innerHTML='<div class="dprints"><h4>Gradée — cote par note ('+mk+')</h4>'+
+  const popline=(c.population!=null)?('<div class="poprow"><span>Population '+(c.grading_company||"PSA")+' '+(c.grade!=null?String(c.grade).replace(/\.0$/,''):"")+'</span><b>'+Number(c.population).toLocaleString("fr-FR")+(c.pop_higher!=null?(' · '+Number(c.pop_higher).toLocaleString("fr-FR")+' au-dessus'):'')+'</b></div>'):'';
+  const psaline=(c.psa_estimate_eur!=null)?('<div class="sub" style="color:var(--muted);margin:2px 0 8px">Valeur = estimate PSA officiel ('+eur(c.psa_estimate_eur)+'), ancré à ton n° de cert.</div>'):'';
+  box.innerHTML='<div class="dprints"><h4>Gradée — cote par note ('+mk+')</h4>'+psaline+
     (items?('<div class="ladder">'+items+'</div>'):'<div class="sub" style="color:var(--muted)">Pas encore de cote gradée pour cette carte sur ce marché — valeur de secours affichée en haut.</div>')+
+    popline+
     '<div class="certbox"><span class="s">N° cert.</span><input id="certIn" value="'+esc(cert)+'" placeholder="ex. 165624968"><button id="certSave">Enregistrer</button>'+verify+'</div></div>';
   const btn=document.getElementById("certSave"); if(btn) btn.onclick=()=>saveCert(c.item_id);
 }
