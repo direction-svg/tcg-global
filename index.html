@@ -17,38 +17,35 @@
 *{box-sizing:border-box}
 html,body{margin:0}
 body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--ink);-webkit-text-size-adjust:100%}
-.wrap{max-width:1100px;margin:0 auto;padding:0 12px 90px}
-header{position:sticky;top:0;z-index:20;background:linear-gradient(180deg,var(--bg) 78%,rgba(234,241,251,0));padding:10px 0 6px;backdrop-filter:blur(6px)}
+.wrap{max-width:1100px;margin:0 auto;padding:0 12px 96px}
+/* hero — défile avec la page */
+.hero{padding:12px 0 2px}
 .topbar{display:flex;align-items:center;gap:10px}
-.logo{display:flex;align-items:center;gap:8px;font-weight:800;letter-spacing:.3px}
+.logo{display:flex;align-items:center;gap:8px;font-weight:800;letter-spacing:.3px;font-size:18px}
 .logo .mark{width:30px;height:30px;border-radius:9px;background:linear-gradient(135deg,var(--accent),var(--accent2));display:grid;place-items:center;color:#fff;font-weight:900;font-size:13px}
 .grow{flex:1}
-.iconbtn{border:1px solid var(--line);background:var(--panel);color:var(--ink);width:40px;height:40px;border-radius:12px;font-size:17px;cursor:pointer}
-.search{margin-top:10px;display:flex;align-items:center;gap:8px;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:10px 12px;box-shadow:var(--shadow)}
-.search input{border:0;outline:0;background:transparent;color:var(--ink);font-size:16px;width:100%}
-.stats{display:flex;gap:10px;margin-top:10px}
+.iconbtn{border:1px solid var(--line);background:var(--panel);color:var(--ink);width:40px;height:40px;border-radius:12px;font-size:17px;cursor:pointer;flex:none}
+.stats{display:flex;gap:10px;margin-top:12px}
 .stat{flex:1;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:10px 12px;box-shadow:var(--shadow)}
 .stat .k{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
 .stat .v{font-size:20px;font-weight:800;margin-top:2px}
 .stat .v.small{font-size:16px}
-.chiprow{display:flex;gap:8px;overflow-x:auto;padding:10px 0 2px;scrollbar-width:none}
-.chiprow::-webkit-scrollbar{display:none}
-.chip{white-space:nowrap;border:1px solid var(--line);background:var(--chip);color:var(--ink);padding:7px 12px;border-radius:999px;font-size:13px;font-weight:600;cursor:pointer;display:flex;gap:6px;align-items:center}
-.chip .n{opacity:.6;font-weight:700;font-size:11px}
-.chip.on{background:var(--chipOn);color:var(--chipOnInk);border-color:transparent}
-.controls{display:flex;gap:8px;align-items:center;margin-top:6px;flex-wrap:wrap}
-select.sort,.seg{border:1px solid var(--line);background:var(--panel);color:var(--ink);border-radius:12px;padding:9px 10px;font-size:13px;font-weight:600}
-.seg{display:flex;gap:2px;padding:3px}
-.seg button{border:0;background:transparent;color:var(--muted);padding:6px 10px;border-radius:9px;font-weight:700;font-size:13px;cursor:pointer}
-.seg button.on{background:var(--accent);color:#fff}
-.count{color:var(--muted);font-size:13px;margin:8px 2px}
+/* barre d'outils fine — collante */
+.toolbar{position:sticky;top:0;z-index:25;display:flex;gap:8px;align-items:center;padding:10px 0;background:linear-gradient(180deg,var(--bg) 82%,rgba(234,241,251,0))}
+:root.dark .toolbar{background:linear-gradient(180deg,var(--bg) 82%,rgba(12,18,32,0))}
+.search{flex:1;display:flex;align-items:center;gap:8px;background:var(--panel);border:1px solid var(--line);border-radius:13px;padding:9px 12px;box-shadow:var(--shadow)}
+.search input{border:0;outline:0;background:transparent;color:var(--ink);font-size:16px;width:100%}
+.tbtn{position:relative;border:1px solid var(--line);background:var(--panel);color:var(--ink);height:42px;min-width:42px;padding:0 10px;border-radius:13px;font-size:16px;font-weight:700;cursor:pointer;box-shadow:var(--shadow);display:flex;align-items:center;gap:6px}
+.tbtn.act{background:var(--accent);color:#fff;border-color:transparent}
+.fbadge{position:absolute;top:-6px;right:-6px;background:var(--neg);color:#fff;font-size:10px;font-weight:900;min-width:17px;height:17px;border-radius:9px;display:grid;place-items:center;padding:0 4px}
+.count{color:var(--muted);font-size:13px;margin:2px 2px 8px}
+/* grille / liste */
 .grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
 @media(min-width:560px){.grid{grid-template-columns:repeat(3,1fr)}}
 @media(min-width:820px){.grid{grid-template-columns:repeat(4,1fr)}}
 .card{background:var(--panel);border:1px solid var(--line);border-radius:16px;overflow:hidden;box-shadow:var(--shadow);position:relative}
-.imgwrap{position:relative;aspect-ratio:5/7;background:linear-gradient(135deg,#dde8fa,#c8d8f2);display:grid;place-items:center}
+.imgwrap{position:relative;aspect-ratio:5/7;background:linear-gradient(135deg,#dde8fa,#c8d8f2);display:grid;place-items:center;overflow:hidden}
 :root.dark .imgwrap{background:linear-gradient(135deg,#1a2b45,#16223b)}
-.imgwrap{overflow:hidden}
 .imgwrap img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;display:block}
 .ph{position:absolute;inset:0;display:grid;place-items:center;padding:8px;text-align:center;color:#40598a;font-size:12px;font-weight:700}
 .badges{position:absolute;top:6px;left:6px;right:6px;display:flex;justify-content:space-between;pointer-events:none}
@@ -60,16 +57,15 @@ select.sort,.seg{border:1px solid var(--line);background:var(--panel);color:var(
 .tp{background:var(--chip);color:var(--muted);padding:1px 6px;border-radius:6px;font-weight:700;font-size:10px}
 .val{font-weight:900;font-size:15px;margin-top:6px}
 .qty{position:absolute;top:6px;right:6px;background:rgba(15,30,52,.82);color:#fff;font-size:10px;font-weight:800;padding:2px 6px;border-radius:7px}
-/* list */
 .list .row{display:flex;gap:12px;align-items:center;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:8px;margin-bottom:8px;box-shadow:var(--shadow)}
 .lthumb{position:relative;width:44px;height:62px;flex:none;border-radius:6px;overflow:hidden;background:#dde8fa}
 .lthumb .ph{font-size:8px;padding:2px}
 .lthumb img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain}
 .list .row .nm{white-space:normal}
-.list .row .r{ margin-left:auto;text-align:right}
-.loading{padding:40px;text-align:center;color:var(--muted)}
-.empty{padding:40px;text-align:center;color:var(--muted)}
+.list .row .r{margin-left:auto;text-align:right}
+.loading,.empty{padding:40px;text-align:center;color:var(--muted)}
 .card,.list .row{cursor:pointer}
+/* overlays (fiche + filtres + tri) */
 .overlay{position:fixed;inset:0;background:rgba(10,20,40,.55);z-index:40;display:flex;align-items:flex-end;justify-content:center}
 .overlay.hidden{display:none}
 .sheet{background:var(--bg);width:100%;max-width:760px;max-height:94vh;border-radius:20px 20px 0 0;overflow-y:auto;box-shadow:0 -8px 30px rgba(0,0,0,.3);padding-bottom:calc(20px + env(safe-area-inset-bottom))}
@@ -90,16 +86,36 @@ select.sort,.seg{border:1px solid var(--line);background:var(--panel);color:var(
 .pill{display:inline-block;padding:3px 9px;border-radius:8px;font-weight:800;font-size:12px}
 .pill.gold{background:var(--gold);color:#3a2a06}
 .dprints{padding:8px 14px 18px}
-.dprints h4{margin:10px 0 8px;font-size:15px}
-.pstrip{display:flex;gap:10px;overflow-x:auto;padding-bottom:6px;scrollbar-width:none}
+.dprints h4{margin:10px 0 4px;font-size:15px}
+.pstrip{display:flex;gap:10px;overflow-x:auto;padding-bottom:6px;scrollbar-width:none;margin-top:8px}
 .pstrip::-webkit-scrollbar{display:none}
 .pcard{flex:none;width:108px}
 .pcard .pi{width:108px;height:150px;border-radius:10px;overflow:hidden;background:linear-gradient(135deg,#dde8fa,#c8d8f2);position:relative;border:2px solid transparent}
 .pcard.sel .pi{border-color:var(--accent);box-shadow:0 0 0 3px rgba(47,111,237,.18)}
-.pcard.sel .pl{color:var(--accent);font-weight:700}
+.pcard.sel .pi::after{content:"\2713";position:absolute;top:5px;right:5px;background:var(--accent);color:#fff;width:20px;height:20px;border-radius:50%;display:grid;place-items:center;font-size:12px;font-weight:900}
+.pcard.sel .pl{color:var(--accent);font-weight:800}
 .pcard .pi img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain}
-.pcard .pl{font-size:10px;color:var(--muted);margin-top:5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.pcard .pp{font-size:13px;font-weight:800;margin-top:1px}
+.pcard .pl{font-size:10px;color:var(--muted);margin-top:5px;white-space:normal;line-height:1.15;height:26px;overflow:hidden}
+/* modal filtres */
+.fsheet .fbar,.ssheet .fbar{display:flex;align-items:center;justify-content:space-between;padding:16px 16px 8px;position:sticky;top:0;background:var(--bg);z-index:2}
+.fbar b{font-size:18px}
+.fbar .x{border:0;background:var(--panel);border:1px solid var(--line);color:var(--ink);width:34px;height:34px;border-radius:50%;font-size:18px;cursor:pointer}
+.fsec{padding:10px 16px 4px}
+.fsec h5{margin:0 0 8px;font-size:12px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted)}
+.chipwrap{display:flex;flex-wrap:wrap;gap:8px}
+.chip{white-space:nowrap;border:1px solid var(--line);background:var(--chip);color:var(--ink);padding:8px 12px;border-radius:999px;font-size:13px;font-weight:600;cursor:pointer;display:flex;gap:6px;align-items:center}
+.chip .n{opacity:.55;font-weight:700;font-size:11px}
+.chip.on{background:var(--chipOn);color:var(--chipOnInk);border-color:transparent}
+.chip.on .n{opacity:.8}
+.fsec select{width:100%;border:1px solid var(--line);background:var(--panel);color:var(--ink);border-radius:12px;padding:11px 12px;font-size:15px;font-weight:600}
+.ffoot{position:sticky;bottom:0;display:flex;gap:10px;padding:12px 16px calc(14px + env(safe-area-inset-bottom));background:var(--bg);border-top:1px solid var(--line)}
+.ffoot button{flex:1;border-radius:13px;padding:14px;font-size:15px;font-weight:800;cursor:pointer;border:1px solid var(--line)}
+.ffoot .reset{background:var(--panel);color:var(--ink)}
+.ffoot .apply{background:var(--accent);color:#fff;border-color:transparent;flex:2}
+.srow{display:flex;align-items:center;justify-content:space-between;margin:0 16px;padding:15px 2px;border-bottom:1px solid var(--line);cursor:pointer;font-weight:600}
+.srow .tick{color:var(--accent);font-weight:900;font-size:18px;visibility:hidden}
+.srow.on .tick{visibility:visible}
+.srow.on{color:var(--accent)}
 footer{position:fixed;bottom:0;left:0;right:0;background:var(--panel);border-top:1px solid var(--line);display:flex;justify-content:space-around;padding:8px 0 calc(8px + env(safe-area-inset-bottom));z-index:20}
 footer .fb{color:var(--muted);font-size:11px;font-weight:700;display:flex;flex-direction:column;align-items:center;gap:2px}
 footer .fb b{font-size:14px;color:var(--ink)}
@@ -107,52 +123,58 @@ footer .fb b{font-size:14px;color:var(--ink)}
 </head>
 <body>
 <div class="wrap">
-<header>
-  <div class="topbar">
-    <div class="logo"><div class="mark">OP</div> TCG GLOBAL</div>
-    <div class="grow"></div>
-    <button class="iconbtn" id="themeBtn" title="Th&egrave;me">&#9790;</button>
-  </div>
-  <div class="search">
-    <span>&#128269;</span>
-    <input id="q" placeholder="Rechercher (nom ou num&eacute;ro)&hellip;" autocomplete="off">
-  </div>
-  <div class="stats">
-    <div class="stat"><div class="k">Valeur collection</div><div class="v" id="stTotal">&mdash;</div></div>
-    <div class="stat"><div class="k">Cartes</div><div class="v small" id="stCount">&mdash;</div></div>
-    <div class="stat"><div class="k">Affich&eacute;es</div><div class="v small" id="stShown">&mdash;</div></div>
-  </div>
-  <div class="chiprow" id="langRow"></div>
-  <div class="chiprow" id="colorRow"></div>
-  <div class="chiprow" id="catRow"></div>
-  <div class="chiprow" id="typeRow"></div>
-  <div class="chiprow" id="rarityRow"></div>
-  <div class="controls">
-    <select class="sort" id="sort">
-      <option value="val_desc">Valeur &darr; (d&eacute;croissant)</option>
-      <option value="val_asc">Valeur &uarr; (croissant)</option>
-      <option value="name">Nom (A&rarr;Z)</option>
-      <option value="num">Num&eacute;ro</option>
-      <option value="qty">Quantit&eacute;</option>
-    </select>
-    <select class="sort" id="charSel"><option value="all">Tous personnages</option></select>
-    <div class="seg" id="gradeSeg">
-      <button data-g="all" class="on">Toutes</button>
-      <button data-g="graded">Grad&eacute;es</button>
-      <button data-g="raw">Brutes</button>
+  <div class="hero">
+    <div class="topbar">
+      <div class="logo"><div class="mark">OP</div> TCG GLOBAL</div>
+      <div class="grow"></div>
+      <button class="iconbtn" id="themeBtn" title="Th&egrave;me">&#9790;</button>
     </div>
-    <div class="grow"></div>
-    <div class="seg" id="viewSeg">
-      <button data-v="grid" class="on">&#9638; Galerie</button>
-      <button data-v="list">&#9776; Liste</button>
+    <div class="stats">
+      <div class="stat"><div class="k">Valeur collection</div><div class="v" id="stTotal">&mdash;</div></div>
+      <div class="stat"><div class="k">Cartes</div><div class="v small" id="stCount">&mdash;</div></div>
+      <div class="stat"><div class="k">Affich&eacute;es</div><div class="v small" id="stShown">&mdash;</div></div>
     </div>
   </div>
-  <div class="count" id="countLine"></div>
-</header>
 
-<div id="stage"><div class="loading">Chargement de ta collection&hellip;</div></div>
+  <div class="toolbar">
+    <div class="search">
+      <span>&#128269;</span>
+      <input id="q" placeholder="Rechercher (nom ou num&eacute;ro)&hellip;" autocomplete="off">
+    </div>
+    <button class="tbtn" id="sortBtn" title="Trier">&#8645;</button>
+    <button class="tbtn" id="filterBtn" title="Filtres">&#9776;<span class="fbadge" id="fbadge" style="display:none">0</span></button>
+    <button class="tbtn" id="viewBtn" title="Affichage">&#9638;</button>
+  </div>
+
+  <div class="count" id="countLine"></div>
+  <div id="stage"><div class="loading">Chargement de ta collection&hellip;</div></div>
 </div>
 
+<!-- Modal filtres -->
+<div id="fmodal" class="overlay hidden">
+  <div class="sheet fsheet">
+    <div class="fbar"><b>Filtres</b><button class="x" id="fclose">&times;</button></div>
+    <div class="fsec"><h5>Langue</h5><div class="chipwrap" id="mLang"></div></div>
+    <div class="fsec"><h5>Couleur</h5><div class="chipwrap" id="mColor"></div></div>
+    <div class="fsec"><h5>Cat&eacute;gorie</h5><div class="chipwrap" id="mCat"></div></div>
+    <div class="fsec"><h5>Type d'artwork</h5><div class="chipwrap" id="mType"></div></div>
+    <div class="fsec"><h5>Raret&eacute;</h5><div class="chipwrap" id="mRarity"></div></div>
+    <div class="fsec"><h5>&Eacute;tat</h5><div class="chipwrap" id="mGrade"></div></div>
+    <div class="fsec"><h5>Personnage</h5><select id="mChar"><option value="all">Tous personnages</option></select></div>
+    <div class="ffoot"><button class="reset" id="freset">R&eacute;initialiser</button><button class="apply" id="fapply">Voir les cartes</button></div>
+  </div>
+</div>
+
+<!-- Modal tri -->
+<div id="smodal" class="overlay hidden">
+  <div class="sheet ssheet">
+    <div class="fbar"><b>Trier par</b><button class="x" id="sclose">&times;</button></div>
+    <div id="sortList"></div>
+    <div style="height:calc(14px + env(safe-area-inset-bottom))"></div>
+  </div>
+</div>
+
+<!-- Fiche carte -->
 <div id="overlay" class="overlay hidden">
   <div class="sheet">
     <div class="dhead"><button class="dclose" id="dclose">&times;</button><img id="dimg" referrerpolicy="no-referrer"></div>
@@ -176,70 +198,83 @@ const ANON="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI
 const TYPE_LABELS={normal:"Normal",alternate_art:"Alt Art",sp:"SP",manga:"Manga",full_art:"Full Art",jolly_roger_foil:"Jolly Roger",textured_foil:"Textured",promo:"Promo",tournament:"Tournoi"};
 const FLAG={JP:"🇯🇵",EN:"🇺🇸",FR:"🇫🇷",CN:"🇨🇳"};
 const LANGS=[["all","Toutes"],["JP","Japonais"],["EN","Anglais"],["FR","Français"],["CN","Chinois"]];
-
 const CAT_LABELS={LEADER:"Leader",CHARACTER:"Personnage",EVENT:"Event",STAGE:"Stage",DON:"DON!!"};
 const RAR_LABELS={C:"Common",UC:"Uncommon",R:"Rare",SR:"Super Rare",SEC:"Secret Rare",L:"Leader",PR:"Promo",TR:"Treasure Rare",SP:"Special"};
 const RAR_ORDER=["L","C","UC","R","SR","SEC","TR","PR","SP"];
 const COLORS=["Red","Green","Blue","Purple","Black","Yellow"];
 const COLOR_HEX={Red:"#d64545",Green:"#2f9e57",Blue:"#2f6fed",Purple:"#8b57d6",Black:"#33384a",Yellow:"#e0a53b"};
-let DATA=[], state={q:"",lang:"all",color:"all",type:"all",cat:"all",rarity:"all",character:"all",grade:"all",sort:"val_desc",view:"grid"};
+const TYPE_ORDER=["normal","alternate_art","sp","manga","full_art","textured_foil","jolly_roger_foil","promo","tournament"];
+const CAT_ORDER=["LEADER","CHARACTER","EVENT","STAGE","DON"];
+const SORTS=[["val_desc","Valeur ↓ (décroissant)"],["val_asc","Valeur ↑ (croissant)"],["name","Nom (A→Z)"],["num","Numéro"],["qty","Quantité"]];
+const DEF={q:"",lang:"all",color:"all",type:"all",cat:"all",rarity:"all",character:"all",grade:"all",sort:"val_desc",view:"grid"};
+let DATA=[], state=Object.assign({},DEF);
 
 const eur=n=> (n==null?"—":(Number(n).toLocaleString("fr-FR",{minimumFractionDigits:2,maximumFractionDigits:2})+" €"));
 const eur0=n=> (n==null?"—":(Math.round(Number(n)).toLocaleString("fr-FR")+" €"));
 const val=c=> c.market_value_eur==null?0:Number(c.market_value_eur);
+function esc(s){ return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
 
 async function load(){
   let all=[],from=0,step=1000;
   while(true){
-    const r=await fetch(`${SB}/rest/v1/app_collection?select=item_id,card_number,card_name,card_type,category,color,rarity,language,is_graded,grading_company,grade,quantity,market_value_eur,image_url,set_code,variant,art_suffix&order=market_value_eur.desc.nullslast&limit=${step}&offset=${from}`,{headers:{apikey:ANON,Authorization:"Bearer "+ANON}});
+    const r=await fetch(SB+"/rest/v1/app_collection?select=item_id,card_number,card_name,card_type,category,color,rarity,language,is_graded,grading_company,grade,quantity,market_value_eur,image_url,set_code,set_name,variant,art_suffix&order=market_value_eur.desc.nullslast&limit="+step+"&offset="+from,{headers:{apikey:ANON,Authorization:"Bearer "+ANON}});
     if(!r.ok){document.getElementById("stage").innerHTML='<div class="empty">Erreur de chargement ('+r.status+').</div>';return;}
     const b=await r.json(); all=all.concat(b); if(b.length<step)break; from+=step;
   }
-  DATA=all; buildFilters(); render();
+  DATA=all; buildFilterModal(); render();
 }
 
-function buildFilters(){
-  // languages
+// ---------- Filtres (modal) ----------
+function makeChip(label,count,active,on){
+  const el=document.createElement("div"); el.className="chip"+(active?" on":"");
+  el.innerHTML=label+(count!=null?' <span class="n">'+count+'</span>':'');
+  el.onclick=on; return el;
+}
+function buildFilterModal(){
   const lc={}; DATA.forEach(c=>lc[c.language]=(lc[c.language]||0)+1);
-  const lr=document.getElementById("langRow"); lr.innerHTML="";
-  LANGS.forEach(([code,label])=>{
-    const n= code==="all"?DATA.length:(lc[code]||0);
-    const el=document.createElement("div"); el.className="chip"+(state.lang===code?" on":"");
-    el.innerHTML=(code==="all"?"":FLAG[code]+" ")+label+' <span class="n">'+n+'</span>';
-    el.onclick=()=>{state.lang=code;buildFilters();render()};
-    lr.appendChild(el);
-  });
-  // colors
+  const mL=document.getElementById("mLang"); mL.innerHTML="";
+  LANGS.forEach(([code,label])=>{ const n=code==="all"?DATA.length:(lc[code]||0); if(code!=="all"&&!n)return;
+    mL.appendChild(makeChip((code==="all"?"":FLAG[code]+" ")+label,n,state.lang===code,()=>{state.lang=code;afterFilter()})); });
+
   const colc={}; DATA.forEach(c=>{ if(c.color) c.color.split(";").forEach(x=>colc[x]=(colc[x]||0)+1); });
-  const colr=document.getElementById("colorRow"); colr.innerHTML="";
-  const allCol=document.createElement("div"); allCol.className="chip"+(state.color==="all"?" on":""); allCol.innerHTML='Toutes couleurs'; allCol.onclick=()=>{state.color="all";buildFilters();render()}; colr.appendChild(allCol);
-  COLORS.forEach(col=>{ if(!colc[col])return; const el=document.createElement("div"); el.className="chip"+(state.color===col?" on":""); el.innerHTML='<span style="width:12px;height:12px;border-radius:50%;background:'+COLOR_HEX[col]+';display:inline-block"></span> <span class="n">'+colc[col]+'</span>'; el.title=col; el.onclick=()=>{state.color=col;buildFilters();render()}; colr.appendChild(el); });
-  // categories
+  const mC=document.getElementById("mColor"); mC.innerHTML="";
+  mC.appendChild(makeChip("Toutes",DATA.length,state.color==="all",()=>{state.color="all";afterFilter()}));
+  COLORS.forEach(col=>{ if(!colc[col])return; const el=makeChip('<span style="width:12px;height:12px;border-radius:50%;background:'+COLOR_HEX[col]+';display:inline-block"></span>',colc[col],state.color===col,()=>{state.color=col;afterFilter()}); el.title=col; mC.appendChild(el); });
+
   const cc={}; DATA.forEach(c=>{if(c.category)cc[c.category]=(cc[c.category]||0)+1});
-  const cr=document.getElementById("catRow"); cr.innerHTML="";
-  const catOrder=["LEADER","CHARACTER","EVENT","STAGE","DON"];
-  const allC=document.createElement("div"); allC.className="chip"+(state.cat==="all"?" on":""); allC.innerHTML='Toutes cat&eacute;gories <span class="n">'+DATA.length+'</span>'; allC.onclick=()=>{state.cat="all";buildFilters();render()}; cr.appendChild(allC);
-  catOrder.forEach(k=>{ if(!cc[k])return; const el=document.createElement("div"); el.className="chip"+(state.cat===k?" on":""); el.innerHTML=(CAT_LABELS[k]||k)+' <span class="n">'+cc[k]+'</span>'; el.onclick=()=>{state.cat=k;buildFilters();render()}; cr.appendChild(el); });
-  // types
+  const mCat=document.getElementById("mCat"); mCat.innerHTML="";
+  mCat.appendChild(makeChip("Toutes",DATA.length,state.cat==="all",()=>{state.cat="all";afterFilter()}));
+  CAT_ORDER.forEach(k=>{ if(!cc[k])return; mCat.appendChild(makeChip(CAT_LABELS[k]||k,cc[k],state.cat===k,()=>{state.cat=k;afterFilter()})); });
+
   const tc={}; DATA.forEach(c=>tc[c.card_type]=(tc[c.card_type]||0)+1);
-  const order=["normal","alternate_art","sp","manga","full_art","textured_foil","promo","tournament"];
-  const tr=document.getElementById("typeRow"); tr.innerHTML="";
-  const allT=document.createElement("div"); allT.className="chip"+(state.type==="all"?" on":""); allT.innerHTML='Tous types <span class="n">'+DATA.length+'</span>'; allT.onclick=()=>{state.type="all";buildFilters();render()}; tr.appendChild(allT);
-  order.forEach(t=>{ if(!tc[t])return; const el=document.createElement("div"); el.className="chip"+(state.type===t?" on":""); el.innerHTML=(TYPE_LABELS[t]||t)+' <span class="n">'+tc[t]+'</span>'; el.onclick=()=>{state.type=t;buildFilters();render()}; tr.appendChild(el); });
-  // rarities
+  const mT=document.getElementById("mType"); mT.innerHTML="";
+  mT.appendChild(makeChip("Tous",DATA.length,state.type==="all",()=>{state.type="all";afterFilter()}));
+  TYPE_ORDER.forEach(t=>{ if(!tc[t])return; mT.appendChild(makeChip(TYPE_LABELS[t]||t,tc[t],state.type===t,()=>{state.type=t;afterFilter()})); });
+
   const rc={}; DATA.forEach(c=>{if(c.rarity)rc[c.rarity]=(rc[c.rarity]||0)+1});
-  const rr=document.getElementById("rarityRow"); rr.innerHTML="";
-  const allR=document.createElement("div"); allR.className="chip"+(state.rarity==="all"?" on":""); allR.innerHTML='Toutes raret&eacute;s'; allR.onclick=()=>{state.rarity="all";buildFilters();render()}; rr.appendChild(allR);
-  RAR_ORDER.forEach(k=>{ if(!rc[k])return; const el=document.createElement("div"); el.className="chip"+(state.rarity===k?" on":""); el.innerHTML=(RAR_LABELS[k]||k)+' <span class="n">'+rc[k]+'</span>'; el.onclick=()=>{state.rarity=k;buildFilters();render()}; rr.appendChild(el); });
-  // personnages (par nom de carte)
-  const sel=document.getElementById("charSel"); if(sel && sel.options.length<=1){
+  const mR=document.getElementById("mRarity"); mR.innerHTML="";
+  mR.appendChild(makeChip("Toutes",DATA.length,state.rarity==="all",()=>{state.rarity="all";afterFilter()}));
+  RAR_ORDER.forEach(k=>{ if(!rc[k])return; mR.appendChild(makeChip(RAR_LABELS[k]||k,rc[k],state.rarity===k,()=>{state.rarity=k;afterFilter()})); });
+
+  const gc=DATA.filter(c=>c.is_graded).length;
+  const mG=document.getElementById("mGrade"); mG.innerHTML="";
+  mG.appendChild(makeChip("Toutes",DATA.length,state.grade==="all",()=>{state.grade="all";afterFilter()}));
+  mG.appendChild(makeChip("Gradées",gc,state.grade==="graded",()=>{state.grade="graded";afterFilter()}));
+  mG.appendChild(makeChip("Brutes",DATA.length-gc,state.grade==="raw",()=>{state.grade="raw";afterFilter()}));
+
+  const sel=document.getElementById("mChar");
+  if(sel.options.length<=1){
     const nc={}; DATA.forEach(c=>{ if(c.card_name) nc[c.card_name]=(nc[c.card_name]||0)+1; });
     const names=Object.keys(nc).sort((a,b)=> nc[b]-nc[a] || a.localeCompare(b));
-    let html='<option value="all">Tous personnages ('+DATA.length+')</option>';
+    let html='<option value="all">Tous personnages ('+names.length+')</option>';
     names.forEach(n=>{ html+='<option value="'+esc(n)+'">'+esc(n)+' ('+nc[n]+')</option>'; });
-    sel.innerHTML=html; sel.value=state.character;
+    sel.innerHTML=html;
   }
+  sel.value=state.character;
 }
+function activeCount(){ let n=0; ["lang","color","type","cat","rarity","character","grade"].forEach(k=>{ if(state[k]!=="all")n++; }); return n; }
+function afterFilter(){ buildFilterModal(); syncBadge(); render(); }
+function syncBadge(){ const n=activeCount(); const b=document.getElementById("fbadge"); b.textContent=n; b.style.display=n?"grid":"none"; document.getElementById("filterBtn").classList.toggle("act",!!n); }
 
 function apply(){
   let a=DATA.slice();
@@ -257,13 +292,11 @@ function apply(){
   return a;
 }
 
-function esc(s){ return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
 function imgTag(c){
   const ph='<div class="ph">'+esc(c.card_name||c.card_number||"")+'<br>'+esc(c.card_number||"")+'</div>';
   if(!c.image_url) return ph;
   return ph+'<img loading="lazy" referrerpolicy="no-referrer" src="'+esc(c.image_url)+'" onerror="this.remove()">';
 }
-
 function render(){
   const a=apply();
   const stage=document.getElementById("stage");
@@ -284,44 +317,66 @@ function render(){
       const g=c.is_graded?'<span class="grade">'+(c.grading_company||"")+' '+(c.grade!=null?String(c.grade).replace(/\.0$/,''):'')+'</span>':'<span></span>';
       const q=(c.quantity>1)?'<span class="qty">x'+c.quantity+'</span>':'';
       return '<div class="card" data-id="'+c.item_id+'"><div class="imgwrap">'+imgTag(c)+'<div class="badges"><span class="flag">'+(FLAG[c.language]||"")+'</span>'+g+'</div>'+q+'</div>'+
-      '<div class="meta"><p class="nm">'+(c.card_name||"")+'</p><div class="sub"><span>'+(c.card_number||"")+'</span><span class="tp">'+(TYPE_LABELS[c.card_type]||c.card_type||"")+'</span></div><div class="val">'+eur(val(c))+'</div></div></div>';
+      '<div class="meta"><p class="nm">'+esc(c.card_name||"")+'</p><div class="sub"><span>'+esc(c.card_number||"")+'</span><span class="tp">'+(TYPE_LABELS[c.card_type]||c.card_type||"")+'</span></div><div class="val">'+eur(val(c))+'</div></div></div>';
     }).join("")+'</div>';
   } else {
     stage.className="list"; stage.innerHTML=a.map(c=>{
       const g=c.is_graded?'<span class="grade">'+(c.grading_company||"")+' '+(c.grade!=null?String(c.grade).replace(/\.0$/,''):'')+'</span>':'';
-      return '<div class="row" data-id="'+c.item_id+'"><div class="lthumb">'+imgTag(c)+'</div><div><p class="nm">'+(c.card_name||"")+'</p><div class="sub"><span>'+FLAG[c.language]+'</span><span>'+(c.card_number||"")+'</span><span class="tp">'+(TYPE_LABELS[c.card_type]||c.card_type||"")+'</span> '+g+'</div></div><div class="r"><div class="val">'+eur(val(c))+'</div>'+(c.quantity>1?'<div class="sub">x'+c.quantity+'</div>':'')+'</div></div>';
+      return '<div class="row" data-id="'+c.item_id+'"><div class="lthumb">'+imgTag(c)+'</div><div><p class="nm">'+esc(c.card_name||"")+'</p><div class="sub"><span>'+(FLAG[c.language]||"")+'</span><span>'+esc(c.card_number||"")+'</span><span class="tp">'+(TYPE_LABELS[c.card_type]||c.card_type||"")+'</span> '+g+'</div></div><div class="r"><div class="val">'+eur(val(c))+'</div>'+(c.quantity>1?'<div class="sub">x'+c.quantity+'</div>':'')+'</div></div>';
     }).join("");
   }
 }
 
-// events
-document.getElementById("q").addEventListener("input",e=>{state.q=e.target.value;render()});
-document.getElementById("sort").addEventListener("change",e=>{state.sort=e.target.value;render()});
-document.getElementById("charSel").addEventListener("change",e=>{state.character=e.target.value;render()});
-document.getElementById("gradeSeg").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;state.grade=b.dataset.g;[...e.currentTarget.children].forEach(x=>x.classList.toggle("on",x===b));render()});
-document.getElementById("viewSeg").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;state.view=b.dataset.v;[...e.currentTarget.children].forEach(x=>x.classList.toggle("on",x===b));render()});
-document.getElementById("themeBtn").addEventListener("click",()=>{document.documentElement.classList.toggle("dark")});
+// ---------- Tri ----------
+function buildSortList(){
+  const box=document.getElementById("sortList"); box.innerHTML="";
+  SORTS.forEach(([v,label])=>{ const el=document.createElement("div"); el.className="srow"+(state.sort===v?" on":""); el.innerHTML='<span>'+label+'</span><span class="tick">✓</span>'; el.onclick=()=>{ state.sort=v; buildSortList(); render(); closeSort(); }; box.appendChild(el); });
+}
+function openSort(){ buildSortList(); document.getElementById("smodal").classList.remove("hidden"); }
+function closeSort(){ document.getElementById("smodal").classList.add("hidden"); }
 
-// ---- Fiche carte (detail) ----
+// ---------- Filtres open/close ----------
+function openFilters(){ buildFilterModal(); document.getElementById("fmodal").classList.remove("hidden"); }
+function closeFilters(){ document.getElementById("fmodal").classList.add("hidden"); }
+function resetFilters(){ ["lang","color","type","cat","rarity","character","grade"].forEach(k=>{ state[k==="cat"?"cat":k]="all"; }); state.character="all"; afterFilter(); }
+
+// ---------- Events ----------
+document.getElementById("q").addEventListener("input",e=>{state.q=e.target.value;render()});
+document.getElementById("sortBtn").addEventListener("click",openSort);
+document.getElementById("sclose").addEventListener("click",closeSort);
+document.getElementById("filterBtn").addEventListener("click",openFilters);
+document.getElementById("fclose").addEventListener("click",closeFilters);
+document.getElementById("fapply").addEventListener("click",closeFilters);
+document.getElementById("freset").addEventListener("click",resetFilters);
+document.getElementById("mChar").addEventListener("change",e=>{state.character=e.target.value;afterFilter()});
+document.getElementById("viewBtn").addEventListener("click",()=>{ state.view=state.view==="grid"?"list":"grid"; document.getElementById("viewBtn").innerHTML=state.view==="grid"?"▦":"☰"; render(); });
+document.getElementById("themeBtn").addEventListener("click",()=>{document.documentElement.classList.toggle("dark")});
+[["smodal",closeSort],["fmodal",closeFilters]].forEach(([id,fn])=>document.getElementById(id).addEventListener("click",e=>{ if(e.target.id===id)fn(); }));
+
+// ---------- Fiche carte ----------
 let detailCard=null, detailTab="col";
 const LANG_LABELS={JP:"Japonais",EN:"Anglais",FR:"Français",CN:"Chinois"};
 function drow(k,v){ return v?('<div class="drow"><span class="k">'+k+'</span><span class="v">'+v+'</span></div>'):''; }
 function openDetail(c){ detailCard=c; detailTab="col"; const im=document.getElementById("dimg"); im.src=c.image_url||""; im.onerror=function(){this.style.visibility="hidden"}; im.style.visibility="visible"; document.querySelectorAll('.dtabs button').forEach(b=>b.classList.toggle('on',b.dataset.t==='col')); renderDetail(); document.getElementById("dprints").innerHTML=""; document.getElementById("overlay").classList.remove("hidden"); loadPrints(c.card_number); }
 async function loadPrints(number){
   const box=document.getElementById("dprints");
-  box.innerHTML='<div class="dprints"><h4>Choisir la version</h4><div class="sub">Chargement&hellip;</div></div>';
+  if(!detailCard) return;
+  if((detailCard.language||"JP")!=="JP"){ box.innerHTML='<div class="dprints"><h4>Autres impressions</h4><div class="sub" style="color:var(--muted)">Le choix d’image par version est pour l’instant disponible sur les cartes japonaises.</div></div>'; return; }
+  box.innerHTML='<div class="dprints"><h4>Choisir la version</h4><div class="sub">Chargement…</div></div>';
   try{
-    const r=await fetch(SB+'/rest/v1/app_variants?card_number=eq.'+encodeURIComponent(number)+'&select=suffix,label,jp_image_url,price_eur&order=price_eur.desc.nullslast',{headers:{apikey:ANON,Authorization:"Bearer "+ANON}});
+    const r=await fetch(SB+'/rest/v1/app_variants?card_number=eq.'+encodeURIComponent(number)+'&select=suffix,label,jp_image_url&order=suffix.asc',{headers:{apikey:ANON,Authorization:"Bearer "+ANON}});
     if(!detailCard || detailCard.card_number!==number) return;
-    const rows=await r.json();
-    if(!Array.isArray(rows)||!rows.length){ box.innerHTML=""; return; }
+    let rows=await r.json();
+    if(!Array.isArray(rows)) rows=[];
+    rows=rows.filter(p=>p.jp_image_url);
+    if(!rows.length){ box.innerHTML=""; return; }
     const cur=detailCard.art_suffix;
     const items=rows.map(p=>{
-      const img=p.jp_image_url?('<img referrerpolicy="no-referrer" src="'+esc(p.jp_image_url)+'" onerror="this.remove()">'):'';
+      const img='<img referrerpolicy="no-referrer" src="'+esc(p.jp_image_url)+'" onerror="this.remove()">';
       const on=(cur!=null && cur===p.suffix)?' sel':'';
-      return '<div class="pcard'+on+'" data-suf="'+esc(p.suffix)+'" data-img="'+esc(p.jp_image_url||"")+'"><div class="pi">'+img+'</div><div class="pl">'+esc(p.label||(p.suffix?p.suffix:'Normale'))+'</div><div class="pp">'+(p.price_eur!=null&&p.price_eur>0?eur(p.price_eur):"&mdash;")+'</div></div>';
+      return '<div class="pcard'+on+'" data-suf="'+esc(p.suffix)+'" data-img="'+esc(p.jp_image_url)+'"><div class="pi">'+img+'</div><div class="pl">'+esc(p.label||(p.suffix?p.suffix:'Normale'))+'</div></div>';
     }).join("");
-    box.innerHTML='<div class="dprints"><h4>Choisir la version ('+rows.length+')</h4><div class="sub" style="color:var(--muted);margin-bottom:8px">Tape la bonne version pour corriger l&#39;image de ta carte.</div><div class="pstrip">'+items+'</div></div>';
+    box.innerHTML='<div class="dprints"><h4>Choisir la version ('+rows.length+')</h4><div class="sub" style="color:var(--muted);margin-bottom:2px">Tape la bonne illustration pour corriger l’image. Ça ne change pas le prix.</div><div class="pstrip">'+items+'</div></div>';
     box.querySelectorAll('.pcard').forEach(el=>el.addEventListener('click',()=>chooseArt(el.getAttribute('data-suf'), el.getAttribute('data-img'))));
   }catch(e){ box.innerHTML=""; }
 }
@@ -338,12 +393,12 @@ async function chooseArt(suf, imgurl){
 function closeDetail(){ document.getElementById("overlay").classList.add("hidden"); }
 function renderDetail(){ const c=detailCard; if(!c)return; const body=document.getElementById("dbody");
   if(detailTab==="col"){
-    const g=c.is_graded?('<span class="pill gold">'+(c.grading_company||"")+' '+(c.grade!=null?String(c.grade).replace(/\.0$/,''):'')+(c.cert_number?(' &middot; '+c.cert_number):'')+'</span>'):'Brute';
-    body.innerHTML='<div class="dval"><div class="b">'+eur(val(c))+'</div><div class="s">valeur marchande'+((c.quantity||1)>1?(' &middot; total '+eur(val(c)*(c.quantity||1))):'')+'</div></div>'+
-      '<div class="qtybox"><span class="s">Poss&eacute;d&eacute;&nbsp;:</span> <span class="b">'+(c.quantity||1)+'</span></div>'+
-      drow("&Eacute;tat", g)+drow("Langue", (FLAG[c.language]||"")+' '+(LANG_LABELS[c.language]||c.language))+drow("Nom", c.card_name)+drow("Num&eacute;ro", c.card_number);
+    const g=c.is_graded?('<span class="pill gold">'+(c.grading_company||"")+' '+(c.grade!=null?String(c.grade).replace(/\.0$/,''):'')+(c.cert_number?(' · '+c.cert_number):'')+'</span>'):'Brute';
+    body.innerHTML='<div class="dval"><div class="b">'+eur(val(c))+'</div><div class="s">valeur marchande'+((c.quantity||1)>1?(' · total '+eur(val(c)*(c.quantity||1))):'')+'</div></div>'+
+      '<div class="qtybox"><span class="s">Possédé :</span> <span class="b">'+(c.quantity||1)+'</span></div>'+
+      drow("État", g)+drow("Langue", (FLAG[c.language]||"")+' '+(LANG_LABELS[c.language]||c.language))+drow("Nom", esc(c.card_name))+drow("Numéro", esc(c.card_number));
   } else {
-    body.innerHTML=drow("Nom", c.card_name)+drow("Num&eacute;ro", c.card_number)+drow("Set", (c.set_code||"")+(c.set_name?(" &mdash; "+c.set_name):""))+drow("Cat&eacute;gorie", CAT_LABELS[c.category]||c.category)+drow("Raret&eacute;", RAR_LABELS[c.rarity]||c.rarity)+drow("Artwork", TYPE_LABELS[c.card_type]||c.card_type)+drow("Couleur", (c.color||"").split(";").join(" / "))+drow("Langue", LANG_LABELS[c.language]||c.language);
+    body.innerHTML=drow("Nom", esc(c.card_name))+drow("Numéro", esc(c.card_number))+drow("Set", esc((c.set_code||"")+(c.set_name?(" — "+c.set_name):"")))+drow("Catégorie", CAT_LABELS[c.category]||c.category)+drow("Rareté", RAR_LABELS[c.rarity]||c.rarity)+drow("Artwork", TYPE_LABELS[c.card_type]||c.card_type)+drow("Couleur", (c.color||"").split(";").join(" / "))+drow("Langue", LANG_LABELS[c.language]||c.language);
   }
 }
 function findCard(id){ return DATA.find(c=>String(c.item_id)===String(id)); }
