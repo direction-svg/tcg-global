@@ -210,7 +210,7 @@ function buildFilters(){
   catOrder.forEach(k=>{ if(!cc[k])return; const el=document.createElement("div"); el.className="chip"+(state.cat===k?" on":""); el.innerHTML=(CAT_LABELS[k]||k)+' <span class="n">'+cc[k]+'</span>'; el.onclick=()=>{state.cat=k;buildFilters();render()}; cr.appendChild(el); });
   // types
   const tc={}; DATA.forEach(c=>tc[c.card_type]=(tc[c.card_type]||0)+1);
-  const order=["normal","alternate_art","sp","manga","full_art","jolly_roger_foil","textured_foil","promo","tournament"];
+  const order=["normal","alternate_art","sp","manga","full_art","textured_foil","promo","tournament"];
   const tr=document.getElementById("typeRow"); tr.innerHTML="";
   const allT=document.createElement("div"); allT.className="chip"+(state.type==="all"?" on":""); allT.innerHTML='Tous types <span class="n">'+DATA.length+'</span>'; allT.onclick=()=>{state.type="all";buildFilters();render()}; tr.appendChild(allT);
   order.forEach(t=>{ if(!tc[t])return; const el=document.createElement("div"); el.className="chip"+(state.type===t?" on":""); el.innerHTML=(TYPE_LABELS[t]||t)+' <span class="n">'+tc[t]+'</span>'; el.onclick=()=>{state.type=t;buildFilters();render()}; tr.appendChild(el); });
