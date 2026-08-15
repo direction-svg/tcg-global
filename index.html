@@ -96,6 +96,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Ar
 .pcard.sel .pl{color:var(--accent);font-weight:800}
 .pcard .pi img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain}
 .pcard .pl{font-size:10px;color:var(--muted);margin-top:5px;white-space:normal;line-height:1.15;height:26px;overflow:hidden}
+.ladder{display:flex;flex-direction:column;gap:6px;margin:8px 0 2px}
+.lrow{display:flex;justify-content:space-between;padding:9px 12px;border:1px solid var(--line);border-radius:10px;background:var(--panel);font-size:14px}
+.lrow.on{border-color:var(--accent);background:rgba(47,111,237,.08);font-weight:800}
+.lrow.on::before{content:"● ";color:var(--accent)}
+.certbox{display:flex;gap:8px;align-items:center;margin-top:12px;flex-wrap:wrap}
+.certbox input{flex:1;min-width:150px;border:1px solid var(--line);background:var(--panel);color:var(--ink);border-radius:10px;padding:10px;font-size:14px}
+.certbox button{border:0;background:var(--accent);color:#fff;border-radius:10px;padding:10px 14px;font-weight:800;cursor:pointer}
 /* modal filtres */
 .fsheet .fbar,.ssheet .fbar{display:flex;align-items:center;justify-content:space-between;padding:16px 16px 8px;position:sticky;top:0;background:var(--bg);z-index:2}
 .fbar b{font-size:18px}
@@ -180,6 +187,7 @@ footer .fb b{font-size:14px;color:var(--ink)}
     <div class="dhead"><button class="dclose" id="dclose">&times;</button><img id="dimg" referrerpolicy="no-referrer"></div>
     <div class="dtabs"><button data-t="col" class="on">Collection</button><button data-t="det">D&eacute;tails</button></div>
     <div id="dbody"></div>
+    <div id="dladder"></div>
     <div id="dprints"></div>
   </div>
 </div>
@@ -217,7 +225,7 @@ function esc(s){ return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,
 async function load(){
   let all=[],from=0,step=1000;
   while(true){
-    const r=await fetch(SB+"/rest/v1/app_collection?select=item_id,card_number,card_name,card_type,category,color,rarity,language,is_graded,grading_company,grade,quantity,market_value_eur,seed_value_eur,live_value_eur,price_source,price_asof,image_url,set_code,set_name,variant,art_suffix&order=market_value_eur.desc.nullslast&limit="+step+"&offset="+from,{headers:{apikey:ANON,Authorization:"Bearer "+ANON}});
+    const r=await fetch(SB+"/rest/v1/app_collection?select=item_id,printing_id,card_number,card_name,card_type,category,color,rarity,language,is_graded,grading_company,grade,cert_number,quantity,market_value_eur,seed_value_eur,live_value_eur,price_source,price_asof,image_url,set_code,set_name,variant,art_suffix&order=market_value_eur.desc.nullslast&limit="+step+"&offset="+from,{headers:{apikey:ANON,Authorization:"Bearer "+ANON}});
     if(!r.ok){document.getElementById("stage").innerHTML='<div class="empty">Erreur de chargement ('+r.status+').</div>';return;}
     const b=await r.json(); all=all.concat(b); if(b.length<step)break; from+=step;
   }
@@ -357,7 +365,35 @@ document.getElementById("themeBtn").addEventListener("click",()=>{document.docum
 let detailCard=null, detailTab="col";
 const LANG_LABELS={JP:"Japonais",EN:"Anglais",FR:"Français",CN:"Chinois"};
 function drow(k,v){ return v?('<div class="drow"><span class="k">'+k+'</span><span class="v">'+v+'</span></div>'):''; }
-function openDetail(c){ detailCard=c; detailTab="col"; const im=document.getElementById("dimg"); im.src=c.image_url||""; im.onerror=function(){this.style.visibility="hidden"}; im.style.visibility="visible"; document.querySelectorAll('.dtabs button').forEach(b=>b.classList.toggle('on',b.dataset.t==='col')); renderDetail(); document.getElementById("dprints").innerHTML=""; document.getElementById("overlay").classList.remove("hidden"); loadPrints(c.card_number); }
+function openDetail(c){ detailCard=c; detailTab="col"; const im=document.getElementById("dimg"); im.src=c.image_url||""; im.onerror=function(){this.style.visibility="hidden"}; im.style.visibility="visible"; document.querySelectorAll('.dtabs button').forEach(b=>b.classList.toggle('on',b.dataset.t==='col')); renderDetail(); document.getElementById("dprints").innerHTML=""; document.getElementById("dladder").innerHTML=""; document.getElementById("overlay").classList.remove("hidden"); loadLadder(c); loadPrints(c.card_number); }
+async function loadLadder(c){
+  const box=document.getElementById("dladder"); box.innerHTML="";
+  if(!c || !c.is_graded || !c.printing_id) return;
+  const mk=(c.language==="JP")?"JP":"EN";
+  let rows=[];
+  try{ const r=await fetch(SB+'/rest/v1/app_price_ladder?printing_id=eq.'+encodeURIComponent(c.printing_id)+'&market=eq.'+mk+'&select=grading_company,grade,price_eur',{headers:{apikey:ANON,Authorization:"Bearer "+ANON}}); rows=await r.json(); }catch(e){}
+  if(!detailCard || detailCard.item_id!==c.item_id) return;
+  if(!Array.isArray(rows)) rows=[];
+  const ord={"null":0,PSA:1,BGS:2,CGC:3,SGC:4};
+  rows.sort((a,b)=> ((ord[a.grading_company||"null"]??9)-(ord[b.grading_company||"null"]??9)) || (Number(a.grade||0)-Number(b.grade||0)));
+  const items=rows.map(p=>{
+    const lbl=p.grading_company?(p.grading_company+" "+String(p.grade).replace(/\.0$/,"")):"Brut";
+    const on=(p.grading_company===c.grading_company && String(p.grade)===String(c.grade))?" on":"";
+    return '<div class="lrow'+on+'"><span>'+esc(lbl)+'</span><b>'+eur(p.price_eur)+'</b></div>';
+  }).join("");
+  const cert=c.cert_number||"";
+  const verify=(c.grading_company==="PSA"&&cert)?(' <a href="https://www.psacard.com/cert/'+encodeURIComponent(cert)+'" target="_blank" rel="noreferrer" style="color:var(--accent);font-size:12px">vérifier ↗</a>'):'';
+  box.innerHTML='<div class="dprints"><h4>Gradée — cote par note ('+mk+')</h4>'+
+    (items?('<div class="ladder">'+items+'</div>'):'<div class="sub" style="color:var(--muted)">Pas encore de cote gradée pour cette carte sur ce marché — valeur de secours affichée en haut.</div>')+
+    '<div class="certbox"><span class="s">N° cert.</span><input id="certIn" value="'+esc(cert)+'" placeholder="ex. 165624968"><button id="certSave">Enregistrer</button>'+verify+'</div></div>';
+  const btn=document.getElementById("certSave"); if(btn) btn.onclick=()=>saveCert(c.item_id);
+}
+async function saveCert(item){
+  const el=document.getElementById("certIn"); if(!el)return; const v=el.value;
+  try{ await fetch(SB+'/rest/v1/rpc/set_cert',{method:"POST",headers:{apikey:ANON,Authorization:"Bearer "+ANON,"Content-Type":"application/json"},body:JSON.stringify({p_item:item,p_cert:v})});
+    const d=findCard(item); if(d) d.cert_number=v; if(detailCard&&detailCard.item_id===item) detailCard.cert_number=v;
+    const b=document.getElementById("certSave"); if(b){ b.textContent="✓ Enregistré"; setTimeout(()=>{const b2=document.getElementById("certSave"); if(b2)b2.textContent="Enregistrer";},1500);} }catch(e){}
+}
 async function loadPrints(number){
   const box=document.getElementById("dprints");
   if(!detailCard) return;
@@ -397,7 +433,12 @@ function renderDetail(){ const c=detailCard; if(!c)return; const body=document.g
     const src=c.price_source||"";
     const asof=c.price_asof?(" · maj "+new Date(c.price_asof).toLocaleDateString("fr-FR",{day:"2-digit",month:"2-digit"})):"";
     const srcline=src?('<div class="s" style="margin-top:3px">'+(src.indexOf("Logia")>=0?"⚠ ":"● ")+esc(src)+asof+'</div>'):'';
-    body.innerHTML='<div class="dval"><div class="b">'+eur(val(c))+'</div><div class="s">valeur marchande'+((c.quantity||1)>1?(' · total '+eur(val(c)*(c.quantity||1))):'')+'</div>'+srcline+'</div>'+
+    const lv=c.live_value_eur, sd=c.seed_value_eur;
+    let cmp="";
+    if(lv!=null && sd!=null && Math.abs(Number(lv)-Number(sd))/Math.max(Number(sd),1) > 0.15){
+      cmp='<div class="s" style="margin-top:1px;opacity:.75">Réf. import Logia : '+eur(sd)+'</div>';
+    }
+    body.innerHTML='<div class="dval"><div class="b">'+eur(val(c))+'</div><div class="s">valeur marchande'+((c.quantity||1)>1?(' · total '+eur(val(c)*(c.quantity||1))):'')+'</div>'+srcline+cmp+'</div>'+
       '<div class="qtybox"><span class="s">Possédé :</span> <span class="b">'+(c.quantity||1)+'</span></div>'+
       drow("État", g)+drow("Langue", (FLAG[c.language]||"")+' '+(LANG_LABELS[c.language]||c.language))+drow("Nom", esc(c.card_name))+drow("Numéro", esc(c.card_number));
   } else {
