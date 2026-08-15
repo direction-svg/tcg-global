@@ -182,6 +182,7 @@ footer .fb b{font-size:14px;color:var(--ink)}
   </div>
 
   <div class="chiprow catlang hidden" id="catLangRow"></div>
+  <div id="catFilters" class="hidden"></div>
   <div class="count" id="countLine"></div>
   <div id="stage"><div class="loading">Chargement de ta collection&hellip;</div></div>
 </div>
@@ -243,8 +244,10 @@ const COLOR_HEX={Red:"#d64545",Green:"#2f9e57",Blue:"#2f6fed",Purple:"#8b57d6",B
 const TYPE_ORDER=["normal","alternate_art","sp","manga","full_art","textured_foil","jolly_roger_foil","promo","tournament"];
 const CAT_ORDER=["LEADER","CHARACTER","EVENT","STAGE","DON"];
 const SORTS=[["val_desc","Valeur ↓ (décroissant)"],["val_asc","Valeur ↑ (croissant)"],["name","Nom (A→Z)"],["num","Numéro"],["qty","Quantité"]];
-const DEF={q:"",lang:"all",color:"all",type:"all",cat:"all",rarity:"all",character:"all",grade:"all",sort:"val_desc",view:"grid",mode:"collection",catLang:"all",catQuery:""};
+const DEF={q:"",lang:"all",color:"all",type:"all",cat:"all",rarity:"all",character:"all",grade:"all",sort:"val_desc",view:"grid",mode:"collection",catLang:"all",catQuery:"",catColor:"all",catCat:"all",catRarity:"all"};
 const CATLANGS=[["all","Toutes"],["JP","Japonais"],["EN","Anglais"],["FR","Français"],["CN","Chinois"]];
+const CATCATS=[["all","Toutes catégories"],["LEADER","Leader"],["CHARACTER","Personnage"],["EVENT","Event"],["STAGE","Stage"]];
+const CATRARS=[["all","Toutes raretés"],["L","Leader"],["C","Common"],["UC","Uncommon"],["R","Rare"],["SR","Super Rare"],["SEC","Secret Rare"],["SP","Special"],["P","Promo"]];
 let DATA=[], state=Object.assign({},DEF);
 
 const eur=n=> (n==null?"—":(Number(n).toLocaleString("fr-FR",{minimumFractionDigits:2,maximumFractionDigits:2})+" €"));
@@ -389,9 +392,25 @@ function setMode(m){
   document.querySelectorAll('#modeSeg button').forEach(b=>b.classList.toggle('on',b.dataset.m===m));
   const cat=m==="catalog";
   document.getElementById('catLangRow').classList.toggle('hidden',!cat);
+  document.getElementById('catFilters').classList.toggle('hidden',!cat);
   ['sortBtn','filterBtn','viewBtn'].forEach(id=>document.getElementById(id).classList.toggle('hidden',cat));
   document.getElementById('q').placeholder=cat?"Chercher une carte (nom ou numéro), toutes langues…":"Rechercher (nom ou numéro)…";
-  if(cat){ buildCatLang(); fetchCatalog(); } else { document.getElementById('countLine').textContent=''; render(); }
+  if(cat){ buildCatLang(); buildCatFilters(); fetchCatalog(); } else { document.getElementById('countLine').textContent=''; render(); }
+}
+function buildCatFilters(){
+  const box=document.getElementById('catFilters'); box.innerHTML="";
+  const rows=[["catColor",[["all","Toutes couleurs"]].concat(COLORS.map(c=>[c,c]))],["catCat",CATCATS],["catRarity",CATRARS]];
+  rows.forEach(([key,opts])=>{
+    const row=document.createElement('div'); row.className="chiprow catlang";
+    opts.forEach(([code,label])=>{
+      const el=document.createElement('div'); el.className="chip"+(state[key]===code?" on":"");
+      if(key==="catColor"&&code!=="all"){ el.innerHTML='<span style="width:11px;height:11px;border-radius:50%;background:'+(COLOR_HEX[code]||'#888')+';display:inline-block"></span> '+esc(label); }
+      else el.textContent=label;
+      el.onclick=()=>{ state[key]=code; buildCatFilters(); fetchCatalog(); };
+      row.appendChild(el);
+    });
+    box.appendChild(row);
+  });
 }
 document.getElementById('modeSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMode(b.dataset.m);});
 function buildCatLang(){
@@ -406,12 +425,15 @@ function buildCatLang(){
 async function fetchCatalog(){
   const stage=document.getElementById('stage'); const cl=document.getElementById('countLine');
   const term=(state.catQuery||"").replace(/[%*(),]/g," ").trim();
-  if(!term){ cl.textContent=""; stage.className=""; stage.innerHTML='<div class="empty">Tape un nom ou un numéro pour chercher dans tout le catalogue (JP, EN, FR, CN).</div>'; return; }
+  const hasFilter = term || state.catLang!=="all" || state.catColor!=="all" || state.catCat!=="all" || state.catRarity!=="all";
+  if(!hasFilter){ cl.textContent=""; stage.className=""; stage.innerHTML='<div class="empty">Cherche par nom, numéro, ou choisis une langue / couleur / catégorie / rareté ci-dessus.</div>'; return; }
   stage.className=""; stage.innerHTML='<div class="loading">Recherche…</div>';
-  let url=SB+"/rest/v1/app_catalog?select=card_number,language,name,image_url,owned&limit=80&order=card_number.asc";
+  let url=SB+"/rest/v1/app_catalog?select=card_number,language,name,image_url,owned,variant,variant_label&limit=120&order=card_number.asc";
   if(state.catLang!=="all") url+="&language=eq."+state.catLang;
-  const pat="*"+term+"*";
-  url+="&or=(card_number.ilike."+encodeURIComponent(pat)+",name.ilike."+encodeURIComponent(pat)+")";
+  if(state.catColor!=="all") url+="&color=ilike."+encodeURIComponent("*"+state.catColor+"*");
+  if(state.catCat!=="all") url+="&category=eq."+state.catCat;
+  if(state.catRarity!=="all") url+="&rarity=eq."+state.catRarity;
+  if(term){ const pat="*"+term+"*"; url+="&or=(card_number.ilike."+encodeURIComponent(pat)+",name.ilike."+encodeURIComponent(pat)+")"; }
   try{
     const r=await fetch(url,{headers:{apikey:ANON,Authorization:"Bearer "+ANON}});
     const rows=await r.json();
@@ -421,12 +443,13 @@ async function fetchCatalog(){
 }
 function renderCatalog(rows){
   const stage=document.getElementById('stage'); stage.className="";
-  document.getElementById('countLine').textContent=rows.length+" résultat"+(rows.length>1?"s":"")+(rows.length>=80?" (affine ta recherche)":"");
+  document.getElementById('countLine').textContent=rows.length+" résultat"+(rows.length>1?"s":"")+(rows.length>=120?" (affine ta recherche)":"");
   if(!rows.length){ stage.innerHTML='<div class="empty">Aucune carte trouvée.</div>'; return; }
   stage.innerHTML='<div class="grid">'+rows.map(c=>{
     const img=c.image_url?('<img loading="lazy" referrerpolicy="no-referrer" src="'+esc(c.image_url)+'" onerror="this.remove()">'):('<div class="ph">'+esc(c.name||c.card_number||"")+'</div>');
     const badge=c.owned?'<span class="owntag own">✓ Possédée</span>':'<span class="owntag no">Non possédée</span>';
-    return '<div class="card"><div class="imgwrap">'+img+'<div class="badges"><span class="flag">'+(FLAG[c.language]||"")+'</span></div></div><div class="meta"><p class="nm">'+esc(c.name||"")+'</p><div class="sub"><span>'+esc(c.card_number||"")+'</span></div>'+badge+'</div></div>';
+    const vl=c.variant_label||c.variant; const vtag=(vl&&String(vl).toLowerCase()!=='normal')?'<span class="tp">'+esc(vl)+'</span>':'';
+    return '<div class="card"><div class="imgwrap">'+img+'<div class="badges"><span class="flag">'+(FLAG[c.language]||"")+'</span></div></div><div class="meta"><p class="nm">'+esc(c.name||"")+'</p><div class="sub"><span>'+esc(c.card_number||"")+'</span>'+vtag+'</div>'+badge+'</div></div>';
   }).join("")+'</div>';
 }
 document.getElementById("sortBtn").addEventListener("click",openSort);
