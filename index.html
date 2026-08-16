@@ -137,6 +137,18 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Ar
 .setpfill{height:100%;background:var(--neg);border-radius:4px}
 .setpfill.full{background:var(--pos)}
 .setrow .scode{flex:none;font-weight:800;color:var(--muted);font-size:13px;align-self:flex-start}
+.prow{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:11px 13px;margin-bottom:9px;display:flex;align-items:center;gap:11px}
+.pthumb{flex:none;width:44px;height:44px;border-radius:9px;background:var(--chip);display:grid;place-items:center;overflow:hidden}
+.pthumb img{width:100%;height:100%;object-fit:cover}
+.pmid{flex:1;min-width:0}
+.ptitle{font-weight:800;font-size:13px;line-height:1.2}
+.psub{font-size:11px;color:var(--muted);margin-top:3px}
+.pright{flex:none;display:flex;flex-direction:column;align-items:flex-end;gap:6px}
+.pprice{font-weight:800;font-size:13px}
+.pqtyrow{display:flex;align-items:center;gap:7px}
+.pqbtn{width:26px;height:26px;border:none;border-radius:8px;background:var(--chip);color:var(--ink);font-weight:800;font-size:15px;cursor:pointer;line-height:1}
+.pqbtn.add{background:rgba(15,157,107,.15);color:var(--pos)}
+.pqn{font-weight:800;font-size:13px;min-width:16px;text-align:center}
 .ladder{display:flex;flex-direction:column;gap:6px;margin:8px 0 2px}
 .lrow{display:flex;justify-content:space-between;padding:9px 12px;border:1px solid var(--line);border-radius:10px;background:var(--panel);font-size:14px}
 .lrow.on{border-color:var(--accent);background:rgba(47,111,237,.08);font-weight:800}
@@ -327,6 +339,7 @@ body{-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
     <button data-m="collection" class="on">Collection</button>
     <button data-m="catalog">Catalogue</button>
     <button data-m="sets">Sets</button>
+    <button data-m="products">Produits</button>
     <button data-m="ops">Opportunités</button>
   </div>
 
@@ -450,7 +463,8 @@ const COLOR_HEX={Red:"#d64545",Green:"#2f9e57",Blue:"#2f6fed",Purple:"#8b57d6",B
 const TYPE_ORDER=["normal","alternate_art","sp","manga","full_art","textured_foil","jolly_roger_foil","promo","tournament"];
 const CAT_ORDER=["LEADER","CHARACTER","EVENT","STAGE","DON"];
 const SORTS=[["val_desc","Valeur ↓ (décroissant)"],["val_asc","Valeur ↑ (croissant)"],["name","Nom (A→Z)"],["num","Numéro"],["qty","Quantité"]];
-const DEF={q:"",lang:"all",color:"all",type:"all",cat:"all",rarity:"all",character:"all",grade:"all",sort:"val_desc",view:"grid",mode:"collection",catLang:"all",catQuery:"",catLangs:[],catColors:[],catCats:[],catRarities:[],catTypes:[],catSort:"num",setLang:"JP"};
+const DEF={q:"",lang:"all",color:"all",type:"all",cat:"all",rarity:"all",character:"all",grade:"all",sort:"val_desc",view:"grid",mode:"collection",catLang:"all",catQuery:"",catLangs:[],catColors:[],catCats:[],catRarities:[],catTypes:[],catSort:"num",setLang:"JP",prodLang:"JP"};
+let PROD_VALUE=0;
 const CATLANGS=[["all","Toutes"],["JP","Japonais"],["EN","Anglais"],["FR","Français"],["CN","Chinois"]];
 const CATCATS=[["all","Toutes catégories"],["LEADER","Leader"],["CHARACTER","Personnage"],["EVENT","Event"],["STAGE","Stage"],["DON","DON!!"]];
 const CATRARS=[["all","Toutes raretés"],["L","Leader"],["C","Common"],["UC","Uncommon"],["R","Rare"],["SR","Super Rare"],["SEC","Secret Rare"],["TR","Treasure Rare"],["SP","Special"],["P","Promo"]];
@@ -629,7 +643,8 @@ function imgTag(c){
 function render(){
   const a=apply();
   const stage=document.getElementById("stage");
-  const total=DATA.reduce((s,c)=>s+val(c)*(c.quantity||1),0);
+  const cardsTotal=DATA.reduce((s,c)=>s+val(c)*(c.quantity||1),0);
+  const total=cardsTotal+(PROD_VALUE||0);
   const shownTotal=a.reduce((s,c)=>s+val(c)*(c.quantity||1),0);
   const jp=DATA.filter(c=>c.language==="JP").length, gr=DATA.filter(c=>c.is_graded).length;
   document.getElementById("stTotal").textContent=eur0(total);
@@ -678,18 +693,19 @@ document.getElementById("q").addEventListener("input",e=>{
 function setMode(m){
   state.mode=m;
   document.querySelectorAll('#modeSeg button').forEach(b=>b.classList.toggle('on',b.dataset.m===m));
-  const cat=m==="catalog", ops=m==="ops", sets=m==="sets";
+  const cat=m==="catalog", ops=m==="ops", sets=m==="sets", prods=m==="products";
   document.getElementById('catLangRow').classList.toggle('hidden',!cat);
   document.getElementById('catFilters').classList.add('hidden');
-  document.getElementById('viewBtn').classList.toggle('hidden',cat||ops||sets);
-  document.getElementById('filterBtn').classList.toggle('hidden',ops||sets);
-  document.getElementById('sortBtn').classList.toggle('hidden',ops||sets);
-  document.querySelector('.search').classList.toggle('hidden',ops||sets);
+  document.getElementById('viewBtn').classList.toggle('hidden',cat||ops||sets||prods);
+  document.getElementById('filterBtn').classList.toggle('hidden',ops||sets||prods);
+  document.getElementById('sortBtn').classList.toggle('hidden',ops||sets||prods);
+  document.querySelector('.search').classList.toggle('hidden',ops||sets||prods);
   document.getElementById('q').placeholder=cat?"Chercher une carte (nom ou numéro), toutes langues…":"Rechercher (nom ou numéro)…";
-  const brief=document.getElementById('briefing'); if(brief && !cat && !ops && !sets){} else if(brief){ brief.innerHTML=''; }
+  const brief=document.getElementById('briefing'); if(brief && !cat && !ops && !sets && !prods){} else if(brief){ brief.innerHTML=''; }
   if(ops){ document.getElementById('countLine').textContent=''; fetchOps(); }
   else if(cat){ buildCatLangRow(); syncCatBadge(); fetchCatalog(); }
   else if(sets){ document.getElementById('countLine').textContent=''; fetchSets(); }
+  else if(prods){ document.getElementById('countLine').textContent=''; fetchProducts(); }
   else { syncBadge(); document.getElementById('countLine').textContent=''; render(); loadBriefing(); }
 }
 const SET_NAMES={OP01:"Romance Dawn",OP02:"Paramount War",OP03:"Pillars of Strength",OP04:"Kingdoms of Intrigue",OP05:"Awakening of the New Era",OP06:"Wings of the Captain",OP07:"500 Years in the Future",OP08:"Two Legends",OP09:"Emperors in the New World",OP10:"Royal Blood",OP11:"A Fist of Divine Speed",OP12:"Legacy of the Master",OP13:"Carrying On His Will",OP14:"The Azure Sea's Seven",OP15:"Adventure on KAMI's Island",OP16:"The Time of Battle",EB01:"Memorial Collection",EB02:"Anime 25th Collection",EB03:"Heroines Edition",EB04:"Egghead Crisis",PRB01:"Premium Booster -The Best-",PRB02:"One Piece The Best Vol.2",ST01:"Straw Hat Crew",ST02:"Worst Generation",ST03:"The Seven Warlords",ST04:"Animal Kingdom Pirates",ST32:"Green Roronoa Zoro",ST33:"Blue Kuzan",ST34:"Purple Charlotte Katakuri",ST35:"Red/Black Sabo",ST36:"Yellow Eustass Kid",PROMO:"Promos (toutes)",DON:"DON!! Cards"};
@@ -736,6 +752,54 @@ function openSetInCatalog(setCode,lang){
   state.catLangs=[lang]; state.catQuery=q;
   const qi=document.getElementById('q'); if(qi) qi.value=q;
   setMode('catalog');
+}
+const PROD_CAT_LABELS={BOOSTER_BOX:"Booster Box",CASE:"Booster Box Case",BOOSTER_PACK:"Booster Pack",STARTER_DECK:"Starter Deck",PREMIUM_BOOSTER:"Premium Booster",CARD_COLLECTION_SET:"Premium Collection",GIFT_COLLECTION:"Collections & Coffrets",PROMO_PACK:"Promo / Tournoi",ULTRA_DECK:"Ultra Deck",DOUBLE_PACK_SET:"Double Pack",OTHER:"Autres"};
+const PROD_CAT_ORDER=["BOOSTER_BOX","CASE","BOOSTER_PACK","STARTER_DECK","PREMIUM_BOOSTER","CARD_COLLECTION_SET","GIFT_COLLECTION","PROMO_PACK","ULTRA_DECK","DOUBLE_PACK_SET","OTHER"];
+let PRODROWS=[];
+async function fetchProducts(){
+  const stage=document.getElementById('stage'); stage.className=""; stage.innerHTML='<div class="loading">Chargement des produits…</div>';
+  const lang=state.prodLang||'JP';
+  try{
+    const r=await fetch(SB+'/rest/v1/app_products?language=eq.'+lang+'&select=product_id,name,category,image_url,price_eur,owned_qty&order=price_eur.desc.nullslast',{headers:{apikey:ANON,Authorization:"Bearer "+ANON}});
+    let rows=await r.json(); if(!Array.isArray(rows))rows=[];
+    if(state.mode!=='products') return;
+    PRODROWS=rows; renderProducts(rows,lang);
+  }catch(e){ stage.innerHTML='<div class="empty">Erreur de chargement des produits.</div>'; }
+}
+function renderProducts(rows,lang){
+  const stage=document.getElementById('stage'); stage.className="";
+  let ownVal=0, ownN=0; rows.forEach(r=>{ if(r.owned_qty>0){ ownVal+=(r.price_eur||0)*r.owned_qty; ownN+=r.owned_qty; }});
+  const langChips=SET_LANGS.map(([c,l])=>'<div class="chip'+(c===lang?' on':'')+'" onclick="setProdLang(\''+c+'\')">'+(FLAG[c]||'')+' '+l+'</div>').join('');
+  let h='<div class="setlangrow">'+langChips+'</div>';
+  h+='<div class="sethead"><span>Mes produits scellés</span><span class="pct">'+ownN+' produit'+(ownN>1?'s':'')+' · '+eur0(ownVal)+'</span></div>';
+  const byCat={}; rows.forEach(r=>{ (byCat[r.category]=byCat[r.category]||[]).push(r); });
+  PROD_CAT_ORDER.forEach(cat=>{
+    const list=byCat[cat]; if(!list||!list.length) return;
+    h+='<div class="setgrp">'+(PROD_CAT_LABELS[cat]||cat)+'</div>';
+    h+=list.map(r=>{ const idx=rows.indexOf(r);
+      const img=r.image_url?('<img referrerpolicy="no-referrer" src="'+esc(r.image_url)+'" onerror="this.parentNode.textContent=\'📦\'">'):'📦';
+      const px=(r.price_eur!=null)?('<span class="pprice">'+eur(r.price_eur)+'</span>'):'<span class="pprice" style="color:var(--muted);font-weight:600">—</span>';
+      const q=r.owned_qty||0;
+      const minus=q>0?'<button class="pqbtn" onclick="prodRemove('+idx+')">−</button><span class="pqn">'+q+'</span>':'';
+      return '<div class="prow"><div class="pthumb">'+img+'</div><div class="pmid"><div class="ptitle">'+esc(r.name)+'</div><div class="psub">'+(FLAG[lang]||'')+' '+(PROD_CAT_LABELS[cat]||cat)+'</div></div>'+
+        '<div class="pright">'+px+'<div class="pqtyrow">'+minus+'<button class="pqbtn add" onclick="prodAdd('+idx+')">+</button></div></div></div>';
+    }).join('');
+  });
+  stage.innerHTML=h;
+  document.getElementById('countLine').textContent=rows.length+' produits';
+}
+function setProdLang(l){ state.prodLang=l; fetchProducts(); }
+async function prodAdd(idx){ const r=PRODROWS[idx]; if(!r) return;
+  try{ const res=await fetch(SB+'/rest/v1/rpc/add_product_to_collection',{method:'POST',headers:{apikey:ANON,Authorization:"Bearer "+ANON,"Content-Type":"application/json"},body:JSON.stringify({p_product:r.product_id,p_qty:1})}); const j=await res.json(); r.owned_qty=(Array.isArray(j)&&j[0])?j[0].res_quantity:((r.owned_qty||0)+1); renderProducts(PRODROWS,state.prodLang||'JP'); loadProductValue(); }
+  catch(e){ alert("Erreur lors de l'ajout."); }
+}
+async function prodRemove(idx){ const r=PRODROWS[idx]; if(!r) return;
+  try{ const res=await fetch(SB+'/rest/v1/rpc/remove_product_from_collection',{method:'POST',headers:{apikey:ANON,Authorization:"Bearer "+ANON,"Content-Type":"application/json"},body:JSON.stringify({p_product:r.product_id,p_qty:1})}); const j=await res.json(); r.owned_qty=(Array.isArray(j)&&j[0])?j[0].res_quantity:Math.max(0,(r.owned_qty||0)-1); renderProducts(PRODROWS,state.prodLang||'JP'); loadProductValue(); }
+  catch(e){ alert("Erreur lors du retrait."); }
+}
+async function loadProductValue(){
+  try{ const r=await fetch(SB+'/rest/v1/app_products?owned_qty=gt.0&select=price_eur,owned_qty',{headers:{apikey:ANON,Authorization:"Bearer "+ANON}}); const j=await r.json(); PROD_VALUE=Array.isArray(j)?j.reduce((s,x)=>s+(x.price_eur||0)*(x.owned_qty||0),0):0; }catch(e){ PROD_VALUE=0; }
+  if(state.mode==='collection' && Array.isArray(DATA)) render();
 }
 document.getElementById('modeSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMode(b.dataset.m);});
 const CATARRS=["catColors","catCats","catRarities","catTypes"];
@@ -1160,6 +1224,7 @@ document.getElementById("overlay").addEventListener("click",e=>{ if(e.target.id=
 document.querySelectorAll('.dtabs button').forEach(b=>b.addEventListener("click",()=>{ detailTab=b.dataset.t; document.querySelectorAll('.dtabs button').forEach(x=>x.classList.toggle('on',x===b)); renderDetail(); }));
 
 load();
+loadProductValue();
 </script>
 </body>
 </html>
