@@ -6,13 +6,15 @@
 <title>TCG GLOBAL — Ma collection One Piece</title>
 <style>
 :root{
-  --bg:#eaf1fb; --panel:#ffffff; --ink:#0f1e34; --muted:#5b6b85; --line:#dbe6f5;
-  --accent:#2f6fed; --accent2:#5b8cff; --chip:#eef3fb; --chipOn:#2f6fed; --chipOnInk:#fff;
-  --shadow:0 6px 20px rgba(20,50,100,.08); --pos:#1a9d5a; --neg:#d64545; --gold:#e0a53b;
+  --bg:#f5f6f8; --panel:#ffffff; --ink:#0d1117; --muted:#6b7686; --line:#ebedf1;
+  --accent:#3457e8; --accent2:#5b8cff; --chip:#f0f2f6; --chipOn:#3457e8; --chipOnInk:#fff;
+  --shadow:0 1px 2px rgba(16,24,40,.04), 0 10px 28px rgba(16,24,40,.06);
+  --pos:#0f9d6b; --neg:#e0524a; --gold:#c2892a; --radius:16px;
 }
 :root.dark{
-  --bg:#0c1220; --panel:#141d30; --ink:#e8eefb; --muted:#93a3c2; --line:#233152;
-  --accent:#5b8cff; --accent2:#4570d6; --chip:#1b2740; --chipOn:#5b8cff; --chipOnInk:#0c1220; --shadow:0 6px 20px rgba(0,0,0,.35);
+  --bg:#0a0c10; --panel:#12151c; --ink:#e9edf4; --muted:#8b97a8; --line:#1f2530;
+  --accent:#6c8bff; --accent2:#4570d6; --chip:#171b24; --chipOn:#6c8bff; --chipOnInk:#0a0c10;
+  --shadow:0 1px 2px rgba(0,0,0,.3), 0 12px 32px rgba(0,0,0,.4);
 }
 *{box-sizing:border-box}
 html,body{margin:0}
@@ -125,6 +127,36 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Ar
 .pxnone{color:var(--muted);font-size:13px;line-height:1.4;padding:4px 0 2px}
 .pxadd{margin-top:12px;width:100%;border:1px dashed var(--accent);background:transparent;color:var(--accent);font-weight:800;padding:11px;border-radius:12px;cursor:pointer;font-size:14px}
 .pxadd:disabled{opacity:.6}
+.gradebox{background:var(--chip);border-radius:12px;padding:10px 12px;margin-top:4px}
+.grow{display:flex;justify-content:space-between;align-items:center;padding:3px 0;font-size:14px}
+.gverdict{margin-top:8px;font-weight:800;font-size:13px;padding:8px 10px;border-radius:9px}
+.gverdict.ok{background:rgba(26,157,90,.15);color:var(--pos)}
+.gverdict.mid{background:rgba(224,165,59,.15);color:var(--gold)}
+.gverdict.no{background:rgba(214,69,69,.13);color:var(--neg)}
+.opsintro{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:11px 13px;margin-bottom:10px;font-size:13px;line-height:1.45;box-shadow:var(--shadow)}
+.opslist{display:flex;flex-direction:column;gap:8px}
+.oprow{display:flex;gap:11px;align-items:center;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:9px;box-shadow:var(--shadow);cursor:pointer}
+.opi{width:52px;height:73px;border-radius:8px;overflow:hidden;background:var(--chip);position:relative;flex:none}
+.opi img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain}
+.opm{flex:1;min-width:0}
+.opnm{font-weight:800;font-size:14px;display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.opline{display:flex;gap:12px;font-size:13px;margin-top:3px;color:var(--muted)}
+.opline b{color:var(--ink)}
+.opbe{font-size:11px;color:var(--muted);margin-top:3px}
+.opgain{text-align:right;flex:none}
+.opgain b{display:block;color:var(--pos);font-size:16px;font-weight:900}
+.oprow.dim{opacity:.62}
+.capc{font-size:9px;font-weight:800;padding:1px 6px;border-radius:6px;vertical-align:middle}
+.capc.hi{background:rgba(47,111,237,.15);color:var(--accent)}
+.capc.mid{background:rgba(26,157,90,.14);color:var(--pos)}
+.capc.off{background:var(--chip);color:var(--muted)}
+.orbtn{border:1px solid var(--line);background:var(--panel);color:var(--ink);font-weight:800;font-size:12px;padding:6px 10px;border-radius:10px;cursor:pointer;flex:none}
+.osub{font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);margin:6px 0 6px}
+.orow{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--line);font-size:14px}
+.oprios{display:flex;gap:5px;flex:none}
+.ochips{display:flex;flex-wrap:wrap;gap:6px}
+.ochip{border:1px solid var(--line);background:var(--panel);color:var(--muted);font-weight:700;font-size:12px;padding:6px 10px;border-radius:9px;cursor:pointer}
+.ochip.on{background:var(--accent);color:#fff;border-color:transparent}
 .poprow b{color:var(--ink)}
 .gcmp{display:flex;gap:8px;margin-top:6px}
 .gc{flex:1;border:1px solid var(--line);border-radius:12px;padding:10px 12px;background:var(--panel)}
@@ -164,6 +196,78 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Ar
 footer{position:fixed;bottom:0;left:0;right:0;background:var(--panel);border-top:1px solid var(--line);display:flex;justify-content:space-around;padding:8px 0 calc(8px + env(safe-area-inset-bottom));z-index:20}
 footer .fb{color:var(--muted);font-size:11px;font-weight:700;display:flex;flex-direction:column;align-items:center;gap:2px}
 footer .fb b{font-size:14px;color:var(--ink)}
+
+/* ============ Refonte épurée + desktop ============ */
+body{-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+.wrap{max-width:1240px;padding:0 clamp(16px,4vw,44px) 120px}
+.hero{padding-top:22px}
+.topbar{padding:4px 0 16px}
+.logo{font-weight:800;letter-spacing:-.02em;font-size:17px}
+.logo .mark{width:30px;height:30px;border-radius:9px;font-size:11px;font-weight:900;background:var(--ink);color:var(--panel)}
+:root.dark .logo .mark{background:var(--accent);color:#0a0c10}
+.iconbtn{border:1px solid var(--line);background:var(--panel);border-radius:11px;color:var(--muted);box-shadow:none}
+.stats{display:grid;grid-template-columns:2fr 1fr 1fr;gap:10px}
+.stat{border-radius:var(--radius);padding:14px 16px}
+.stat .k{font-size:10px;letter-spacing:.08em;text-transform:uppercase;font-weight:700}
+.stat .v{font-size:26px;font-weight:800;letter-spacing:-.03em;font-variant-numeric:tabular-nums}
+.stat .v.small{font-size:20px}
+.modeseg{max-width:460px;margin:18px auto 4px;background:var(--chip);border:0;padding:4px;gap:3px;box-shadow:none}
+.modeseg button{font-size:13.5px;font-weight:700;border-radius:10px;padding:9px}
+.modeseg button.on{background:var(--panel);color:var(--ink);box-shadow:var(--shadow)}
+.toolbar{gap:8px;padding:12px 0}
+.search{border-radius:13px;box-shadow:none}
+.tbtn{box-shadow:none;color:var(--muted);font-weight:700}
+.count{letter-spacing:.01em}
+.grid{grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:14px}
+.card{border-radius:var(--radius);transition:transform .15s ease, box-shadow .15s ease}
+.nm{letter-spacing:-.01em}
+.opline b,.px,.opgain b{font-variant-numeric:tabular-nums}
+.oprow{border-radius:var(--radius);padding:11px;transition:border-color .15s ease}
+.scbadge{flex:none;width:40px;height:40px;border-radius:12px;display:grid;place-items:center;font-weight:800;font-size:16px;font-variant-numeric:tabular-nums;align-self:flex-start;letter-spacing:-.02em}
+.scbadge.sc-a{background:rgba(15,157,107,.14);color:var(--pos)}
+.scbadge.sc-b{background:var(--chip);color:var(--ink)}
+.scbadge.sc-c{background:var(--chip);color:var(--muted)}
+.opsintro{border-radius:var(--radius)}
+.capc{border-radius:6px}
+@media(min-width:960px){
+  .hero{padding-top:30px}
+  .stat .v{font-size:30px}
+  .stat .v.small{font-size:22px}
+  .grid{grid-template-columns:repeat(auto-fill,minmax(184px,1fr));gap:18px}
+  .card{cursor:pointer}
+  .card:hover{transform:translateY(-3px);box-shadow:0 12px 32px rgba(16,24,40,.13)}
+  .oprow:hover{border-color:var(--accent)}
+  .overlay{align-items:center;padding:24px}
+  .sheet{max-width:620px;border-radius:22px;max-height:88vh}
+  .opslist,.opsintro{max-width:840px;margin-left:auto;margin-right:auto}
+  .dhead{border-radius:22px 22px 0 0}
+}
+.brief{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:18px 18px;box-shadow:var(--shadow);margin-bottom:14px}
+.bhi{font-size:19px;font-weight:800;letter-spacing:-.02em}
+.bval{font-size:15px;color:var(--muted);margin-top:6px}
+.bval b{color:var(--ink);font-weight:800;font-variant-numeric:tabular-nums}
+.bd{font-weight:800;font-variant-numeric:tabular-nums}
+.bd.up{color:var(--pos)} .bd.down{color:var(--neg)}
+.bsub{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:700;margin:16px 0 8px}
+.bitems{display:flex;flex-direction:column;gap:8px}
+.bitem{display:flex;gap:11px;align-items:center;padding:9px;border:1px solid var(--line);border-radius:12px;cursor:pointer;transition:border-color .15s}
+.bitem:hover{border-color:var(--accent)}
+.bi2{flex:1;min-width:0}
+.bnm{font-weight:700;font-size:14px}
+.bwhy{font-size:12px;color:var(--muted);margin-top:2px}
+.bgain{color:var(--pos);font-weight:800;font-variant-numeric:tabular-nums;flex:none}
+.bcta{margin-top:12px;width:100%;border:0;background:var(--ink);color:var(--panel);font-weight:800;padding:12px;border-radius:12px;cursor:pointer;font-size:14px}
+:root.dark .bcta{background:var(--accent);color:#0a0c10}
+@media(min-width:960px){ .brief{padding:24px 26px} .bhi{font-size:23px} .brief{max-width:100%} }
+@media(min-width:1280px){ .grid{grid-template-columns:repeat(auto-fill,minmax(196px,1fr))} }
+@media(max-width:560px){
+  .oprow .opi{display:none}
+  .oprow{gap:10px}
+  .opline{gap:10px;font-size:12.5px}
+  .opnm{font-size:14px}
+  .opgain b{font-size:15px}
+  .scbadge{width:36px;height:36px;font-size:15px}
+}
 </style>
 </head>
 <body>
@@ -182,13 +286,14 @@ footer .fb b{font-size:14px;color:var(--ink)}
   </div>
 
   <div class="modeseg" id="modeSeg">
-    <button data-m="collection" class="on">Ma collection</button>
-    <button data-m="catalog">Catalogue (toutes langues)</button>
+    <button data-m="collection" class="on">Collection</button>
+    <button data-m="catalog">Catalogue</button>
+    <button data-m="ops">Opportunités</button>
   </div>
 
   <div class="toolbar">
     <div class="search">
-      <span>&#128269;</span>
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="color:var(--muted);flex:none"><circle cx="11" cy="11" r="7"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
       <input id="q" placeholder="Rechercher (nom ou num&eacute;ro)&hellip;" autocomplete="off">
     </div>
     <button class="tbtn" id="sortBtn" title="Trier">&#8645;</button>
@@ -199,6 +304,7 @@ footer .fb b{font-size:14px;color:var(--ink)}
   <div class="chiprow catlang hidden" id="catLangRow"></div>
   <div id="catFilters" class="hidden"></div>
   <div class="count" id="countLine"></div>
+  <div id="briefing"></div>
   <div id="stage"><div class="loading">Chargement de ta collection&hellip;</div></div>
 </div>
 
@@ -265,6 +371,15 @@ footer .fb b{font-size:14px;color:var(--ink)}
   </div>
 </div>
 
+<div id="omodal" class="overlay hidden">
+  <div class="sheet ssheet">
+    <div class="fbar"><b>Mon orientation</b><button class="x" id="oclose">&times;</button></div>
+    <div style="padding:0 14px 8px;color:var(--muted);font-size:13px">Ton cap. L'agent priorise les opportunités selon ces réglages.</div>
+    <div id="orientBody" style="padding:0 14px"></div>
+    <div style="padding:12px 14px calc(20px + env(safe-area-inset-bottom))"><button id="osave" class="pxadd" style="border-style:solid;background:var(--accent);color:#fff">Enregistrer mon orientation</button></div>
+  </div>
+</div>
+
 <footer>
   <div class="fb"><b id="fTotal">&mdash;</b>Valeur</div>
   <div class="fb"><b id="fCount">&mdash;</b>Cartes</div>
@@ -293,7 +408,50 @@ const CATCATS=[["all","Toutes catégories"],["LEADER","Leader"],["CHARACTER","Pe
 const CATRARS=[["all","Toutes raretés"],["L","Leader"],["C","Common"],["UC","Uncommon"],["R","Rare"],["SR","Super Rare"],["SEC","Secret Rare"],["TR","Treasure Rare"],["SP","Special"],["P","Promo"]];
 const CATTYPES=[["all","Tous types"],["STANDARD","Standard"],["PROMO","Promo"],["BATTLE_EVENT","Battleship"],["PREMIUM_COLLECTION","Premium Collection"],["TOURNAMENT","Tournoi"],["PRODUCT_EXCLUSIVE","Exclusivité produit"]];
 const CATSORTS=[["num","Numéro"],["name","Nom (A→Z)"],["lang","Langue"],["price_desc","Prix décroissant (cher → bas)"],["price_asc","Prix croissant (bas → cher)"]];
-const SRC_LABELS={PRICECHARTING:"PriceCharting",TCGPLAYER:"TCGplayer",CARDMARKET:"Cardmarket",MANUAL:"Manuel (toi)"};
+const SRC_LABELS={PRICECHARTING:"PriceCharting",TCGPLAYER:"TCGplayer",CARDMARKET:"Cardmarket",MANUAL:"Manuel (toi)",CARDRUSH:"Cardrush (JP)"};
+// Vrais paliers PSA 2026 (USD, selon la valeur déclarée de la carte) + ~15€ port/assurance alloué
+function gradingCost(valueEur){
+  const usd=(valueEur||0)/0.92;
+  const tiers=[
+    {name:"Value", max:499, usd:24.99},
+    {name:"Regular", max:1499, usd:79.99},
+    {name:"Express", max:2499, usd:149},
+    {name:"Super Express", max:4999, usd:349},
+    {name:"Walk-Through", max:9999, usd:599},
+    {name:"Premium", max:24999, usd:999}
+  ];
+  const t=tiers.find(t=>usd<=t.max)||tiers[tiers.length-1];
+  return {tier:t.name, feeEur:Math.round(t.usd*0.92+15)};
+}
+function gradeAdvice(ung, grd){
+  if(!ung.length || !grd.length) return "";
+  const raw=Math.max(...ung.map(x=>+x.price_eur||0));
+  if(!(raw>2)) return "";
+  const gv=g=>{ const r=grd.filter(x=>Number(x.grade)===g).map(x=>+x.price_eur||0); return r.length?Math.max(...r):null; };
+  const v10=gv(10), v95=gv(9.5), v9=gv(9);
+  const top=v10||v95||v9; if(!top || top<=raw) return "";
+  const lower=v9||(raw*0.9); // valeur si ça ne tape pas le 10
+  const gc=gradingCost(Math.max(raw,top)); const fee=gc.feeEur;
+  let html='<div class="pxsub">Faut-il la grader ?</div><div class="gradebox">';
+  const prem=(top/raw);
+  html+='<div class="grow"><span>Brut</span><b>'+eur(raw)+'</b></div>';
+  if(v10) html+='<div class="grow"><span>PSA 10</span><b>'+eur(v10)+' <span class="dt">×'+prem.toFixed(1)+'</span></b></div>';
+  else if(top) html+='<div class="grow"><span>Meilleure gradée</span><b>'+eur(top)+' <span class="dt">×'+prem.toFixed(1)+'</span></b></div>';
+  if(top>lower){
+    let be=(raw+fee-lower)/(top-lower); // proba de "top" nécessaire pour être rentable
+    let verdict, cls;
+    if(be<=0){ verdict="Rentable même sans le 10 ✅"; cls="ok"; }
+    else if(be<0.4){ verdict="Attractif — il suffit de ~"+Math.round(be*100)+"% de chance de "+(v10?'PSA 10':'haut grade'); cls="ok"; }
+    else if(be<0.75){ verdict="Moyen — ~"+Math.round(be*100)+"% de chance de "+(v10?'10':'haut grade')+" nécessaires"; cls="mid"; }
+    else if(be<1){ verdict="Risqué — il faut ~"+Math.round(be*100)+"% de "+(v10?'10':'haut grade'); cls="no"; }
+    else { verdict="Pas rentable au prix actuel ❌"; cls="no"; }
+    html+='<div class="gverdict '+cls+'">'+verdict+'</div>';
+  }
+  html+='<div class="grow" style="border-top:1px solid var(--line);margin-top:6px;padding-top:8px"><span>Coût gradation PSA</span><b>~'+fee+' € <span class="dt">('+gc.tier+')</span></b></div>';
+  html+='<div class="dt" style="margin-top:6px">Palier PSA selon la valeur déclarée, port/assurance FR inclus (~2-3 mois). CGC/BGS moins chers mais le PSA 10 se revend le plus cher. Ta lecture d\'état (à venir) affinera la probabilité réelle.</div>';
+  html+='</div>';
+  return html;
+}
 let CATROWS=[];
 let DATA=[], state=Object.assign({},DEF);
 
@@ -309,7 +467,42 @@ async function load(){
     if(!r.ok){document.getElementById("stage").innerHTML='<div class="empty">Erreur de chargement ('+r.status+').</div>';return;}
     const b=await r.json(); all=all.concat(b); if(b.length<step)break; from+=step;
   }
-  DATA=all; buildFilterModal(); render();
+  DATA=all; buildFilterModal(); render(); if(state.mode==="collection") loadBriefing();
+}
+const USER_NAME="Christopher";
+async function loadBriefing(){
+  const box=document.getElementById('briefing'); if(!box) return;
+  if(!orientLoaded) await loadOrient();
+  let snaps=[], ops=[];
+  try{ const r=await fetch(SB+'/rest/v1/app_value_snapshot?select=day,total_eur,cards&order=day.desc&limit=2',{headers:{apikey:ANON,Authorization:"Bearer "+ANON}}); snaps=await r.json(); if(!Array.isArray(snaps))snaps=[]; }catch(e){}
+  try{ const r=await fetch(SB+'/rest/v1/app_op_grading?select=printing_id,card_number,language,name,variant_label,origin,rarity,raw,g10,upside_if_10,score&order=score.desc&limit=40',{headers:{apikey:ANON,Authorization:"Bearer "+ANON}}); ops=await r.json(); if(!Array.isArray(ops))ops=[]; }catch(e){}
+  if(state.mode!=="collection"){ box.innerHTML=''; return; }
+  const inCap=ops.filter(o=>capOf(o).w>=1).sort((a,b)=>(capOf(b).w-capOf(a).w)||(b.score-a.score)).slice(0,3);
+  const now=new Date(); const h=now.getHours();
+  const hi=(h<18?'Bonjour':'Bonsoir')+' '+USER_NAME;
+  let dateStr=''; try{ dateStr=now.toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'}); }catch(e){}
+  let valLine='';
+  if(snaps.length){
+    const cur=+snaps[0].total_eur; const prev=snaps.length>1?+snaps[1].total_eur:null;
+    let d='';
+    if(prev!=null){ const diff=cur-prev; const pct=prev?(diff/prev*100):0; const cls=diff>=0?'up':'down'; d=' <span class="bd '+cls+'">'+(diff>=0?'+':'')+eur(diff)+' ('+(diff>=0?'+':'')+pct.toFixed(1).replace('.',',')+' %)</span> <span class="dt">depuis le dernier relevé</span>'; }
+    valLine='<div class="bval">Ta collection vaut <b>'+eur(cur)+'</b>'+d+'</div>';
+  }
+  let watch='';
+  if(inCap.length){
+    watch='<div class="bsub">Ce que je surveille pour toi aujourd\'hui</div><div class="bitems">'+inCap.map(o=>{
+      const why=(o.origin==='PROMO'||o.origin==='PRODUCT_EXCLUSIVE')?'exclu/promo dans ton cap':(capOf(o).w>=3?'prioritaire pour toi':'dans ton cap');
+      const bvl=(o.variant_label&&String(o.variant_label).toLowerCase()!=='normal')?(' <span class="tp">'+esc(o.variant_label)+'</span>'):'';
+      return '<div class="bitem" data-bop="'+o.printing_id+'"><span class="scbadge '+scoreClass(o.score)+'">'+o.score+'</span>'+
+        '<div class="bi2"><div class="bnm">'+(FLAG[o.language]||'')+' '+esc(o.name||o.card_number)+bvl+' <span class="dt">'+esc(o.card_number)+'</span></div>'+
+        '<div class="bwhy">Achète brut '+eur(o.raw)+' → PSA 10 '+eur(o.g10)+' · '+why+'</div></div>'+
+        '<div class="bgain">+'+eur(o.upside_if_10)+'</div></div>';
+    }).join('')+'</div><button class="bcta" onclick="setMode(\'ops\')">Voir toutes les opportunités</button>';
+  } else {
+    watch='<div class="bwhy" style="margin-top:8px">Je surveille le marché. Règle ton cap dans l\'onglet Opportunités pour des reco ciblées.</div>';
+  }
+  box.innerHTML='<div class="brief"><div class="bhi">'+hi+' <span class="dt" style="text-transform:capitalize">· '+dateStr+'</span></div>'+valLine+watch+'</div>';
+  box.querySelectorAll('.bitem').forEach(el=>el.addEventListener('click',()=>setMode('ops')));
 }
 
 // ---------- Filtres (modal) ----------
@@ -437,12 +630,18 @@ document.getElementById("q").addEventListener("input",e=>{
 function setMode(m){
   state.mode=m;
   document.querySelectorAll('#modeSeg button').forEach(b=>b.classList.toggle('on',b.dataset.m===m));
-  const cat=m==="catalog";
+  const cat=m==="catalog", ops=m==="ops";
   document.getElementById('catLangRow').classList.toggle('hidden',!cat);
   document.getElementById('catFilters').classList.add('hidden');
-  document.getElementById('viewBtn').classList.toggle('hidden',cat);
+  document.getElementById('viewBtn').classList.toggle('hidden',cat||ops);
+  document.getElementById('filterBtn').classList.toggle('hidden',ops);
+  document.getElementById('sortBtn').classList.toggle('hidden',ops);
+  document.querySelector('.search').classList.toggle('hidden',ops);
   document.getElementById('q').placeholder=cat?"Chercher une carte (nom ou numéro), toutes langues…":"Rechercher (nom ou numéro)…";
-  if(cat){ buildCatLangRow(); syncCatBadge(); fetchCatalog(); } else { syncBadge(); document.getElementById('countLine').textContent=''; render(); }
+  const brief=document.getElementById('briefing'); if(brief && !cat && !ops){} else if(brief){ brief.innerHTML=''; }
+  if(ops){ document.getElementById('countLine').textContent=''; fetchOps(); }
+  else if(cat){ buildCatLangRow(); syncCatBadge(); fetchCatalog(); }
+  else { syncBadge(); document.getElementById('countLine').textContent=''; render(); loadBriefing(); }
 }
 document.getElementById('modeSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMode(b.dataset.m);});
 const CATARRS=["catColors","catCats","catRarities","catTypes"];
@@ -515,7 +714,76 @@ function renderCatalog(rows){
     return '<div class="card" data-idx="'+i+'"><div class="imgwrap">'+img+'<div class="badges"><span class="flag">'+(FLAG[c.language]||"")+'</span></div>'+(px?'<div class="pxcorner">'+px+'</div>':'')+'</div><div class="meta"><p class="nm">'+esc(c.name||"")+'</p><div class="sub"><span>'+esc(c.card_number||"")+'</span>'+vtag+'</div>'+badge+'</div></div>';
   }).join("")+'</div>';
 }
+let OPROWS=[];
+let ORIENT={markets:{JP:3,CN:3,EN:1,FR:0},types:["PROMO","PRODUCT_EXCLUSIVE"],note:""};
+let orientLoaded=false;
+async function loadOrient(){
+  try{ const r=await fetch(SB+'/rest/v1/rpc/get_setting',{method:'POST',headers:{apikey:ANON,Authorization:"Bearer "+ANON,"Content-Type":"application/json"},body:JSON.stringify({p_key:'orientation'})}); const v=await r.json(); if(v&&v.markets) ORIENT=v; }catch(e){}
+  orientLoaded=true;
+}
+function capOf(c){ const w=(ORIENT.markets&&ORIENT.markets[c.language]!=null)?ORIENT.markets[c.language]:0; const typeMatch=!!(c.origin&&(ORIENT.types||[]).includes(c.origin)); return {w, typeMatch, inCap:w>=1}; }
+function capChip(c){ const k=capOf(c); const t=k.typeMatch?' · type favori':''; if(k.w>=3) return '<span class="capc hi">Ton cap'+t+'</span>'; if(k.w>=1) return '<span class="capc mid">Dans ton cap'+t+'</span>'; return '<span class="capc off">Hors cap</span>'; }
+function scoreClass(s){ return s>=80?'sc-a':(s>=60?'sc-b':'sc-c'); }
+async function fetchOps(){
+  const stage=document.getElementById('stage'); stage.className="";
+  stage.innerHTML='<div class="loading">L\'agent cherche des opportunités…</div>';
+  if(!orientLoaded) await loadOrient();
+  let rows=[];
+  try{ const r=await fetch(SB+'/rest/v1/app_op_grading?select=printing_id,card_number,language,name,image_url,variant_label,rarity,origin,raw,g10,fee,breakeven_p10,upside_if_10,score&order=score.desc&limit=120',{headers:{apikey:ANON,Authorization:"Bearer "+ANON}}); rows=await r.json(); if(!Array.isArray(rows))rows=[]; }catch(e){ rows=[]; }
+  if(state.mode!=="ops") return;
+  // prioriser selon le cap (poids marché) puis le score de conviction
+  rows.sort((a,b)=>{ const ka=capOf(a),kb=capOf(b); return (kb.w-ka.w)||((b.score||0)-(a.score||0)); });
+  renderOps(rows);
+}
+function renderOps(rows){
+  OPROWS=rows;
+  const stage=document.getElementById('stage'); stage.className="";
+  document.getElementById('countLine').textContent=rows.length+" opportunité"+(rows.length>1?"s":"")+" de gradation";
+  const intro='<div class="opsintro"><div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><b>Acheter &amp; grader</b><button class="orbtn" onclick="openOrient()">Mon orientation</button></div><div style="margin-top:4px">Cartes brutes bon marché dont le PSA 10 vaut bien plus, <b>priorisées selon ton cap</b>. <span class="dt">Cotes gradées indicatives (PriceCharting), multiples plafonnés pour écarter le bruit ; une 2ᵉ source viendra les confirmer. Arbitrage inter-marché à venir.</span></div></div>';
+  if(!rows.length){ stage.innerHTML=intro+'<div class="empty">Aucune opportunité pour l\'instant.</div>'; return; }
+  stage.innerHTML=intro+'<div class="opslist">'+rows.map((c,i)=>{
+    const img=c.image_url?('<img loading="lazy" referrerpolicy="no-referrer" src="'+esc(c.image_url)+'" onerror="this.style.visibility=\'hidden\'">'):'';
+    const be=c.breakeven_p10; const bl = be<=0.05?'Rentable même à faible chance de 10':('Seuil : ~'+Math.max(0,Math.round(be*100))+'% de chance de 10');
+    const vl=(c.variant_label&&String(c.variant_label).toLowerCase()!=='normal')?('<span class="tp">'+esc(c.variant_label)+'</span>'):'';
+    const sc=(c.score!=null)?('<span class="scbadge '+scoreClass(c.score)+'">'+c.score+'</span>'):'';
+    return '<div class="oprow'+(capOf(c).w<1?' dim':'')+'" data-op="'+i+'">'+sc+'<div class="opi">'+img+'</div>'+
+      '<div class="opm"><div class="opnm">'+(FLAG[c.language]||'')+' '+esc(c.name||c.card_number)+' '+vl+'</div>'+
+      '<div class="sub">'+esc(c.card_number)+' '+capChip(c)+'</div>'+
+      '<div class="opline"><span>Brut <b>'+eur(c.raw)+'</b></span><span>PSA 10 <b>'+eur(c.g10)+'</b></span></div>'+
+      '<div class="opbe">'+bl+'</div></div>'+
+      '<div class="opgain"><span class="dt">gain si 10</span><b>+'+eur(c.upside_if_10)+'</b></div></div>';
+  }).join('')+'</div>';
+}
 const ORIGIN_LABELS={STANDARD:"Standard",PROMO:"Promo",BATTLE_EVENT:"Battleship",PREMIUM_COLLECTION:"Premium Collection",TOURNAMENT:"Tournoi",PRODUCT_EXCLUSIVE:"Exclusivité produit"};
+const OMARKETS=[["JP","Japon"],["CN","Chinois"],["EN","Anglais"],["FR","Français"]];
+const OPRIOS=[[3,"Prioritaire"],[1,"Secondaire"],[0,"Ignorer"]];
+const OTYPES=[["PROMO","Promo"],["PRODUCT_EXCLUSIVE","Exclusivité"],["BATTLE_EVENT","Battleship"],["TOURNAMENT","Tournoi"],["PREMIUM_COLLECTION","Premium"]];
+let OEDIT=null;
+function openOrient(){ OEDIT=JSON.parse(JSON.stringify(ORIENT)); if(!OEDIT.markets)OEDIT.markets={}; if(!OEDIT.types)OEDIT.types=[]; buildOrient(); document.getElementById('omodal').classList.remove('hidden'); }
+function closeOrient(){ document.getElementById('omodal').classList.add('hidden'); }
+function buildOrient(){
+  const b=document.getElementById('orientBody');
+  let h='<div class="osub">Marchés</div>';
+  OMARKETS.forEach(([code,lab])=>{
+    const cur=OEDIT.markets[code]??0;
+    h+='<div class="orow"><span>'+(FLAG[code]||'')+' '+lab+'</span><span class="oprios">'+OPRIOS.map(([v,pl])=>'<button class="ochip'+(cur===v?' on':'')+'" onclick="setMkt(\''+code+'\','+v+')">'+pl+'</button>').join('')+'</span></div>';
+  });
+  h+='<div class="osub" style="margin-top:12px">Types favoris (bonus)</div><div class="ochips">';
+  OTYPES.forEach(([code,lab])=>{ const on=OEDIT.types.includes(code); h+='<button class="ochip'+(on?' on':'')+'" onclick="tglType(\''+code+'\')">'+lab+'</button>'; });
+  h+='</div>';
+  b.innerHTML=h;
+}
+function setMkt(code,v){ OEDIT.markets[code]=v; buildOrient(); }
+function tglType(code){ const i=OEDIT.types.indexOf(code); if(i>=0)OEDIT.types.splice(i,1); else OEDIT.types.push(code); buildOrient(); }
+async function saveOrient(){
+  const btn=document.getElementById('osave'); btn.textContent='Enregistrement…'; btn.disabled=true;
+  try{ await fetch(SB+'/rest/v1/rpc/set_setting',{method:'POST',headers:{apikey:ANON,Authorization:"Bearer "+ANON,"Content-Type":"application/json"},body:JSON.stringify({p_key:'orientation',p_value:OEDIT})}); ORIENT=OEDIT; }catch(e){}
+  btn.textContent='Enregistrer mon orientation'; btn.disabled=false;
+  closeOrient(); if(state.mode==='ops') fetchOps();
+}
+document.getElementById('oclose').addEventListener('click',closeOrient);
+document.getElementById('omodal').addEventListener('click',e=>{ if(e.target.id==='omodal')closeOrient(); });
+document.getElementById('osave').addEventListener('click',saveOrient);
 async function openCatDetail(c){
   if(!c) return;
   document.getElementById("cdimg").src=c.image_url||""; document.getElementById("cdimg").style.visibility=c.image_url?"visible":"hidden";
@@ -545,6 +813,10 @@ async function loadCardPrices(c, boxId){
   if(c.printing_id){
     try{ const r=await fetch(SB+'/rest/v1/app_price_source?printing_id=eq.'+encodeURIComponent(c.printing_id)+'&select=source,market,grade,price_eur,orig_price,orig_currency,captured_at&order=grade.asc.nullsfirst,price_eur.desc',{headers:{apikey:ANON,Authorization:"Bearer "+ANON}}); rows=await r.json(); if(!Array.isArray(rows))rows=[]; }catch(e){ rows=[]; }
   }
+  let cr=[];
+  if(c.language==='JP' && c.card_number){
+    try{ const r=await fetch(SB+'/rest/v1/app_jp_cardrush?code=eq.'+encodeURIComponent(c.card_number)+'&select=label,price_eur,price_jpy&order=price_eur.desc',{headers:{apikey:ANON,Authorization:"Bearer "+ANON}}); cr=await r.json(); if(!Array.isArray(cr))cr=[]; }catch(e){ cr=[]; }
+  }
   const ung=rows.filter(x=>x.grade==null);
   const grd=rows.filter(x=>x.grade!=null);
   let html='<div class="pxhdr">Prix marché — toutes sources</div>';
@@ -554,8 +826,8 @@ async function loadCardPrices(c, boxId){
       const orig=(x.orig_currency&&x.orig_currency!=='EUR')?(' <span class="dt">('+x.orig_price+' '+x.orig_currency+')</span>'):'';
       return '<tr><td class="src">'+esc(SRC_LABELS[x.source]||x.source)+'</td><td>'+(FLAG[x.market]||x.market)+'</td><td class="px">'+eur(x.price_eur)+orig+'</td><td class="dt">'+d+'</td></tr>';
     }).join('')+'</tbody></table>';
-  } else {
-    html+='<div class="pxnone">'+(c.language==='CN'?'Aucune cote automatique (exclusivité chinoise). Ajoute le prix que tu connais — il sera daté et conservé.':'Pas encore de cote automatique pour cette variante.')+'</div>';
+  } else if(!cr.length){
+    html+='<div class="pxnone">'+(c.language==='CN'?'Aucune cote automatique (exclusivité chinoise). Ajoute le prix que tu connais — il sera daté et conservé.':(c.language==='JP'?'Prix Japon en cours de récupération (Cardrush) — reviens bientôt.':'Pas encore de cote automatique pour cette variante.'))+'</div>';
   }
   if(grd.length){
     html+='<div class="pxsub">Gradées</div><table class="pxtab"><tbody>'+grd.map(x=>{
@@ -563,6 +835,10 @@ async function loadCardPrices(c, boxId){
       return '<tr><td class="src">Grade '+(x.grade)+'</td><td>'+(FLAG[x.market]||x.market)+'</td><td class="px">'+eur(x.price_eur)+'</td><td class="dt">'+esc(SRC_LABELS[x.source]||x.source)+'</td></tr>';
     }).join('')+'</tbody></table>';
   }
+  if(cr.length){
+    html+='<div class="pxsub">Prix Japon — Cardrush (par variante)</div><table class="pxtab"><tbody>'+cr.map(x=>'<tr><td class="src">'+esc(x.label||'')+'</td><td>'+(FLAG.JP||'')+'</td><td class="px">'+eur(x.price_eur)+'</td><td class="dt">'+Number(x.price_jpy).toLocaleString('fr-FR')+'円</td></tr>').join('')+'</tbody></table>';
+  }
+  html+=gradeAdvice(ung, grd);
   html+='<button class="pxadd" onclick="addPrice(this)" data-pid="'+esc(c.printing_id||'')+'" data-mk="'+esc(c.language||'')+'" data-box="'+esc(boxId)+'">+ Ajouter un prix manuel</button>';
   box.innerHTML=html;
 }
@@ -714,6 +990,7 @@ function renderDetail(){ const c=detailCard; if(!c)return; const body=document.g
 }
 function findCard(id){ return DATA.find(c=>String(c.item_id)===String(id)); }
 document.getElementById("stage").addEventListener("click",e=>{
+  if(state.mode==="ops"){ const el=e.target.closest("[data-op]"); if(el) openCatDetail(OPROWS[+el.getAttribute("data-op")]); return; }
   if(state.mode==="catalog"){ const el=e.target.closest("[data-idx]"); if(el) openCatDetail(CATROWS[+el.getAttribute("data-idx")]); return; }
   const el=e.target.closest("[data-id]"); if(!el)return; const c=findCard(el.dataset.id); if(c)openDetail(c);
 });
