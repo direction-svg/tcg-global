@@ -126,6 +126,14 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Ar
 .pxtab .dt{color:var(--muted);font-size:11px;text-align:right;white-space:nowrap}
 .pxnone{color:var(--muted);font-size:13px;line-height:1.4;padding:4px 0 2px}
 .pxadd{margin-top:12px;width:100%;border:1px dashed var(--accent);background:transparent;color:var(--accent);font-weight:800;padding:11px;border-radius:12px;cursor:pointer;font-size:14px}
+.collact{margin-top:10px}
+.collbtn{border:none;border-radius:12px;font-weight:800;padding:11px;cursor:pointer;font-size:14px}
+.collbtn.big{width:100%;background:var(--accent);color:#fff}
+.collbtn.add{background:rgba(26,157,90,.15);color:var(--pos)}
+.collbtn.rm{background:var(--chip);color:var(--muted)}
+.collrow{display:flex;gap:8px;margin-top:8px}
+.collrow .collbtn{flex:1}
+.collhas{font-size:13px;font-weight:800;color:var(--pos);background:rgba(26,157,90,.12);padding:9px 12px;border-radius:10px;text-align:center}
 .pxadd:disabled{opacity:.6}
 .gradebox{background:var(--chip);border-radius:12px;padding:10px 12px;margin-top:4px}
 .grow{display:flex;justify-content:space-between;align-items:center;padding:3px 0;font-size:14px}
@@ -680,8 +688,6 @@ document.getElementById("csclose").addEventListener("click",closeCatSort);
 async function fetchCatalog(){
   const stage=document.getElementById('stage'); const cl=document.getElementById('countLine');
   const term=(state.catQuery||"").replace(/[%*(),]/g," ").trim();
-  const hasFilter = term || state.catLangs.length || state.catColors.length || state.catCats.length || state.catRarities.length || state.catTypes.length;
-  if(!hasFilter){ cl.textContent=""; stage.className=""; stage.innerHTML='<div class="empty">Cherche par nom, numéro, ou choisis une langue / couleur / catégorie / rareté / type ci-dessus.</div>'; return; }
   stage.className=""; stage.innerHTML='<div class="loading">Recherche…</div>';
   const ord=state.catSort==="name"?"name.asc":(state.catSort==="lang"?"language.asc,card_number.asc":(state.catSort==="price_desc"?"price_eur.desc.nullslast":(state.catSort==="price_asc"?"price_eur.asc.nullslast":"card_number.asc")));
   let url=SB+"/rest/v1/app_catalog_priced?select=card_number,language,name,image_url,owned,variant,variant_label,rarity,set_code,set_name,category,origin,printing_id,price_eur,price_source&limit=120&order="+ord;
@@ -789,11 +795,12 @@ async function openCatDetail(c){
   document.getElementById("cdimg").src=c.image_url||""; document.getElementById("cdimg").style.visibility=c.image_url?"visible":"hidden";
   const vl=c.variant_label||c.variant;
   document.getElementById("cdbody").innerHTML=
-    '<div class="dval"><div class="b">'+esc(c.name||"")+'</div><div class="s">'+(FLAG[c.language]||"")+' '+(LANG_LABELS[c.language]||c.language)+' · '+esc(c.card_number||"")+'</div><div class="s" style="margin-top:2px">'+(c.owned?'<span class="owntag own">✓ Tu possèdes cette carte</span>':'<span class="owntag no">Non possédée</span>')+'</div></div>'+
+    '<div class="dval"><div class="b">'+esc(c.name||"")+'</div><div class="s">'+(FLAG[c.language]||"")+' '+(LANG_LABELS[c.language]||c.language)+' · '+esc(c.card_number||"")+'</div><div class="collact" id="cdcollact"></div></div>'+
     drow("Rareté", RAR_LABELS[c.rarity]||c.rarity)+drow("Variante", (vl&&String(vl).toLowerCase()!=='normal')?esc(vl):"Normale")+drow("Type", c.origin?(ORIGIN_LABELS[c.origin]||c.origin):"")+drow("Catégorie", CAT_LABELS[c.category]||c.category)+drow("Set", esc((c.set_code||"")+(c.set_name?(" — "+c.set_name):"")))+
     '<div id="cdprice" class="dprices"><div class="pxhdr">Prix marché — toutes sources</div><div class="pxloading">…</div></div>';
   document.getElementById("cdprints").innerHTML="";
   document.getElementById("catOverlay").classList.remove("hidden");
+  renderCollBtn(c.printing_id);
   loadCardPrices(c);
   // autres impressions (même numéro, toutes langues/variantes)
   try{
@@ -853,6 +860,39 @@ async function addPrice(btn){
     await fetch(SB+'/rest/v1/rpc/add_manual_price',{method:'POST',headers:{apikey:ANON,Authorization:"Bearer "+ANON,"Content-Type":"application/json"},body:JSON.stringify({p_printing:pid,p_market:market,p_price:num,p_currency:'EUR'})});
     loadCardPrices({printing_id:pid, language:market, card_number:''}, boxId);
   }catch(e){ alert("Erreur lors de l'enregistrement."); btn.disabled=false; btn.textContent="+ Ajouter un prix manuel"; }
+}
+async function renderCollBtn(pid){
+  const box=document.getElementById('cdcollact'); if(!box) return;
+  if(!pid){ box.innerHTML=''; return; }
+  box.innerHTML='<div class="collhas" style="opacity:.5">…</div>';
+  let qty=0;
+  try{ const r=await fetch(SB+'/rest/v1/app_collection?printing_id=eq.'+encodeURIComponent(pid)+'&select=quantity',{headers:{apikey:ANON,Authorization:"Bearer "+ANON}}); const j=await r.json(); if(Array.isArray(j)) qty=j.reduce((s,x)=>s+(x.quantity||0),0); }catch(e){}
+  paintCollBtn(pid,qty);
+}
+function paintCollBtn(pid,qty){
+  const box=document.getElementById('cdcollact'); if(!box) return;
+  if(qty>0){
+    box.innerHTML='<div class="collhas">✓ Dans ta collection ×'+qty+'</div><div class="collrow"><button class="collbtn add" onclick="collAdd(\''+esc(pid)+'\')">+ Encore un</button><button class="collbtn rm" onclick="collRemove(\''+esc(pid)+'\')">− Retirer</button></div>';
+  } else {
+    box.innerHTML='<button class="collbtn big" onclick="collAdd(\''+esc(pid)+'\')">+ Ajouter à ma collection</button>';
+  }
+}
+async function collAdd(pid){
+  const box=document.getElementById('cdcollact'); if(box) box.style.opacity=.5;
+  try{ const r=await fetch(SB+'/rest/v1/rpc/add_to_collection',{method:'POST',headers:{apikey:ANON,Authorization:"Bearer "+ANON,"Content-Type":"application/json"},body:JSON.stringify({p_printing:pid,p_qty:1})}); const j=await r.json(); const q=(Array.isArray(j)&&j[0])?j[0].res_quantity:1; if(box)box.style.opacity=1; paintCollBtn(pid,q); markOwnedInGrid(pid,true); }
+  catch(e){ if(box)box.style.opacity=1; alert("Erreur lors de l'ajout."); }
+}
+async function collRemove(pid){
+  const box=document.getElementById('cdcollact'); if(box) box.style.opacity=.5;
+  try{ const r=await fetch(SB+'/rest/v1/rpc/remove_from_collection',{method:'POST',headers:{apikey:ANON,Authorization:"Bearer "+ANON,"Content-Type":"application/json"},body:JSON.stringify({p_printing:pid,p_qty:1})}); const j=await r.json(); const q=(Array.isArray(j)&&j[0])?j[0].res_quantity:0; if(box)box.style.opacity=1; paintCollBtn(pid,q); if(q===0) markOwnedInGrid(pid,false); }
+  catch(e){ if(box)box.style.opacity=1; alert("Erreur lors du retrait."); }
+}
+function markOwnedInGrid(pid,owned){
+  if(!Array.isArray(CATROWS)) return;
+  CATROWS.forEach((row,i)=>{ if(row.printing_id===pid){ row.owned=owned;
+    const el=document.querySelector('.card[data-idx="'+i+'"] .owntag');
+    if(el){ el.className='owntag '+(owned?'own':'no'); el.textContent=owned?'✓ Possédée':'Non possédée'; }
+  }});
 }
 function closeCatDetail(){ document.getElementById("catOverlay").classList.add("hidden"); }
 document.getElementById("sortBtn").addEventListener("click",()=>{ state.mode==="catalog"?openCatSort():openSort(); });
