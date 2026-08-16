@@ -110,6 +110,21 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Ar
 .lrow.on{border-color:var(--accent);background:rgba(47,111,237,.08);font-weight:800}
 .lrow.on::before{content:"● ";color:var(--accent)}
 .poprow{display:flex;justify-content:space-between;align-items:center;margin-top:8px;padding:9px 12px;border-radius:10px;background:var(--chip);font-size:13px;color:var(--muted)}
+.pxcorner{position:absolute;bottom:6px;right:6px;pointer-events:none}
+.pxg{background:rgba(12,18,32,.72);color:#fff;font-weight:800;font-size:11px;padding:2px 7px;border-radius:8px}
+.dprices{margin:0 14px;padding:12px 2px;border-bottom:1px solid var(--line)}
+.pxhdr{color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.4px;margin-bottom:8px}
+.pxsub{color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.4px;margin:12px 0 6px}
+.pxloading{color:var(--muted)}
+.pxtab{width:100%;border-collapse:collapse;font-size:14px}
+.pxtab td{padding:7px 4px;border-bottom:1px solid var(--line)}
+.pxtab tr:last-child td{border-bottom:0}
+.pxtab .src{font-weight:700}
+.pxtab .px{text-align:right;font-weight:800;white-space:nowrap}
+.pxtab .dt{color:var(--muted);font-size:11px;text-align:right;white-space:nowrap}
+.pxnone{color:var(--muted);font-size:13px;line-height:1.4;padding:4px 0 2px}
+.pxadd{margin-top:12px;width:100%;border:1px dashed var(--accent);background:transparent;color:var(--accent);font-weight:800;padding:11px;border-radius:12px;cursor:pointer;font-size:14px}
+.pxadd:disabled{opacity:.6}
 .poprow b{color:var(--ink)}
 .gcmp{display:flex;gap:8px;margin-top:6px}
 .gc{flex:1;border:1px solid var(--line);border-radius:12px;padding:10px 12px;background:var(--panel)}
@@ -233,7 +248,6 @@ footer .fb b{font-size:14px;color:var(--ink)}
 <div id="cfmodal" class="overlay hidden">
   <div class="sheet fsheet">
     <div class="fbar"><b>Filtres catalogue</b><button class="x" id="cfclose">&times;</button></div>
-    <div class="fsec"><h5>Langue</h5><div class="chipwrap" id="cmLang"></div></div>
     <div class="fsec"><h5>Couleur</h5><div class="chipwrap" id="cmColor"></div></div>
     <div class="fsec"><h5>Cat&eacute;gorie</h5><div class="chipwrap" id="cmCat"></div></div>
     <div class="fsec"><h5>Raret&eacute;</h5><div class="chipwrap" id="cmRarity"></div></div>
@@ -272,12 +286,13 @@ const COLOR_HEX={Red:"#d64545",Green:"#2f9e57",Blue:"#2f6fed",Purple:"#8b57d6",B
 const TYPE_ORDER=["normal","alternate_art","sp","manga","full_art","textured_foil","jolly_roger_foil","promo","tournament"];
 const CAT_ORDER=["LEADER","CHARACTER","EVENT","STAGE","DON"];
 const SORTS=[["val_desc","Valeur ↓ (décroissant)"],["val_asc","Valeur ↑ (croissant)"],["name","Nom (A→Z)"],["num","Numéro"],["qty","Quantité"]];
-const DEF={q:"",lang:"all",color:"all",type:"all",cat:"all",rarity:"all",character:"all",grade:"all",sort:"val_desc",view:"grid",mode:"collection",catLang:"all",catQuery:"",catColor:"all",catCat:"all",catRarity:"all",catType:"all",catSort:"num"};
+const DEF={q:"",lang:"all",color:"all",type:"all",cat:"all",rarity:"all",character:"all",grade:"all",sort:"val_desc",view:"grid",mode:"collection",catLang:"all",catQuery:"",catLangs:[],catColors:[],catCats:[],catRarities:[],catTypes:[],catSort:"num"};
 const CATLANGS=[["all","Toutes"],["JP","Japonais"],["EN","Anglais"],["FR","Français"],["CN","Chinois"]];
 const CATCATS=[["all","Toutes catégories"],["LEADER","Leader"],["CHARACTER","Personnage"],["EVENT","Event"],["STAGE","Stage"]];
 const CATRARS=[["all","Toutes raretés"],["L","Leader"],["C","Common"],["UC","Uncommon"],["R","Rare"],["SR","Super Rare"],["SEC","Secret Rare"],["TR","Treasure Rare"],["SP","Special"],["P","Promo"]];
 const CATTYPES=[["all","Tous types"],["STANDARD","Standard"],["PROMO","Promo"],["BATTLE_EVENT","Battleship"],["PREMIUM_COLLECTION","Premium Collection"],["TOURNAMENT","Tournoi"],["PRODUCT_EXCLUSIVE","Exclusivité produit"]];
-const CATSORTS=[["num","Numéro"],["name","Nom (A→Z)"],["lang","Langue"]];
+const CATSORTS=[["num","Numéro"],["name","Nom (A→Z)"],["lang","Langue"],["price_desc","Prix décroissant (cher → bas)"],["price_asc","Prix croissant (bas → cher)"]];
+const SRC_LABELS={PRICECHARTING:"PriceCharting",TCGPLAYER:"TCGplayer",CARDMARKET:"Cardmarket",MANUAL:"Manuel (toi)"};
 let CATROWS=[];
 let DATA=[], state=Object.assign({},DEF);
 
@@ -422,32 +437,38 @@ function setMode(m){
   state.mode=m;
   document.querySelectorAll('#modeSeg button').forEach(b=>b.classList.toggle('on',b.dataset.m===m));
   const cat=m==="catalog";
-  document.getElementById('catLangRow').classList.add('hidden');
+  document.getElementById('catLangRow').classList.toggle('hidden',!cat);
   document.getElementById('catFilters').classList.add('hidden');
   document.getElementById('viewBtn').classList.toggle('hidden',cat);
   document.getElementById('q').placeholder=cat?"Chercher une carte (nom ou numéro), toutes langues…":"Rechercher (nom ou numéro)…";
-  if(cat){ syncCatBadge(); fetchCatalog(); } else { syncBadge(); document.getElementById('countLine').textContent=''; render(); }
+  if(cat){ buildCatLangRow(); syncCatBadge(); fetchCatalog(); } else { syncBadge(); document.getElementById('countLine').textContent=''; render(); }
 }
 document.getElementById('modeSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMode(b.dataset.m);});
-const CATKEYS=["catLang","catColor","catCat","catRarity","catType"];
-function catActiveCount(){ let n=0; CATKEYS.forEach(k=>{ if(state[k]!=="all")n++; }); return n; }
+const CATARRS=["catColors","catCats","catRarities","catTypes"];
+function toggleCat(key,code){ if(code==="all"){ state[key]=[]; } else { const a=state[key]; state[key]=a.includes(code)?a.filter(x=>x!==code):a.concat([code]); } }
+function catActiveCount(){ return state.catColors.length+state.catCats.length+state.catRarities.length+state.catTypes.length; }
 function syncCatBadge(){ const n=catActiveCount(); const b=document.getElementById("fbadge"); b.textContent=n; b.style.display=n?"grid":"none"; document.getElementById("filterBtn").classList.toggle("act",!!n); }
+function buildCatLangRow(){
+  const row=document.getElementById('catLangRow'); row.innerHTML="";
+  CATLANGS.forEach(([code,label])=>{
+    const active = code==="all" ? state.catLangs.length===0 : state.catLangs.includes(code);
+    const el=document.createElement('div'); el.className="chip"+(active?" on":"");
+    el.innerHTML=(code==="all"?"":FLAG[code]+" ")+label;
+    el.onclick=()=>{ toggleCat("catLangs",code); buildCatLangRow(); fetchCatalog(); };
+    row.appendChild(el);
+  });
+}
 function buildCatFilterModal(){
-  const conf=[
-    ["cmLang","catLang", CATLANGS.map(([c,l])=>[c,(c==="all"?"":FLAG[c]+" ")+l])],
-    ["cmColor","catColor", [["all","Toutes"]].concat(COLORS.map(c=>[c,'<span style="width:11px;height:11px;border-radius:50%;background:'+(COLOR_HEX[c]||"#888")+';display:inline-block"></span> '+c]))],
-    ["cmCat","catCat", CATCATS],
-    ["cmRarity","catRarity", CATRARS],
-    ["cmType","catType", CATTYPES]
-  ];
+  const colorOpts=[["all","Toutes"]].concat(COLORS.map(c=>[c,'<span style="width:11px;height:11px;border-radius:50%;background:'+(COLOR_HEX[c]||"#888")+';display:inline-block"></span> '+c]));
+  const conf=[["cmColor","catColors",colorOpts],["cmCat","catCats",CATCATS],["cmRarity","catRarities",CATRARS],["cmType","catTypes",CATTYPES]];
   conf.forEach(([boxId,key,opts])=>{
-    const box=document.getElementById(boxId); box.innerHTML="";
-    opts.forEach(([code,label])=>{ box.appendChild(makeChip(label,null,state[key]===code,()=>{ state[key]=code; buildCatFilterModal(); syncCatBadge(); fetchCatalog(); })); });
+    const box=document.getElementById(boxId); if(!box)return; box.innerHTML="";
+    opts.forEach(([code,label])=>{ const active = code==="all" ? state[key].length===0 : state[key].includes(code); box.appendChild(makeChip(label,null,active,()=>{ toggleCat(key,code); buildCatFilterModal(); syncCatBadge(); fetchCatalog(); })); });
   });
 }
 function openCatFilters(){ buildCatFilterModal(); document.getElementById("cfmodal").classList.remove("hidden"); }
 function closeCatFilters(){ document.getElementById("cfmodal").classList.add("hidden"); }
-function resetCatFilters(){ CATKEYS.forEach(k=>state[k]="all"); buildCatFilterModal(); syncCatBadge(); fetchCatalog(); }
+function resetCatFilters(){ CATARRS.forEach(k=>state[k]=[]); buildCatFilterModal(); syncCatBadge(); fetchCatalog(); }
 function buildCatSort(){ const box=document.getElementById("catSortList"); box.innerHTML=""; CATSORTS.forEach(([v,l])=>{ const el=document.createElement("div"); el.className="srow"+(state.catSort===v?" on":""); el.innerHTML='<span>'+l+'</span><span class="tick">✓</span>'; el.onclick=()=>{ state.catSort=v; buildCatSort(); fetchCatalog(); closeCatSort(); }; box.appendChild(el); }); }
 function openCatSort(){ buildCatSort(); document.getElementById("csmodal").classList.remove("hidden"); }
 function closeCatSort(){ document.getElementById("csmodal").classList.add("hidden"); }
@@ -459,17 +480,20 @@ document.getElementById("csclose").addEventListener("click",closeCatSort);
 async function fetchCatalog(){
   const stage=document.getElementById('stage'); const cl=document.getElementById('countLine');
   const term=(state.catQuery||"").replace(/[%*(),]/g," ").trim();
-  const hasFilter = term || state.catLang!=="all" || state.catColor!=="all" || state.catCat!=="all" || state.catRarity!=="all" || state.catType!=="all";
+  const hasFilter = term || state.catLangs.length || state.catColors.length || state.catCats.length || state.catRarities.length || state.catTypes.length;
   if(!hasFilter){ cl.textContent=""; stage.className=""; stage.innerHTML='<div class="empty">Cherche par nom, numéro, ou choisis une langue / couleur / catégorie / rareté / type ci-dessus.</div>'; return; }
   stage.className=""; stage.innerHTML='<div class="loading">Recherche…</div>';
-  const ord=state.catSort==="name"?"name.asc":(state.catSort==="lang"?"language.asc,card_number.asc":"card_number.asc");
-  let url=SB+"/rest/v1/app_catalog?select=card_number,language,name,image_url,owned,variant,variant_label,rarity,set_code,set_name,category,origin,printing_id&limit=120&order="+ord;
-  if(state.catLang!=="all") url+="&language=eq."+state.catLang;
-  if(state.catColor!=="all") url+="&color=ilike."+encodeURIComponent("*"+state.catColor+"*");
-  if(state.catCat!=="all") url+="&category=eq."+state.catCat;
-  if(state.catRarity!=="all") url+="&rarity=eq."+state.catRarity;
-  if(state.catType!=="all") url+="&origin=eq."+state.catType;
-  if(term){ const pat="*"+term+"*"; url+="&or=(card_number.ilike."+encodeURIComponent(pat)+",name.ilike."+encodeURIComponent(pat)+")"; }
+  const ord=state.catSort==="name"?"name.asc":(state.catSort==="lang"?"language.asc,card_number.asc":(state.catSort==="price_desc"?"price_eur.desc.nullslast":(state.catSort==="price_asc"?"price_eur.asc.nullslast":"card_number.asc")));
+  let url=SB+"/rest/v1/app_catalog_priced?select=card_number,language,name,image_url,owned,variant,variant_label,rarity,set_code,set_name,category,origin,printing_id,price_eur,price_source&limit=120&order="+ord;
+  if(state.catLangs.length) url+="&language=in.("+state.catLangs.join(",")+")";
+  if(state.catCats.length) url+="&category=in.("+state.catCats.join(",")+")";
+  if(state.catRarities.length) url+="&rarity=in.("+state.catRarities.join(",")+")";
+  if(state.catTypes.length) url+="&origin=in.("+state.catTypes.join(",")+")";
+  const groups=[];
+  if(state.catColors.length) groups.push("or("+state.catColors.map(c=>"color.ilike.*"+c+"*").join(",")+")");
+  if(term){ const pat="*"+encodeURIComponent(term)+"*"; groups.push("or(card_number.ilike."+pat+",name.ilike."+pat+")"); }
+  if(groups.length===1) url+="&"+groups[0].replace(/^or\(/,"or=(");
+  else if(groups.length===2) url+="&and=("+groups.join(",")+")";
   try{
     const r=await fetch(url,{headers:{apikey:ANON,Authorization:"Bearer "+ANON}});
     const rows=await r.json();
@@ -486,7 +510,8 @@ function renderCatalog(rows){
     const img=c.image_url?('<img loading="lazy" referrerpolicy="no-referrer" src="'+esc(c.image_url)+'" onerror="this.remove()">'):('<div class="ph">'+esc(c.name||c.card_number||"")+'</div>');
     const badge=c.owned?'<span class="owntag own">✓ Possédée</span>':'<span class="owntag no">Non possédée</span>';
     const vl=c.variant_label||c.variant; const vtag=(vl&&String(vl).toLowerCase()!=='normal')?'<span class="tp">'+esc(vl)+'</span>':'';
-    return '<div class="card" data-idx="'+i+'"><div class="imgwrap">'+img+'<div class="badges"><span class="flag">'+(FLAG[c.language]||"")+'</span></div></div><div class="meta"><p class="nm">'+esc(c.name||"")+'</p><div class="sub"><span>'+esc(c.card_number||"")+'</span>'+vtag+'</div>'+badge+'</div></div>';
+    const px=(c.price_eur!=null)?'<span class="pxg">'+eur(c.price_eur)+'</span>':'';
+    return '<div class="card" data-idx="'+i+'"><div class="imgwrap">'+img+'<div class="badges"><span class="flag">'+(FLAG[c.language]||"")+'</span></div>'+(px?'<div class="pxcorner">'+px+'</div>':'')+'</div><div class="meta"><p class="nm">'+esc(c.name||"")+'</p><div class="sub"><span>'+esc(c.card_number||"")+'</span>'+vtag+'</div>'+badge+'</div></div>';
   }).join("")+'</div>';
 }
 const ORIGIN_LABELS={STANDARD:"Standard",PROMO:"Promo",BATTLE_EVENT:"Battleship",PREMIUM_COLLECTION:"Premium Collection",TOURNAMENT:"Tournoi",PRODUCT_EXCLUSIVE:"Exclusivité produit"};
@@ -497,17 +522,10 @@ async function openCatDetail(c){
   document.getElementById("cdbody").innerHTML=
     '<div class="dval"><div class="b">'+esc(c.name||"")+'</div><div class="s">'+(FLAG[c.language]||"")+' '+(LANG_LABELS[c.language]||c.language)+' · '+esc(c.card_number||"")+'</div><div class="s" style="margin-top:2px">'+(c.owned?'<span class="owntag own">✓ Tu possèdes cette carte</span>':'<span class="owntag no">Non possédée</span>')+'</div></div>'+
     drow("Rareté", RAR_LABELS[c.rarity]||c.rarity)+drow("Variante", (vl&&String(vl).toLowerCase()!=='normal')?esc(vl):"Normale")+drow("Type", c.origin?(ORIGIN_LABELS[c.origin]||c.origin):"")+drow("Catégorie", CAT_LABELS[c.category]||c.category)+drow("Set", esc((c.set_code||"")+(c.set_name?(" — "+c.set_name):"")))+
-    '<div id="cdprice" class="drow"><span class="k">Prix marché</span><span class="v">…</span></div>';
+    '<div id="cdprice" class="dprices"><div class="pxhdr">Prix marché — toutes sources</div><div class="pxloading">…</div></div>';
   document.getElementById("cdprints").innerHTML="";
   document.getElementById("catOverlay").classList.remove("hidden");
-  // price via ladder (loose) for the printing
-  if(c.printing_id){
-    try{ const mk=(c.language==="JP")?"JP":"EN";
-      const r=await fetch(SB+'/rest/v1/app_price_ladder?printing_id=eq.'+encodeURIComponent(c.printing_id)+'&grading_company=is.null&market=eq.'+mk+'&select=price_eur',{headers:{apikey:ANON,Authorization:"Bearer "+ANON}});
-      const rows=await r.json(); const p=(Array.isArray(rows)&&rows[0])?rows[0].price_eur:null;
-      const el=document.querySelector('#cdprice .v'); if(el) el.textContent=(p!=null?eur(p):"— (pas encore de cote)");
-    }catch(e){ const el=document.querySelector('#cdprice .v'); if(el) el.textContent="—"; }
-  } else { const el=document.querySelector('#cdprice .v'); if(el) el.textContent="—"; }
+  loadCardPrices(c);
   // autres impressions (même numéro, toutes langues/variantes)
   try{
     const r=await fetch(SB+'/rest/v1/app_catalog?card_number=eq.'+encodeURIComponent(c.card_number)+'&select=card_number,language,name,image_url,variant,variant_label,rarity,set_code,set_name,category,origin,owned,printing_id&limit=60',{headers:{apikey:ANON,Authorization:"Bearer "+ANON}});
@@ -519,6 +537,45 @@ async function openCatDetail(c){
   }catch(e){ document.getElementById("cdprints").innerHTML=""; }
 }
 let CATPRINTS=[];
+async function loadCardPrices(c){
+  const box=document.getElementById('cdprice'); if(!box) return;
+  let rows=[];
+  if(c.printing_id){
+    try{ const r=await fetch(SB+'/rest/v1/app_price_source?printing_id=eq.'+encodeURIComponent(c.printing_id)+'&select=source,market,grade,price_eur,orig_price,orig_currency,captured_at&order=grade.asc.nullsfirst,price_eur.desc',{headers:{apikey:ANON,Authorization:"Bearer "+ANON}}); rows=await r.json(); if(!Array.isArray(rows))rows=[]; }catch(e){ rows=[]; }
+  }
+  const ung=rows.filter(x=>x.grade==null);
+  const grd=rows.filter(x=>x.grade!=null);
+  let html='<div class="pxhdr">Prix marché — toutes sources</div>';
+  if(ung.length){
+    html+='<table class="pxtab"><tbody>'+ung.map(x=>{
+      const d=x.captured_at?(new Date(x.captured_at).toLocaleDateString('fr-FR')):'';
+      const orig=(x.orig_currency&&x.orig_currency!=='EUR')?(' <span class="dt">('+x.orig_price+' '+x.orig_currency+')</span>'):'';
+      return '<tr><td class="src">'+esc(SRC_LABELS[x.source]||x.source)+'</td><td>'+(FLAG[x.market]||x.market)+'</td><td class="px">'+eur(x.price_eur)+orig+'</td><td class="dt">'+d+'</td></tr>';
+    }).join('')+'</tbody></table>';
+  } else {
+    html+='<div class="pxnone">'+(c.language==='CN'?'Aucune cote automatique (exclusivité chinoise). Ajoute le prix que tu connais — il sera daté et conservé.':'Pas encore de cote automatique pour cette variante.')+'</div>';
+  }
+  if(grd.length){
+    html+='<div class="pxsub">Gradées</div><table class="pxtab"><tbody>'+grd.map(x=>{
+      const g=(x.source==='PRICECHARTING'?'':'');
+      return '<tr><td class="src">Grade '+(x.grade)+'</td><td>'+(FLAG[x.market]||x.market)+'</td><td class="px">'+eur(x.price_eur)+'</td><td class="dt">'+esc(SRC_LABELS[x.source]||x.source)+'</td></tr>';
+    }).join('')+'</tbody></table>';
+  }
+  html+='<button class="pxadd" onclick="addPrice(this)" data-pid="'+esc(c.printing_id||'')+'" data-mk="'+esc(c.language||'')+'">+ Ajouter un prix manuel</button>';
+  box.innerHTML=html;
+}
+async function addPrice(btn){
+  const pid=btn.getAttribute('data-pid'); const market=btn.getAttribute('data-mk');
+  if(!pid){ alert("Variante inconnue — impossible d'ajouter un prix ici."); return; }
+  const v=prompt("Prix en euros (€) pour cette carte "+(market||'')+" :");
+  if(v==null) return; const num=parseFloat(String(v).replace(',','.').replace(/[^0-9.]/g,''));
+  if(!(num>0)){ alert("Prix invalide."); return; }
+  btn.textContent="Enregistrement…"; btn.disabled=true;
+  try{
+    await fetch(SB+'/rest/v1/rpc/add_manual_price',{method:'POST',headers:{apikey:ANON,Authorization:"Bearer "+ANON,"Content-Type":"application/json"},body:JSON.stringify({p_printing:pid,p_market:market,p_price:num,p_currency:'EUR'})});
+    loadCardPrices({printing_id:pid, language:market, card_number:''});
+  }catch(e){ alert("Erreur lors de l'enregistrement."); btn.disabled=false; btn.textContent="+ Ajouter un prix manuel"; }
+}
 function closeCatDetail(){ document.getElementById("catOverlay").classList.add("hidden"); }
 document.getElementById("sortBtn").addEventListener("click",()=>{ state.mode==="catalog"?openCatSort():openSort(); });
 document.getElementById("sclose").addEventListener("click",closeSort);
