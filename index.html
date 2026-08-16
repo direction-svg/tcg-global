@@ -232,6 +232,7 @@ footer .fb b{font-size:14px;color:var(--ink)}
     <div class="dhead"><button class="dclose" id="dclose">&times;</button><img id="dimg" referrerpolicy="no-referrer"></div>
     <div class="dtabs"><button data-t="col" class="on">Collection</button><button data-t="det">D&eacute;tails</button></div>
     <div id="dbody"></div>
+    <div id="dsrc" class="dprices"></div>
     <div id="dladder"></div>
     <div id="dprints"></div>
   </div>
@@ -537,8 +538,9 @@ async function openCatDetail(c){
   }catch(e){ document.getElementById("cdprints").innerHTML=""; }
 }
 let CATPRINTS=[];
-async function loadCardPrices(c){
-  const box=document.getElementById('cdprice'); if(!box) return;
+async function loadCardPrices(c, boxId){
+  boxId=boxId||'cdprice';
+  const box=document.getElementById(boxId); if(!box) return;
   let rows=[];
   if(c.printing_id){
     try{ const r=await fetch(SB+'/rest/v1/app_price_source?printing_id=eq.'+encodeURIComponent(c.printing_id)+'&select=source,market,grade,price_eur,orig_price,orig_currency,captured_at&order=grade.asc.nullsfirst,price_eur.desc',{headers:{apikey:ANON,Authorization:"Bearer "+ANON}}); rows=await r.json(); if(!Array.isArray(rows))rows=[]; }catch(e){ rows=[]; }
@@ -561,11 +563,11 @@ async function loadCardPrices(c){
       return '<tr><td class="src">Grade '+(x.grade)+'</td><td>'+(FLAG[x.market]||x.market)+'</td><td class="px">'+eur(x.price_eur)+'</td><td class="dt">'+esc(SRC_LABELS[x.source]||x.source)+'</td></tr>';
     }).join('')+'</tbody></table>';
   }
-  html+='<button class="pxadd" onclick="addPrice(this)" data-pid="'+esc(c.printing_id||'')+'" data-mk="'+esc(c.language||'')+'">+ Ajouter un prix manuel</button>';
+  html+='<button class="pxadd" onclick="addPrice(this)" data-pid="'+esc(c.printing_id||'')+'" data-mk="'+esc(c.language||'')+'" data-box="'+esc(boxId)+'">+ Ajouter un prix manuel</button>';
   box.innerHTML=html;
 }
 async function addPrice(btn){
-  const pid=btn.getAttribute('data-pid'); const market=btn.getAttribute('data-mk');
+  const pid=btn.getAttribute('data-pid'); const market=btn.getAttribute('data-mk'); const boxId=btn.getAttribute('data-box')||'cdprice';
   if(!pid){ alert("Variante inconnue — impossible d'ajouter un prix ici."); return; }
   const v=prompt("Prix en euros (€) pour cette carte "+(market||'')+" :");
   if(v==null) return; const num=parseFloat(String(v).replace(',','.').replace(/[^0-9.]/g,''));
@@ -573,7 +575,7 @@ async function addPrice(btn){
   btn.textContent="Enregistrement…"; btn.disabled=true;
   try{
     await fetch(SB+'/rest/v1/rpc/add_manual_price',{method:'POST',headers:{apikey:ANON,Authorization:"Bearer "+ANON,"Content-Type":"application/json"},body:JSON.stringify({p_printing:pid,p_market:market,p_price:num,p_currency:'EUR'})});
-    loadCardPrices({printing_id:pid, language:market, card_number:''});
+    loadCardPrices({printing_id:pid, language:market, card_number:''}, boxId);
   }catch(e){ alert("Erreur lors de l'enregistrement."); btn.disabled=false; btn.textContent="+ Ajouter un prix manuel"; }
 }
 function closeCatDetail(){ document.getElementById("catOverlay").classList.add("hidden"); }
@@ -592,7 +594,7 @@ document.getElementById("themeBtn").addEventListener("click",()=>{document.docum
 let detailCard=null, detailTab="col";
 const LANG_LABELS={JP:"Japonais",EN:"Anglais",FR:"Français",CN:"Chinois"};
 function drow(k,v){ return v?('<div class="drow"><span class="k">'+k+'</span><span class="v">'+v+'</span></div>'):''; }
-function openDetail(c){ detailCard=c; detailTab="col"; const im=document.getElementById("dimg"); im.src=c.image_url||""; im.onerror=function(){this.style.visibility="hidden"}; im.style.visibility="visible"; document.querySelectorAll('.dtabs button').forEach(b=>b.classList.toggle('on',b.dataset.t==='col')); renderDetail(); document.getElementById("dprints").innerHTML=""; document.getElementById("dladder").innerHTML=""; document.getElementById("overlay").classList.remove("hidden"); loadLadder(c); loadPrints(c.card_number); }
+function openDetail(c){ detailCard=c; detailTab="col"; const im=document.getElementById("dimg"); im.src=c.image_url||""; im.onerror=function(){this.style.visibility="hidden"}; im.style.visibility="visible"; document.querySelectorAll('.dtabs button').forEach(b=>b.classList.toggle('on',b.dataset.t==='col')); renderDetail(); document.getElementById("dprints").innerHTML=""; document.getElementById("dladder").innerHTML=""; document.getElementById("dsrc").innerHTML='<div class="pxhdr">Prix marché — toutes sources</div><div class="pxloading">…</div>'; document.getElementById("overlay").classList.remove("hidden"); loadCardPrices(c,'dsrc'); loadLadder(c); loadPrints(c.card_number); }
 async function loadLadder(c){
   const box=document.getElementById("dladder"); box.innerHTML="";
   if(!c || !c.is_graded || !c.printing_id) return;
