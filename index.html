@@ -149,6 +149,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Ar
 .pqbtn{width:26px;height:26px;border:none;border-radius:8px;background:var(--chip);color:var(--ink);font-weight:800;font-size:15px;cursor:pointer;line-height:1}
 .pqbtn.add{background:rgba(15,157,107,.15);color:var(--pos)}
 .pqn{font-weight:800;font-size:13px;min-width:16px;text-align:center}
+.buylab{font-size:12px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:7px}
+.buyinput{width:100%;border:1.5px solid var(--line);border-radius:12px;padding:12px 14px;font-size:16px;font-weight:700;background:var(--bg);color:var(--ink)}
+.buysrc{display:flex;flex-wrap:wrap;gap:8px}
+.buysrc .chip{background:var(--chip);border:1.5px solid transparent;border-radius:20px;padding:8px 13px;font-weight:700;font-size:13px;cursor:pointer}
+.buysrc .chip.on{background:rgba(52,87,232,.1);border-color:var(--accent);color:var(--accent)}
+.buybtn{flex:1;border:none;border-radius:12px;padding:13px;font-weight:800;font-size:14px;cursor:pointer;background:var(--accent);color:#fff}
+.buybtn.ghost{background:var(--chip);color:var(--muted)}
 .ladder{display:flex;flex-direction:column;gap:6px;margin:8px 0 2px}
 .lrow{display:flex;justify-content:space-between;padding:9px 12px;border:1px solid var(--line);border-radius:10px;background:var(--panel);font-size:14px}
 .lrow.on{border-color:var(--accent);background:rgba(47,111,237,.08);font-weight:800}
@@ -432,6 +439,22 @@ body{-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
   </div>
 </div>
 
+<div id="buySheet" class="overlay hidden">
+  <div class="sheet ssheet">
+    <div class="fbar"><b id="buyTitle">Ajouter à ma collection</b><button class="x" onclick="closeBuySheet()">&times;</button></div>
+    <div style="padding:2px 16px 4px">
+      <div class="buylab">Prix payé (€) <span style="color:var(--muted);font-weight:600">— optionnel</span></div>
+      <input id="buyPrice" class="buyinput" type="number" inputmode="decimal" placeholder="ex : 24,50">
+      <div class="buylab" style="margin-top:14px">Provenance</div>
+      <div id="buySources" class="buysrc"></div>
+    </div>
+    <div style="padding:14px 16px calc(20px + env(safe-area-inset-bottom));display:flex;gap:8px">
+      <button class="buybtn ghost" onclick="confirmBuy(false)">Ajouter sans détail</button>
+      <button class="buybtn" onclick="confirmBuy(true)">Ajouter</button>
+    </div>
+  </div>
+</div>
+
 <footer>
   <div class="fb"><b id="fTotal">&mdash;</b>Valeur</div>
   <div class="fb"><b id="fCount">&mdash;</b>Cartes</div>
@@ -537,9 +560,7 @@ async function loadBriefing(){
   if(!orientLoaded) await loadOrient();
   let snaps=[], ops=[];
   try{ const r=await fetch(SB+'/rest/v1/app_value_snapshot?select=day,total_eur,cards&order=day.desc&limit=2',{headers:{apikey:ANON,Authorization:"Bearer "+ANON}}); snaps=await r.json(); if(!Array.isArray(snaps))snaps=[]; }catch(e){}
-  try{ const r=await fetch(SB+'/rest/v1/app_op_grading?select=printing_id,card_number,language,name,variant_label,origin,rarity,raw,g10,upside_if_10,score&order=score.desc&limit=40',{headers:{apikey:ANON,Authorization:"Bearer "+ANON}}); ops=await r.json(); if(!Array.isArray(ops))ops=[]; }catch(e){}
   if(state.mode!=="collection"){ box.innerHTML=''; return; }
-  const inCap=ops.filter(o=>capOf(o).w>=1).sort((a,b)=>(capOf(b).w-capOf(a).w)||(b.score-a.score)).slice(0,3);
   const now=new Date(); const h=now.getHours();
   const hi=(h<18?'Bonjour':'Bonsoir')+' '+USER_NAME;
   let dateStr=''; try{ dateStr=now.toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'}); }catch(e){}
@@ -550,21 +571,7 @@ async function loadBriefing(){
     if(prev!=null){ const diff=cur-prev; const pct=prev?(diff/prev*100):0; const cls=diff>=0?'up':'down'; d=' <span class="bd '+cls+'">'+(diff>=0?'+':'')+eur(diff)+' ('+(diff>=0?'+':'')+pct.toFixed(1).replace('.',',')+' %)</span> <span class="dt">depuis le dernier relevé</span>'; }
     valLine='<div class="bval">Ta collection vaut <b>'+eur(cur)+'</b>'+d+'</div>';
   }
-  let watch='';
-  if(inCap.length){
-    watch='<div class="bsub">Ce que je surveille pour toi aujourd\'hui</div><div class="bitems">'+inCap.map(o=>{
-      const why=(o.origin==='PROMO'||o.origin==='PRODUCT_EXCLUSIVE')?'exclu/promo dans ton cap':(capOf(o).w>=3?'prioritaire pour toi':'dans ton cap');
-      const bvl=(o.variant_label&&String(o.variant_label).toLowerCase()!=='normal')?(' <span class="tp">'+esc(o.variant_label)+'</span>'):'';
-      return '<div class="bitem" data-bop="'+o.printing_id+'"><span class="scbadge '+scoreClass(o.score)+'">'+o.score+'</span>'+
-        '<div class="bi2"><div class="bnm">'+(FLAG[o.language]||'')+' '+esc(o.name||o.card_number)+bvl+' <span class="dt">'+esc(o.card_number)+'</span></div>'+
-        '<div class="bwhy">Achète brut '+eur(o.raw)+' → PSA 10 '+eur(o.g10)+' · '+why+'</div></div>'+
-        '<div class="bgain">+'+eur(o.upside_if_10)+'</div></div>';
-    }).join('')+'</div><button class="bcta" onclick="setMode(\'ops\')">Voir toutes les opportunités</button>';
-  } else {
-    watch='<div class="bwhy" style="margin-top:8px">Je surveille le marché. Règle ton cap dans l\'onglet Opportunités pour des reco ciblées.</div>';
-  }
-  box.innerHTML='<div class="brief"><div class="bhi">'+hi+' <span class="dt" style="text-transform:capitalize">· '+dateStr+'</span></div>'+valLine+watch+'</div>';
-  box.querySelectorAll('.bitem').forEach(el=>el.addEventListener('click',()=>setMode('ops')));
+  box.innerHTML='<div class="brief"><div class="bhi">'+hi+' <span class="dt" style="text-transform:capitalize">· '+dateStr+'</span></div>'+valLine+'</div>';
 }
 
 // ---------- Filtres (modal) ----------
@@ -789,9 +796,11 @@ function renderProducts(rows,lang){
   document.getElementById('countLine').textContent=rows.length+' produits';
 }
 function setProdLang(l){ state.prodLang=l; fetchProducts(); }
-async function prodAdd(idx){ const r=PRODROWS[idx]; if(!r) return;
-  try{ const res=await fetch(SB+'/rest/v1/rpc/add_product_to_collection',{method:'POST',headers:{apikey:ANON,Authorization:"Bearer "+ANON,"Content-Type":"application/json"},body:JSON.stringify({p_product:r.product_id,p_qty:1})}); const j=await res.json(); r.owned_qty=(Array.isArray(j)&&j[0])?j[0].res_quantity:((r.owned_qty||0)+1); renderProducts(PRODROWS,state.prodLang||'JP'); loadProductValue(); }
-  catch(e){ alert("Erreur lors de l'ajout."); }
+function prodAdd(idx){ const r=PRODROWS[idx]; if(!r) return;
+  openBuySheet(r.product_id,r.name,async(price,from)=>{
+    try{ const res=await fetch(SB+'/rest/v1/rpc/add_product_to_collection',{method:'POST',headers:{apikey:ANON,Authorization:"Bearer "+ANON,"Content-Type":"application/json"},body:JSON.stringify({p_product:r.product_id,p_qty:1,p_price:price,p_from:from})}); const j=await res.json(); r.owned_qty=(Array.isArray(j)&&j[0])?j[0].res_quantity:((r.owned_qty||0)+1); renderProducts(PRODROWS,state.prodLang||'JP'); loadProductValue(); }
+    catch(e){ alert("Erreur lors de l'ajout."); }
+  });
 }
 async function prodRemove(idx){ const r=PRODROWS[idx]; if(!r) return;
   try{ const res=await fetch(SB+'/rest/v1/rpc/remove_product_from_collection',{method:'POST',headers:{apikey:ANON,Authorization:"Bearer "+ANON,"Content-Type":"application/json"},body:JSON.stringify({p_product:r.product_id,p_qty:1})}); const j=await res.json(); r.owned_qty=(Array.isArray(j)&&j[0])?j[0].res_quantity:Math.max(0,(r.owned_qty||0)-1); renderProducts(PRODROWS,state.prodLang||'JP'); loadProductValue(); }
@@ -990,10 +999,13 @@ async function loadCardVersions(c){
   box.innerHTML='<div class="dprints"><h4>Toutes les versions ('+rows.length+')</h4><div class="vlist">'+items+'</div></div>';
   box.querySelectorAll('.vrow').forEach(el=>el.addEventListener('click',()=>openCatDetail(CATPRINTS[+el.getAttribute('data-cpi')])));
 }
-async function collAddFromList(pid,btn){
-  if(!pid) return; btn.disabled=true; const old=btn.textContent; btn.textContent='…';
-  try{ const r=await fetch(SB+'/rest/v1/rpc/add_to_collection',{method:'POST',headers:{apikey:ANON,Authorization:"Bearer "+ANON,"Content-Type":"application/json"},body:JSON.stringify({p_printing:pid,p_qty:1})}); const j=await r.json(); const q=(Array.isArray(j)&&j[0])?j[0].res_quantity:1; btn.disabled=false; btn.classList.add('have'); btn.textContent='✓ ×'+q; markOwnedInGrid(pid,true); const cb=document.getElementById('cdcollact'); if(cb&&detailCatPid===pid) paintCollBtn(pid,q); }
-  catch(e){ btn.disabled=false; btn.textContent=old; alert("Erreur lors de l'ajout."); }
+function collAddFromList(pid,btn){
+  if(!pid) return;
+  openBuySheet(pid,'',async(price,from)=>{
+    btn.disabled=true; const old=btn.textContent; btn.textContent='…';
+    try{ const r=await fetch(SB+'/rest/v1/rpc/add_to_collection',{method:'POST',headers:{apikey:ANON,Authorization:"Bearer "+ANON,"Content-Type":"application/json"},body:JSON.stringify({p_printing:pid,p_qty:1,p_price:price,p_from:from})}); const j=await r.json(); const q=(Array.isArray(j)&&j[0])?j[0].res_quantity:1; btn.disabled=false; btn.classList.add('have'); btn.textContent='✓ ×'+q; markOwnedInGrid(pid,true); const cb=document.getElementById('cdcollact'); if(cb&&detailCatPid===pid) paintCollBtn(pid,q); }
+    catch(e){ btn.disabled=false; btn.textContent=old; alert("Erreur lors de l'ajout."); }
+  });
 }
 let detailCatPid=null;
 async function loadCardPrices(c, boxId){
@@ -1060,10 +1072,29 @@ function paintCollBtn(pid,qty){
     box.innerHTML='<button class="collbtn big" onclick="collAdd(\''+esc(pid)+'\')">+ Ajouter à ma collection</button>';
   }
 }
-async function collAdd(pid){
-  const box=document.getElementById('cdcollact'); if(box) box.style.opacity=.5;
-  try{ const r=await fetch(SB+'/rest/v1/rpc/add_to_collection',{method:'POST',headers:{apikey:ANON,Authorization:"Bearer "+ANON,"Content-Type":"application/json"},body:JSON.stringify({p_printing:pid,p_qty:1})}); const j=await r.json(); const q=(Array.isArray(j)&&j[0])?j[0].res_quantity:1; if(box)box.style.opacity=1; paintCollBtn(pid,q); markOwnedInGrid(pid,true); }
-  catch(e){ if(box)box.style.opacity=1; alert("Erreur lors de l'ajout."); }
+const BUY_SOURCES=["eBay","Whatnot","Particulier","Enchères","Cardmarket","Boutique","TCGplayer","Convention","Autre"];
+let BUY_CTX=null;
+function openBuySheet(id,name,onDone){
+  BUY_CTX={id,onDone,src:null};
+  document.getElementById('buyTitle').textContent=name?('Ajouter — '+name):'Ajouter à ma collection';
+  document.getElementById('buyPrice').value='';
+  document.getElementById('buySources').innerHTML=BUY_SOURCES.map(s=>'<div class="chip" data-s="'+esc(s)+'" onclick="pickBuySrc(this)">'+esc(s)+'</div>').join('');
+  document.getElementById('buySheet').classList.remove('hidden');
+}
+function pickBuySrc(el){ const on=el.classList.contains('on'); document.querySelectorAll('#buySources .chip').forEach(c=>c.classList.remove('on')); if(!on){ el.classList.add('on'); if(BUY_CTX)BUY_CTX.src=el.getAttribute('data-s'); } else if(BUY_CTX){ BUY_CTX.src=null; } }
+function closeBuySheet(){ document.getElementById('buySheet').classList.add('hidden'); BUY_CTX=null; }
+async function confirmBuy(withDetail){
+  if(!BUY_CTX) return; const ctx=BUY_CTX; let price=null, from=null;
+  if(withDetail){ const v=document.getElementById('buyPrice').value; const num=parseFloat(String(v).replace(',','.').replace(/[^0-9.]/g,'')); if(num>0) price=num; from=ctx.src||null; }
+  closeBuySheet(); if(ctx.onDone) await ctx.onDone(price, from);
+}
+document.getElementById('buySheet').addEventListener('click',e=>{ if(e.target.id==='buySheet') closeBuySheet(); });
+function collAdd(pid,name){
+  openBuySheet(pid,name,async(price,from)=>{
+    const box=document.getElementById('cdcollact'); if(box) box.style.opacity=.5;
+    try{ const r=await fetch(SB+'/rest/v1/rpc/add_to_collection',{method:'POST',headers:{apikey:ANON,Authorization:"Bearer "+ANON,"Content-Type":"application/json"},body:JSON.stringify({p_printing:pid,p_qty:1,p_price:price,p_from:from})}); const j=await r.json(); const q=(Array.isArray(j)&&j[0])?j[0].res_quantity:1; if(box)box.style.opacity=1; paintCollBtn(pid,q); markOwnedInGrid(pid,true); }
+    catch(e){ if(box)box.style.opacity=1; alert("Erreur lors de l'ajout."); }
+  });
 }
 async function collRemove(pid){
   const box=document.getElementById('cdcollact'); if(box) box.style.opacity=.5;
