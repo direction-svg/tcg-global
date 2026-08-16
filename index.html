@@ -107,6 +107,36 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Ar
 .pcard.sel .pl{color:var(--accent);font-weight:800}
 .pcard .pi img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain}
 .pcard .pl{font-size:10px;color:var(--muted);margin-top:5px;white-space:normal;line-height:1.15;height:26px;overflow:hidden}
+.vlist{display:flex;flex-direction:column;gap:8px;margin-top:8px}
+.vrow{display:flex;align-items:center;gap:11px;padding:8px;border-radius:12px;background:var(--chip);border:1.5px solid transparent;cursor:pointer}
+.vrow.sel{border-color:var(--accent);background:rgba(47,111,237,.06)}
+.vthumb{flex:none;width:46px;height:64px;border-radius:8px;overflow:hidden;background:linear-gradient(135deg,#dde8fa,#c8d8f2);position:relative}
+.vthumb img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain}
+.vmeta{flex:1;min-width:0}
+.vname{font-size:13px;font-weight:800;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.vbadge{background:var(--chip);color:var(--muted);padding:1px 7px;border-radius:6px;font-weight:800;font-size:10px}
+.vbadge.art{background:rgba(155,89,255,.14);color:#7b3ff2}
+.vsub{font-size:11px;color:var(--muted);margin-top:3px}
+.vright{flex:none;display:flex;flex-direction:column;align-items:flex-end;gap:5px}
+.vpx{font-size:13px;font-weight:800}
+.vpx.none{color:var(--muted);font-weight:600;font-size:11px}
+.vadd{border:none;border-radius:8px;padding:5px 10px;font-weight:800;font-size:12px;cursor:pointer;background:rgba(26,157,90,.15);color:var(--pos);white-space:nowrap}
+.vadd.have{background:rgba(26,157,90,.9);color:#fff}
+.setlangrow{display:flex;gap:8px;margin:2px 0 12px;overflow-x:auto;scrollbar-width:none}
+.setlangrow::-webkit-scrollbar{display:none}
+.setlangrow .chip{flex:none}
+.sethead{display:flex;justify-content:space-between;align-items:center;background:var(--accent);color:#fff;border-radius:14px;padding:12px 14px;margin-bottom:12px;font-weight:800}
+.sethead .pct{font-size:13px;opacity:.92}
+.setgrp{font-size:15px;font-weight:800;margin:16px 2px 8px}
+.setrow{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:11px 13px;margin-bottom:9px;display:flex;align-items:center;gap:11px;cursor:pointer}
+.setrow .snm{flex:1;min-width:0}
+.setrow .stitle{font-weight:800;font-size:14px;line-height:1.15}
+.setrow .scnt{font-size:12px;color:var(--muted);margin-top:5px;margin-bottom:5px}
+.setrow .scnt b{color:var(--ink)}
+.setpbar{height:5px;border-radius:4px;background:var(--chip);overflow:hidden}
+.setpfill{height:100%;background:var(--neg);border-radius:4px}
+.setpfill.full{background:var(--pos)}
+.setrow .scode{flex:none;font-weight:800;color:var(--muted);font-size:13px;align-self:flex-start}
 .ladder{display:flex;flex-direction:column;gap:6px;margin:8px 0 2px}
 .lrow{display:flex;justify-content:space-between;padding:9px 12px;border:1px solid var(--line);border-radius:10px;background:var(--panel);font-size:14px}
 .lrow.on{border-color:var(--accent);background:rgba(47,111,237,.08);font-weight:800}
@@ -296,6 +326,7 @@ body{-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
   <div class="modeseg" id="modeSeg">
     <button data-m="collection" class="on">Collection</button>
     <button data-m="catalog">Catalogue</button>
+    <button data-m="sets">Sets</button>
     <button data-m="ops">Opportunités</button>
   </div>
 
@@ -404,15 +435,24 @@ const FLAG={JP:"🇯🇵",EN:"🇺🇸",FR:"🇫🇷",CN:"🇨🇳"};
 const LANGS=[["all","Toutes"],["JP","Japonais"],["EN","Anglais"],["FR","Français"],["CN","Chinois"]];
 const CAT_LABELS={LEADER:"Leader",CHARACTER:"Personnage",EVENT:"Event",STAGE:"Stage",DON:"DON!!"};
 const RAR_LABELS={C:"Common",UC:"Uncommon",R:"Rare",SR:"Super Rare",SEC:"Secret Rare",L:"Leader",PR:"Promo",TR:"Treasure Rare",SP:"Special"};
+const VMAP={normal:"Normale",parallel:"Parallèle",alternate_art:"Alt-Art",manga:"Manga",red_manga:"Manga rouge",sp:"SP",sp_gold:"SP Or",sp_silver:"SP Argent",serial:"Serial",serial_prize:"Serial (prix)",top_prize:"Top Prize",get_campaign:"Get Campaign",magazine_promo:"Promo Magazine",psa_magazine:"Magazine",championship:"Championship"};
+function vNice(v){ if(!v) return "Normale"; v=String(v).toLowerCase(); if(VMAP[v]) return VMAP[v];
+  const pm=v.match(/^p(\d+)$/); if(pm) return "Parallèle"+(+pm[1]>1?(" "+pm[1]):"");
+  if(v.startsWith('alternate_art')) return "Alt-Art"+(v.includes('manga')?" Manga":(/prb/.test(v)?" PRB":""));
+  if(v.startsWith('prb')) return "PRB-01"; if(v.includes('championship')) return "Championship"; if(v.includes('anniversary')) return "Anniversaire";
+  if(v.includes('manga')) return "Manga"; if(v.includes('serial')) return "Serial"; if(v.startsWith('sp')) return "SP";
+  return v.replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase()); }
+function isArtVariant(v){ v=String(v||'').toLowerCase(); return v!=='normal' && v!==''; }
+function rarNice(r){ if(!r) return ""; const m=String(r).match(/([A-Za-z]{1,4})/); const code=m?m[1].toUpperCase():String(r); return RAR_LABELS[code]||code; }
 const RAR_ORDER=["L","C","UC","R","SR","SEC","TR","PR","SP"];
 const COLORS=["Red","Green","Blue","Purple","Black","Yellow"];
 const COLOR_HEX={Red:"#d64545",Green:"#2f9e57",Blue:"#2f6fed",Purple:"#8b57d6",Black:"#33384a",Yellow:"#e0a53b"};
 const TYPE_ORDER=["normal","alternate_art","sp","manga","full_art","textured_foil","jolly_roger_foil","promo","tournament"];
 const CAT_ORDER=["LEADER","CHARACTER","EVENT","STAGE","DON"];
 const SORTS=[["val_desc","Valeur ↓ (décroissant)"],["val_asc","Valeur ↑ (croissant)"],["name","Nom (A→Z)"],["num","Numéro"],["qty","Quantité"]];
-const DEF={q:"",lang:"all",color:"all",type:"all",cat:"all",rarity:"all",character:"all",grade:"all",sort:"val_desc",view:"grid",mode:"collection",catLang:"all",catQuery:"",catLangs:[],catColors:[],catCats:[],catRarities:[],catTypes:[],catSort:"num"};
+const DEF={q:"",lang:"all",color:"all",type:"all",cat:"all",rarity:"all",character:"all",grade:"all",sort:"val_desc",view:"grid",mode:"collection",catLang:"all",catQuery:"",catLangs:[],catColors:[],catCats:[],catRarities:[],catTypes:[],catSort:"num",setLang:"JP"};
 const CATLANGS=[["all","Toutes"],["JP","Japonais"],["EN","Anglais"],["FR","Français"],["CN","Chinois"]];
-const CATCATS=[["all","Toutes catégories"],["LEADER","Leader"],["CHARACTER","Personnage"],["EVENT","Event"],["STAGE","Stage"]];
+const CATCATS=[["all","Toutes catégories"],["LEADER","Leader"],["CHARACTER","Personnage"],["EVENT","Event"],["STAGE","Stage"],["DON","DON!!"]];
 const CATRARS=[["all","Toutes raretés"],["L","Leader"],["C","Common"],["UC","Uncommon"],["R","Rare"],["SR","Super Rare"],["SEC","Secret Rare"],["TR","Treasure Rare"],["SP","Special"],["P","Promo"]];
 const CATTYPES=[["all","Tous types"],["STANDARD","Standard"],["PROMO","Promo"],["BATTLE_EVENT","Battleship"],["PREMIUM_COLLECTION","Premium Collection"],["TOURNAMENT","Tournoi"],["PRODUCT_EXCLUSIVE","Exclusivité produit"]];
 const CATSORTS=[["num","Numéro"],["name","Nom (A→Z)"],["lang","Langue"],["price_desc","Prix décroissant (cher → bas)"],["price_asc","Prix croissant (bas → cher)"]];
@@ -638,18 +678,64 @@ document.getElementById("q").addEventListener("input",e=>{
 function setMode(m){
   state.mode=m;
   document.querySelectorAll('#modeSeg button').forEach(b=>b.classList.toggle('on',b.dataset.m===m));
-  const cat=m==="catalog", ops=m==="ops";
+  const cat=m==="catalog", ops=m==="ops", sets=m==="sets";
   document.getElementById('catLangRow').classList.toggle('hidden',!cat);
   document.getElementById('catFilters').classList.add('hidden');
-  document.getElementById('viewBtn').classList.toggle('hidden',cat||ops);
-  document.getElementById('filterBtn').classList.toggle('hidden',ops);
-  document.getElementById('sortBtn').classList.toggle('hidden',ops);
-  document.querySelector('.search').classList.toggle('hidden',ops);
+  document.getElementById('viewBtn').classList.toggle('hidden',cat||ops||sets);
+  document.getElementById('filterBtn').classList.toggle('hidden',ops||sets);
+  document.getElementById('sortBtn').classList.toggle('hidden',ops||sets);
+  document.querySelector('.search').classList.toggle('hidden',ops||sets);
   document.getElementById('q').placeholder=cat?"Chercher une carte (nom ou numéro), toutes langues…":"Rechercher (nom ou numéro)…";
-  const brief=document.getElementById('briefing'); if(brief && !cat && !ops){} else if(brief){ brief.innerHTML=''; }
+  const brief=document.getElementById('briefing'); if(brief && !cat && !ops && !sets){} else if(brief){ brief.innerHTML=''; }
   if(ops){ document.getElementById('countLine').textContent=''; fetchOps(); }
   else if(cat){ buildCatLangRow(); syncCatBadge(); fetchCatalog(); }
+  else if(sets){ document.getElementById('countLine').textContent=''; fetchSets(); }
   else { syncBadge(); document.getElementById('countLine').textContent=''; render(); loadBriefing(); }
+}
+const SET_NAMES={OP01:"Romance Dawn",OP02:"Paramount War",OP03:"Pillars of Strength",OP04:"Kingdoms of Intrigue",OP05:"Awakening of the New Era",OP06:"Wings of the Captain",OP07:"500 Years in the Future",OP08:"Two Legends",OP09:"Emperors in the New World",OP10:"Royal Blood",OP11:"A Fist of Divine Speed",OP12:"Legacy of the Master",OP13:"Carrying On His Will",OP14:"The Azure Sea's Seven",OP15:"Adventure on KAMI's Island",OP16:"The Time of Battle",EB01:"Memorial Collection",EB02:"Anime 25th Collection",EB03:"Heroines Edition",EB04:"Egghead Crisis",PRB01:"Premium Booster -The Best-",PRB02:"One Piece The Best Vol.2",ST01:"Straw Hat Crew",ST02:"Worst Generation",ST03:"The Seven Warlords",ST04:"Animal Kingdom Pirates",ST32:"Green Roronoa Zoro",ST33:"Blue Kuzan",ST34:"Purple Charlotte Katakuri",ST35:"Red/Black Sabo",ST36:"Yellow Eustass Kid",PROMO:"Promos (toutes)",DON:"DON!! Cards"};
+const SET_GRP_LABELS={BOOSTER:"Booster / Extra / Premium",STARTER:"Starter Decks",PROMO:"Promo",DON:"DON!!",AUTRES:"Autres"};
+const SET_GRP_ORDER=["BOOSTER","STARTER","PROMO","DON","AUTRES"];
+const SET_LANGS=[["JP","Japonais"],["EN","Anglais"],["FR","Français"],["CN","Chinois"]];
+function setCodeRank(code){ const m=(code||"").match(/^([A-Za-z]+)(\d*)$/); if(!m) return [9,code,0]; const fam={OP:0,EB:1,PRB:2,ST:0}[m[1]]??5; return [fam, m[1], m[2]?parseInt(m[2]):0]; }
+async function fetchSets(){
+  const stage=document.getElementById('stage'); stage.className=""; stage.innerHTML='<div class="loading">Chargement des sets…</div>';
+  const lang=state.setLang||'JP';
+  try{
+    const r=await fetch(SB+'/rest/v1/app_set_completion?language=eq.'+lang+'&select=groupe,set_code,total,owned',{headers:{apikey:ANON,Authorization:"Bearer "+ANON}});
+    let rows=await r.json(); if(!Array.isArray(rows))rows=[];
+    if(state.mode!=='sets') return;
+    renderSets(rows,lang);
+  }catch(e){ stage.innerHTML='<div class="empty">Erreur de chargement des sets.</div>'; }
+}
+function renderSets(rows,lang){
+  const stage=document.getElementById('stage'); stage.className="";
+  let tot=0,own=0; rows.forEach(r=>{tot+=r.total||0;own+=r.owned||0;});
+  const langChips=SET_LANGS.map(([c,l])=>'<div class="chip'+(c===lang?' on':'')+'" onclick="setSetLang(\''+c+'\')">'+(FLAG[c]||'')+' '+l+'</div>').join('');
+  let h='<div class="setlangrow">'+langChips+'</div>';
+  h+='<div class="sethead"><span>Ma collection '+(LANG_LABELS[lang]||lang)+'</span><span class="pct">'+own+' / '+tot+' · '+(tot?Math.round(own/tot*100):0)+'%</span></div>';
+  const byGrp={}; rows.forEach(r=>{ (byGrp[r.groupe]=byGrp[r.groupe]||[]).push(r); });
+  SET_GRP_ORDER.forEach(g=>{
+    const list=byGrp[g]; if(!list||!list.length) return;
+    list.sort((a,b)=>{ const ra=setCodeRank(a.set_code),rb=setCodeRank(b.set_code); return ra[0]-rb[0] || (ra[1]<rb[1]?-1:ra[1]>rb[1]?1:0) || rb[2]-ra[2]; });
+    h+='<div class="setgrp">'+(SET_GRP_LABELS[g]||g)+'</div>';
+    h+=list.map(r=>{
+      const p=r.total?Math.round(r.owned/r.total*100):0; const full=(r.owned>=r.total&&r.total>0);
+      const nm=SET_NAMES[r.set_code]||r.set_code; const showCode=(nm!==r.set_code);
+      return '<div class="setrow" onclick="openSetInCatalog(\''+esc(r.set_code)+'\',\''+lang+'\')"><div class="snm"><div class="stitle">'+esc(nm)+'</div>'+
+        '<div class="scnt"><b>'+r.owned+'</b> ou '+r.total+' · '+p+'%</div><div class="setpbar"><div class="setpfill'+(full?' full':'')+'" style="width:'+Math.max(p,1)+'%"></div></div></div>'+
+        (showCode?'<div class="scode">'+esc(r.set_code)+'</div>':'')+'</div>';
+    }).join('');
+  });
+  stage.innerHTML=h;
+  document.getElementById('countLine').textContent=own+' / '+tot+' cartes '+(LANG_LABELS[lang]||lang);
+}
+function setSetLang(l){ state.setLang=l; fetchSets(); }
+function openSetInCatalog(setCode,lang){
+  state.setLang=lang;
+  const q=(setCode==='PROMO')?'P-':(setCode==='DON')?'DON-':setCode;
+  state.catLangs=[lang]; state.catQuery=q;
+  const qi=document.getElementById('q'); if(qi) qi.value=q;
+  setMode('catalog');
 }
 document.getElementById('modeSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMode(b.dataset.m);});
 const CATARRS=["catColors","catCats","catRarities","catTypes"];
@@ -798,21 +884,54 @@ async function openCatDetail(c){
     '<div class="dval"><div class="b">'+esc(c.name||"")+'</div><div class="s">'+(FLAG[c.language]||"")+' '+(LANG_LABELS[c.language]||c.language)+' · '+esc(c.card_number||"")+'</div><div class="collact" id="cdcollact"></div></div>'+
     drow("Rareté", RAR_LABELS[c.rarity]||c.rarity)+drow("Variante", (vl&&String(vl).toLowerCase()!=='normal')?esc(vl):"Normale")+drow("Type", c.origin?(ORIGIN_LABELS[c.origin]||c.origin):"")+drow("Catégorie", CAT_LABELS[c.category]||c.category)+drow("Set", esc((c.set_code||"")+(c.set_name?(" — "+c.set_name):"")))+
     '<div id="cdprice" class="dprices"><div class="pxhdr">Prix marché — toutes sources</div><div class="pxloading">…</div></div>';
-  document.getElementById("cdprints").innerHTML="";
+  document.getElementById("cdprints").innerHTML='<div class="dprints"><h4>Toutes les versions</h4><div class="pxloading">…</div></div>';
   document.getElementById("catOverlay").classList.remove("hidden");
+  detailCatPid=c.printing_id||null;
   renderCollBtn(c.printing_id);
   loadCardPrices(c);
-  // autres impressions (même numéro, toutes langues/variantes)
-  try{
-    const r=await fetch(SB+'/rest/v1/app_catalog?card_number=eq.'+encodeURIComponent(c.card_number)+'&select=card_number,language,name,image_url,variant,variant_label,rarity,set_code,set_name,category,origin,owned,printing_id&limit=60',{headers:{apikey:ANON,Authorization:"Bearer "+ANON}});
-    let rows=await r.json(); if(!Array.isArray(rows)) rows=[];
-    const items=rows.map((p,i)=>{ const im=p.image_url?('<img referrerpolicy="no-referrer" src="'+esc(p.image_url)+'" onerror="this.remove()">'):''; const lab=(p.variant_label||p.variant||'Normale'); return '<div class="pcard" data-cpi="'+i+'"><div class="pi">'+im+'</div><div class="pl">'+(FLAG[p.language]||"")+' '+esc(String(lab).slice(0,18))+'</div></div>'; }).join("");
-    document.getElementById("cdprints").innerHTML='<div class="dprints"><h4>Autres impressions ('+rows.length+')</h4><div class="pstrip">'+items+'</div></div>';
-    CATPRINTS=rows;
-    document.querySelectorAll('#cdprints .pcard').forEach(el=>el.addEventListener('click',()=>openCatDetail(CATPRINTS[+el.getAttribute('data-cpi')])));
-  }catch(e){ document.getElementById("cdprints").innerHTML=""; }
+  loadCardVersions(c);
 }
 let CATPRINTS=[];
+// Toutes les versions de la carte (toutes langues + variantes) — style Logia
+async function loadCardVersions(c){
+  const box=document.getElementById("cdprints"); if(!box) return;
+  let rows=[];
+  try{
+    const r=await fetch(SB+'/rest/v1/app_catalog_priced?card_number=eq.'+encodeURIComponent(c.card_number)+'&select=card_number,language,name,image_url,variant,variant_label,rarity,set_code,set_name,category,origin,owned,printing_id,price_eur,price_source&limit=80',{headers:{apikey:ANON,Authorization:"Bearer "+ANON}});
+    rows=await r.json(); if(!Array.isArray(rows)) rows=[];
+  }catch(e){ box.innerHTML=""; return; }
+  // tri : langue (JP,EN,FR,CN) puis prix décroissant
+  const LO={JP:0,EN:1,FR:2,CN:3};
+  rows.sort((a,b)=>((LO[a.language]??9)-(LO[b.language]??9))||((b.price_eur||0)-(a.price_eur||0)));
+  CATPRINTS=rows;
+  // quantités possédées par printing (pour marquer ✓)
+  let ow="";
+  const pids=rows.map(r=>r.printing_id).filter(Boolean);
+  const qmap={};
+  if(pids.length){ try{ const rq=await fetch(SB+'/rest/v1/app_collection?printing_id=in.('+pids.join(',')+')&select=printing_id,quantity',{headers:{apikey:ANON,Authorization:"Bearer "+ANON}}); const jq=await rq.json(); if(Array.isArray(jq)) jq.forEach(x=>{ qmap[x.printing_id]=(qmap[x.printing_id]||0)+(x.quantity||0); }); }catch(e){} }
+  const items=rows.map((p,i)=>{
+    const im=p.image_url?('<img referrerpolicy="no-referrer" src="'+esc(p.image_url)+'" onerror="this.remove()">'):'';
+    const artv=isArtVariant(p.variant);
+    const vb='<span class="vbadge'+(artv?' art':'')+'">'+esc(vNice(p.variant))+'</span>';
+    const rn=rarNice(p.rarity); const rar=rn?('<span class="vbadge">'+esc(rn)+'</span>'):'';
+    const px=(p.price_eur!=null)?('<span class="vpx">'+eur(p.price_eur)+'</span>'):'<span class="vpx none">—</span>';
+    const q=qmap[p.printing_id]||0;
+    const add='<button class="vadd'+(q>0?' have':'')+'" onclick="event.stopPropagation();collAddFromList(\''+esc(p.printing_id||'')+'\',this)">'+(q>0?('✓ ×'+q):'+ Ajouter')+'</button>';
+    const sel=(p.printing_id===c.printing_id)?' sel':'';
+    return '<div class="vrow'+sel+'" data-cpi="'+i+'"><div class="vthumb">'+im+'</div>'+
+      '<div class="vmeta"><div class="vname">'+(FLAG[p.language]||'')+' '+vb+rar+'</div>'+
+      '<div class="vsub">'+esc(p.card_number||'')+(p.set_code?(' · '+esc(p.set_code)):'')+'</div></div>'+
+      '<div class="vright">'+px+add+'</div></div>';
+  }).join('');
+  box.innerHTML='<div class="dprints"><h4>Toutes les versions ('+rows.length+')</h4><div class="vlist">'+items+'</div></div>';
+  box.querySelectorAll('.vrow').forEach(el=>el.addEventListener('click',()=>openCatDetail(CATPRINTS[+el.getAttribute('data-cpi')])));
+}
+async function collAddFromList(pid,btn){
+  if(!pid) return; btn.disabled=true; const old=btn.textContent; btn.textContent='…';
+  try{ const r=await fetch(SB+'/rest/v1/rpc/add_to_collection',{method:'POST',headers:{apikey:ANON,Authorization:"Bearer "+ANON,"Content-Type":"application/json"},body:JSON.stringify({p_printing:pid,p_qty:1})}); const j=await r.json(); const q=(Array.isArray(j)&&j[0])?j[0].res_quantity:1; btn.disabled=false; btn.classList.add('have'); btn.textContent='✓ ×'+q; markOwnedInGrid(pid,true); const cb=document.getElementById('cdcollact'); if(cb&&detailCatPid===pid) paintCollBtn(pid,q); }
+  catch(e){ btn.disabled=false; btn.textContent=old; alert("Erreur lors de l'ajout."); }
+}
+let detailCatPid=null;
 async function loadCardPrices(c, boxId){
   boxId=boxId||'cdprice';
   const box=document.getElementById(boxId); if(!box) return;
