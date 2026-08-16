@@ -975,7 +975,7 @@ function renderDetail(){ const c=detailCard; if(!c)return; const body=document.g
     const g=c.is_graded?('<span class="pill gold">'+(c.grading_company||"")+' '+(c.grade!=null?String(c.grade).replace(/\.0$/,''):'')+(c.cert_number?(' · '+c.cert_number):'')+'</span>'):'Brute';
     const src=c.price_source||"";
     const asof=c.price_asof?(" · maj "+new Date(c.price_asof).toLocaleDateString("fr-FR",{day:"2-digit",month:"2-digit"})):"";
-    const srcline=src?('<div class="s" style="margin-top:3px">'+(src.indexOf("Logia")>=0?"⚠ ":"● ")+esc(src)+asof+'</div>'):'';
+    const srcline=src?('<div class="s" style="margin-top:3px">'+(src.indexOf("Logia")>=0?"⚠ ":"● ")+esc(SRC_LABELS[src]||src)+asof+'</div>'):'';
     const lv=c.live_value_eur, sd=c.seed_value_eur;
     let cmp="";
     if(lv!=null && sd!=null && Math.abs(Number(lv)-Number(sd))/Math.max(Number(sd),1) > 0.15){
