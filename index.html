@@ -374,7 +374,7 @@ body{-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
 <div class="wrap">
   <div class="hero">
     <div class="topbar">
-      <div class="logo"><div class="mark">OP</div> TCG GLOBAL <span id="buildTag" style="font-size:11px;font-weight:700;margin-left:8px;background:#e11d48;color:#fff;padding:2px 8px;border-radius:10px;letter-spacing:.2px;white-space:nowrap" title="Version en ligne">v16:36</span></div>
+      <div class="logo"><div class="mark">OP</div> TCG GLOBAL <span id="buildTag" style="font-size:11px;font-weight:700;margin-left:8px;background:#e11d48;color:#fff;padding:2px 8px;border-radius:10px;letter-spacing:.2px;white-space:nowrap" title="Version en ligne">v16:44</span></div>
       <div class="grow"></div>
       <button class="iconbtn" id="themeBtn" title="Th&egrave;me">&#9790;</button>
     </div>
@@ -1201,7 +1201,7 @@ function markOwnedInGrid(pid,owned){
 }
 function closeCatDetail(){ document.getElementById("catOverlay").classList.add("hidden"); }
 // ---------- Scan de carte ----------
-let scanStream=null, scanBusy=false, autoTimer=null, autoPrev=null, autoStable=0, autoLastShot=0, autoContentTicks=0, autoTries=0;
+let scanStream=null, scanBusy=false, autoTimer=null, autoPrev=null, autoStable=0, autoLastShot=0, autoContentTicks=0, autoTries=0, autoBackoffUntil=0;
 async function openScan(){
   document.getElementById('scanOverlay').classList.remove('hidden');
   const p=document.getElementById('scanPreview'); p.style.display='none'; p.src='';
@@ -1244,13 +1244,14 @@ function autoTick(){
   const std=stddev(g);
   const hasCard = std>20;        // a card fills the frame with varied content (vs empty table/hand)
   const still   = diff<9;        // tolerant of handheld micro-motion
-  if(f) f.classList.toggle('locked', hasCard&&still);
+  if(f) f.classList.toggle('locked', hasCard&&still&&Date.now()>=autoBackoffUntil);
   const now=Date.now();
-  if(now-autoLastShot < 2000) return;              // cooldown → also drives auto-retry
+  if(now < autoBackoffUntil){ const s=Math.ceil((autoBackoffUntil-now)/1000); setScanStatus('Limite gratuite de l\'IA atteinte &mdash; reprise dans '+s+' s. (ou saisis le num&eacute;ro)'); return; }
+  if(now-autoLastShot < 3500) return;              // gentle spacing to spare the free-tier quota
   if(hasCard){ autoContentTicks++; } else { autoContentTicks=0; autoStable=0; }
   if(hasCard&&still){ autoStable++; } else { autoStable=Math.max(0,autoStable-1); }
   // fire on a brief stable moment, OR as a fallback once a card has been framed a while
-  if(autoStable>=2 || autoContentTicks>=6){ autoLastShot=now; autoStable=0; autoContentTicks=0; autoShot(); }
+  if(autoStable>=2 || autoContentTicks>=7){ autoLastShot=now; autoStable=0; autoContentTicks=0; autoShot(); }
 }
 async function autoShot(){
   const v=document.getElementById('scanVideo'); const cv=cropCardRegion(v); if(!cv) return;
@@ -1272,6 +1273,7 @@ async function processCanvas(cv,opts){
   try{
     const r=await fetch(SB+'/functions/v1/card-recognize',{method:'POST',headers:{'Content-Type':'application/json',apikey:ANON,Authorization:'Bearer '+ANON},body:JSON.stringify({image_b64:b64})});
     const j=await r.json();
+    if(j&&j.rate_limited){ const wait=(j.retry_after||30); autoBackoffUntil=Date.now()+(wait+2)*1000; setScanStatus('&#9203; Limite gratuite de l\'IA Gemini atteinte (20 scans/min). Pause '+wait+' s&hellip; ou saisis le num&eacute;ro ci-dessous.'); scanBusy=false; return; }
     if(j&&j.card&&j.card.card_number){ const c=j.card; const bits=[]; if(c.rarity)bits.push(c.rarity); if(c.art_type&&c.art_type!=='normal')bits.push(String(c.art_type).replace(/_/g,' ')); if(c.foil)bits.push('foil'); if(c.gold_text)bits.push('dor&eacute;'); if(c.star)bits.push('★'); if(c.stamp&&c.stamp!=='none')bits.push(c.stamp); setScanStatus('Identifi&eacute;e : <b>'+esc(c.card_number)+'</b> '+(FLAG[c.language]||'')+(bits.length?(' &middot; '+esc(bits.join(' &middot; '))):'')); stopAuto(); scanBusy=false; scanLookup(c.card_number,c); return; }
   }catch(e){}
   // In auto mode, don't spend time on OCR — keep scanning the live feed and retry automatically.
