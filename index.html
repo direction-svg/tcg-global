@@ -3,6 +3,9 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
 <title>TCG GLOBAL — Ma collection One Piece</title>
 <style>
 :root{
@@ -368,25 +371,62 @@ body{-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
   .opgain b{font-size:15px}
   .scbadge{width:36px;height:36px;font-size:15px}
 }
+/* ---------- Accueil / dashboard ---------- */
+.minibar{font-size:13px;color:var(--muted);font-weight:600;margin-top:8px}
+.minibar b{color:var(--ink);font-weight:800}
+.home{display:flex;flex-direction:column;gap:13px;padding-bottom:26px}
+.hcard{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:15px}
+.htitle{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);margin-bottom:9px}
+.hhero{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;border:none;box-shadow:0 10px 30px -12px var(--accent)}
+.hhero .lbl{font-size:12px;opacity:.9;text-transform:uppercase;letter-spacing:.6px;font-weight:700}
+.hhero .big{font-size:39px;font-weight:900;line-height:1.02;margin-top:3px;letter-spacing:-.02em}
+.hhero .delta{margin-top:10px;font-size:12.5px;font-weight:800;display:inline-flex;gap:6px;align-items:center;padding:4px 11px;border-radius:20px;background:rgba(255,255,255,.2)}
+.hhero .delta.up{background:rgba(16,185,129,.92)}
+.hhero .delta.down{background:rgba(244,63,94,.92)}
+.hsub{display:flex;gap:9px;margin-top:14px}
+.hsub .seg{flex:1;background:rgba(255,255,255,.14);border-radius:12px;padding:9px 11px}
+.hsub .seg .k{font-size:11px;opacity:.9;font-weight:700;display:flex;align-items:center;gap:5px}
+.hsub .seg .v{font-size:17px;font-weight:800;margin-top:2px}
+.dotc{width:9px;height:9px;border-radius:50%;display:inline-block}
+.splitbar{height:9px;border-radius:6px;overflow:hidden;display:flex;margin-top:11px;background:rgba(255,255,255,.22)}
+.splitbar i{display:block;height:100%}
+.hstats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.hstat{background:var(--panel);border:1px solid var(--line);border-radius:15px;padding:13px 8px;text-align:center}
+.hstat .n{font-size:23px;font-weight:900;letter-spacing:-.02em}
+.hstat .k{font-size:11px;color:var(--muted);margin-top:3px;font-weight:600}
+.graderow{display:flex;flex-wrap:wrap;gap:7px;margin-top:11px}
+.gradechip{background:var(--chip);border-radius:20px;padding:5px 12px;font-size:12.5px;font-weight:700}
+.gradechip b{color:var(--accent)}
+.hchart svg{width:100%;height:auto;display:block;overflow:visible}
+.chdates{display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-top:4px;font-weight:600}
+.chlegend{display:flex;gap:14px;margin-top:9px;font-size:12px;color:var(--muted);font-weight:600;flex-wrap:wrap}
+.chlegend span{display:inline-flex;align-items:center;gap:6px}
+.chlegend i{width:11px;height:3px;border-radius:2px;display:inline-block}
+.releverow{display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid var(--line);font-size:13.5px}
+.releverow:last-child{border-bottom:none}
+.releverow .rd{color:var(--muted);font-weight:600;text-transform:capitalize}
+.releverow .rv{font-weight:800}
+.releverow .rc{font-size:12px;font-weight:800;margin-left:8px}
+.rc.up{color:var(--pos)} .rc.down{color:#e11d48}
+.aisoon{border:1px dashed var(--line);background:transparent}
+.aisoon .txt{color:var(--muted);font-size:13px;line-height:1.5}
+.aibadge{display:inline-block;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;padding:2px 8px;border-radius:20px;margin-left:6px}
 </style>
 </head>
 <body>
 <div class="wrap">
   <div class="hero">
     <div class="topbar">
-      <div class="logo"><div class="mark">OP</div> TCG GLOBAL <span id="buildTag" style="font-size:11px;font-weight:700;margin-left:8px;background:#e11d48;color:#fff;padding:2px 8px;border-radius:10px;letter-spacing:.2px;white-space:nowrap" title="Version en ligne">v16:49</span></div>
+      <div class="logo"><div class="mark">OP</div> TCG GLOBAL <span id="buildTag" style="font-size:11px;font-weight:700;margin-left:8px;background:#e11d48;color:#fff;padding:2px 8px;border-radius:10px;letter-spacing:.2px;white-space:nowrap" title="Version en ligne">v17:11</span></div>
       <div class="grow"></div>
       <button class="iconbtn" id="themeBtn" title="Th&egrave;me">&#9790;</button>
     </div>
-    <div class="stats">
-      <div class="stat"><div class="k">Valeur collection</div><div class="v" id="stTotal">&mdash;</div></div>
-      <div class="stat"><div class="k">Cartes</div><div class="v small" id="stCount">&mdash;</div></div>
-      <div class="stat"><div class="k">Affich&eacute;es</div><div class="v small" id="stShown">&mdash;</div></div>
-    </div>
+    <div class="minibar" id="miniBar"></div>
   </div>
 
   <div class="modeseg" id="modeSeg">
-    <button data-m="collection" class="on">Collection</button>
+    <button data-m="accueil" class="on">Accueil</button>
+    <button data-m="collection">Collection</button>
     <button data-m="catalog">Catalogue</button>
     <button data-m="sets">Sets</button>
     <button data-m="products">Produits</button>
@@ -552,7 +592,7 @@ const COLOR_HEX={Red:"#d64545",Green:"#2f9e57",Blue:"#2f6fed",Purple:"#8b57d6",B
 const TYPE_ORDER=["normal","alternate_art","sp","manga","full_art","textured_foil","jolly_roger_foil","promo","tournament"];
 const CAT_ORDER=["LEADER","CHARACTER","EVENT","STAGE","DON"];
 const SORTS=[["val_desc","Valeur ↓ (décroissant)"],["val_asc","Valeur ↑ (croissant)"],["name","Nom (A→Z)"],["num","Numéro"],["qty","Quantité"]];
-const DEF={q:"",lang:"all",color:"all",type:"all",cat:"all",rarity:"all",character:"all",grade:"all",sort:"val_desc",view:"grid",mode:"collection",catLang:"all",catQuery:"",catLangs:[],catColors:[],catCats:[],catRarities:[],catTypes:[],catSort:"num",setLang:"JP",prodLang:"JP"};
+const DEF={q:"",lang:"all",color:"all",type:"all",cat:"all",rarity:"all",character:"all",grade:"all",sort:"val_desc",view:"grid",mode:"accueil",catLang:"all",catQuery:"",catLangs:[],catColors:[],catCats:[],catRarities:[],catTypes:[],catSort:"num",setLang:"JP",prodLang:"JP"};
 let PROD_VALUE=0;
 const CATLANGS=[["all","Toutes"],["JP","Japonais"],["EN","Anglais"],["FR","Français"],["CN","Chinois"]];
 const CATCATS=[["all","Toutes catégories"],["LEADER","Leader"],["CHARACTER","Personnage"],["EVENT","Event"],["STAGE","Stage"],["DON","DON!!"]];
@@ -618,8 +658,11 @@ async function load(){
     if(!r.ok){document.getElementById("stage").innerHTML='<div class="empty">Erreur de chargement ('+r.status+').</div>';return;}
     const b=await r.json(); all=all.concat(b); if(b.length<step)break; from+=step;
   }
-  DATA=all; buildFilterModal(); render(); if(state.mode==="collection") loadBriefing();
+  DATA=all; DATALOADED=true; buildFilterModal();
+  if(state.mode==="accueil"){ renderHome(); }
+  else { render(); if(state.mode==="collection") loadBriefing(); }
 }
+let DATALOADED=false;
 const USER_NAME="Christopher";
 async function loadBriefing(){
   const box=document.getElementById('briefing'); if(!box) return;
@@ -720,9 +763,7 @@ function render(){
   const total=cardsTotal+(PROD_VALUE||0);
   const shownTotal=a.reduce((s,c)=>s+val(c)*(c.quantity||1),0);
   const jp=DATA.filter(c=>c.language==="JP").length, gr=DATA.filter(c=>c.is_graded).length;
-  document.getElementById("stTotal").textContent=eur0(total);
-  document.getElementById("stCount").textContent=DATA.reduce((s,c)=>s+(c.quantity||1),0);
-  document.getElementById("stShown").textContent=a.length;
+  const mb=document.getElementById("miniBar"); if(mb) mb.innerHTML='Portefeuille : <b>'+eur0(total)+'</b> &middot; '+DATA.reduce((s,c)=>s+(c.quantity||1),0)+' cartes';
   document.getElementById("fTotal").textContent=eur0(total);
   document.getElementById("fCount").textContent=DATA.length;
   document.getElementById("fJP").textContent=jp;
@@ -766,17 +807,21 @@ document.getElementById("q").addEventListener("input",e=>{
 function setMode(m){
   state.mode=m;
   document.querySelectorAll('#modeSeg button').forEach(b=>b.classList.toggle('on',b.dataset.m===m));
-  const cat=m==="catalog", ops=m==="ops", sets=m==="sets", prods=m==="products";
+  const home=m==="accueil", cat=m==="catalog", ops=m==="ops", sets=m==="sets", prods=m==="products";
   document.getElementById('catLangRow').classList.toggle('hidden',!cat);
   document.getElementById('catFilters').classList.add('hidden');
-  document.getElementById('viewBtn').classList.toggle('hidden',cat||ops||sets||prods);
-  document.getElementById('filterBtn').classList.toggle('hidden',ops||sets||prods);
-  document.getElementById('sortBtn').classList.toggle('hidden',ops||sets||prods);
-  document.querySelector('.search').classList.toggle('hidden',ops||sets||prods);
+  document.getElementById('viewBtn').classList.toggle('hidden',home||cat||ops||sets||prods);
+  document.getElementById('filterBtn').classList.toggle('hidden',home||ops||sets||prods);
+  document.getElementById('sortBtn').classList.toggle('hidden',home||ops||sets||prods);
+  document.querySelector('.search').classList.toggle('hidden',home||ops||sets||prods);
   document.getElementById('scanFab').classList.toggle('hidden',!(m==='collection'||m==='catalog'));
   document.getElementById('q').placeholder=cat?"Chercher une carte (nom ou numéro), toutes langues…":"Rechercher (nom ou numéro)…";
-  const brief=document.getElementById('briefing'); if(brief && !cat && !ops && !sets && !prods){} else if(brief){ brief.innerHTML=''; }
-  if(ops){ document.getElementById('countLine').textContent=''; fetchOps(); }
+  const brief=document.getElementById('briefing'); if(brief){ brief.innerHTML=''; }
+  // mini portfolio line: shown everywhere except the Accueil dashboard
+  const mb=document.getElementById('miniBar');
+  if(mb){ if(home){ mb.style.display='none'; } else { mb.style.display='block'; const cv=DATA.reduce((s,c)=>s+val(c)*(c.quantity||1),0)+(PROD_VALUE||0); const q=DATA.reduce((s,c)=>s+(c.quantity||1),0); mb.innerHTML='Portefeuille : <b>'+eur0(cv)+'</b> &middot; '+q+' cartes'; } }
+  if(home){ document.getElementById('countLine').textContent=''; renderHome(); }
+  else if(ops){ document.getElementById('countLine').textContent=''; fetchOps(); }
   else if(cat){ buildCatLangRow(); syncCatBadge(); fetchCatalog(); }
   else if(sets){ document.getElementById('countLine').textContent=''; fetchSets(); }
   else if(prods){ document.getElementById('countLine').textContent=''; fetchProducts(); }
@@ -875,7 +920,70 @@ async function prodRemove(idx){ const r=PRODROWS[idx]; if(!r) return;
 }
 async function loadProductValue(){
   try{ const r=await fetch(SB+'/rest/v1/app_products?owned_qty=gt.0&select=price_eur,owned_qty',{headers:{apikey:ANON,Authorization:"Bearer "+ANON}}); const j=await r.json(); PROD_VALUE=Array.isArray(j)?j.reduce((s,x)=>s+(x.price_eur||0)*(x.owned_qty||0),0):0; }catch(e){ PROD_VALUE=0; }
-  if(state.mode==='collection' && Array.isArray(DATA)) render();
+  if(Array.isArray(DATA)){ if(state.mode==='accueil') renderHome(); else if(state.mode==='collection') render(); }
+}
+// ---------- Accueil : tableau de bord ----------
+let HOMESNAPS=null;
+async function loadSnaps(){ try{ const r=await fetch(SB+'/rest/v1/app_value_snapshot?select=day,total_eur,cards,cards_eur,products_eur&order=day.asc&limit=400',{headers:{apikey:ANON,Authorization:"Bearer "+ANON}}); const j=await r.json(); HOMESNAPS=Array.isArray(j)?j:[]; }catch(e){ HOMESNAPS=[]; } }
+function fmtDay(d){ if(!d) return ''; const p=String(d).split('-'); return p.length===3?(p[2]+'/'+p[1]):String(d); }
+function homeChart(snaps){
+  if(!snaps||snaps.length<2) return '<div class="chdates" style="justify-content:center;padding:14px 0">La courbe se remplit chaque jour (un relevé par nuit). Reviens demain pour voir l’évolution.</div>';
+  const W=328,H=118,pad=5;
+  const series=[{k:'total_eur',c:'var(--accent)',n:'Global',fill:true},{k:'cards_eur',c:'#6366f1',n:'Cartes'},{k:'products_eur',c:'#f59e0b',n:'Produits'}];
+  const all=[]; snaps.forEach(s=>series.forEach(se=>all.push(+s[se.k]||0)));
+  let min=Math.min(...all), max=Math.max(...all); if(min===max){ min=Math.min(0,min); if(min===max)max=min+1; } const rng=(max-min)||1;
+  const n=snaps.length, dx=(W-2*pad)/(n-1);
+  const X=i=>pad+i*dx, Y=v=>H-pad-((v-min)/rng)*(H-2*pad);
+  let svg='<svg viewBox="0 0 '+W+' '+H+'"><defs><linearGradient id="ag" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="var(--accent)" stop-opacity="0.28"/><stop offset="1" stop-color="var(--accent)" stop-opacity="0"/></linearGradient></defs>';
+  series.forEach(se=>{
+    const pts=snaps.map((s,i)=>[X(i),Y(+s[se.k]||0)]);
+    const line=pts.map((p,i)=>(i?'L':'M')+p[0].toFixed(1)+' '+p[1].toFixed(1)).join(' ');
+    if(se.fill){ svg+='<path d="'+line+' L '+X(n-1).toFixed(1)+' '+(H-pad)+' L '+X(0).toFixed(1)+' '+(H-pad)+' Z" fill="url(#ag)"/>'; }
+    svg+='<path d="'+line+'" fill="none" stroke="'+se.c+'" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/>';
+    const lp=pts[pts.length-1]; svg+='<circle cx="'+lp[0].toFixed(1)+'" cy="'+lp[1].toFixed(1)+'" r="3.2" fill="'+se.c+'"/>';
+  });
+  svg+='</svg>';
+  const dates='<div class="chdates"><span>'+fmtDay(snaps[0].day)+'</span><span>'+fmtDay(snaps[n-1].day)+'</span></div>';
+  const legend='<div class="chlegend">'+series.map(se=>'<span><i style="background:'+se.c+'"></i>'+se.n+'</span>').join('')+'</div>';
+  return svg+dates+legend;
+}
+async function renderHome(){
+  const stage=document.getElementById('stage'); if(!stage) return;
+  stage.className='';
+  if(!DATALOADED){ stage.innerHTML='<div class="loading">Chargement du tableau de bord&hellip;</div>'; return; }
+  if(HOMESNAPS===null){ stage.innerHTML='<div class="loading">Chargement du tableau de bord&hellip;</div>'; await loadSnaps(); if(state.mode!=='accueil') return; }
+  const cardsVal=DATA.reduce((s,c)=>s+val(c)*(c.quantity||1),0);
+  const prodVal=PROD_VALUE||0, global=cardsVal+prodVal;
+  const qty=DATA.reduce((s,c)=>s+(c.quantity||1),0), uniq=DATA.length;
+  const graded=DATA.filter(c=>c.is_graded); const gradedN=graded.reduce((s,c)=>s+(c.quantity||1),0);
+  const byCo={}; graded.forEach(c=>{ const co=(c.grading_company||'Autre').toUpperCase().replace('BECKETT','BGS'); byCo[co]=(byCo[co]||0)+(c.quantity||1); });
+  const snaps=HOMESNAPS||[];
+  const last=snaps.length?snaps[snaps.length-1]:null, prev=snaps.length>1?snaps[snaps.length-2]:null;
+  // headline delta = real card-market move vs last relevé (products excluded to avoid distortion)
+  let deltaHtml='';
+  if(prev){ const dc=(+last.cards_eur||0)-(+prev.cards_eur||0); const base=(+prev.cards_eur||0); const pc=base?dc/base*100:0; const up=dc>=0; deltaHtml='<div class="delta '+(up?'up':'down')+'">'+(up?'▲':'▼')+' '+(up?'+':'')+eur0(dc)+' ('+(up?'+':'')+pc.toFixed(1).replace('.',',')+' %) <span style="opacity:.85;font-weight:700">cartes / dernier relevé</span></div>'; }
+  const cp=global?Math.round(cardsVal/global*100):0;
+  const gradeChips=Object.keys(byCo).sort((a,b)=>byCo[b]-byCo[a]).map(co=>'<span class="gradechip">'+esc(co)+' <b>'+byCo[co]+'</b></span>').join('');
+  // relevé history (most recent first)
+  let hist='';
+  const rev=snaps.slice().reverse().slice(0,8);
+  rev.forEach((s,i)=>{ const asc=snaps.length-1-i; const p=snaps[asc-1]; const g=+s.total_eur||0; let c='';
+    if(p){ const d=g-(+p.total_eur||0); const up=d>=0; c='<span class="rc '+(up?'up':'down')+'">'+(up?'+':'')+eur0(d)+'</span>'; }
+    hist+='<div class="releverow"><span class="rd">'+fmtDay(s.day)+'</span><span><span class="rv">'+eur0(g)+'</span>'+c+'</span></div>';
+  });
+  const html=
+    '<div class="hcard hhero"><div class="lbl">Valeur du portefeuille</div><div class="big">'+eur0(global)+'</div>'+deltaHtml+
+      '<div class="hsub"><div class="seg"><div class="k"><span class="dotc" style="background:#6366f1"></span>Cartes</div><div class="v">'+eur0(cardsVal)+'</div></div>'+
+      '<div class="seg"><div class="k"><span class="dotc" style="background:#f59e0b"></span>Produits &amp; sets</div><div class="v">'+eur0(prodVal)+'</div></div></div>'+
+      '<div class="splitbar"><i style="width:'+cp+'%;background:#6366f1"></i><i style="width:'+(100-cp)+'%;background:#f59e0b"></i></div></div>'+
+    '<div class="hstats"><div class="hstat"><div class="n">'+qty.toLocaleString('fr-FR')+'</div><div class="k">Cartes</div></div>'+
+      '<div class="hstat"><div class="n">'+uniq.toLocaleString('fr-FR')+'</div><div class="k">Uniques</div></div>'+
+      '<div class="hstat"><div class="n">'+gradedN.toLocaleString('fr-FR')+'</div><div class="k">Gradées</div></div></div>'+
+    (gradeChips?('<div class="hcard"><div class="htitle">Cartes gradées par organisme</div><div class="graderow">'+gradeChips+'</div></div>'):'')+
+    '<div class="hcard hchart"><div class="htitle">Évolution du portefeuille</div>'+homeChart(snaps)+'</div>'+
+    '<div class="hcard"><div class="htitle">Suivi des relevés</div>'+(hist||'<div class="chdates">Aucun relevé pour l’instant.</div>')+'</div>'+
+    '<div class="hcard aisoon"><div class="htitle">Analyse IA <span class="aibadge">bientôt</span></div><div class="txt">Cette page accueillera bientôt l’agent IA : cartes à surveiller, signaux de marché, tendances PSA / Beckett, opportunités de gradation et alertes de valeur — en temps réel.</div></div>';
+  stage.innerHTML=html;
 }
 document.getElementById('modeSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMode(b.dataset.m);});
 const CATARRS=["catColors","catCats","catRarities","catTypes"];
@@ -1464,9 +1572,9 @@ document.getElementById("dclose").addEventListener("click",closeDetail);
 document.getElementById("overlay").addEventListener("click",e=>{ if(e.target.id==="overlay")closeDetail(); });
 document.querySelectorAll('.dtabs button').forEach(b=>b.addEventListener("click",()=>{ detailTab=b.dataset.t; document.querySelectorAll('.dtabs button').forEach(x=>x.classList.toggle('on',x===b)); renderDetail(); }));
 
+setMode('accueil');
 load();
 loadProductValue();
-document.getElementById('scanFab').classList.remove('hidden');
 </script>
 </body>
 </html>
