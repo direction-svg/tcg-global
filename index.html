@@ -223,7 +223,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Ar
 .optbl td.fee{color:var(--neg)}
 .optbl th.lg,.optbl td.lg{text-align:center;white-space:nowrap}
 .lgc{font-size:10px;color:var(--muted);font-weight:700}
-.scanfab{position:fixed;right:16px;bottom:calc(18px + env(safe-area-inset-bottom));width:56px;height:56px;border-radius:50%;background:var(--accent);color:#fff;border:none;font-size:24px;box-shadow:0 8px 22px rgba(52,87,232,.45);cursor:pointer;z-index:35}
+.scanfab{position:fixed;right:16px;bottom:calc(26px + env(safe-area-inset-bottom));width:56px;height:56px;border-radius:50%;background:var(--accent);color:#fff;border:none;font-size:24px;box-shadow:0 8px 22px rgba(52,87,232,.45);cursor:grab;z-index:35;touch-action:none;user-select:none}
+.scanfab:active{cursor:grabbing}
+.scanfab.dragging{opacity:.9;box-shadow:0 10px 26px rgba(52,87,232,.6)}
 .scanbtn{display:block;text-align:center;background:var(--accent);color:#fff;font-weight:800;padding:14px;border-radius:12px;cursor:pointer}
 .scanor{text-align:center;color:var(--muted);font-size:12px;margin:12px 0}
 .scanmanual{display:flex;gap:8px}
@@ -420,7 +422,7 @@ body{-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
 <div class="wrap">
   <div class="hero">
     <div class="topbar">
-      <div class="logo"><div class="mark">OP</div> TCG GLOBAL <span id="buildTag" style="font-size:11px;font-weight:700;margin-left:8px;background:#e11d48;color:#fff;padding:2px 8px;border-radius:10px;letter-spacing:.2px;white-space:nowrap" title="Version en ligne">v17:24</span></div>
+      <div class="logo"><div class="mark">OP</div> TCG GLOBAL <span id="buildTag" style="font-size:11px;font-weight:700;margin-left:8px;background:#e11d48;color:#fff;padding:2px 8px;border-radius:10px;letter-spacing:.2px;white-space:nowrap" title="Version en ligne">v17:29</span></div>
       <div class="grow"></div>
       <button class="iconbtn" id="themeBtn" title="Th&egrave;me">&#9790;</button>
     </div>
@@ -562,7 +564,7 @@ body{-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
   </div>
 </div>
 
-<button id="scanFab" class="scanfab hidden" onclick="openScan()" aria-label="Scanner une carte">&#128247;</button>
+<button id="scanFab" class="scanfab hidden" aria-label="Scanner une carte">&#128247;</button>
 
 <footer>
   <div class="fb"><b id="fTotal">&mdash;</b>Valeur</div>
@@ -1583,6 +1585,19 @@ document.getElementById("dclose").addEventListener("click",closeDetail);
 document.getElementById("overlay").addEventListener("click",e=>{ if(e.target.id==="overlay")closeDetail(); });
 document.querySelectorAll('.dtabs button').forEach(b=>b.addEventListener("click",()=>{ detailTab=b.dataset.t; document.querySelectorAll('.dtabs button').forEach(x=>x.classList.toggle('on',x===b)); renderDetail(); }));
 
+// Bouton scan déplaçable : appui bref = ouvrir le scan, glisser = déplacer le bouton.
+(function(){
+  const fab=document.getElementById('scanFab'); if(!fab) return;
+  let sx=0,sy=0,ox=0,oy=0,moved=false,drag=false;
+  function down(e){ const r=fab.getBoundingClientRect(); ox=r.left; oy=r.top; sx=e.clientX; sy=e.clientY; moved=false; drag=true; fab.classList.add('dragging'); try{ fab.setPointerCapture(e.pointerId); }catch(_){}
+    fab.addEventListener('pointermove',move); fab.addEventListener('pointerup',up); fab.addEventListener('pointercancel',up); }
+  function move(e){ if(!drag) return; const dx=e.clientX-sx, dy=e.clientY-sy; if(!moved && (Math.abs(dx)+Math.abs(dy))>6) moved=true; if(!moved) return; e.preventDefault();
+    const w=fab.offsetWidth,h=fab.offsetHeight,m=6; let nx=ox+dx, ny=oy+dy;
+    nx=Math.max(m,Math.min(window.innerWidth-w-m,nx)); ny=Math.max(m,Math.min(window.innerHeight-h-m,ny));
+    fab.style.left=nx+'px'; fab.style.top=ny+'px'; fab.style.right='auto'; fab.style.bottom='auto'; }
+  function up(e){ drag=false; fab.classList.remove('dragging'); fab.removeEventListener('pointermove',move); fab.removeEventListener('pointerup',up); fab.removeEventListener('pointercancel',up); if(!moved) openScan(); }
+  fab.addEventListener('pointerdown',down);
+})();
 setMode('accueil');
 load();
 loadProductValue();
