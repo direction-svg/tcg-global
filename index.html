@@ -440,6 +440,9 @@ body{-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
 .livesize button{width:32px;height:32px;border-radius:9px;border:1px solid var(--line);background:var(--panel);color:var(--ink);font-size:18px;font-weight:800;cursor:pointer;line-height:1}
 @media(max-width:760px){ .livegrid{flex-direction:column} .livevidwrap{height:52vh;flex-basis:auto} }
 .livestatus{font-size:13px;color:var(--muted);min-height:18px}
+.liveshot{display:flex;flex-direction:column;gap:3px}
+.liveshot img{width:110px;border-radius:8px;border:1px solid var(--line);display:block}
+.liveshotlbl{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.3px}
 .lrescard{display:flex;gap:14px;background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:14px}
 .lresimg{width:92px;flex:none;border-radius:10px;overflow:hidden;background:var(--chip);display:grid;place-items:center;font-size:34px}
 .lresimg img{width:100%;display:block}
@@ -453,6 +456,12 @@ body{-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
 .lresprices{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px}
 .lresprices .lp{background:var(--chip);border-radius:10px;padding:9px 6px;text-align:center}
 .lresprices .lp.hl{background:rgba(124,58,237,.14)}
+.lvariants{margin-top:10px;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:12px}
+.lvhdr{font-size:12px;color:var(--muted);font-weight:700;margin-bottom:8px;line-height:1.45}
+.lvrow{display:flex;justify-content:space-between;gap:10px;padding:6px 0;border-bottom:1px solid var(--line);font-size:13px}
+.lvrow:last-child{border-bottom:none}
+.lvrow span{color:var(--muted)}
+.lvrow b{font-weight:800;white-space:nowrap}
 .lresprices .lp span{display:block;font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.3px}
 .lresprices .lp b{font-size:16px}
 </style>
@@ -461,7 +470,7 @@ body{-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
 <div class="wrap">
   <div class="hero">
     <div class="topbar">
-      <div class="logo"><div class="mark">OP</div> TCG GLOBAL <span id="buildTag" style="font-size:11px;font-weight:700;margin-left:8px;background:#e11d48;color:#fff;padding:2px 8px;border-radius:10px;letter-spacing:.2px;white-space:nowrap" title="Version en ligne">v18:02</span></div>
+      <div class="logo"><div class="mark">OP</div> TCG GLOBAL <span id="buildTag" style="font-size:11px;font-weight:700;margin-left:8px;background:#e11d48;color:#fff;padding:2px 8px;border-radius:10px;letter-spacing:.2px;white-space:nowrap" title="Version en ligne">v18:26</span></div>
       <div class="grow"></div>
       <button class="iconbtn" id="themeBtn" title="Th&egrave;me">&#9790;</button>
     </div>
@@ -1053,12 +1062,14 @@ function renderLive(){
           '<label class="liveauto"><input type="checkbox" id="liveAutoChk" '+(liveAuto?'checked':'')+' onchange="toggleAuto(this.checked)"> Auto</label></div>'+
         '<div class="livesize">Taille du cadre <button onclick="liveSize(-1)">&minus;</button><button onclick="liveSize(1)">+</button><span class="dt" id="liveMeter" style="margin-left:auto"></span></div>'+
         '<div id="liveStatus" class="livestatus"></div>'+
+        '<div id="liveShot" class="liveshot"></div>'+
         '<div id="liveResult"></div>'+
       '</div>'+
     '</div></div>';
-  const v=document.getElementById('liveVideo'); if(v&&liveStream){ v.srcObject=liveStream; v.play().catch(()=>{}); v.addEventListener('loadedmetadata',updateROIbox); }
-  attachROIdrag(); updateROIbox(); updateMeter();
+  const v=document.getElementById('liveVideo'); if(v&&liveStream){ v.srcObject=liveStream; v.play().catch(()=>{}); v.addEventListener('loadedmetadata',liveFitWrap); }
+  attachROIdrag(); liveFitWrap(); updateROIbox(); updateMeter();
 }
+function liveFitWrap(){ const v=document.getElementById('liveVideo'), wrap=document.getElementById('liveVidWrap'); if(v&&wrap&&v.videoWidth){ wrap.style.aspectRatio=v.videoWidth+'/'+v.videoHeight; } updateROIbox(); }
 async function startLive(){
   if(!navigator.mediaDevices||!navigator.mediaDevices.getDisplayMedia){ setLiveStatus('Le partage d\'&eacute;cran n\'est pas disponible sur ce navigateur (utilise un ordinateur).'); return; }
   try{
@@ -1083,7 +1094,7 @@ function attachROIdrag(){ const wrap=document.getElementById('liveVidWrap'); if(
   wrap.addEventListener('pointerup',()=>{ drag=false; });
   wrap.addEventListener('pointercancel',()=>{ drag=false; });
 }
-function roiCrop(){ const v=document.getElementById('liveVideo'); if(!v||!v.videoWidth) return null; const vw=v.videoWidth, vh=v.videoHeight; const wF=liveROI.w*vw; let hF=Math.min(wF*88/63, vh*0.98); let sx=liveROI.cx*vw-wF/2, sy=liveROI.cy*vh-hF/2; sx=Math.max(0,Math.min(vw-wF,sx)); sy=Math.max(0,Math.min(vh-hF,sy)); const scale=Math.min(1,900/wF); const o=document.createElement('canvas'); o.width=Math.max(1,Math.round(wF*scale)); o.height=Math.max(1,Math.round(hF*scale)); o.getContext('2d').drawImage(v, sx,sy,wF,hF, 0,0,o.width,o.height); return o; }
+function roiCrop(){ const v=document.getElementById('liveVideo'); if(!v||!v.videoWidth) return null; const vw=v.videoWidth, vh=v.videoHeight; const wF=liveROI.w*vw; let hF=Math.min(wF*88/63, vh*0.98); let sx=liveROI.cx*vw-wF/2, sy=liveROI.cy*vh-hF/2; sx=Math.max(0,Math.min(vw-wF,sx)); sy=Math.max(0,Math.min(vh-hF,sy)); const scale=Math.min(1,1100/wF); const o=document.createElement('canvas'); o.width=Math.max(1,Math.round(wF*scale)); o.height=Math.max(1,Math.round(hF*scale)); o.getContext('2d').drawImage(v, sx,sy,wF,hF, 0,0,o.width,o.height); return o; }
 function grayOf(src,n){ const o=document.createElement('canvas'); o.width=n;o.height=n; const cx=o.getContext('2d'); cx.drawImage(src,0,0,n,n); const d=cx.getImageData(0,0,n,n).data; const g=new Float32Array(n*n); for(let i=0,j=0;i<d.length;i+=4,j++){ g[j]=0.299*d[i]+0.587*d[i+1]+0.114*d[i+2]; } return g; }
 function updateMeter(){ const now=Date.now(); liveShots=liveShots.filter(t=>now-t<60000); const el=document.getElementById('liveMeter'); if(el) el.textContent=liveShots.length+'/20 analyses ·min'; }
 function liveTick(){
@@ -1100,7 +1111,8 @@ function liveTick(){
 async function liveShot(){
   if(liveBusy) return; const cv=roiCrop(); if(!cv){ setLiveStatus('Flux non pr&ecirc;t.'); return; }
   liveBusy=true; liveLastShot=Date.now(); liveShots.push(Date.now()); updateMeter(); setLiveStatus('Analyse de la s&eacute;lection&hellip;');
-  const b64=cv.toDataURL('image/jpeg',0.82);
+  const b64=cv.toDataURL('image/jpeg',0.85);
+  const prev=document.getElementById('liveShot'); if(prev){ try{ prev.innerHTML='<span class="liveshotlbl">Zone envoy&eacute;e &agrave; l\'IA</span><img src="'+b64+'">'; }catch(_){} }
   try{
     const r=await fetch(SB+'/functions/v1/card-recognize',{method:'POST',headers:{'Content-Type':'application/json',apikey:ANON,Authorization:'Bearer '+ANON},body:JSON.stringify({image_b64:b64})});
     const j=await r.json();
@@ -1130,23 +1142,34 @@ async function liveResolve(det){
     }
   }
   liveLast=code;
-  renderLiveResult(c, det, g10, slab);
+  renderLiveResult(c, det, g10, slab, rows);
   setLiveStatus('En direct &mdash; montre la carte suivante quand tu veux.');
 }
 function gradeLabel(g){ return String(g).replace(/\.0$/,''); }
-function renderLiveResult(c, det, g10, slab){
+function renderLiveResult(c, det, g10, slab, rows){
   const box=document.getElementById('liveResult'); if(!box) return;
   const raw=c.price_eur;
   const bits=[]; if(det.rarity)bits.push(det.rarity); if(det.art_type&&det.art_type!=='normal')bits.push(String(det.art_type).replace(/_/g,' ')); if(det.foil)bits.push('foil'); if(det.star)bits.push('★');
   const own=c.owned;
   const graded=!!(slab&&slab.company);
   const slabBadge=graded?('<span class="lresslab">🛡 '+esc(slab.company)+' '+esc(gradeLabel(slab.grade))+'</span>'):'';
-  let priceCells;
+  // Un même numéro (surtout les promos P-xxx) peut couvrir plusieurs cartes très différentes.
+  const pv=(rows||[]).filter(r=>r.price_eur!=null); const prices=pv.map(r=>+r.price_eur);
+  const mn=prices.length?Math.min(...prices):null, mx=prices.length?Math.max(...prices):null;
+  const ambiguous=!graded && pv.length>1 && mn!=null && mn>0 && (mx/mn)>=1.8;
+  let priceCells='', extra='';
   if(graded){
     const sp=slab.price; const coef=(raw&&sp)?(sp/raw):null;
     priceCells='<div class="lp"><span>Valeur brute</span><b>'+(raw!=null?eur0(raw):'—')+'</b></div>'+
       '<div class="lp hl"><span>'+esc(slab.company)+' '+esc(gradeLabel(slab.grade))+'</span><b>'+(sp!=null?eur0(sp):'—')+'</b></div>'+
       '<div class="lp"><span>Coef vs brut</span><b>'+(coef?('×'+coef.toFixed(1).replace('.',',')):'—')+'</b></div>';
+  } else if(ambiguous){
+    priceCells='<div class="lp"><span>Brut (selon version)</span><b>'+eur0(mn)+'–'+eur0(mx)+'</b></div>'+
+      '<div class="lp"><span>PSA 10 (est.)</span><b>'+(g10!=null?eur0(g10):'—')+'</b></div>'+
+      '<div class="lp"><span>Versions</span><b>'+pv.length+'</b></div>';
+    const seen=new Set(), items=[];
+    rows.slice().sort((a,b)=>((b.price_eur||0)-(a.price_eur||0))).forEach(r=>{ const k=r.language+'|'+(r.variant_label||r.variant||''); if(seen.has(k))return; seen.add(k); items.push('<div class="lvrow"><span>'+(FLAG[r.language]||'')+' '+esc(r.variant_label||r.variant||'—')+'</span><b>'+(r.price_eur!=null?eur0(r.price_eur):'—')+'</b></div>'); });
+    extra='<div class="lvariants"><div class="lvhdr">&#9888;&#65039; Ce num&eacute;ro couvre plusieurs cartes diff&eacute;rentes &mdash; rep&egrave;re la bonne version au visuel / au pack :</div>'+items.slice(0,7).join('')+'</div>';
   } else {
     const coef=(raw&&g10)?(g10/raw):null;
     priceCells='<div class="lp"><span>Valeur brute</span><b>'+(raw!=null?eur0(raw):'—')+'</b></div>'+
@@ -1159,7 +1182,7 @@ function renderLiveResult(c, det, g10, slab){
       '<div class="lressub">'+(FLAG[c.language]||'')+' '+esc(c.card_number||'')+(bits.length?(' &middot; '+esc(bits.join(', '))):'')+'</div>'+
       slabBadge+'<span class="lresown '+(own?'yes':'no')+'">'+(own?'✓ Tu la poss&egrave;des':'✗ Tu ne l\'as pas')+'</span>'+
       '<div class="lresprices">'+priceCells+'</div>'+
-    '</div></div>';
+    '</div></div>'+extra;
 }
 document.getElementById('modeSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMode(b.dataset.m);});
 const CATARRS=["catColors","catCats","catRarities","catTypes"];
