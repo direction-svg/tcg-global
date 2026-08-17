@@ -767,7 +767,7 @@ async function fetchProducts(){
   const stage=document.getElementById('stage'); stage.className=""; stage.innerHTML='<div class="loading">Chargement des produits…</div>';
   const lang=state.prodLang||'JP';
   try{
-    const r=await fetch(SB+'/rest/v1/app_products?language=eq.'+lang+'&select=product_id,name,category,image_url,price_eur,owned_qty&order=price_eur.desc.nullslast',{headers:{apikey:ANON,Authorization:"Bearer "+ANON}});
+    const r=await fetch(SB+'/rest/v1/app_products?language=eq.'+lang+'&select=product_id,name,category,image_url,price_eur,owned_qty,set_code,sort_date&order=sort_date.asc.nullslast,name.asc',{headers:{apikey:ANON,Authorization:"Bearer "+ANON}});
     let rows=await r.json(); if(!Array.isArray(rows))rows=[];
     if(state.mode!=='products') return;
     PRODROWS=rows; renderProducts(rows,lang);
