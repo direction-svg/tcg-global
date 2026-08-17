@@ -229,16 +229,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Ar
 .scanstatus{margin-top:10px;font-size:13px;color:var(--muted);min-height:18px;text-align:center;line-height:1.4}
 .scansheet{max-height:94vh}
 .scanpad{padding:6px 16px 10px}
-.scancam{position:relative;width:100%;aspect-ratio:3/4;max-height:56vh;background:#000;border-radius:14px;overflow:hidden;margin:auto}
+.scancam{position:relative;width:100%;aspect-ratio:63/88;max-height:64vh;background:#000;border-radius:14px;overflow:hidden;margin:auto}
 .scancam video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
-.scanframe{position:absolute;inset:11% 7% 22%;pointer-events:none}
-.scanframe .sc{position:absolute;width:26px;height:26px;border:3px solid #fff;opacity:.92}
-.scanframe .tl{top:0;left:0;border-right:0;border-bottom:0;border-top-left-radius:8px}
-.scanframe .tr{top:0;right:0;border-left:0;border-bottom:0;border-top-right-radius:8px}
-.scanframe .bl{bottom:0;left:0;border-right:0;border-top:0;border-bottom-left-radius:8px}
-.scanframe .br{bottom:0;right:0;border-left:0;border-top:0;border-bottom-right-radius:8px}
-.scnhint{position:absolute;left:0;bottom:-22px;background:rgba(0,0,0,.55);color:#fff;font-size:10px;padding:2px 7px;border-radius:6px}
-.scancapbtn{position:absolute;left:50%;bottom:12px;transform:translateX(-50%);width:60px;height:60px;border-radius:50%;background:#fff;border:4px solid rgba(255,255,255,.55);cursor:pointer;box-shadow:0 2px 10px rgba(0,0,0,.45)}
+.scanframe{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);height:88%;aspect-ratio:63/88;border:2px solid rgba(255,255,255,.95);border-radius:12px;box-shadow:0 0 0 2000px rgba(0,0,0,.42);pointer-events:none;transition:border-color .18s}
+.scanframe.locked{border-color:#28d07a;box-shadow:0 0 0 2000px rgba(0,0,0,.42),0 0 14px rgba(40,208,122,.7)}
+.scnhint{position:absolute;left:50%;top:12px;transform:translateX(-50%);background:rgba(0,0,0,.6);color:#fff;font-size:11px;padding:3px 10px;border-radius:20px;white-space:nowrap;z-index:2}
+.scancapbtn{position:absolute;left:50%;bottom:14px;transform:translateX(-50%);width:62px;height:62px;border-radius:50%;background:#fff;border:4px solid rgba(255,255,255,.55);cursor:pointer;box-shadow:0 2px 10px rgba(0,0,0,.45);z-index:2}
 .scancapbtn:active{transform:translateX(-50%) scale(.94)}
 .scanalt{margin-top:12px;display:flex;flex-direction:column;gap:8px}
 .scanminibtn{display:block;text-align:center;background:var(--chip);color:var(--ink);font-weight:700;padding:11px;border-radius:11px;cursor:pointer;border:1px solid var(--line);font-size:13px}
@@ -508,7 +504,8 @@ body{-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
     <div class="scanpad">
       <div id="scanCam" class="scancam" style="display:none">
         <video id="scanVideo" playsinline muted></video>
-        <div class="scanframe"><span class="sc tl"></span><span class="sc tr"></span><span class="sc bl"></span><span class="sc br"></span><span class="scnhint">num&eacute;ro bien visible</span></div>
+        <div class="scanframe" id="scanFrame"></div>
+        <span class="scnhint" id="scanHint">Place la carte dans le cadre, num&eacute;ro visible</span>
         <button id="scanCapBtn" class="scancapbtn" onclick="scanCapture()" aria-label="Capturer"></button>
       </div>
       <img id="scanPreview" class="scanprev" style="display:none" referrerpolicy="no-referrer">
@@ -1204,7 +1201,7 @@ function markOwnedInGrid(pid,owned){
 }
 function closeCatDetail(){ document.getElementById("catOverlay").classList.add("hidden"); }
 // ---------- Scan de carte ----------
-let scanStream=null;
+let scanStream=null, scanBusy=false, autoTimer=null, autoPrev=null, autoStable=0, autoLastShot=0;
 async function openScan(){
   document.getElementById('scanOverlay').classList.remove('hidden');
   const p=document.getElementById('scanPreview'); p.style.display='none'; p.src='';
@@ -1212,33 +1209,72 @@ async function openScan(){
   const camBox=document.getElementById('scanCam');
   setScanStatus('D&eacute;marrage de la cam&eacute;ra&hellip;');
   const ok=await startCam();
-  if(ok){ camBox.style.display='block'; setScanStatus('Cadre la carte (num&eacute;ro en bas visible) puis appuie sur le d&eacute;clencheur.'); }
+  if(ok){ camBox.style.display='block'; setScanStatus('Place la carte dans le cadre &mdash; capture automatique.'); startAuto(); }
   else { camBox.style.display='none'; setScanStatus('Cam&eacute;ra non disponible ici &mdash; utilise &laquo; Importer une photo &raquo; ou saisis le num&eacute;ro.'); }
 }
 async function startCam(){
   if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia) return false;
-  try{ stopCam(); scanStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'}}}); const v=document.getElementById('scanVideo'); v.srcObject=scanStream; await v.play(); return true; }catch(e){ return false; }
+  try{ stopCam(); scanStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'},width:{ideal:1920},height:{ideal:1080}}}); const v=document.getElementById('scanVideo'); v.srcObject=scanStream; await v.play(); return true; }catch(e){ return false; }
 }
 function stopCam(){ if(scanStream){ try{ scanStream.getTracks().forEach(t=>t.stop()); }catch(e){} scanStream=null; } }
-function closeScan(){ stopCam(); document.getElementById('scanOverlay').classList.add('hidden'); }
+function closeScan(){ stopAuto(); stopCam(); document.getElementById('scanOverlay').classList.add('hidden'); }
+// crop the centered card-shaped region (matches the on-screen frame: 88% height, 63/88 ratio, object-fit:cover)
+function cropCardRegion(v){
+  const vw=v.videoWidth, vh=v.videoHeight; if(!vw||!vh) return null;
+  const AR=63/88;                       // card w/h ratio
+  const frac=0.88;                      // frame height fraction (matches CSS)
+  let fh=vh*frac, fw=fh*AR;             // frame in video px (video shown height=vh under object-fit:cover on a taller box)
+  if(fw>vw*0.96){ fw=vw*0.96; fh=fw/AR; }
+  const sx=(vw-fw)/2, sy=(vh-fh)/2;
+  const o=document.createElement('canvas'); o.width=Math.round(fw); o.height=Math.round(fh);
+  o.getContext('2d').drawImage(v, sx,sy,fw,fh, 0,0,o.width,o.height);
+  return o;
+}
+// ---- auto-capture: fire when the framed card is stable & has enough detail ----
+function graySample(v,n){ const o=document.createElement('canvas'); o.width=n; o.height=n; const cx=o.getContext('2d'); const c=cropCardRegion(v)||v; cx.drawImage(c,0,0,n,n); const d=cx.getImageData(0,0,n,n).data; const g=new Float32Array(n*n); for(let i=0,j=0;i<d.length;i+=4,j++){ g[j]=0.299*d[i]+0.587*d[i+1]+0.114*d[i+2]; } return g; }
+function detailScore(g,n){ let s=0,cnt=0; for(let y=0;y<n;y++){ for(let x=1;x<n;x++){ const dx=Math.abs(g[y*n+x]-g[y*n+x-1]); if(dx>18){s+=dx;} cnt++; } } return s/cnt; }
+function frameDiff(a,b){ if(!a||!b||a.length!==b.length) return 999; let s=0; for(let i=0;i<a.length;i++){ s+=Math.abs(a[i]-b[i]); } return s/a.length; }
+function startAuto(){ stopAuto(); autoPrev=null; autoStable=0; autoLastShot=0; autoTimer=setInterval(autoTick,320); }
+function stopAuto(){ if(autoTimer){ clearInterval(autoTimer); autoTimer=null; } const f=document.getElementById('scanFrame'); if(f)f.classList.remove('locked'); }
+function autoTick(){
+  const v=document.getElementById('scanVideo'); const f=document.getElementById('scanFrame');
+  if(scanBusy||!v||!v.videoWidth){ return; }
+  const N=52; let g; try{ g=graySample(v,N); }catch(e){ return; }
+  const diff=frameDiff(autoPrev,g); autoPrev=g;
+  const det=detailScore(g,N);
+  const still=diff<7, sharp=det>7;      // thresholds tuned for handheld card
+  if(f) f.classList.toggle('locked', still&&sharp);
+  const now=Date.now();
+  if(still&&sharp){ autoStable++; } else { autoStable=0; }
+  if(autoStable>=2 && (now-autoLastShot)>3500){ autoLastShot=now; autoStable=0; autoShot(); }
+}
+async function autoShot(){
+  const v=document.getElementById('scanVideo'); const cv=cropCardRegion(v); if(!cv) return;
+  const pv=document.getElementById('scanPreview'); try{ pv.src=cv.toDataURL('image/jpeg',0.85); pv.style.display='block'; }catch(e){}
+  await processCanvas(cv,{auto:true});
+}
 async function scanCapture(){
   const v=document.getElementById('scanVideo'); if(!v||!v.videoWidth){ setScanStatus('Cam&eacute;ra pas pr&ecirc;te, r&eacute;essaie.'); return; }
-  const cv=document.createElement('canvas'); cv.width=v.videoWidth; cv.height=v.videoHeight; cv.getContext('2d').drawImage(v,0,0);
+  const cv=cropCardRegion(v)||(function(){const c=document.createElement('canvas');c.width=v.videoWidth;c.height=v.videoHeight;c.getContext('2d').drawImage(v,0,0);return c;})();
   const pv=document.getElementById('scanPreview'); try{ pv.src=cv.toDataURL('image/jpeg',0.85); pv.style.display='block'; }catch(e){}
-  processCanvas(cv);
+  processCanvas(cv,{auto:false});
 }
 function canvasDownscaled(cv,maxw){ if(cv.width<=maxw) return cv; const sc=maxw/cv.width; const o=document.createElement('canvas'); o.width=maxw; o.height=Math.round(cv.height*sc); o.getContext('2d').drawImage(cv,0,0,o.width,o.height); return o; }
-async function processCanvas(cv){
+async function processCanvas(cv,opts){
+  opts=opts||{}; if(scanBusy) return; scanBusy=true;
   setScanStatus('Reconnaissance IA&hellip;');
-  const b64=canvasDownscaled(cv,1000).toDataURL('image/jpeg',0.8);
+  const b64=canvasDownscaled(cv,1100).toDataURL('image/jpeg',0.82);
   try{
     const r=await fetch(SB+'/functions/v1/card-recognize',{method:'POST',headers:{'Content-Type':'application/json',apikey:ANON,Authorization:'Bearer '+ANON},body:JSON.stringify({image_b64:b64})});
     const j=await r.json();
-    if(j&&j.card&&j.card.card_number){ const c=j.card; const bits=[]; if(c.rarity)bits.push(c.rarity); if(c.art_type&&c.art_type!=='normal')bits.push(String(c.art_type).replace(/_/g,' ')); if(c.foil)bits.push('foil'); if(c.gold_text)bits.push('dor&eacute;'); if(c.star)bits.push('★'); if(c.stamp&&c.stamp!=='none')bits.push(c.stamp); setScanStatus('Identifi&eacute;e : <b>'+esc(c.card_number)+'</b> '+(FLAG[c.language]||'')+(bits.length?(' &middot; '+esc(bits.join(' &middot; '))):'')); scanLookup(c.card_number,c); return; }
+    if(j&&j.card&&j.card.card_number){ const c=j.card; const bits=[]; if(c.rarity)bits.push(c.rarity); if(c.art_type&&c.art_type!=='normal')bits.push(String(c.art_type).replace(/_/g,' ')); if(c.foil)bits.push('foil'); if(c.gold_text)bits.push('dor&eacute;'); if(c.star)bits.push('★'); if(c.stamp&&c.stamp!=='none')bits.push(c.stamp); setScanStatus('Identifi&eacute;e : <b>'+esc(c.card_number)+'</b> '+(FLAG[c.language]||'')+(bits.length?(' &middot; '+esc(bits.join(' &middot; '))):'')); stopAuto(); scanBusy=false; scanLookup(c.card_number,c); return; }
   }catch(e){}
+  // In auto mode, don't spend time on OCR — just keep scanning the live feed.
+  if(opts.auto){ setScanStatus('Carte non reconnue&hellip; ajuste l\'angle ou la lumi&egrave;re.'); scanBusy=false; return; }
   setScanStatus('Lecture du num&eacute;ro&hellip;');
-  try{ await ensureTess(); const h=Math.max(60,Math.round(cv.height*0.34)); const roi=document.createElement('canvas'); roi.width=cv.width; roi.height=h; roi.getContext('2d').drawImage(cv,0,cv.height-h,cv.width,h,0,0,cv.width,h); let code=null; for(const c of [roi,cv]){ const rr=await Tesseract.recognize(c,'eng'); code=extractCode(rr&&rr.data&&rr.data.text); if(code) break; } if(code){ setScanStatus('D&eacute;tect&eacute; : <b>'+code+'</b>'); scanLookup(code); } else setScanStatus('Num&eacute;ro non lu. Rapproche-toi, ou saisis-le ci-dessous.'); }
+  try{ await ensureTess(); const h=Math.max(60,Math.round(cv.height*0.34)); const roi=document.createElement('canvas'); roi.width=cv.width; roi.height=h; roi.getContext('2d').drawImage(cv,0,cv.height-h,cv.width,h,0,0,cv.width,h); let code=null; for(const c of [roi,cv]){ const rr=await Tesseract.recognize(c,'eng'); code=extractCode(rr&&rr.data&&rr.data.text); if(code) break; } if(code){ setScanStatus('D&eacute;tect&eacute; : <b>'+code+'</b>'); scanBusy=false; scanLookup(code); return; } else setScanStatus('Num&eacute;ro non lu. Rapproche-toi, ou saisis-le ci-dessous.'); }
   catch(e){ setScanStatus('Saisis le num&eacute;ro ci-dessous (ex : OP05-119).'); }
+  scanBusy=false;
 }
 function setScanStatus(t){ const e=document.getElementById('scanStatus'); if(e) e.innerHTML=t; }
 function extractCode(txt){
