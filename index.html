@@ -1234,7 +1234,7 @@ async function processCanvas(cv){
   try{
     const r=await fetch(SB+'/functions/v1/card-recognize',{method:'POST',headers:{'Content-Type':'application/json',apikey:ANON,Authorization:'Bearer '+ANON},body:JSON.stringify({image_b64:b64})});
     const j=await r.json();
-    if(j&&j.card&&j.card.card_number){ const c=j.card; setScanStatus('Identifi&eacute;e : <b>'+esc(c.card_number)+'</b> '+(FLAG[c.language]||'')+(c.variant?(' &middot; '+esc(c.variant)):'')); scanLookup(c.card_number,c.language,c.variant); return; }
+    if(j&&j.card&&j.card.card_number){ const c=j.card; const bits=[]; if(c.rarity)bits.push(c.rarity); if(c.art_type&&c.art_type!=='normal')bits.push(String(c.art_type).replace(/_/g,' ')); if(c.foil)bits.push('foil'); if(c.gold_text)bits.push('dor&eacute;'); if(c.star)bits.push('★'); if(c.stamp&&c.stamp!=='none')bits.push(c.stamp); setScanStatus('Identifi&eacute;e : <b>'+esc(c.card_number)+'</b> '+(FLAG[c.language]||'')+(bits.length?(' &middot; '+esc(bits.join(' &middot; '))):'')); scanLookup(c.card_number,c); return; }
   }catch(e){}
   setScanStatus('Lecture du num&eacute;ro&hellip;');
   try{ await ensureTess(); const h=Math.max(60,Math.round(cv.height*0.34)); const roi=document.createElement('canvas'); roi.width=cv.width; roi.height=h; roi.getContext('2d').drawImage(cv,0,cv.height-h,cv.width,h,0,0,cv.width,h); let code=null; for(const c of [roi,cv]){ const rr=await Tesseract.recognize(c,'eng'); code=extractCode(rr&&rr.data&&rr.data.text); if(code) break; } if(code){ setScanStatus('D&eacute;tect&eacute; : <b>'+code+'</b>'); scanLookup(code); } else setScanStatus('Num&eacute;ro non lu. Rapproche-toi, ou saisis-le ci-dessous.'); }
@@ -1253,15 +1253,21 @@ function downscaleImg(url,maxw){ return new Promise((res,rej)=>{ const im=new Im
 let TESS_LOADING=null;
 function ensureTess(){ if(window.Tesseract) return Promise.resolve(); if(TESS_LOADING) return TESS_LOADING; TESS_LOADING=new Promise((res,rej)=>{ const s=document.createElement('script'); s.src='https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/5.1.0/tesseract.min.js'; s.onload=res; s.onerror=rej; document.head.appendChild(s); }); return TESS_LOADING; }
 async function onScanPhoto(e){ const f=e.target.files&&e.target.files[0]; if(!f) return; const url=URL.createObjectURL(f); const pv=document.getElementById('scanPreview'); pv.src=url; pv.style.display='block'; try{ const cv=await downscaleImg(url,1500); processCanvas(cv); }catch(err){ setScanStatus('Impossible de lire l\'image. Saisis le num&eacute;ro.'); } }
-async function scanLookup(code, lang, variant){
+async function scanLookup(code, det){
   setScanStatus('Recherche de <b>'+esc(code)+'</b>&hellip;');
   let rows=[];
   try{ const r=await fetch(SB+'/rest/v1/app_catalog_priced?card_number=eq.'+encodeURIComponent(code)+'&select=card_number,language,name,image_url,variant,variant_label,rarity,set_code,set_name,category,origin,printing_id,price_eur,price_source&limit=80',{headers:{apikey:ANON,Authorization:"Bearer "+ANON}}); rows=await r.json(); if(!Array.isArray(rows))rows=[]; }catch(e){}
   if(!rows.length){ setScanStatus('Aucune carte trouv&eacute;e pour <b>'+esc(code)+'</b>. V&eacute;rifie le num&eacute;ro.'); return; }
-  const LO={JP:0,EN:1,FR:2,CN:3}; rows.sort((a,b)=>((LO[a.language]??9)-(LO[b.language]??9))||((b.price_eur||0)-(a.price_eur||0)));
-  let pick=rows[0];
-  if(lang){ const bl=rows.filter(r=>r.language===lang); if(bl.length){ pick=bl[0]; if(variant){ const v=String(variant).toLowerCase(); const isAlt=/(alt|parall|manga|foil|special|promo|\bsp\b|jolly|wanted|gift)/.test(v); const vm=bl.find(r=>{ const rv=String(r.variant_label||r.variant||'').toLowerCase(); const norm=(!rv||rv==='normal'||/normal/.test(rv)); return isAlt? !norm : norm; }); if(vm)pick=vm; } } }
-  closeScan(); openCatDetail(pick);
+  const LO={JP:0,EN:1,FR:2,CN:3};
+  const detAlt = !!(det&&(det.star||det.foil||(det.art_type&&det.art_type!=='normal')));
+  function scr(row){ let s=0; const rv=String(row.variant_label||row.variant||'').toLowerCase(); const rr=String(row.rarity||'').toLowerCase(); const norm=(!rv||rv==='normal'||/normal/.test(rv));
+    if(det&&det.language&&row.language===det.language) s+=4;
+    if(detAlt&&!norm)s+=2; if(!detAlt&&norm)s+=2;
+    if(det){ if(det.art_type==='manga'&&/manga/.test(rv))s+=3; if(det.art_type==='parallel'&&/(parall|foil|jolly|_p\d|(^|\s)p\d)/.test(rv))s+=2; if(det.art_type==='alternate_art'&&/(alt|art|special|_p\d|wanted)/.test(rv))s+=2; if(det.art_type==='full_art'&&/(full|_p\d)/.test(rv))s+=1; if(det.rarity&&rr&&rr.replace(/[^a-z]/g,'').includes(det.rarity.toLowerCase()))s+=1; }
+    return s;
+  }
+  rows.sort((a,b)=> (scr(b)-scr(a)) || ((LO[a.language]??9)-(LO[b.language]??9)) || ((b.price_eur||0)-(a.price_eur||0)) );
+  closeScan(); openCatDetail(rows[0]);
 }
 function scanLookupManual(){ const raw=(document.getElementById('scanCode').value||'').toUpperCase().replace(/\s+/g,''); const code=extractCode(raw)||(/^[A-Z]{1,3}\d?\d?-?\d{2,3}$/.test(raw)?raw:null); if(!code){ setScanStatus('Format non reconnu. Ex : OP05-119 ou P-110'); return; } scanLookup(code); }
 document.getElementById("sortBtn").addEventListener("click",()=>{ state.mode==="catalog"?openCatSort():openSort(); });
