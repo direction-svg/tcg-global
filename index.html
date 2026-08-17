@@ -374,7 +374,7 @@ body{-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
 <div class="wrap">
   <div class="hero">
     <div class="topbar">
-      <div class="logo"><div class="mark">OP</div> TCG GLOBAL <span id="buildTag" style="font-size:11px;font-weight:700;margin-left:8px;background:#e11d48;color:#fff;padding:2px 8px;border-radius:10px;letter-spacing:.2px;white-space:nowrap" title="Version en ligne">v16:44</span></div>
+      <div class="logo"><div class="mark">OP</div> TCG GLOBAL <span id="buildTag" style="font-size:11px;font-weight:700;margin-left:8px;background:#e11d48;color:#fff;padding:2px 8px;border-radius:10px;letter-spacing:.2px;white-space:nowrap" title="Version en ligne">v16:49</span></div>
       <div class="grow"></div>
       <button class="iconbtn" id="themeBtn" title="Th&egrave;me">&#9790;</button>
     </div>
@@ -1250,8 +1250,8 @@ function autoTick(){
   if(now-autoLastShot < 3500) return;              // gentle spacing to spare the free-tier quota
   if(hasCard){ autoContentTicks++; } else { autoContentTicks=0; autoStable=0; }
   if(hasCard&&still){ autoStable++; } else { autoStable=Math.max(0,autoStable-1); }
-  // fire on a brief stable moment, OR as a fallback once a card has been framed a while
-  if(autoStable>=2 || autoContentTicks>=7){ autoLastShot=now; autoStable=0; autoContentTicks=0; autoShot(); }
+  // fire quickly once framed — low-confidence reads are filtered out server-side, so we can be eager
+  if(autoStable>=1 || autoContentTicks>=4){ autoLastShot=now; autoStable=0; autoContentTicks=0; autoShot(); }
 }
 async function autoShot(){
   const v=document.getElementById('scanVideo'); const cv=cropCardRegion(v); if(!cv) return;
@@ -1274,6 +1274,8 @@ async function processCanvas(cv,opts){
     const r=await fetch(SB+'/functions/v1/card-recognize',{method:'POST',headers:{'Content-Type':'application/json',apikey:ANON,Authorization:'Bearer '+ANON},body:JSON.stringify({image_b64:b64})});
     const j=await r.json();
     if(j&&j.rate_limited){ const wait=(j.retry_after||30); autoBackoffUntil=Date.now()+(wait+2)*1000; setScanStatus('&#9203; Limite gratuite de l\'IA Gemini atteinte (20 scans/min). Pause '+wait+' s&hellip; ou saisis le num&eacute;ro ci-dessous.'); scanBusy=false; return; }
+    // In auto mode, reject an uncertain read and keep scanning (avoids opening a wrong card on an early/blurry frame).
+    if(opts.auto && j&&j.card&&j.card.card_number){ const conf=(j.card.confidence!=null)?Number(j.card.confidence):1; if(conf<0.55){ setScanStatus('Lecture incertaine&hellip; je r&eacute;essaie (tiens la carte bien &agrave; plat).'); scanBusy=false; return; } }
     if(j&&j.card&&j.card.card_number){ const c=j.card; const bits=[]; if(c.rarity)bits.push(c.rarity); if(c.art_type&&c.art_type!=='normal')bits.push(String(c.art_type).replace(/_/g,' ')); if(c.foil)bits.push('foil'); if(c.gold_text)bits.push('dor&eacute;'); if(c.star)bits.push('★'); if(c.stamp&&c.stamp!=='none')bits.push(c.stamp); setScanStatus('Identifi&eacute;e : <b>'+esc(c.card_number)+'</b> '+(FLAG[c.language]||'')+(bits.length?(' &middot; '+esc(bits.join(' &middot; '))):'')); stopAuto(); scanBusy=false; scanLookup(c.card_number,c); return; }
   }catch(e){}
   // In auto mode, don't spend time on OCR — keep scanning the live feed and retry automatically.
