@@ -555,14 +555,42 @@ body{-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
 .hbriefbtn{margin-top:8px;background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;border:none;font-weight:800;font-size:14px;padding:11px 16px;border-radius:12px;cursor:pointer;width:100%}
 .lresprices .lp span{display:block;font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.3px}
 .lresprices .lp b{font-size:16px}
+/* ---------- Sélecteur de marché (JP / EU / US) ---------- */
+.mktseg{display:inline-flex;gap:3px;background:var(--chip);border:1px solid var(--line);border-radius:11px;padding:3px}
+.mktseg button{border:none;background:transparent;color:var(--muted);font-weight:800;font-size:12px;padding:5px 9px;border-radius:8px;cursor:pointer;line-height:1;white-space:nowrap}
+.mktseg button.on{background:var(--panel);color:var(--ink);box-shadow:var(--shadow)}
+:root.dark .mktseg button.on{background:var(--accent);color:#0a0c10}
+.homemkt{display:flex;align-items:center;gap:8px;margin:2px 0 10px;flex-wrap:wrap}
+.homemkt .lb{font-size:12px;color:var(--muted);font-weight:700}
+.hhero .hstrict{font-size:12.5px;color:rgba(255,255,255,.92);margin-top:8px;line-height:1.5}
+.hhero .hstrict b{color:#fff}
+.hhero .hstrict .dt{color:rgba(255,255,255,.72)}
+.hhero .covbar{height:6px;border-radius:4px;background:rgba(255,255,255,.22);overflow:hidden;margin-top:6px;max-width:340px}
+.hhero .covbar>i{display:block;height:100%;background:#fff}
+.hhero .esttag{font-size:11px;font-weight:700;color:rgba(255,255,255,.75);text-transform:uppercase;letter-spacing:.3px}
+/* comparatif 3 marchés sur la fiche carte */
+.mkc{margin:2px 0 10px;border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.mkc .mkchd{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.3px;color:var(--muted);padding:8px 11px;background:var(--chip)}
+.mkc table{width:100%;border-collapse:collapse}
+.mkc td{padding:7px 11px;font-size:13px;border-top:1px solid var(--line)}
+.mkc td.m{font-weight:800;width:64px}
+.mkc td.rw{text-align:right;font-weight:700}
+.mkc td.g{text-align:right;color:var(--pos);font-weight:800;white-space:nowrap}
+.mkc .none{color:var(--muted);font-weight:600}
+.mkflag{font-weight:800}
 </style>
 </head>
 <body>
 <div class="wrap">
   <div class="hero">
     <div class="topbar">
-      <div class="logo"><div class="mark">OP</div> TCG GLOBAL <span id="buildTag" style="font-size:11px;font-weight:700;margin-left:8px;background:#e11d48;color:#fff;padding:2px 8px;border-radius:10px;letter-spacing:.2px;white-space:nowrap" title="Version en ligne">v09:14</span></div>
+      <div class="logo"><div class="mark">OP</div> TCG GLOBAL <span id="buildTag" style="font-size:11px;font-weight:700;margin-left:8px;background:#e11d48;color:#fff;padding:2px 8px;border-radius:10px;letter-spacing:.2px;white-space:nowrap" title="Version en ligne">v10:08</span></div>
       <div class="grow"></div>
+      <div class="mktseg" id="mktSeg" title="Marché de valorisation">
+        <button data-k="JP" class="on">🇯🇵 JP</button>
+        <button data-k="EU">🇪🇺 EU</button>
+        <button data-k="US">🇺🇸 US</button>
+      </div>
       <button class="iconbtn" id="themeBtn" title="Th&egrave;me">&#9790;</button>
     </div>
     <div class="minibar" id="miniBar"></div>
@@ -794,8 +822,36 @@ let DATA=[], state=Object.assign({},DEF);
 
 const eur=n=> (n==null?"—":(Number(n).toLocaleString("fr-FR",{minimumFractionDigits:2,maximumFractionDigits:2})+" €"));
 const eur0=n=> (n==null?"—":(Math.round(Number(n)).toLocaleString("fr-FR")+" €"));
-const val=c=> c.market_value_eur==null?0:Number(c.market_value_eur);
+// ---------- Marché de valorisation (JP / EU / US) ----------
+let MKT='JP';
+const MKT_FIELD={JP:'_jp',EU:'_eu',US:'_us'};
+const MKT_LABEL={JP:'🇯🇵 Japon',EU:'🇪🇺 Europe',US:'🇺🇸 US'};
+function mkStrict(c){ const v=c[MKT_FIELD[MKT]]; return (v==null)?null:Number(v); }        // vrai prix marché (ou null)
+function mkEst(c){ const v=c[MKT_FIELD[MKT]]; if(v!=null) return Number(v); return c.market_value_eur==null?0:Number(c.market_value_eur); } // estimé (repli)
+const val=c=> mkEst(c);   // toutes les listes/totaux suivent le marché choisi (estimé)
 function esc(s){ return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
+function setMarket(k){
+  if(!MKT_FIELD[k]||k===MKT) { if(k) MKT=k; }
+  MKT=k;
+  document.querySelectorAll('#mktSeg button').forEach(b=>b.classList.toggle('on',b.dataset.k===k));
+  const m=state.mode;
+  if(m==='accueil') renderHome();
+  else if(m==='collection') render();
+  else if(m==='products') fetchProducts();
+  else if(m==='catalog') fetchCatalog();
+  else if(m==='ia'){} else render();
+  // rafraîchit la mini-ligne portefeuille
+  const mb=document.getElementById('miniBar');
+  if(mb && m!=='accueil'){ const cv=DATA.reduce((s,c)=>s+val(c)*(c.quantity||1),0)+(PROD_VALUE||0); const q=DATA.reduce((s,c)=>s+(c.quantity||1),0); mb.innerHTML='Portefeuille ('+MKT_LABEL[MKT]+') : <b>'+eur0(cv)+'</b> &middot; '+q+' cartes'; }
+}
+async function loadMarketVals(){
+  try{
+    let mm=[],from=0,step=1000;
+    while(true){ const r=await fetch(SB+'/rest/v1/app_collection_market?select=item_id,jp_eur,eu_eur,us_eur&limit='+step+'&offset='+from,{headers:{apikey:ANON,Authorization:'Bearer '+ANON}}); const b=await r.json(); if(!Array.isArray(b))break; mm=mm.concat(b); if(b.length<step)break; from+=step; }
+    const map={}; mm.forEach(x=>{ map[x.item_id]=x; });
+    DATA.forEach(c=>{ const x=map[c.item_id]; if(x){ c._jp=x.jp_eur; c._eu=x.eu_eur; c._us=x.us_eur; } });
+  }catch(e){}
+}
 
 async function load(){
   let all=[],from=0,step=1000;
@@ -805,6 +861,7 @@ async function load(){
     const b=await r.json(); all=all.concat(b); if(b.length<step)break; from+=step;
   }
   DATA=all; DATALOADED=true; buildFilterModal();
+  await loadMarketVals();
   if(state.mode==="accueil"){ renderHome(); }
   else { render(); if(state.mode==="collection") loadBriefing(); }
 }
@@ -966,7 +1023,7 @@ function setMode(m){
   const brief=document.getElementById('briefing'); if(brief){ brief.innerHTML=''; }
   // mini portfolio line: shown everywhere except the Accueil dashboard
   const mb=document.getElementById('miniBar');
-  if(mb){ if(home){ mb.style.display='none'; } else { mb.style.display='block'; const cv=DATA.reduce((s,c)=>s+val(c)*(c.quantity||1),0)+(PROD_VALUE||0); const q=DATA.reduce((s,c)=>s+(c.quantity||1),0); mb.innerHTML='Portefeuille : <b>'+eur0(cv)+'</b> &middot; '+q+' cartes'; } }
+  if(mb){ if(home){ mb.style.display='none'; } else { mb.style.display='block'; const cv=DATA.reduce((s,c)=>s+val(c)*(c.quantity||1),0)+(PROD_VALUE||0); const q=DATA.reduce((s,c)=>s+(c.quantity||1),0); mb.innerHTML='Portefeuille ('+MKT_LABEL[MKT]+') : <b>'+eur0(cv)+'</b> &middot; '+q+' cartes'; } }
   if(home){ document.getElementById('countLine').textContent=''; renderHome(); }
   else if(ia){ document.getElementById('countLine').textContent=''; renderIA(); }
   else if(live){ document.getElementById('countLine').textContent=''; renderLive(); }
@@ -1102,7 +1159,12 @@ async function renderHome(){
   if(!DATALOADED){ stage.innerHTML='<div class="loading">Chargement du tableau de bord&hellip;</div>'; return; }
   if(HOMESNAPS===null){ stage.innerHTML='<div class="loading">Chargement du tableau de bord&hellip;</div>'; await loadSnaps(); if(state.mode!=='accueil') return; }
   const cardsVal=DATA.reduce((s,c)=>s+val(c)*(c.quantity||1),0);
+  let cardsStrict=0, covQty=0, totQty=0;
+  DATA.forEach(c=>{ const q=c.quantity||1; totQty+=q; const sv=mkStrict(c); if(sv!=null){ cardsStrict+=sv*q; covQty+=q; } });
   const prodVal=PROD_VALUE||0, global=cardsVal+prodVal;
+  const prodStrict=(MKT==='JP')?prodVal:0;
+  const globalStrict=cardsStrict+prodStrict;
+  const cov= totQty? Math.round(covQty/totQty*100):0;
   const qty=DATA.reduce((s,c)=>s+(c.quantity||1),0), uniq=DATA.length;
   const graded=DATA.filter(c=>c.is_graded); const gradedN=graded.reduce((s,c)=>s+(c.quantity||1),0);
   const byCo={}; graded.forEach(c=>{ const co=(c.grading_company||'Autre').toUpperCase().replace('BECKETT','BGS'); byCo[co]=(byCo[co]||0)+(c.quantity||1); });
@@ -1121,7 +1183,8 @@ async function renderHome(){
     hist+='<div class="releverow"><span class="rd">'+fmtDay(s.day)+'</span><span><span class="rv">'+eur0(g)+'</span>'+c+'</span></div>';
   });
   const html=
-    '<div class="hcard hhero"><div class="lbl">Valeur du portefeuille</div><div class="big">'+eur0(global)+'</div>'+deltaHtml+
+    '<div class="hcard hhero"><div class="lbl">Valeur du portefeuille <span class="esttag">· '+esc(MKT_LABEL[MKT])+' · estimée</span></div><div class="big">'+eur0(global)+'</div>'+deltaHtml+
+      '<div class="hstrict">Valeur réelle '+esc(MKT_LABEL[MKT])+' : <b>'+eur0(globalStrict)+'</b> <span class="dt">— '+cov+'% de la collection couverte par un vrai prix '+MKT+(MKT==='JP'?'':' (le reste estimé au prix JP)')+'</span><div class="covbar"><i style="width:'+cov+'%"></i></div></div>'+
       '<div class="hsub"><div class="seg"><div class="k"><span class="dotc" style="background:#6366f1"></span>Cartes</div><div class="v">'+eur0(cardsVal)+'</div></div>'+
       '<div class="seg"><div class="k"><span class="dotc" style="background:#f59e0b"></span>Produits &amp; sets</div><div class="v">'+eur0(prodVal)+'</div></div></div>'+
       '<div class="splitbar"><i style="width:'+cp+'%;background:#6366f1"></i><i style="width:'+(100-cp)+'%;background:#f59e0b"></i></div></div>'+
@@ -1438,6 +1501,7 @@ async function homeBriefing(){
   }catch(e){ box.innerHTML='<div class="txt" style="color:var(--muted);font-size:13px">Erreur, réessaie.</div><button class="hbriefbtn" onclick="homeBriefing()">Réessayer</button>'; }
 }
 document.getElementById('modeSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMode(b.dataset.m);});
+document.getElementById('mktSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMarket(b.dataset.k);});
 const CATARRS=["catColors","catCats","catRarities","catTypes"];
 function toggleCat(key,code){ if(code==="all"){ state[key]=[]; } else { const a=state[key]; state[key]=a.includes(code)?a.filter(x=>x!==code):a.concat([code]); } }
 function catActiveCount(){ return state.catColors.length+state.catCats.length+state.catRarities.length+state.catTypes.length; }
@@ -1702,6 +1766,29 @@ async function loadCardPrices(c, boxId){
   html+=gradeAdvice(ung, grd);
   html+='<button class="pxadd" onclick="addPrice(this)" data-pid="'+esc(c.printing_id||'')+'" data-mk="'+esc(c.language||'')+'" data-box="'+esc(boxId)+'">+ Ajouter un prix manuel</button>';
   box.innerHTML=html;
+  loadMarketCompare(c, boxId);
+}
+async function loadMarketCompare(c, boxId){
+  const box=document.getElementById(boxId||'cdprice'); if(!box||!c||!c.card_number) return;
+  let rows=[];
+  try{ const r=await fetch(SB+'/rest/v1/app_card_market?card_number=eq.'+encodeURIComponent(c.card_number)+'&select=variant_label,language,eu_raw,eu_src,eu_offres,us_raw,us_psa10,jp_shop,jp_raw,jp_psa10&limit=24',{headers:{apikey:ANON,Authorization:'Bearer '+ANON}}); rows=await r.json(); if(!Array.isArray(rows))rows=[]; }catch(e){ return; }
+  if(!rows.length) return;
+  const lang=c.language; const vl=(c.variant_label||c.variant||'');
+  const bk=s=>{ s=(s||'').toString().toLowerCase(); if(s.indexOf('manga')>=0)return 'manga'; if(s.indexOf('parallel')>=0)return 'parallel'; if(s.indexOf('alternate art')>=0||s.indexOf('alt')>=0)return 'alt'; return 'base'; };
+  let row=rows.find(r=>r.language===lang && bk(r.variant_label)===bk(vl));
+  if(!row) row=rows.filter(r=>r.language===lang).sort((a,b)=>((b.jp_psa10||b.jp_raw||b.eu_raw||0)-(a.jp_psa10||a.jp_raw||a.eu_raw||0)))[0];
+  if(!row) row=rows[0];
+  if(!row) return;
+  const jpRaw=(row.jp_shop!=null)?row.jp_shop:row.jp_raw;
+  const cell=v=> v==null?'<span class="none">—</span>':eur(v);
+  const line=(flag,raw,g,extra)=> '<tr><td class="m">'+flag+'</td><td class="rw">'+cell(raw)+(extra||'')+'</td><td class="g">'+(g!=null?('PSA10 '+eur(g)):'')+'</td></tr>';
+  const euExtra=(row.eu_offres!=null&&row.eu_raw!=null)?(' <span class="dt" style="font-weight:600">'+row.eu_offres+' offres</span>'):'';
+  const html='<div class="mkc"><div class="mkchd">Comparatif marché — '+esc(row.variant_label||'Base')+' · '+(FLAG[row.language]||row.language)+'</div><table><tbody>'+
+    line('🇯🇵 JP',jpRaw,row.jp_psa10,'')+
+    line('🇺🇸 US',row.us_raw,row.us_psa10,'')+
+    line('🇪🇺 EU',row.eu_raw,null,euExtra)+
+    '</tbody></table></div>';
+  box.insertAdjacentHTML('afterbegin', html);
 }
 async function addPrice(btn){
   const pid=btn.getAttribute('data-pid'); const market=btn.getAttribute('data-mk'); const boxId=btn.getAttribute('data-box')||'cdprice';
