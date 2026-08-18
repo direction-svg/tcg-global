@@ -462,26 +462,90 @@ body{-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
 .lvrow:last-child{border-bottom:none}
 .lvrow span{color:var(--muted)}
 .lvrow b{font-weight:800;white-space:nowrap}
-/* ---------- Agent IA (chat) ---------- */
+/* ---------- Agent IA (cockpit vivant : voix + cartes) ---------- */
 .ia{display:flex;flex-direction:column}
-.iawrap{display:flex;flex-direction:column;gap:11px;height:calc(100vh - 200px);min-height:58vh}
-.iahead{display:flex;align-items:center;gap:8px;font-weight:800;font-size:15px}
-.iaspark{width:28px;height:28px;flex:none;border-radius:9px;background:linear-gradient(135deg,var(--accent),var(--accent2));display:grid;place-items:center;color:#fff;font-size:15px}
-.ialog{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:10px;padding:4px 2px}
-.iamsg{max-width:88%;padding:11px 14px;border-radius:16px;font-size:14px;line-height:1.55;white-space:pre-wrap;word-wrap:break-word;overflow-wrap:anywhere}
-.iamsg.user{align-self:flex-end;background:var(--accent);color:#fff;border-bottom-right-radius:5px}
-.iamsg.bot{align-self:flex-start;background:var(--panel);border:1px solid var(--line);border-bottom-left-radius:5px}
-.iamsg.think{color:var(--muted);font-style:italic}
+.ianew{display:flex;flex-direction:column;gap:12px;height:calc(100vh - 164px);min-height:60vh}
+/* hero avatar vivant */
+.iahero{position:relative;display:flex;align-items:center;gap:14px;padding:15px 16px;border-radius:20px;overflow:hidden;color:#eef2ff;
+  background:radial-gradient(120% 160% at 0% 0%, rgba(91,140,255,.22), transparent 55%), linear-gradient(135deg,#0e1220,#151a2b);
+  border:1px solid rgba(120,150,255,.18);box-shadow:var(--shadow)}
+.iahero::after{content:"";position:absolute;inset:0;background:radial-gradient(80% 120% at 100% 130%, rgba(130,90,255,.20), transparent 60%);pointer-events:none}
+.orb{position:relative;width:62px;height:62px;flex:none;border-radius:50%;z-index:1;background:conic-gradient(from 0deg,#5b8cff,#8a5cff,#39d0ff,#5b8cff);animation:orbSpin 12s linear infinite}
+.orb::before{content:"";position:absolute;inset:6px;border-radius:50%;background:#0b0f1c;z-index:2;transition:inset .2s}
+.orb .rings{position:absolute;inset:-6px;border-radius:50%;border:2px solid rgba(120,170,255,.5);opacity:0;z-index:1}
+.orb .orbcore{position:absolute;inset:0;z-index:3;display:grid;place-items:center;font-size:22px;color:#dbe6ff}
+.orb.think{animation:orbSpin 1.5s linear infinite}
+.orb.think::before{animation:orbPulse 1s ease-in-out infinite}
+.orb.speak::before{animation:orbPulse .5s ease-in-out infinite}
+.orb.listen{animation:orbSpin 3.5s linear infinite}
+.orb.listen .rings{animation:orbRing 1.3s ease-out infinite}
+@keyframes orbSpin{to{transform:rotate(360deg)}}
+@keyframes orbPulse{0%,100%{inset:6px}50%{inset:12px}}
+@keyframes orbRing{0%{opacity:.7;transform:scale(.8)}100%{opacity:0;transform:scale(1.6)}}
+.iheroinfo{flex:1;min-width:0;z-index:1}
+.inm{font-weight:800;font-size:18px;letter-spacing:.2px;display:flex;align-items:center;gap:8px}
+.idot{width:8px;height:8px;border-radius:50%;background:#37e39a;animation:live 1.8s infinite}
+@keyframes live{0%{box-shadow:0 0 0 0 rgba(55,227,154,.5)}70%{box-shadow:0 0 0 7px rgba(55,227,154,0)}100%{box-shadow:0 0 0 0 rgba(55,227,154,0)}}
+.ist{font-size:12.5px;color:#aeb9d8;margin-top:3px;min-height:16px}
+.ivo{z-index:1;width:40px;height:40px;flex:none;border-radius:12px;border:1px solid rgba(150,170,255,.25);background:rgba(255,255,255,.07);color:#eef2ff;font-size:17px;cursor:pointer}
+.ivo.off{opacity:.45}
+/* conversation */
+.ialog2{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:13px;padding:2px 1px}
+.iaturn{display:flex;flex-direction:column;gap:9px}
+.ubub{align-self:flex-end;max-width:86%;background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;padding:10px 14px;border-radius:16px;border-bottom-right-radius:5px;font-size:14px;line-height:1.5;white-space:pre-wrap;overflow-wrap:anywhere}
+.asay{align-self:flex-start;max-width:94%;font-size:14.5px;line-height:1.55;color:var(--ink);font-weight:600}
+.athink{align-self:flex-start;color:var(--muted);font-size:13.5px;display:flex;align-items:center;gap:9px}
+.tdots{display:inline-flex;gap:4px}
+.tdots i{width:5px;height:5px;border-radius:50%;background:var(--accent);animation:td 1s infinite}
+.tdots i:nth-child(2){animation-delay:.15s}.tdots i:nth-child(3){animation-delay:.3s}
+@keyframes td{0%,100%{opacity:.3;transform:translateY(0)}50%{opacity:1;transform:translateY(-3px)}}
+/* cartes riches */
+.icards{display:flex;flex-direction:column;gap:10px}
+.icard{display:flex;gap:12px;padding:12px 13px;border-radius:16px;background:var(--panel);border:1px solid var(--line);box-shadow:var(--shadow);position:relative;overflow:hidden}
+.icard>.thumb{width:54px;height:76px;flex:none;border-radius:9px;overflow:hidden;background:linear-gradient(135deg,#1a2b45,#16223b);display:grid;place-items:center;color:#7f8db0;font-size:10px;text-align:center;line-height:1.2;font-weight:800;padding:3px}
+.icard>.thumb img{width:100%;height:100%;object-fit:cover}
+.ibody{flex:1;min-width:0}
+.ittl{font-weight:800;font-size:14.5px;line-height:1.28;display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+.isub{font-size:12px;color:var(--muted);margin-top:3px}
+.ithesis{font-size:12.5px;line-height:1.5;margin-top:7px;color:var(--ink)}
+.isrc{font-size:11px;color:var(--muted);margin-top:6px}
+.isrc b{color:var(--ink)}
+.imetric{flex:none;text-align:right;display:flex;flex-direction:column;justify-content:center;min-width:62px}
+.imetric .mv{font-weight:900;font-size:16px;letter-spacing:-.3px;white-space:nowrap}
+.imetric .ml{font-size:9.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.3px;margin-top:3px;line-height:1.2}
+.imetric.pos .mv{color:var(--pos)} .imetric.neg .mv{color:var(--neg)}
+.ibadge{font-size:10px;font-weight:800;padding:2px 8px;border-radius:20px;letter-spacing:.2px;text-transform:uppercase;line-height:1.6}
+.ibadge.grader,.ibadge.surveiller{background:rgba(52,87,232,.13);color:var(--accent)}
+.ibadge.achat,.ibadge.officiel{background:rgba(15,157,107,.15);color:var(--pos)}
+.ibadge.vendre{background:rgba(224,82,74,.15);color:var(--neg)}
+.ibadge.hold,.ibadge.fuite{background:rgba(194,137,42,.17);color:var(--gold)}
+.ibadge.rumeur{background:var(--chip);color:var(--muted)}
+.icard.reco::before,.icard.watch::before,.icard.news::before,.icard.portfolio::before,.icard.price::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px}
+.icard.reco::before{background:var(--accent)}
+.icard.watch::before,.icard.price::before{background:var(--gold)}
+.icard.news::before{background:linear-gradient(var(--accent2),var(--accent))}
+.icard.portfolio::before{background:var(--pos)}
+.icard.note{display:block}
+.icard.note .ithesis{margin-top:0;font-size:13.5px}
+/* chips */
 .iachips{display:flex;gap:8px;flex-wrap:wrap}
-.iachip{background:var(--chip);border:1px solid var(--line);border-radius:20px;padding:8px 13px;font-size:13px;font-weight:600;cursor:pointer}
+.iachip{background:var(--chip);border:1px solid var(--line);border-radius:20px;padding:8px 13px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap}
 .iachip:active{transform:scale(.97)}
-.iachip.radar{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;border:none}
-.iabar{display:flex;gap:8px;align-items:flex-end}
-.iabar textarea{flex:1;resize:none;border:1px solid var(--line);border-radius:14px;padding:11px 13px;font-size:14px;background:var(--panel);color:var(--ink);font-family:inherit;max-height:110px;min-height:44px}
-.iasend{width:48px;height:44px;flex:none;border:none;border-radius:14px;background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;font-size:17px;cursor:pointer}
-.iasend:disabled{opacity:.5}
-.iatgl{width:44px;height:44px;flex:none;border:1px solid var(--line);border-radius:14px;background:var(--panel);font-size:16px;cursor:pointer;opacity:.6}
-.iatgl.on{opacity:1;border-color:var(--accent);background:rgba(52,87,232,.12)}
+.iachip.radar{background:linear-gradient(135deg,#ff5d5d,#ff8a3d);color:#fff;border:none}
+/* barre d'entrée voix-first */
+.iainput{display:flex;gap:9px;align-items:center;padding-top:2px}
+.imic{flex:1;height:52px;border:none;border-radius:16px;background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;font-size:15px;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:9px;overflow:hidden;padding:0 12px}
+.imic .mico{font-size:19px;flex:none}
+.imic span:last-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.imic.rec{background:linear-gradient(135deg,#ff5d5d,#ff2d6a);animation:recp 1.1s infinite}
+@keyframes recp{0%,100%{box-shadow:0 0 0 0 rgba(255,45,106,.45)}60%{box-shadow:0 0 0 12px rgba(255,45,106,0)}}
+.itxt{flex:1;resize:none;border:1px solid var(--line);border-radius:16px;padding:15px 14px;font-size:14px;background:var(--panel);color:var(--ink);font-family:inherit;max-height:120px;min-height:52px}
+.ibtn{width:52px;height:52px;flex:none;border-radius:16px;cursor:pointer;font-size:18px;display:grid;place-items:center}
+.iswap{border:1px solid var(--line);background:var(--panel);color:var(--ink)}
+.isearch{border:1px solid var(--line);background:var(--panel);opacity:.55}
+.isearch.on{opacity:1;border-color:var(--accent);background:rgba(52,87,232,.12)}
+.isend{border:none;background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff}
+.isend:disabled{opacity:.5}
 .hbrief{white-space:pre-wrap;line-height:1.55;font-size:13.5px;margin-top:4px}
 .hbriefbtn{margin-top:8px;background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;border:none;font-weight:800;font-size:14px;padding:11px 16px;border-radius:12px;cursor:pointer;width:100%}
 .lresprices .lp span{display:block;font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.3px}
@@ -492,7 +556,7 @@ body{-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
 <div class="wrap">
   <div class="hero">
     <div class="topbar">
-      <div class="logo"><div class="mark">OP</div> TCG GLOBAL <span id="buildTag" style="font-size:11px;font-weight:700;margin-left:8px;background:#e11d48;color:#fff;padding:2px 8px;border-radius:10px;letter-spacing:.2px;white-space:nowrap" title="Version en ligne">v23:38</span></div>
+      <div class="logo"><div class="mark">OP</div> TCG GLOBAL <span id="buildTag" style="font-size:11px;font-weight:700;margin-left:8px;background:#e11d48;color:#fff;padding:2px 8px;border-radius:10px;letter-spacing:.2px;white-space:nowrap" title="Version en ligne">v00:34</span></div>
       <div class="grow"></div>
       <button class="iconbtn" id="themeBtn" title="Th&egrave;me">&#9790;</button>
     </div>
@@ -1208,44 +1272,144 @@ function renderLiveResult(c, det, g10, slab, rows){
       '<div class="lresprices">'+priceCells+'</div>'+
     '</div></div>'+extra;
 }
-// ---------- Agent IA (chat conversationnel) ----------
-let IAHIST=[]; let iaBusy=false; let iaSearch=false;
-function iaToggleSearch(){ iaSearch=!iaSearch; const b=document.getElementById('iaSearchBtn'); if(b) b.classList.toggle('on',iaSearch); const inp=document.getElementById('iaInput'); if(inp) inp.placeholder=iaSearch?'Actu web activée — pose ta question…':'Écris à ton stratège…'; }
+// ---------- Agent IA (cockpit vivant : voix + cartes) ----------
+let IACONV=[]; let iaBusy=false; let iaSearch=false;
+let iaVoiceOut=true; let iaInputMode='voice';
+let iaRec=null, iaListening=false, iaBriefed=false;
+const IA_STATUS_IDLE='Ton stratège One Piece · veille prête';
+function iaOrb(st){ const o=document.getElementById('iaOrb'); if(o) o.className='orb '+(st||''); }
+function iaStatus(t){ const s=document.getElementById('iaStatus'); if(s) s.textContent=t; }
+function iaLogEl(){ return document.getElementById('iaLog'); }
 function renderIA(){
   const stage=document.getElementById('stage'); if(!stage) return; stage.className='ia';
-  const chips=['Mon briefing du jour','Quelle carte grader en priorité ?','Une carte à surveiller ?','Où en est mon portefeuille ?'];
-  stage.innerHTML='<div class="iawrap">'+
-    '<div class="iahead"><span class="iaspark">✨</span> Ton strat&egrave;ge IA <span class="dt" style="font-weight:600">&mdash; collection, march&eacute;, gradation&hellip;</span></div>'+
-    '<div class="ialog" id="iaLog"></div>'+
+  const chips=['Mon briefing du jour','Quelle carte grader en priorité ?','Une carte JP à surveiller ?','Où en est mon portefeuille ?'];
+  stage.innerHTML='<div class="ianew">'+
+    '<div class="iahero">'+
+      '<div class="orb" id="iaOrb"><span class="rings"></span><span class="orbcore">✦</span></div>'+
+      '<div class="iheroinfo"><div class="inm">Nova <span class="idot"></span></div><div class="ist" id="iaStatus">'+esc(IA_STATUS_IDLE)+'</div></div>'+
+      '<button class="ivo'+(iaVoiceOut?'':' off')+'" id="iaVoBtn" onclick="iaToggleVoice()" title="Lire les réponses à voix haute">'+(iaVoiceOut?'🔊':'🔇')+'</button>'+
+    '</div>'+
+    '<div class="ialog2" id="iaLog"></div>'+
     '<div class="iachips" id="iaChips"><span class="iachip radar" onclick="iaRadar()">🔥 Quoi de neuf ? (web)</span>'+chips.map(s=>'<span class="iachip" onclick="iaChip(this)">'+esc(s)+'</span>').join('')+'</div>'+
-    '<div class="iabar"><button class="iatgl'+(iaSearch?' on':'')+'" id="iaSearchBtn" onclick="iaToggleSearch()" title="Chercher l\'actualité One Piece sur le web">🔍</button><textarea id="iaInput" rows="1" placeholder="Écris à ton stratège…" oninput="iaGrow(this)" onkeydown="iaKey(event)"></textarea><button class="iasend" id="iaSendBtn" onclick="iaSend()">➤</button></div>'+
+    iaInputHTML()+
   '</div>';
-  const log=document.getElementById('iaLog');
-  if(!IAHIST.length){ iaAppend('bot','Salut Christopher 👋 Je suis ton stratège One Piece. Je connais ta collection, tes prix et l\'univers. Demande-moi ton briefing, quoi grader, une carte à surveiller — ou pose n\'importe quelle question.'); }
-  else { IAHIST.forEach(m=>iaAppend(m.role==='assistant'?'bot':'user', m.text)); }
-  if(log) log.scrollTop=log.scrollHeight;
+  iaRenderConv();
+  if(!IACONV.length){ iaWelcome(); if(!iaBriefed){ iaBriefed=true; setTimeout(iaBriefing,400); } }
 }
-function iaGrow(t){ t.style.height='auto'; t.style.height=Math.min(110,t.scrollHeight)+'px'; }
+function iaInputHTML(){
+  if(iaInputMode==='voice'){
+    return '<div class="iainput">'+
+      '<button class="imic" id="iaMic" onclick="iaMicTap()"><span class="mico">🎤</span><span id="iaMicLbl">Parler à Nova</span></button>'+
+      '<button class="ibtn isearch'+(iaSearch?' on':'')+'" id="iaSearchBtn" onclick="iaToggleSearch()" title="Actu web">🔍</button>'+
+      '<button class="ibtn iswap" onclick="iaSwapMode()" title="Écrire au clavier">⌨️</button>'+
+    '</div>';
+  }
+  return '<div class="iainput">'+
+    '<textarea class="itxt" id="iaInput" rows="1" placeholder="'+(iaSearch?'Actu web activée — écris…':'Écris à Nova…')+'" oninput="iaGrow(this)" onkeydown="iaKey(event)"></textarea>'+
+    '<button class="ibtn isearch'+(iaSearch?' on':'')+'" id="iaSearchBtn" onclick="iaToggleSearch()" title="Actu web">🔍</button>'+
+    '<button class="ibtn iswap" onclick="iaSwapMode()" title="Parler">🎤</button>'+
+    '<button class="ibtn isend" id="iaSendBtn" onclick="iaSend()">➤</button>'+
+  '</div>';
+}
+function iaSwapMode(){ iaInputMode=iaInputMode==='voice'?'text':'voice'; const c=document.querySelector('.iainput'); if(c){ const w=document.createElement('div'); w.innerHTML=iaInputHTML(); c.replaceWith(w.firstChild); } if(iaInputMode==='text'){ const t=document.getElementById('iaInput'); if(t) t.focus(); } else { try{speechSynthesis.cancel();}catch(e){} } }
+function iaToggleVoice(){ iaVoiceOut=!iaVoiceOut; const b=document.getElementById('iaVoBtn'); if(b){ b.textContent=iaVoiceOut?'🔊':'🔇'; b.classList.toggle('off',!iaVoiceOut); } if(!iaVoiceOut){ try{speechSynthesis.cancel();}catch(e){} } }
+function iaToggleSearch(){ iaSearch=!iaSearch; const b=document.getElementById('iaSearchBtn'); if(b) b.classList.toggle('on',iaSearch); const inp=document.getElementById('iaInput'); if(inp) inp.placeholder=iaSearch?'Actu web activée — écris…':'Écris à Nova…'; }
+function iaGrow(t){ if(!t)return; t.style.height='auto'; t.style.height=Math.min(120,t.scrollHeight)+'px'; }
 function iaKey(e){ if(e.key==='Enter' && !e.shiftKey){ e.preventDefault(); iaSend(); } }
-function iaChip(el){ const inp=document.getElementById('iaInput'); if(inp){ inp.value=el.textContent; } iaSend(); }
-function iaRadar(){ iaSearch=true; const b=document.getElementById('iaSearchBtn'); if(b) b.classList.add('on'); const inp=document.getElementById('iaInput'); if(inp){ inp.value='Radar actu One Piece TCG : dernières sorties/annonces JP, fuites de cartes récentes, et ce que disent les gros influenceurs en ce moment. Relie ça à des cartes concernées, cite les sources et étiquette Officiel / Fuite / Rumeur.'; } iaSend(); }
-function iaAppend(cls,text){ const log=document.getElementById('iaLog'); if(!log) return null; const d=document.createElement('div'); d.className='iamsg '+cls; d.textContent=text; log.appendChild(d); log.scrollTop=log.scrollHeight; return d; }
-async function iaSend(){
-  if(iaBusy) return; const inp=document.getElementById('iaInput'); if(!inp) return; const msg=(inp.value||'').trim(); if(!msg) return;
-  inp.value=''; iaGrow(inp);
-  const chips=document.getElementById('iaChips'); if(chips) chips.style.display='none';
-  iaAppend('user',msg); IAHIST.push({role:'user',text:msg});
-  iaBusy=true; const btn=document.getElementById('iaSendBtn'); if(btn) btn.disabled=true;
-  const think=iaAppend('bot think', iaSearch?'Le stratège consulte l\'actu…':'Le stratège réfléchit…');
+function iaChip(el){ iaSubmit(el.textContent); }
+function iaRadar(){ iaSearch=true; const b=document.getElementById('iaSearchBtn'); if(b) b.classList.add('on'); iaSubmit('Radar actu One Piece TCG : dernières sorties/annonces JP, fuites de cartes récentes, et ce que disent les gros influenceurs. Relie à des cartes concernées, cite les sources et étiquette Officiel / Fuite / Rumeur.'); }
+function iaWelcome(){ const log=iaLogEl(); if(!log) return; const t=document.createElement('div'); t.className='iaturn'; t.innerHTML='<div class="asay">Salut Christopher 👋 Je suis Nova, ton stratège One Piece. Parle-moi ou écris — je connais ta collection, tes prix, l\'univers et l\'actu du marché.</div>'; log.appendChild(t); }
+function iaRenderConv(){ const log=iaLogEl(); if(!log) return; log.innerHTML=''; IACONV.forEach(m=>{ if(m.role==='user') iaAddUser(m.text,true); else iaRenderRich(m.rich||{say:m.text,cards:[]},true); }); log.scrollTop=log.scrollHeight; }
+function iaAddUser(text,noStore){ const log=iaLogEl(); if(!log) return; const t=document.createElement('div'); t.className='iaturn'; const b=document.createElement('div'); b.className='ubub'; b.textContent=text; t.appendChild(b); log.appendChild(t); log.scrollTop=log.scrollHeight; if(!noStore) IACONV.push({role:'user',text:text}); }
+function iaThink(){ const log=iaLogEl(); if(!log) return null; const d=document.createElement('div'); d.className='iaturn'; d.innerHTML='<div class="athink"><span>Nova '+(iaSearch?'scanne l\'actu':'réfléchit')+'</span><span class="tdots"><i></i><i></i><i></i></span></div>'; log.appendChild(d); log.scrollTop=log.scrollHeight; return d; }
+function iaBadgeCls(b){ const k=(b||'').toLowerCase(); if(k.indexOf('grad')>=0)return 'grader'; if(k.indexOf('achat')>=0||k.indexOf('achet')>=0)return 'achat'; if(k.indexOf('vend')>=0)return 'vendre'; if(k.indexOf('hold')>=0||k.indexOf('gard')>=0)return 'hold'; if(k.indexOf('surv')>=0)return 'surveiller'; if(k.indexOf('offic')>=0)return 'officiel'; if(k.indexOf('fuit')>=0||k.indexOf('leak')>=0)return 'fuite'; if(k.indexOf('rumeu')>=0)return 'rumeur'; return 'rumeur'; }
+function iaMetricCls(m){ m=String(m||''); if(/^\s*\+/.test(m))return ' pos'; if(/^\s*[-−]/.test(m))return ' neg'; return ''; }
+function iaCardEl(c){
+  const kind=(c.kind||'note').toLowerCase();
+  const d=document.createElement('div'); d.className='icard '+kind; if(c.card_no) d.dataset.no=c.card_no;
+  let html='';
+  if(c.card_no) html+='<div class="thumb" data-thumb>'+esc(c.card_no)+'</div>';
+  html+='<div class="ibody">';
+  const badges=(Array.isArray(c.badges)?c.badges:[]).map(b=>'<span class="ibadge '+iaBadgeCls(b)+'">'+esc(b)+'</span>').join('');
+  html+='<div class="ittl">'+esc(c.title||'')+badges+'</div>';
+  const sub=[]; if(c.card_no) sub.push((c.lang?(FLAG[c.lang]||c.lang)+' ':'')+esc(c.card_no)); if(c.sub) sub.push(esc(c.sub));
+  if(sub.length) html+='<div class="isub">'+sub.join(' · ')+'</div>';
+  if(c.thesis) html+='<div class="ithesis">'+esc(c.thesis)+'</div>';
+  if(c.source) html+='<div class="isrc">Source : <b>'+esc(c.source)+'</b></div>';
+  html+='</div>';
+  if(c.metric) html+='<div class="imetric'+iaMetricCls(c.metric)+'"><div class="mv">'+esc(c.metric)+'</div>'+(c.metric_label?'<div class="ml">'+esc(c.metric_label)+'</div>':'')+'</div>';
+  d.innerHTML=html; return d;
+}
+function iaRenderRich(rich,noStore){
+  const log=iaLogEl(); if(!log||!rich) return;
+  const t=document.createElement('div'); t.className='iaturn';
+  if(rich.say){ const s=document.createElement('div'); s.className='asay'; s.textContent=rich.say; t.appendChild(s); }
+  const cards=Array.isArray(rich.cards)?rich.cards:[];
+  if(cards.length){ const wrap=document.createElement('div'); wrap.className='icards'; cards.forEach(c=>wrap.appendChild(iaCardEl(c))); t.appendChild(wrap); }
+  if(Array.isArray(rich.chips)&&rich.chips.length){ const cc=document.createElement('div'); cc.className='iachips'; rich.chips.slice(0,4).forEach(x=>{ const ch=document.createElement('span'); ch.className='iachip'; ch.textContent=x; ch.onclick=()=>iaSubmit(x); cc.appendChild(ch); }); t.appendChild(cc); }
+  log.appendChild(t); log.scrollTop=log.scrollHeight;
+  iaEnrich(t,cards);
+}
+async function iaEnrich(turnEl,cards){
+  const nos=[]; (cards||[]).forEach(c=>{ if(c.card_no && nos.indexOf(c.card_no)<0) nos.push(c.card_no); });
+  if(!nos.length||!turnEl) return;
   try{
-    const r=await fetch(SB+'/functions/v1/agent-chat',{method:'POST',headers:{'Content-Type':'application/json',apikey:ANON,Authorization:'Bearer '+ANON},body:JSON.stringify({message:msg, history:IAHIST.slice(0,-1), search:iaSearch})});
+    const inlist=nos.map(n=>encodeURIComponent(n)).join(',');
+    const r=await fetch(SB+'/rest/v1/app_catalog_priced?card_number=in.('+inlist+')&select=card_number,language,image_url,price_eur,owned&limit=250',{headers:{apikey:ANON,Authorization:'Bearer '+ANON}});
+    const rows=await r.json(); if(!Array.isArray(rows)) return;
+    const map={}; rows.forEach(x=>{ const k=x.card_number; const cur=map[k]; if(!cur){ map[k]=x; } else if((!cur.image_url&&x.image_url)||(x.owned&&!cur.owned)){ map[k]=x; } });
+    turnEl.querySelectorAll('.icard[data-no]').forEach(el=>{
+      const hit=map[el.dataset.no]; if(!hit||!hit.image_url) return;
+      const th=el.querySelector('[data-thumb]'); if(th){ const im=document.createElement('img'); im.referrerPolicy='no-referrer'; im.src=hit.image_url; im.onerror=function(){ this.remove(); }; th.textContent=''; th.appendChild(im); }
+    });
+  }catch(e){}
+}
+function iaSpeak(text){ if(!iaVoiceOut||!text) return; try{ speechSynthesis.cancel(); const u=new SpeechSynthesisUtterance(String(text).slice(0,600)); u.lang='fr-FR'; const vs=speechSynthesis.getVoices()||[]; const v=vs.find(x=>/fr[-_]?FR/i.test(x.lang))||vs.find(x=>/^fr/i.test(x.lang)); if(v)u.voice=v; u.rate=1.04; u.onstart=()=>iaOrb('speak'); u.onend=()=>{ if(!iaBusy&&!iaListening) iaOrb(''); }; speechSynthesis.speak(u); }catch(e){} }
+function iaMicBusy(b){ const l=document.getElementById('iaMicLbl'); if(l&&iaInputMode==='voice'&&!iaListening) l.textContent=b?'Nova réfléchit…':'Parler à Nova'; }
+function iaMicTap(){
+  if(iaBusy) return;
+  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  if(!SR){ iaSwapMode(); iaStatus('Voix indisponible sur ce navigateur — écris ta question.'); return; }
+  if(iaListening){ try{iaRec.stop();}catch(e){} return; }
+  try{ speechSynthesis.cancel(); }catch(e){}
+  iaRec=new SR(); iaRec.lang='fr-FR'; iaRec.interimResults=true; iaRec.continuous=false; iaRec.maxAlternatives=1;
+  let heard='';
+  iaRec.onstart=()=>{ iaListening=true; iaOrb('listen'); const m=document.getElementById('iaMic'); if(m)m.classList.add('rec'); const l=document.getElementById('iaMicLbl'); if(l)l.textContent='À l\'écoute…'; iaStatus('Je t\'écoute…'); };
+  iaRec.onresult=e=>{ let t=''; for(let i=0;i<e.results.length;i++){ t+=e.results[i][0].transcript; } heard=t; const l=document.getElementById('iaMicLbl'); if(l)l.textContent=t||'À l\'écoute…'; };
+  iaRec.onerror=e=>{ iaStatus(e.error==='not-allowed'?'Micro bloqué — autorise-le dans le navigateur.':'Je n\'ai pas saisi, réessaie.'); };
+  iaRec.onend=()=>{ iaListening=false; const m=document.getElementById('iaMic'); if(m)m.classList.remove('rec'); const l=document.getElementById('iaMicLbl'); if(l)l.textContent='Parler à Nova'; if(!iaBusy) iaOrb(''); const msg=(heard||'').trim(); iaStatus(IA_STATUS_IDLE); if(msg) iaSubmit(msg); };
+  try{ iaRec.start(); }catch(e){ iaStatus('Impossible de démarrer le micro.'); }
+}
+function iaSubmit(msg){ msg=(msg||'').trim(); if(msg) iaSendMsg(msg); }
+async function iaSend(){ const inp=document.getElementById('iaInput'); const msg=inp?(inp.value||'').trim():''; if(inp){ inp.value=''; iaGrow(inp); } iaSubmit(msg); }
+async function iaSendMsg(msg){
+  if(iaBusy||!msg) return;
+  const chips=document.getElementById('iaChips'); if(chips) chips.style.display='none';
+  iaAddUser(msg);
+  iaBusy=true; iaOrb('think'); iaStatus(iaSearch?'Nova consulte l\'actu…':'Nova réfléchit…'); iaMicBusy(true);
+  const btn=document.getElementById('iaSendBtn'); if(btn) btn.disabled=true;
+  const think=iaThink();
+  try{
+    const hist=IACONV.filter(m=>m.text).slice(0,-1).map(m=>({role:m.role,text:m.text})).slice(-8);
+    const r=await fetch(SB+'/functions/v1/agent-chat',{method:'POST',headers:{'Content-Type':'application/json',apikey:ANON,Authorization:'Bearer '+ANON},body:JSON.stringify({message:msg, history:hist, search:iaSearch, rich:true})});
     const j=await r.json();
     if(think) think.remove();
-    if(j&&j.rate_limited){ iaAppend('bot','⏳ L\'IA est très sollicitée (limite gratuite Gemini atteinte). Réessaie dans une minute — ou active la facturation Gemini pour un usage fluide.'); }
-    else if(j&&j.reply){ iaAppend('bot', j.reply); IAHIST.push({role:'assistant',text:j.reply}); }
-    else { iaAppend('bot','Je n\'ai pas pu répondre à l\'instant. Réessaie dans un moment.'); }
-  }catch(e){ if(think) think.remove(); iaAppend('bot','Erreur de connexion. Réessaie.'); }
-  iaBusy=false; if(btn) btn.disabled=false;
+    if(j&&j.rate_limited){ iaRenderRich({say:'',cards:[{kind:'note',thesis:'⏳ L\'IA est très sollicitée à l\'instant (limite Gemini). Réessaie dans une minute.'}]}); }
+    else if(j&&j.rich){ iaRenderRich(j.rich); IACONV.push({role:'assistant',text:j.reply||j.rich.say||'',rich:j.rich}); iaSpeak(j.rich.speak||j.rich.say); }
+    else if(j&&j.reply){ const rich={say:j.reply,cards:[]}; iaRenderRich(rich); IACONV.push({role:'assistant',text:j.reply,rich:rich}); iaSpeak(j.reply.slice(0,300)); }
+    else { iaRenderRich({say:'',cards:[{kind:'note',thesis:'Je n\'ai pas pu répondre à l\'instant. Réessaie dans un moment.'}]}); }
+  }catch(e){ if(think) think.remove(); iaRenderRich({say:'',cards:[{kind:'note',thesis:'Erreur de connexion. Réessaie.'}]}); }
+  iaBusy=false; iaOrb(''); iaStatus(IA_STATUS_IDLE); iaMicBusy(false); if(btn) btn.disabled=false;
+}
+async function iaBriefing(){
+  if(iaBusy) return; iaBusy=true; iaOrb('think'); iaStatus('Nova prépare ton briefing…');
+  const think=iaThink();
+  try{
+    const r=await fetch(SB+'/functions/v1/agent-chat',{method:'POST',headers:{'Content-Type':'application/json',apikey:ANON,Authorization:'Bearer '+ANON},body:JSON.stringify({message:'Fais mon briefing du jour en cartes : un point portefeuille (valeur + mouvement), un signal du moment, et LA carte à grader en priorité avec son gain net. Concis.', rich:true})});
+    const j=await r.json(); if(think) think.remove();
+    if(j&&j.rich){ iaRenderRich(j.rich); IACONV.push({role:'assistant',text:j.reply||'',rich:j.rich}); iaSpeak(j.rich.speak); }
+  }catch(e){ if(think) think.remove(); }
+  iaBusy=false; iaOrb(''); iaStatus(IA_STATUS_IDLE);
 }
 async function homeBriefing(){
   const box=document.getElementById('homeBriefBox'); if(!box) return;
