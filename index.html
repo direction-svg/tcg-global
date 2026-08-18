@@ -604,7 +604,7 @@ body{-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
 <div class="wrap">
   <div class="hero">
     <div class="topbar">
-      <div class="logo"><div class="mark">OP</div> TCG GLOBAL <span id="buildTag" style="font-size:11px;font-weight:700;margin-left:8px;background:#e11d48;color:#fff;padding:2px 8px;border-radius:10px;letter-spacing:.2px;white-space:nowrap" title="Version en ligne">v10:13</span></div>
+      <div class="logo"><div class="mark">OP</div> TCG GLOBAL <span id="buildTag" style="font-size:11px;font-weight:700;margin-left:8px;background:#e11d48;color:#fff;padding:2px 8px;border-radius:10px;letter-spacing:.2px;white-space:nowrap" title="Version en ligne">v10:14</span></div>
       <div class="grow"></div>
       <div class="mktseg" id="mktSeg" title="Marché de valorisation">
         <button data-k="JP" class="on">🇯🇵 JP</button>
@@ -1405,7 +1405,7 @@ function renderIA(){
       '<button class="ivo'+(iaVoiceOut?'':' off')+'" id="iaVoBtn" onclick="iaToggleVoice()" title="Lire les réponses à voix haute">'+(iaVoiceOut?'🔊':'🔇')+'</button>'+
     '</div>'+
     '<div class="ialog2" id="iaLog"></div>'+
-    '<div class="iachips" id="iaChips"><span class="iachip radar" onclick="iaRadar()">🔥 Quoi de neuf ? (web)</span>'+chips.map(s=>'<span class="iachip" onclick="iaChip(this)">'+esc(s)+'</span>').join('')+'</div>'+
+    '<div class="iachips" id="iaChips"><span class="iachip radar" onclick="iaRadar()">🔥 Quoi de neuf ? (web)</span><span class="iachip radar" onclick="iaVeille()">📈 Pourquoi ça bouge ?</span>'+chips.map(s=>'<span class="iachip" onclick="iaChip(this)">'+esc(s)+'</span>').join('')+'</div>'+
     iaInputHTML()+
   '</div>';
   iaRenderConv();
@@ -1433,6 +1433,7 @@ function iaGrow(t){ if(!t)return; t.style.height='auto'; t.style.height=Math.min
 function iaKey(e){ if(e.key==='Enter' && !e.shiftKey){ e.preventDefault(); iaSend(); } }
 function iaChip(el){ iaSubmit(el.textContent); }
 function iaRadar(){ iaSearch=true; const b=document.getElementById('iaSearchBtn'); if(b) b.classList.add('on'); iaSubmit('Radar actu One Piece TCG : dernières sorties/annonces JP, fuites de cartes récentes, et ce que disent les gros influenceurs. Relie à des cartes concernées, cite les sources et étiquette Officiel / Fuite / Rumeur.'); }
+function iaVeille(){ iaSearch=true; const b=document.getElementById('iaSearchBtn'); if(b) b.classList.add('on'); iaSubmit('Veille ciblée sur MES cartes. Dans les données (top_mouvements), prends celles qui ont le plus bougé et explique POURQUOI chacune monte ou baisse : sortie/annonce JP, hype, tournoi, avancée manga/anime. Une carte par fiche (kind news), badge Hausse/Baisse, cite la source et étiquette Officiel/Fuite/Rumeur. Si aucune de mes cartes n\'a encore bougé (le suivi quotidien vient de démarrer), prends plutôt mes 3 cartes possédées les plus fortes et dis, pour chacune, LE catalyseur à surveiller qui pourrait la faire bouger prochainement.'); }
 function iaWelcome(){ const log=iaLogEl(); if(!log) return; const t=document.createElement('div'); t.className='iaturn'; t.innerHTML='<div class="asay">Salut Christopher 👋 Je suis Nova, ton stratège One Piece. Parle-moi ou écris — je connais ta collection, tes prix, l\'univers et l\'actu du marché.</div>'; log.appendChild(t); }
 function iaRenderConv(){ const log=iaLogEl(); if(!log) return; log.innerHTML=''; IACONV.forEach(m=>{ if(m.role==='user') iaAddUser(m.text,true); else iaRenderRich(m.rich||{say:m.text,cards:[]},true); }); log.scrollTop=log.scrollHeight; }
 function iaAddUser(text,noStore){ const log=iaLogEl(); if(!log) return; const t=document.createElement('div'); t.className='iaturn'; const b=document.createElement('div'); b.className='ubub'; b.textContent=text; t.appendChild(b); log.appendChild(t); log.scrollTop=log.scrollHeight; if(!noStore) IACONV.push({role:'user',text:text}); }
