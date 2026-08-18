@@ -462,6 +462,28 @@ body{-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
 .lvrow:last-child{border-bottom:none}
 .lvrow span{color:var(--muted)}
 .lvrow b{font-weight:800;white-space:nowrap}
+/* ---------- Agent IA (chat) ---------- */
+.ia{display:flex;flex-direction:column}
+.iawrap{display:flex;flex-direction:column;gap:11px;height:calc(100vh - 200px);min-height:58vh}
+.iahead{display:flex;align-items:center;gap:8px;font-weight:800;font-size:15px}
+.iaspark{width:28px;height:28px;flex:none;border-radius:9px;background:linear-gradient(135deg,var(--accent),var(--accent2));display:grid;place-items:center;color:#fff;font-size:15px}
+.ialog{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:10px;padding:4px 2px}
+.iamsg{max-width:88%;padding:11px 14px;border-radius:16px;font-size:14px;line-height:1.55;white-space:pre-wrap;word-wrap:break-word;overflow-wrap:anywhere}
+.iamsg.user{align-self:flex-end;background:var(--accent);color:#fff;border-bottom-right-radius:5px}
+.iamsg.bot{align-self:flex-start;background:var(--panel);border:1px solid var(--line);border-bottom-left-radius:5px}
+.iamsg.think{color:var(--muted);font-style:italic}
+.iachips{display:flex;gap:8px;flex-wrap:wrap}
+.iachip{background:var(--chip);border:1px solid var(--line);border-radius:20px;padding:8px 13px;font-size:13px;font-weight:600;cursor:pointer}
+.iachip:active{transform:scale(.97)}
+.iachip.radar{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;border:none}
+.iabar{display:flex;gap:8px;align-items:flex-end}
+.iabar textarea{flex:1;resize:none;border:1px solid var(--line);border-radius:14px;padding:11px 13px;font-size:14px;background:var(--panel);color:var(--ink);font-family:inherit;max-height:110px;min-height:44px}
+.iasend{width:48px;height:44px;flex:none;border:none;border-radius:14px;background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;font-size:17px;cursor:pointer}
+.iasend:disabled{opacity:.5}
+.iatgl{width:44px;height:44px;flex:none;border:1px solid var(--line);border-radius:14px;background:var(--panel);font-size:16px;cursor:pointer;opacity:.6}
+.iatgl.on{opacity:1;border-color:var(--accent);background:rgba(52,87,232,.12)}
+.hbrief{white-space:pre-wrap;line-height:1.55;font-size:13.5px;margin-top:4px}
+.hbriefbtn{margin-top:8px;background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;border:none;font-weight:800;font-size:14px;padding:11px 16px;border-radius:12px;cursor:pointer;width:100%}
 .lresprices .lp span{display:block;font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.3px}
 .lresprices .lp b{font-size:16px}
 </style>
@@ -470,7 +492,7 @@ body{-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
 <div class="wrap">
   <div class="hero">
     <div class="topbar">
-      <div class="logo"><div class="mark">OP</div> TCG GLOBAL <span id="buildTag" style="font-size:11px;font-weight:700;margin-left:8px;background:#e11d48;color:#fff;padding:2px 8px;border-radius:10px;letter-spacing:.2px;white-space:nowrap" title="Version en ligne">v18:26</span></div>
+      <div class="logo"><div class="mark">OP</div> TCG GLOBAL <span id="buildTag" style="font-size:11px;font-weight:700;margin-left:8px;background:#e11d48;color:#fff;padding:2px 8px;border-radius:10px;letter-spacing:.2px;white-space:nowrap" title="Version en ligne">v23:38</span></div>
       <div class="grow"></div>
       <button class="iconbtn" id="themeBtn" title="Th&egrave;me">&#9790;</button>
     </div>
@@ -479,6 +501,7 @@ body{-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
 
   <div class="modeseg" id="modeSeg">
     <button data-m="accueil" class="on">Accueil</button>
+    <button data-m="ia">✨ IA</button>
     <button data-m="collection">Collection</button>
     <button data-m="catalog">Catalogue</button>
     <button data-m="sets">Sets</button>
@@ -861,14 +884,14 @@ document.getElementById("q").addEventListener("input",e=>{
 function setMode(m){
   state.mode=m;
   document.querySelectorAll('#modeSeg button').forEach(b=>b.classList.toggle('on',b.dataset.m===m));
-  const home=m==="accueil", cat=m==="catalog", ops=m==="ops", sets=m==="sets", prods=m==="products", live=m==="live";
+  const home=m==="accueil", cat=m==="catalog", ops=m==="ops", sets=m==="sets", prods=m==="products", live=m==="live", ia=m==="ia";
   if(!live) stopLive();
   document.getElementById('catLangRow').classList.toggle('hidden',!cat);
   document.getElementById('catFilters').classList.add('hidden');
-  document.getElementById('viewBtn').classList.toggle('hidden',home||cat||ops||sets||prods||live);
-  document.getElementById('filterBtn').classList.toggle('hidden',home||ops||sets||prods||live);
-  document.getElementById('sortBtn').classList.toggle('hidden',home||ops||sets||prods||live);
-  document.querySelector('.search').classList.toggle('hidden',home||ops||sets||prods||live);
+  document.getElementById('viewBtn').classList.toggle('hidden',home||cat||ops||sets||prods||live||ia);
+  document.getElementById('filterBtn').classList.toggle('hidden',home||ops||sets||prods||live||ia);
+  document.getElementById('sortBtn').classList.toggle('hidden',home||ops||sets||prods||live||ia);
+  document.querySelector('.search').classList.toggle('hidden',home||ops||sets||prods||live||ia);
   document.getElementById('scanFab').classList.toggle('hidden',!(m==='collection'||m==='catalog'));
   document.getElementById('q').placeholder=cat?"Chercher une carte (nom ou numéro), toutes langues…":"Rechercher (nom ou numéro)…";
   const brief=document.getElementById('briefing'); if(brief){ brief.innerHTML=''; }
@@ -876,6 +899,7 @@ function setMode(m){
   const mb=document.getElementById('miniBar');
   if(mb){ if(home){ mb.style.display='none'; } else { mb.style.display='block'; const cv=DATA.reduce((s,c)=>s+val(c)*(c.quantity||1),0)+(PROD_VALUE||0); const q=DATA.reduce((s,c)=>s+(c.quantity||1),0); mb.innerHTML='Portefeuille : <b>'+eur0(cv)+'</b> &middot; '+q+' cartes'; } }
   if(home){ document.getElementById('countLine').textContent=''; renderHome(); }
+  else if(ia){ document.getElementById('countLine').textContent=''; renderIA(); }
   else if(live){ document.getElementById('countLine').textContent=''; renderLive(); }
   else if(ops){ document.getElementById('countLine').textContent=''; fetchOps(); }
   else if(cat){ buildCatLangRow(); syncCatBadge(); fetchCatalog(); }
@@ -1038,7 +1062,7 @@ async function renderHome(){
     (gradeChips?('<div class="hcard"><div class="htitle">Cartes gradées par organisme</div><div class="graderow">'+gradeChips+'</div></div>'):'')+
     '<div class="hcard hchart"><div class="htitle">Évolution du portefeuille</div>'+homeChart(snaps)+'</div>'+
     '<div class="hcard"><div class="htitle">Suivi des relevés</div>'+(hist||'<div class="chdates">Aucun relevé pour l’instant.</div>')+'</div>'+
-    '<div class="hcard aisoon"><div class="htitle">Analyse IA <span class="aibadge">bientôt</span></div><div class="txt">Cette page accueillera bientôt l’agent IA : cartes à surveiller, signaux de marché, tendances PSA / Beckett, opportunités de gradation et alertes de valeur — en temps réel.</div></div>';
+    '<div class="hcard"><div class="htitle">✨ Briefing du jour <span class="aibadge">IA</span></div><div id="homeBriefBox"><div class="txt" style="color:var(--muted);font-size:13px">Ton stratège te fait le point : portefeuille, mouvements, et LA priorité du jour.</div><button class="hbriefbtn" onclick="homeBriefing()">Générer mon briefing</button></div></div>';
   stage.innerHTML=html;
 }
 // ---------- Live Whatnot (partage d'écran / d'onglet) ----------
@@ -1183,6 +1207,56 @@ function renderLiveResult(c, det, g10, slab, rows){
       slabBadge+'<span class="lresown '+(own?'yes':'no')+'">'+(own?'✓ Tu la poss&egrave;des':'✗ Tu ne l\'as pas')+'</span>'+
       '<div class="lresprices">'+priceCells+'</div>'+
     '</div></div>'+extra;
+}
+// ---------- Agent IA (chat conversationnel) ----------
+let IAHIST=[]; let iaBusy=false; let iaSearch=false;
+function iaToggleSearch(){ iaSearch=!iaSearch; const b=document.getElementById('iaSearchBtn'); if(b) b.classList.toggle('on',iaSearch); const inp=document.getElementById('iaInput'); if(inp) inp.placeholder=iaSearch?'Actu web activée — pose ta question…':'Écris à ton stratège…'; }
+function renderIA(){
+  const stage=document.getElementById('stage'); if(!stage) return; stage.className='ia';
+  const chips=['Mon briefing du jour','Quelle carte grader en priorité ?','Une carte à surveiller ?','Où en est mon portefeuille ?'];
+  stage.innerHTML='<div class="iawrap">'+
+    '<div class="iahead"><span class="iaspark">✨</span> Ton strat&egrave;ge IA <span class="dt" style="font-weight:600">&mdash; collection, march&eacute;, gradation&hellip;</span></div>'+
+    '<div class="ialog" id="iaLog"></div>'+
+    '<div class="iachips" id="iaChips"><span class="iachip radar" onclick="iaRadar()">🔥 Quoi de neuf ? (web)</span>'+chips.map(s=>'<span class="iachip" onclick="iaChip(this)">'+esc(s)+'</span>').join('')+'</div>'+
+    '<div class="iabar"><button class="iatgl'+(iaSearch?' on':'')+'" id="iaSearchBtn" onclick="iaToggleSearch()" title="Chercher l\'actualité One Piece sur le web">🔍</button><textarea id="iaInput" rows="1" placeholder="Écris à ton stratège…" oninput="iaGrow(this)" onkeydown="iaKey(event)"></textarea><button class="iasend" id="iaSendBtn" onclick="iaSend()">➤</button></div>'+
+  '</div>';
+  const log=document.getElementById('iaLog');
+  if(!IAHIST.length){ iaAppend('bot','Salut Christopher 👋 Je suis ton stratège One Piece. Je connais ta collection, tes prix et l\'univers. Demande-moi ton briefing, quoi grader, une carte à surveiller — ou pose n\'importe quelle question.'); }
+  else { IAHIST.forEach(m=>iaAppend(m.role==='assistant'?'bot':'user', m.text)); }
+  if(log) log.scrollTop=log.scrollHeight;
+}
+function iaGrow(t){ t.style.height='auto'; t.style.height=Math.min(110,t.scrollHeight)+'px'; }
+function iaKey(e){ if(e.key==='Enter' && !e.shiftKey){ e.preventDefault(); iaSend(); } }
+function iaChip(el){ const inp=document.getElementById('iaInput'); if(inp){ inp.value=el.textContent; } iaSend(); }
+function iaRadar(){ iaSearch=true; const b=document.getElementById('iaSearchBtn'); if(b) b.classList.add('on'); const inp=document.getElementById('iaInput'); if(inp){ inp.value='Radar actu One Piece TCG : dernières sorties/annonces JP, fuites de cartes récentes, et ce que disent les gros influenceurs en ce moment. Relie ça à des cartes concernées, cite les sources et étiquette Officiel / Fuite / Rumeur.'; } iaSend(); }
+function iaAppend(cls,text){ const log=document.getElementById('iaLog'); if(!log) return null; const d=document.createElement('div'); d.className='iamsg '+cls; d.textContent=text; log.appendChild(d); log.scrollTop=log.scrollHeight; return d; }
+async function iaSend(){
+  if(iaBusy) return; const inp=document.getElementById('iaInput'); if(!inp) return; const msg=(inp.value||'').trim(); if(!msg) return;
+  inp.value=''; iaGrow(inp);
+  const chips=document.getElementById('iaChips'); if(chips) chips.style.display='none';
+  iaAppend('user',msg); IAHIST.push({role:'user',text:msg});
+  iaBusy=true; const btn=document.getElementById('iaSendBtn'); if(btn) btn.disabled=true;
+  const think=iaAppend('bot think', iaSearch?'Le stratège consulte l\'actu…':'Le stratège réfléchit…');
+  try{
+    const r=await fetch(SB+'/functions/v1/agent-chat',{method:'POST',headers:{'Content-Type':'application/json',apikey:ANON,Authorization:'Bearer '+ANON},body:JSON.stringify({message:msg, history:IAHIST.slice(0,-1), search:iaSearch})});
+    const j=await r.json();
+    if(think) think.remove();
+    if(j&&j.rate_limited){ iaAppend('bot','⏳ L\'IA est très sollicitée (limite gratuite Gemini atteinte). Réessaie dans une minute — ou active la facturation Gemini pour un usage fluide.'); }
+    else if(j&&j.reply){ iaAppend('bot', j.reply); IAHIST.push({role:'assistant',text:j.reply}); }
+    else { iaAppend('bot','Je n\'ai pas pu répondre à l\'instant. Réessaie dans un moment.'); }
+  }catch(e){ if(think) think.remove(); iaAppend('bot','Erreur de connexion. Réessaie.'); }
+  iaBusy=false; if(btn) btn.disabled=false;
+}
+async function homeBriefing(){
+  const box=document.getElementById('homeBriefBox'); if(!box) return;
+  box.innerHTML='<div class="txt" style="color:var(--muted);font-size:13px">Le stratège prépare ton briefing&hellip;</div>';
+  try{
+    const r=await fetch(SB+'/functions/v1/agent-chat',{method:'POST',headers:{'Content-Type':'application/json',apikey:ANON,Authorization:'Bearer '+ANON},body:JSON.stringify({message:'Fais mon briefing du jour : 3 points courts (portefeuille + mouvement, un signal, la priorité du moment), puis LA carte à grader en priorité avec son gain net. Sois concis et direct.'})});
+    const j=await r.json();
+    if(j&&j.rate_limited){ box.innerHTML='<div class="txt" style="color:var(--muted);font-size:13px">&#9203; IA très sollicitée, réessaie dans un instant.</div><button class="hbriefbtn" onclick="homeBriefing()">Réessayer</button>'; return; }
+    if(j&&j.reply){ box.innerHTML=''; const d=document.createElement('div'); d.className='hbrief'; d.textContent=j.reply; box.appendChild(d); const b=document.createElement('button'); b.className='hbriefbtn'; b.style.marginTop='10px'; b.textContent='Rafraîchir'; b.onclick=homeBriefing; box.appendChild(b); }
+    else { box.innerHTML='<div class="txt" style="color:var(--muted);font-size:13px">Pas de réponse, réessaie.</div><button class="hbriefbtn" onclick="homeBriefing()">Réessayer</button>'; }
+  }catch(e){ box.innerHTML='<div class="txt" style="color:var(--muted);font-size:13px">Erreur, réessaie.</div><button class="hbriefbtn" onclick="homeBriefing()">Réessayer</button>'; }
 }
 document.getElementById('modeSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMode(b.dataset.m);});
 const CATARRS=["catColors","catCats","catRarities","catTypes"];
