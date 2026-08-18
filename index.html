@@ -416,6 +416,18 @@ body{-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
 .releverow:last-child{border-bottom:none}
 .releverow .rd{color:var(--muted);font-weight:600;text-transform:capitalize}
 .releverow .rv{font-weight:800}
+.mvsub{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.4px;margin:10px 0 4px;color:var(--muted)}
+.mvsub.up{color:#16a34a}.mvsub.down{color:#dc2626}
+.mvrow{display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--line)}
+.mvrow:last-child{border-bottom:none}
+.mvthumb{width:30px;height:42px;border-radius:4px;overflow:hidden;flex:none;background:var(--chip)}
+.mvthumb img{width:100%;height:100%;object-fit:cover}
+.mvmeta{flex:1;min-width:0}
+.mvmeta .nm{font-weight:700;font-size:13px;margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mvmeta .sub{color:var(--muted);font-size:11.5px}
+.mvd{font-weight:800;font-size:13px;white-space:nowrap;text-align:right}
+.mvd.up{color:#16a34a}.mvd.down{color:#dc2626}
+.mvp{display:block;font-size:10.5px;font-weight:700;opacity:.85}
 .releverow .rc{font-size:12px;font-weight:800;margin-left:8px}
 .rc.up{color:var(--pos)} .rc.down{color:#e11d48}
 .aisoon{border:1px dashed var(--line);background:transparent}
@@ -592,7 +604,7 @@ body{-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
 <div class="wrap">
   <div class="hero">
     <div class="topbar">
-      <div class="logo"><div class="mark">OP</div> TCG GLOBAL <span id="buildTag" style="font-size:11px;font-weight:700;margin-left:8px;background:#e11d48;color:#fff;padding:2px 8px;border-radius:10px;letter-spacing:.2px;white-space:nowrap" title="Version en ligne">v10:11</span></div>
+      <div class="logo"><div class="mark">OP</div> TCG GLOBAL <span id="buildTag" style="font-size:11px;font-weight:700;margin-left:8px;background:#e11d48;color:#fff;padding:2px 8px;border-radius:10px;letter-spacing:.2px;white-space:nowrap" title="Version en ligne">v10:13</span></div>
       <div class="grow"></div>
       <div class="mktseg" id="mktSeg" title="Marché de valorisation">
         <button data-k="JP" class="on">🇯🇵 JP</button>
@@ -627,6 +639,7 @@ body{-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
 
   <div class="chiprow catlang hidden" id="catLangRow"></div>
   <div id="catFilters" class="hidden"></div>
+  <div class="chiprow" id="valFilterRow" style="display:none"></div>
   <div class="count" id="countLine"></div>
   <div id="briefing"></div>
   <div id="stage"><div class="loading">Chargement de ta collection&hellip;</div></div>
@@ -774,7 +787,7 @@ const COLOR_HEX={Red:"#d64545",Green:"#2f9e57",Blue:"#2f6fed",Purple:"#8b57d6",B
 const TYPE_ORDER=["normal","alternate_art","sp","manga","full_art","textured_foil","jolly_roger_foil","promo","tournament"];
 const CAT_ORDER=["LEADER","CHARACTER","EVENT","STAGE","DON"];
 const SORTS=[["val_desc","Valeur ↓ (décroissant)"],["val_asc","Valeur ↑ (croissant)"],["name","Nom (A→Z)"],["num","Numéro"],["qty","Quantité"]];
-const DEF={q:"",lang:"all",color:"all",type:"all",cat:"all",rarity:"all",character:"all",grade:"all",sort:"val_desc",view:"grid",mode:"accueil",catLang:"all",catQuery:"",catLangs:[],catColors:[],catCats:[],catRarities:[],catTypes:[],catSort:"num",setLang:"JP",prodLang:"JP"};
+const DEF={q:"",lang:"all",color:"all",type:"all",cat:"all",rarity:"all",character:"all",grade:"all",minVal:0,sort:"val_desc",view:"grid",mode:"accueil",catLang:"all",catQuery:"",catLangs:[],catColors:[],catCats:[],catRarities:[],catTypes:[],catSort:"num",setLang:"JP",prodLang:"JP"};
 let PROD_VALUE=0;
 const CATLANGS=[["all","Toutes"],["JP","Japonais"],["EN","Anglais"],["FR","Français"],["CN","Chinois"]];
 const CATCATS=[["all","Toutes catégories"],["LEADER","Leader"],["CHARACTER","Personnage"],["EVENT","Event"],["STAGE","Stage"],["DON","DON!!"]];
@@ -945,6 +958,9 @@ function buildFilterModal(){
 function activeCount(){ let n=0; ["lang","color","type","cat","rarity","character","grade"].forEach(k=>{ if(state[k]!=="all")n++; }); return n; }
 function afterFilter(){ buildFilterModal(); syncBadge(); render(); }
 function syncBadge(){ const n=activeCount(); const b=document.getElementById("fbadge"); b.textContent=n; b.style.display=n?"grid":"none"; document.getElementById("filterBtn").classList.toggle("act",!!n); }
+const VALSTEPS=[[0,'Tout'],[1,'≥ 1 €'],[5,'≥ 5 €'],[20,'≥ 20 €'],[50,'≥ 50 €'],[100,'≥ 100 €']];
+function buildValRow(){ const row=document.getElementById('valFilterRow'); if(!row)return; row.innerHTML='<span class="dt" style="align-self:center;margin-right:4px">Valeur min :</span>'+VALSTEPS.map(s=>'<div class="chip'+(state.minVal===s[0]?' on':'')+'" onclick="setMinVal('+s[0]+')">'+s[1]+'</div>').join(''); }
+function setMinVal(v){ state.minVal=v; buildValRow(); render(); }
 
 function apply(){
   let a=DATA.slice();
@@ -956,6 +972,7 @@ function apply(){
   if(state.character!=="all") a=a.filter(c=>c.card_name===state.character);
   if(state.grade==="graded") a=a.filter(c=>c.is_graded);
   if(state.grade==="raw") a=a.filter(c=>!c.is_graded);
+  if(state.minVal>0) a=a.filter(c=>val(c)>=state.minVal);
   if(state.q){const q=state.q.toLowerCase();a=a.filter(c=>(c.card_name||"").toLowerCase().includes(q)||(c.card_number||"").toLowerCase().includes(q));}
   const s=state.sort;
   a.sort((x,y)=> s==="val_asc"?val(x)-val(y): s==="name"?(x.card_name||"").localeCompare(y.card_name||""): s==="num"?(x.card_number||"").localeCompare(y.card_number||""): s==="qty"?(y.quantity||1)-(x.quantity||1): val(y)-val(x));
@@ -1027,6 +1044,7 @@ function setMode(m){
   document.getElementById('sortBtn').classList.toggle('hidden',home||ops||sets||prods||live||ia);
   document.querySelector('.search').classList.toggle('hidden',home||ops||sets||prods||live||ia);
   document.getElementById('scanFab').classList.toggle('hidden',!(m==='collection'||m==='catalog'));
+  const vfr=document.getElementById('valFilterRow'); if(vfr){ if(m==='collection'){ vfr.style.display='flex'; buildValRow(); } else { vfr.style.display='none'; } }
   document.getElementById('q').placeholder=cat?"Chercher une carte (nom ou numéro), toutes langues…":"Rechercher (nom ou numéro)…";
   const brief=document.getElementById('briefing'); if(brief){ brief.innerHTML=''; }
   // mini portfolio line: shown everywhere except the Accueil dashboard
@@ -1201,9 +1219,30 @@ async function renderHome(){
       '<div class="hstat"><div class="n">'+gradedN.toLocaleString('fr-FR')+'</div><div class="k">Gradées</div></div></div>'+
     (gradeChips?('<div class="hcard"><div class="htitle">Cartes gradées par organisme</div><div class="graderow">'+gradeChips+'</div></div>'):'')+
     '<div class="hcard hchart"><div class="htitle">Évolution du portefeuille</div>'+homeChart(snaps)+'</div>'+
+    '<div class="hcard"><div class="htitle">Top mouvements <span class="dt">· '+esc(MKT_LABEL[MKT])+'</span></div><div id="homeMovers"><div class="chdates">Chargement…</div></div></div>'+
     '<div class="hcard"><div class="htitle">Suivi des relevés</div>'+(hist||'<div class="chdates">Aucun relevé pour l’instant.</div>')+'</div>'+
     '<div class="hcard"><div class="htitle">✨ Briefing du jour <span class="aibadge">IA</span></div><div id="homeBriefBox"><div class="txt" style="color:var(--muted);font-size:13px">Ton stratège te fait le point : portefeuille, mouvements, et LA priorité du jour.</div><button class="hbriefbtn" onclick="homeBriefing()">Générer mon briefing</button></div></div>';
   stage.innerHTML=html;
+  loadMovers();
+}
+async function loadMovers(){
+  const box=document.getElementById('homeMovers'); if(!box) return;
+  const f=MKT_FIELD[MKT].slice(1); // 'jp'|'eu'|'us'
+  let rows=[];
+  try{ const r=await fetch(SB+'/rest/v1/app_movers?select=card_number,variant_label,language,image_url,qty,jp_now,jp_delta,jp_pct,eu_now,eu_delta,eu_pct,us_now,us_delta,us_pct&limit=600',{headers:{apikey:ANON,Authorization:'Bearer '+ANON}}); rows=await r.json(); if(!Array.isArray(rows))rows=[]; }catch(e){ box.innerHTML='<div class="chdates">Indisponible.</div>'; return; }
+  const dK=f+'_delta', nK=f+'_now', pK=f+'_pct';
+  const moved=rows.filter(x=>x[dK]!=null && Math.abs(+x[dK])>=0.01);
+  if(!moved.length){ box.innerHTML='<div class="chdates">L’historique par carte démarre aujourd’hui — les hausses et baisses apparaîtront dès le prochain relevé (demain).</div>'; return; }
+  const up=moved.filter(x=>+x[dK]>0).sort((a,b)=>b[dK]-a[dK]).slice(0,5);
+  const down=moved.filter(x=>+x[dK]<0).sort((a,b)=>a[dK]-b[dK]).slice(0,5);
+  const row=(x,dir)=>{ const vl=(x.variant_label&&String(x.variant_label).toLowerCase()!=='normal')?(' · '+esc(x.variant_label)):'';
+    const img=x.image_url?('<img loading="lazy" referrerpolicy="no-referrer" src="'+esc(x.image_url)+'" onerror="this.style.visibility=\'hidden\'">'):'';
+    const d=+x[dK], p=x[pK]; const cls=dir>0?'up':'down';
+    return '<div class="mvrow"><div class="mvthumb">'+img+'</div><div class="mvmeta"><p class="nm">'+esc(x.card_number||'')+vl+'</p><div class="sub">'+(FLAG[x.language]||'')+' '+eur(x[nK])+'</div></div><div class="mvd '+cls+'">'+(d>0?'▲ +':'▼ ')+eur0(Math.abs(d))+(p!=null?'<span class="mvp">'+(d>0?'+':'')+p+'%</span>':'')+'</div></div>'; };
+  let h='';
+  if(up.length) h+='<div class="mvsub up">Hausses</div>'+up.map(x=>row(x,1)).join('');
+  if(down.length) h+='<div class="mvsub down">Baisses</div>'+down.map(x=>row(x,-1)).join('');
+  box.innerHTML=h;
 }
 // ---------- Live Whatnot (partage d'écran / d'onglet) ----------
 let liveStream=null, liveTimer=null, liveBusy=false, liveLast='', liveBackoff=0, liveOn=false, livePrev=null, liveSettle=0, liveLastShot=0, liveAuto=false;
