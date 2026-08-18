@@ -510,6 +510,11 @@ body{-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
 .ithesis{font-size:12.5px;line-height:1.5;margin-top:7px;color:var(--ink)}
 .isrc{font-size:11px;color:var(--muted);margin-top:6px}
 .isrc b{color:var(--ink)}
+.imks{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.imk{font-size:11px;font-weight:600;background:var(--chip);border:1px solid var(--line);border-radius:8px;padding:3px 8px;color:var(--muted);white-space:nowrap}
+.imk b{color:var(--ink);font-weight:800;margin-right:4px}
+.imk .p10{color:var(--pos);font-weight:800}
+.imk .ar{opacity:.45;margin:0 3px}
 .imetric{flex:none;text-align:right;display:flex;flex-direction:column;justify-content:center;min-width:62px}
 .imetric .mv{font-weight:900;font-size:16px;letter-spacing:-.3px;white-space:nowrap}
 .imetric .ml{font-size:9.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.3px;margin-top:3px;line-height:1.2}
@@ -556,7 +561,7 @@ body{-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
 <div class="wrap">
   <div class="hero">
     <div class="topbar">
-      <div class="logo"><div class="mark">OP</div> TCG GLOBAL <span id="buildTag" style="font-size:11px;font-weight:700;margin-left:8px;background:#e11d48;color:#fff;padding:2px 8px;border-radius:10px;letter-spacing:.2px;white-space:nowrap" title="Version en ligne">v00:34</span></div>
+      <div class="logo"><div class="mark">OP</div> TCG GLOBAL <span id="buildTag" style="font-size:11px;font-weight:700;margin-left:8px;background:#e11d48;color:#fff;padding:2px 8px;border-radius:10px;letter-spacing:.2px;white-space:nowrap" title="Version en ligne">v09:14</span></div>
       <div class="grow"></div>
       <button class="iconbtn" id="themeBtn" title="Th&egrave;me">&#9790;</button>
     </div>
@@ -1324,6 +1329,7 @@ function iaAddUser(text,noStore){ const log=iaLogEl(); if(!log) return; const t=
 function iaThink(){ const log=iaLogEl(); if(!log) return null; const d=document.createElement('div'); d.className='iaturn'; d.innerHTML='<div class="athink"><span>Nova '+(iaSearch?'scanne l\'actu':'réfléchit')+'</span><span class="tdots"><i></i><i></i><i></i></span></div>'; log.appendChild(d); log.scrollTop=log.scrollHeight; return d; }
 function iaBadgeCls(b){ const k=(b||'').toLowerCase(); if(k.indexOf('grad')>=0)return 'grader'; if(k.indexOf('achat')>=0||k.indexOf('achet')>=0)return 'achat'; if(k.indexOf('vend')>=0)return 'vendre'; if(k.indexOf('hold')>=0||k.indexOf('gard')>=0)return 'hold'; if(k.indexOf('surv')>=0)return 'surveiller'; if(k.indexOf('offic')>=0)return 'officiel'; if(k.indexOf('fuit')>=0||k.indexOf('leak')>=0)return 'fuite'; if(k.indexOf('rumeu')>=0)return 'rumeur'; return 'rumeur'; }
 function iaMetricCls(m){ m=String(m||''); if(/^\s*\+/.test(m))return ' pos'; if(/^\s*[-−]/.test(m))return ' neg'; return ''; }
+function iaMoney(v){ const n=+v; if(!isFinite(n)) return esc(String(v)); return (n>=100?Math.round(n):Math.round(n*100)/100)+' €'; }
 function iaCardEl(c){
   const kind=(c.kind||'note').toLowerCase();
   const d=document.createElement('div'); d.className='icard '+kind; if(c.card_no) d.dataset.no=c.card_no;
@@ -1334,6 +1340,15 @@ function iaCardEl(c){
   html+='<div class="ittl">'+esc(c.title||'')+badges+'</div>';
   const sub=[]; if(c.card_no) sub.push((c.lang?(FLAG[c.lang]||c.lang)+' ':'')+esc(c.card_no)); if(c.sub) sub.push(esc(c.sub));
   if(sub.length) html+='<div class="isub">'+sub.join(' · ')+'</div>';
+  if(Array.isArray(c.markets)&&c.markets.length){
+    const mk=c.markets.filter(x=>x&&x.m&&(x.raw!=null||x.psa10!=null)).map(x=>{
+      let s='<b>'+esc(String(x.m))+'</b>';
+      if(x.raw!=null) s+=iaMoney(x.raw);
+      if(x.psa10!=null) s+='<span class="ar">→</span><span class="p10">PSA10 '+iaMoney(x.psa10)+'</span>';
+      return '<span class="imk">'+s+'</span>';
+    }).join('');
+    if(mk) html+='<div class="imks">'+mk+'</div>';
+  }
   if(c.thesis) html+='<div class="ithesis">'+esc(c.thesis)+'</div>';
   if(c.source) html+='<div class="isrc">Source : <b>'+esc(c.source)+'</b></div>';
   html+='</div>';
