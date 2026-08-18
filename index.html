@@ -177,6 +177,14 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Ar
 .pxtab .px{text-align:right;font-weight:800;white-space:nowrap}
 .pxtab .dt{color:var(--muted);font-size:11px;text-align:right;white-space:nowrap}
 .pxnone{color:var(--muted);font-size:13px;line-height:1.4;padding:4px 0 2px}
+.pxdet{border:1px solid var(--line);border-radius:12px;margin-top:10px;overflow:hidden;background:var(--chip)}
+.pxdet>summary{list-style:none;cursor:pointer;padding:11px 13px;font-size:12px;font-weight:800;color:var(--ink);text-transform:uppercase;letter-spacing:.4px;display:flex;align-items:center;justify-content:space-between;user-select:none}
+.pxdet>summary::-webkit-details-marker{display:none}
+.pxdet>summary::after{content:"▸";color:var(--muted);font-size:13px;transition:transform .15s}
+.pxdet[open]>summary::after{transform:rotate(90deg)}
+.pxdet>summary:hover{color:var(--accent)}
+.pxdet .pxbody{padding:0 13px 12px}
+.pxdet .pxsub:first-child{margin-top:2px}
 .pxadd{margin-top:12px;width:100%;border:1px dashed var(--accent);background:transparent;color:var(--accent);font-weight:800;padding:11px;border-radius:12px;cursor:pointer;font-size:14px}
 .collact{margin-top:10px}
 .collbtn{border:none;border-radius:12px;font-weight:800;padding:11px;cursor:pointer;font-size:14px}
@@ -584,7 +592,7 @@ body{-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
 <div class="wrap">
   <div class="hero">
     <div class="topbar">
-      <div class="logo"><div class="mark">OP</div> TCG GLOBAL <span id="buildTag" style="font-size:11px;font-weight:700;margin-left:8px;background:#e11d48;color:#fff;padding:2px 8px;border-radius:10px;letter-spacing:.2px;white-space:nowrap" title="Version en ligne">v10:08</span></div>
+      <div class="logo"><div class="mark">OP</div> TCG GLOBAL <span id="buildTag" style="font-size:11px;font-weight:700;margin-left:8px;background:#e11d48;color:#fff;padding:2px 8px;border-radius:10px;letter-spacing:.2px;white-space:nowrap" title="Version en ligne">v10:11</span></div>
       <div class="grow"></div>
       <div class="mktseg" id="mktSeg" title="Marché de valorisation">
         <button data-k="JP" class="on">🇯🇵 JP</button>
@@ -1589,7 +1597,7 @@ const GRADE_SHIP=12; // transport + assurance estimé par carte (aller-retour PS
 function opMult(c){ return (c.raw&&c.g10)?Math.round(c.g10/c.raw*10)/10:0; }
 function opCost(c){ return Math.round(((c.fee||0)+GRADE_SHIP)*100)/100; }
 function opGainUnit(c){ return Math.round(((c.g10||0)-(c.raw||0)-opCost(c))*100)/100; }
-function opGain(c){ const u=opGainUnit(c); return (c.qty>1)?Math.round(u*c.qty*100)/100:u; }
+function opGain(c){ return opGainUnit(c); } // gain PAR carte (grader 1 exemplaire), pas ×quantité
 function opVal(c,k){ if(k==='name')return (c.name||c.card_number||'').toLowerCase(); if(k==='language'){const LO={JP:0,FR:1,CN:2,EN:3};return LO[c.language]??9;} if(k==='raw')return c.raw||0; if(k==='g10')return c.g10||0; if(k==='cost')return opCost(c); if(k==='mult')return opMult(c); if(k==='gain')return opGain(c)||0; if(k==='score')return c.score||0; return 0; }
 function sortOp(kind,k){ const s=OPSORT[kind]; if(s.k===k)s.dir=-s.dir; else{s.k=k;s.dir=(k==='name')?1:-1;} renderOps(); }
 let ORIENT={markets:{JP:3,CN:3,EN:1,FR:0},types:["PROMO","PRODUCT_EXCLUSIVE"],note:""};
@@ -1606,7 +1614,7 @@ async function fetchOps(){
   stage.innerHTML='<div class="loading">L\'agent cherche des opportunités…</div>';
   if(!orientLoaded) await loadOrient();
   let owned=[], buy=[];
-  try{ const r=await fetch(SB+'/rest/v1/app_op_grading_owned?select=printing_id,card_number,language,name,image_url,variant_label,rarity,origin,raw,g10,fee,breakeven_p10,upside_if_10,upside_total,qty,score&order=upside_total.desc&limit=80',{headers:{apikey:ANON,Authorization:"Bearer "+ANON}}); owned=await r.json(); if(!Array.isArray(owned))owned=[]; }catch(e){ owned=[]; }
+  try{ const r=await fetch(SB+'/rest/v1/app_op_grading_owned?select=printing_id,card_number,language,name,image_url,variant_label,rarity,origin,raw,g10,fee,breakeven_p10,upside_if_10,upside_total,qty,score&order=upside_if_10.desc&limit=80',{headers:{apikey:ANON,Authorization:"Bearer "+ANON}}); owned=await r.json(); if(!Array.isArray(owned))owned=[]; }catch(e){ owned=[]; }
   try{ const r=await fetch(SB+'/rest/v1/app_op_grading?select=printing_id,card_number,language,name,image_url,variant_label,rarity,origin,raw,g10,fee,breakeven_p10,upside_if_10,score&order=score.desc&limit=300',{headers:{apikey:ANON,Authorization:"Bearer "+ANON}}); buy=await r.json(); if(!Array.isArray(buy))buy=[]; }catch(e){ buy=[]; }
   if(state.mode!=="ops") return;
   OWNEDRAW=owned; BUYRAW=buy;
@@ -1636,7 +1644,7 @@ function renderOps(){
   const totGain=owned.reduce((s,c)=>s+(opGain(c)||0),0);
   const LFILT=[['all','Toutes'],['JP','🇯🇵 JP'],['EN','🇬🇧 EN'],['FR','🇫🇷 FR'],['CN','🇨🇳 CN']];
   let h='<div class="setlangrow" style="margin-bottom:10px;align-items:center"><span class="dt" style="margin-right:2px">Langue :</span>'+LFILT.map(x=>'<div class="chip'+(OPFILT.lang===x[0]?' on':'')+'" onclick="setOpFilt(\''+x[0]+'\')">'+x[1]+'</div>').join('')+'</div>';
-  h+='<div class="opsintro"><b>🏅 Mes cartes à grader</b> <span class="dt">— '+owned.length+' cartes · potentiel cumulé <b>'+eur(totGain)+'</b></span><div class="dt" style="margin-top:3px"><b>Gain net</b> = PSA 10 − valeur brute − frais (gradation PSA par palier + ~12 € transport/assurance). Touche une colonne pour trier, ou filtre par langue ci-dessus. <b>Score</b> = conviction basée sur le prix ; l\'agent IA y greffera bientôt la hype / l\'actu.</div></div>';
+  h+='<div class="opsintro"><b>🏅 Mes cartes à grader</b> <span class="dt">— '+owned.length+' cartes · potentiel <b>'+eur(totGain)+'</b> <span class="dt">(en gradant 1 exemplaire de chaque)</span></span><div class="dt" style="margin-top:3px"><b>Gain net</b> = PSA 10 − valeur brute − frais (gradation PSA par palier + ~12 € transport/assurance). Touche une colonne pour trier, ou filtre par langue ci-dessus. <b>Score</b> = conviction basée sur le prix ; l\'agent IA y greffera bientôt la hype / l\'actu.</div></div>';
   h+= owned.length? opTable(owned,'own') : '<div class="empty">Aucune carte à grader pour ce filtre.</div>';
   h+='<div class="opsintro" style="margin-top:18px"><div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><b>🛒 Opportunités à acheter</b><button class="orbtn" onclick="openOrient()">Mon orientation</button></div><div class="dt" style="margin-top:3px">Cartes que tu ne possèdes pas, à acheter puis grader. Colonne <b>Langue</b> triable + filtre ci-dessus.</div></div>';
   h+= buy.length? opTable(buy,'buy') : '<div class="empty">Aucune opportunité pour ce filtre.</div>';
@@ -1744,26 +1752,32 @@ async function loadCardPrices(c, boxId){
   }
   const ung=rows.filter(x=>x.grade==null);
   const grd=rows.filter(x=>x.grade!=null);
-  let html='<div class="pxhdr">Prix marché — toutes sources</div>';
+  const det=(t,inner,open)=> '<details class="pxdet"'+(open?' open':'')+'><summary>'+t+'</summary><div class="pxbody">'+inner+'</div></details>';
+  let html='';
+  // 1) Toutes les sources (+ gradées) — replié
+  let srcInner='';
   if(ung.length){
-    html+='<table class="pxtab"><tbody>'+ung.map(x=>{
+    srcInner+='<table class="pxtab"><tbody>'+ung.map(x=>{
       const d=x.captured_at?(new Date(x.captured_at).toLocaleDateString('fr-FR')):'';
       const orig=(x.orig_currency&&x.orig_currency!=='EUR')?(' <span class="dt">('+x.orig_price+' '+x.orig_currency+')</span>'):'';
       return '<tr><td class="src">'+esc(SRC_LABELS[x.source]||x.source)+'</td><td>'+(FLAG[x.market]||x.market)+'</td><td class="px">'+eur(x.price_eur)+orig+'</td><td class="dt">'+d+'</td></tr>';
     }).join('')+'</tbody></table>';
   } else if(!cr.length){
-    html+='<div class="pxnone">'+(c.language==='CN'?'Aucune cote automatique (exclusivité chinoise). Ajoute le prix que tu connais — il sera daté et conservé.':(c.language==='JP'?'Prix Japon en cours de récupération (Cardrush) — reviens bientôt.':'Pas encore de cote automatique pour cette variante.'))+'</div>';
+    srcInner+='<div class="pxnone">'+(c.language==='CN'?'Aucune cote automatique (exclusivité chinoise). Ajoute le prix que tu connais — il sera daté et conservé.':(c.language==='JP'?'Prix Japon en cours de récupération (Cardrush) — reviens bientôt.':'Pas encore de cote automatique pour cette variante.'))+'</div>';
   }
   if(grd.length){
-    html+='<div class="pxsub">Gradées</div><table class="pxtab"><tbody>'+grd.map(x=>{
-      const g=(x.source==='PRICECHARTING'?'':'');
+    srcInner+='<div class="pxsub">Gradées</div><table class="pxtab"><tbody>'+grd.map(x=>{
       return '<tr><td class="src">Grade '+(x.grade)+'</td><td>'+(FLAG[x.market]||x.market)+'</td><td class="px">'+eur(x.price_eur)+'</td><td class="dt">'+esc(SRC_LABELS[x.source]||x.source)+'</td></tr>';
     }).join('')+'</tbody></table>';
   }
+  if(srcInner) html+=det('Toutes les sources de prix', srcInner);
+  // 2) Cardrush par variante — replié
   if(cr.length){
-    html+='<div class="pxsub">Prix Japon — Cardrush (par variante)</div><table class="pxtab"><tbody>'+cr.map(x=>'<tr><td class="src">'+esc(x.label||'')+'</td><td>'+(FLAG.JP||'')+'</td><td class="px">'+eur(x.price_eur)+'</td><td class="dt">'+Number(x.price_jpy).toLocaleString('fr-FR')+'円</td></tr>').join('')+'</tbody></table>';
+    html+=det('Prix Japon par variante (Cardrush)', '<table class="pxtab"><tbody>'+cr.map(x=>'<tr><td class="src">'+esc(x.label||'')+'</td><td>'+(FLAG.JP||'')+'</td><td class="px">'+eur(x.price_eur)+'</td><td class="dt">'+Number(x.price_jpy).toLocaleString('fr-FR')+'円</td></tr>').join('')+'</tbody></table>');
   }
-  html+=gradeAdvice(ung, grd);
+  // 3) Faut-il la grader ? — replié
+  const adv=gradeAdvice(ung, grd);
+  if(adv) html+=det('Faut-il la grader ?', adv.replace('<div class="pxsub">Faut-il la grader ?</div>',''));
   html+='<button class="pxadd" onclick="addPrice(this)" data-pid="'+esc(c.printing_id||'')+'" data-mk="'+esc(c.language||'')+'" data-box="'+esc(boxId)+'">+ Ajouter un prix manuel</button>';
   box.innerHTML=html;
   loadMarketCompare(c, boxId);
@@ -1774,8 +1788,13 @@ async function loadMarketCompare(c, boxId){
   try{ const r=await fetch(SB+'/rest/v1/app_card_market?card_number=eq.'+encodeURIComponent(c.card_number)+'&select=variant_label,language,eu_raw,eu_src,eu_offres,us_raw,us_psa10,jp_shop,jp_raw,jp_psa10&limit=24',{headers:{apikey:ANON,Authorization:'Bearer '+ANON}}); rows=await r.json(); if(!Array.isArray(rows))rows=[]; }catch(e){ return; }
   if(!rows.length) return;
   const lang=c.language; const vl=(c.variant_label||c.variant||'');
-  const bk=s=>{ s=(s||'').toString().toLowerCase(); if(s.indexOf('manga')>=0)return 'manga'; if(s.indexOf('parallel')>=0)return 'parallel'; if(s.indexOf('alternate art')>=0||s.indexOf('alt')>=0)return 'alt'; return 'base'; };
-  let row=rows.find(r=>r.language===lang && bk(r.variant_label)===bk(vl));
+  const norm=s=>(s||'').toString().trim().toLowerCase();
+  const isbase=s=>{ s=norm(s); return s===''||s==='normal'||s==='base'; };
+  const bk=s=>{ s=norm(s); if(s.indexOf('manga')>=0)return 'manga'; if(s.indexOf('parallel')>=0)return 'parallel'; if(s.indexOf('alternate art')>=0||s.indexOf('alt')>=0)return 'alt'; return 'base'; };
+  // 1) correspondance exacte de la variante ; 2) cas normal/base ; 3) panier grossier ; 4) meilleure cote
+  let row=rows.find(r=>r.language===lang && norm(r.variant_label)===norm(vl) && !(norm(vl)==='' && r.variant_label!=null));
+  if(!row && isbase(vl)) row=rows.find(r=>r.language===lang && (r.variant_label==null || isbase(r.variant_label)));
+  if(!row) row=rows.find(r=>r.language===lang && bk(r.variant_label)===bk(vl));
   if(!row) row=rows.filter(r=>r.language===lang).sort((a,b)=>((b.jp_psa10||b.jp_raw||b.eu_raw||0)-(a.jp_psa10||a.jp_raw||a.eu_raw||0)))[0];
   if(!row) row=rows[0];
   if(!row) return;
