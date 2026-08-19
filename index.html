@@ -595,6 +595,55 @@ body{-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
 .hhero .covbar{height:6px;border-radius:4px;background:rgba(255,255,255,.22);overflow:hidden;margin-top:6px;max-width:340px}
 .hhero .covbar>i{display:block;height:100%;background:#fff}
 .hhero .esttag{font-size:11px;font-weight:700;color:rgba(255,255,255,.75);text-transform:uppercase;letter-spacing:.3px}
+/* ===================== Accueil v2 — moderne ===================== */
+.nh{display:flex;flex-direction:column;gap:15px}
+.dotc{width:9px;height:9px;border-radius:50%;display:inline-block}
+.nh-hero{position:relative;overflow:hidden;border-radius:26px;padding:20px 20px 18px;color:#fff;background:linear-gradient(135deg,#2f4ff0 0%,#5b8cff 52%,#8a63ff 100%);box-shadow:0 24px 50px -20px rgba(52,87,232,.85),0 2px 6px rgba(16,24,40,.12)}
+.nh-hero::before{content:"";position:absolute;top:-45%;right:-18%;width:70%;height:190%;background:radial-gradient(circle at center,rgba(255,255,255,.4),transparent 60%);pointer-events:none}
+.nh-hero::after{content:"";position:absolute;bottom:-70%;left:-12%;width:65%;height:170%;background:radial-gradient(circle at center,rgba(150,110,255,.55),transparent 62%);pointer-events:none}
+.nh-hero>*{position:relative}
+.nh-htop{display:flex;justify-content:space-between;align-items:center}
+.nh-hlbl{font-size:11px;text-transform:uppercase;letter-spacing:.8px;font-weight:800;opacity:.88}
+.nh-mktpill{display:flex;gap:2px;background:rgba(255,255,255,.16);border-radius:12px;padding:3px}
+.nh-mktpill button{border:0;background:transparent;color:rgba(255,255,255,.82);font-weight:800;font-size:12px;padding:5px 11px;border-radius:9px;cursor:pointer}
+.nh-mktpill button.on{background:#fff;color:#2340c8;box-shadow:0 2px 6px rgba(0,0,0,.18)}
+.nh-big{font-size:46px;font-weight:900;letter-spacing:-.03em;line-height:1;margin:10px 0 4px}
+.nh-delta{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:800;padding:5px 12px;border-radius:20px;background:rgba(255,255,255,.2)}
+.nh-delta.up{background:rgba(16,185,129,.92)}.nh-delta.down{background:rgba(244,63,94,.92)}
+.nh-spark{margin-top:12px}
+.nh-real{margin-top:12px;font-size:12px;opacity:.94;line-height:1.5}
+.nh-real b{font-weight:900}
+.nh-cov{height:6px;border-radius:4px;background:rgba(255,255,255,.26);overflow:hidden;margin-top:6px;max-width:380px}
+.nh-cov>i{display:block;height:100%;background:#fff;border-radius:4px}
+.nh-split{display:flex;gap:10px;margin-top:14px}
+.nh-seg{flex:1;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.18);border-radius:14px;padding:10px 12px}
+.nh-seg .k{font-size:11px;font-weight:700;opacity:.92;display:flex;align-items:center;gap:6px}
+.nh-seg .v{font-size:18px;font-weight:900;margin-top:3px}
+.nh-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.nh-stat{position:relative;overflow:hidden;background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:15px 12px 14px 16px;box-shadow:var(--shadow)}
+.nh-stat .bar{position:absolute;left:0;top:0;bottom:0;width:4px}
+.nh-stat .ic{font-size:15px;margin-bottom:5px}
+.nh-stat .n{font-size:26px;font-weight:900;letter-spacing:-.02em;line-height:1}
+.nh-stat .k{font-size:10.5px;color:var(--muted);margin-top:4px;font-weight:800;text-transform:uppercase;letter-spacing:.4px}
+.nh-card2{background:var(--panel);border:1px solid var(--line);border-radius:20px;padding:16px;box-shadow:var(--shadow)}
+.nh-ct{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.nh-ct h3{margin:0;font-size:15px;font-weight:900;display:flex;align-items:center;gap:8px;letter-spacing:-.01em}
+.nh-ct .mkt{font-size:11px;color:var(--muted);font-weight:800}
+.nh-nova{position:relative;overflow:hidden;border-radius:22px;padding:18px;background:linear-gradient(140deg,#101a34 0%,#1c2c56 100%);color:#fff;box-shadow:0 20px 44px -20px rgba(20,30,80,.95)}
+.nh-nova::before{content:"";position:absolute;top:-35%;right:-8%;width:52%;height:170%;background:radial-gradient(circle,rgba(120,140,255,.5),transparent 60%);pointer-events:none}
+.nh-nova>*{position:relative}
+.nh-nova .nvh{display:flex;align-items:center;gap:10px}
+.nh-nova .orb{width:34px;height:34px;border-radius:50%;background:conic-gradient(from 0deg,#6c8bff,#a78bfa,#7ce0ff,#6c8bff);box-shadow:0 0 20px rgba(124,140,255,.75);flex:none;animation:nhspin 7s linear infinite}
+@keyframes nhspin{to{transform:rotate(360deg)}}
+.nh-nova .nvh b{font-size:16px;font-weight:900}
+.nh-nova .nvh .tag{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;background:rgba(255,255,255,.16);padding:3px 9px;border-radius:20px}
+.nh-nova .nvbody{margin-top:13px;font-size:13.5px;line-height:1.55;color:rgba(255,255,255,.94);white-space:pre-wrap}
+.nh-nova .nvbtn{margin-top:12px;display:inline-flex;gap:8px;align-items:center;background:#fff;color:#1b2a52;border:0;font-weight:900;font-size:14px;padding:11px 16px;border-radius:12px;cursor:pointer;box-shadow:0 6px 16px rgba(0,0,0,.28)}
+.nh-nova .nvask{margin-top:12px;display:flex;gap:8px}
+.nh-nova .nvask input{flex:1;border:1px solid rgba(255,255,255,.22);background:rgba(255,255,255,.1);color:#fff;border-radius:12px;padding:11px 14px;font-size:14px;outline:none}
+.nh-nova .nvask input::placeholder{color:rgba(255,255,255,.6)}
+.nh-nova .nvask button{border:0;background:#6c8bff;color:#fff;font-weight:900;border-radius:12px;padding:0 17px;cursor:pointer;font-size:16px}
+@media(min-width:720px){ .nh-hero .nh-big{font-size:54px} .nh{display:grid;grid-template-columns:1fr 1fr;align-items:start} .nh-hero,.nh-nova,.nh-stats{grid-column:1 / -1} }
 /* comparatif 3 marchés sur la fiche carte */
 .mkc{margin:2px 0 10px;border:1px solid var(--line);border-radius:12px;overflow:hidden}
 .mkc .mkchd{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.3px;color:var(--muted);padding:8px 11px;background:var(--chip)}
@@ -611,7 +660,7 @@ body{-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
 <div class="wrap">
   <div class="hero">
     <div class="topbar">
-      <div class="logo"><div class="mark">OP</div> TCG GLOBAL <span id="buildTag" style="font-size:11px;font-weight:700;margin-left:8px;background:#e11d48;color:#fff;padding:2px 8px;border-radius:10px;letter-spacing:.2px;white-space:nowrap" title="Version en ligne">v10:25</span></div>
+      <div class="logo"><div class="mark">OP</div> TCG GLOBAL <span id="buildTag" style="font-size:11px;font-weight:700;margin-left:8px;background:#e11d48;color:#fff;padding:2px 8px;border-radius:10px;letter-spacing:.2px;white-space:nowrap" title="Version en ligne">v10:26</span></div>
       <div class="grow"></div>
       <div class="mktseg" id="mktSeg" title="Marché de valorisation">
         <button data-k="JP" class="on">🇯🇵 JP</button>
@@ -1211,15 +1260,31 @@ async function loadProductValue(){
 let HOMESNAPS=null;
 async function loadSnaps(){ try{ const r=await fetch(SB+'/rest/v1/app_value_snapshot?select=day,total_eur,cards,cards_eur,products_eur&order=day.asc&limit=400',{headers:{apikey:ANON,Authorization:"Bearer "+ANON}}); const j=await r.json(); HOMESNAPS=Array.isArray(j)?j:[]; }catch(e){ HOMESNAPS=[]; } }
 function fmtDay(d){ if(!d) return ''; const p=String(d).split('-'); return p.length===3?(p[2]+'/'+p[1]):String(d); }
+function heroSpark(snaps){
+  if(!snaps||snaps.length<2) return '<div style="font-size:12px;opacity:.85">La courbe se remplit chaque nuit — reviens demain.</div>';
+  const W=360,H=54,pad=3; const vals=snaps.map(s=>+s.total_eur||0);
+  let mn=Math.min(...vals),mx=Math.max(...vals); if(mn===mx){mn=Math.min(0,mn);if(mn===mx)mx=mn+1;} const rng=(mx-mn)||1;
+  const n=snaps.length,dx=(W-2*pad)/(n-1);
+  const pts=snaps.map((s,i)=>[pad+i*dx, H-pad-(((+s.total_eur||0)-mn)/rng)*(H-2*pad)]);
+  const line=pts.map((p,i)=>(i?'L':'M')+p[0].toFixed(1)+' '+p[1].toFixed(1)).join(' ');
+  const lp=pts[pts.length-1];
+  return '<svg viewBox="0 0 '+W+' '+H+'" preserveAspectRatio="none" style="width:100%;height:54px;display:block"><defs><linearGradient id="hsg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".42"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient></defs>'+
+    '<path d="'+line+' L '+lp[0].toFixed(1)+' '+H+' L '+pad+' '+H+' Z" fill="url(#hsg)"/>'+
+    '<path d="'+line+'" fill="none" stroke="#fff" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round" style="filter:drop-shadow(0 2px 5px rgba(0,0,0,.28))"/>'+
+    '<circle cx="'+lp[0].toFixed(1)+'" cy="'+lp[1].toFixed(1)+'" r="3.6" fill="#fff" style="filter:drop-shadow(0 0 5px rgba(255,255,255,.9))"/></svg>';
+}
+function nhAsk(){ const i=document.getElementById('nhAskInput'); const q=i?(i.value||'').trim():''; if(!q)return; if(i)i.value=''; setMode('ia'); setTimeout(function(){ try{iaSubmit(q);}catch(e){} },80); }
+function nhAskKey(e){ if(e.key==='Enter'){ e.preventDefault(); nhAsk(); } }
 function homeChart(snaps){
   if(!snaps||snaps.length<2) return '<div class="chdates" style="justify-content:center;padding:14px 0">La courbe se remplit chaque jour (un relevé par nuit). Reviens demain pour voir l’évolution.</div>';
   const W=328,H=118,pad=5;
-  const series=[{k:'total_eur',c:'var(--accent)',n:'Global',fill:true},{k:'cards_eur',c:'#6366f1',n:'Cartes'},{k:'products_eur',c:'#f59e0b',n:'Produits'}];
+  const series=[{k:'total_eur',c:'var(--accent)',n:'Global',fill:true},{k:'cards_eur',c:'#8b5cf6',n:'Cartes'},{k:'products_eur',c:'#f59e0b',n:'Produits'}];
   const all=[]; snaps.forEach(s=>series.forEach(se=>all.push(+s[se.k]||0)));
   let min=Math.min(...all), max=Math.max(...all); if(min===max){ min=Math.min(0,min); if(min===max)max=min+1; } const rng=(max-min)||1;
   const n=snaps.length, dx=(W-2*pad)/(n-1);
   const X=i=>pad+i*dx, Y=v=>H-pad-((v-min)/rng)*(H-2*pad);
-  let svg='<svg viewBox="0 0 '+W+' '+H+'"><defs><linearGradient id="ag" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="var(--accent)" stop-opacity="0.28"/><stop offset="1" stop-color="var(--accent)" stop-opacity="0"/></linearGradient></defs>';
+  let svg='<svg viewBox="0 0 '+W+' '+H+'" style="width:100%;height:auto;display:block"><defs><linearGradient id="ag" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="var(--accent)" stop-opacity="0.30"/><stop offset="1" stop-color="var(--accent)" stop-opacity="0"/></linearGradient></defs>';
+  for(let gi=0;gi<=3;gi++){ const gy=(pad+(H-2*pad)*gi/3).toFixed(1); svg+='<line x1="'+pad+'" y1="'+gy+'" x2="'+(W-pad).toFixed(1)+'" y2="'+gy+'" stroke="var(--line)" stroke-width="1"/>'; }
   series.forEach(se=>{
     const pts=snaps.map((s,i)=>[X(i),Y(+s[se.k]||0)]);
     const line=pts.map((p,i)=>(i?'L':'M')+p[0].toFixed(1)+' '+p[1].toFixed(1)).join(' ');
@@ -1261,20 +1326,30 @@ async function renderHome(){
     if(p){ const d=g-(+p.total_eur||0); const up=d>=0; c='<span class="rc '+(up?'up':'down')+'">'+(up?'+':'')+eur0(d)+'</span>'; }
     hist+='<div class="releverow"><span class="rd">'+fmtDay(s.day)+'</span><span><span class="rv">'+eur0(g)+'</span>'+c+'</span></div>';
   });
-  const html=
-    '<div class="hcard hhero"><div class="lbl">Valeur du portefeuille <span class="esttag">· '+esc(MKT_LABEL[MKT])+' · estimée</span></div><div class="big">'+eur0(global)+'</div>'+deltaHtml+
-      '<div class="hstrict">Valeur réelle '+esc(MKT_LABEL[MKT])+' : <b>'+eur0(globalStrict)+'</b> <span class="dt">— '+cov+'% de la collection couverte par un vrai prix '+MKT+(MKT==='JP'?'':' (le reste estimé au prix JP)')+'</span><div class="covbar"><i style="width:'+cov+'%"></i></div></div>'+
-      '<div class="hsub"><div class="seg"><div class="k"><span class="dotc" style="background:#6366f1"></span>Cartes</div><div class="v">'+eur0(cardsVal)+'</div></div>'+
-      '<div class="seg"><div class="k"><span class="dotc" style="background:#f59e0b"></span>Produits &amp; sets</div><div class="v">'+eur0(prodVal)+'</div></div></div>'+
-      '<div class="splitbar"><i style="width:'+cp+'%;background:#6366f1"></i><i style="width:'+(100-cp)+'%;background:#f59e0b"></i></div></div>'+
-    '<div class="hstats"><div class="hstat"><div class="n">'+qty.toLocaleString('fr-FR')+'</div><div class="k">Cartes</div></div>'+
-      '<div class="hstat"><div class="n">'+uniq.toLocaleString('fr-FR')+'</div><div class="k">Uniques</div></div>'+
-      '<div class="hstat"><div class="n">'+gradedN.toLocaleString('fr-FR')+'</div><div class="k">Gradées</div></div></div>'+
-    (gradeChips?('<div class="hcard"><div class="htitle">Cartes gradées par organisme</div><div class="graderow">'+gradeChips+'</div></div>'):'')+
-    '<div class="hcard hchart"><div class="htitle">Évolution du portefeuille</div>'+homeChart(snaps)+'</div>'+
-    '<div class="hcard"><div class="htitle">Top mouvements <span class="dt">· '+esc(MKT_LABEL[MKT])+'</span></div><div id="homeMovers"><div class="chdates">Chargement…</div></div></div>'+
-    '<div class="hcard"><div class="htitle">Suivi des relevés</div>'+(hist||'<div class="chdates">Aucun relevé pour l’instant.</div>')+'</div>'+
-    '<div class="hcard"><div class="htitle">✨ Briefing du jour <span class="aibadge">IA</span></div><div id="homeBriefBox"><div class="txt" style="color:var(--muted);font-size:13px">Ton stratège te fait le point : portefeuille, mouvements, et LA priorité du jour.</div><button class="hbriefbtn" onclick="homeBriefing()">Générer mon briefing</button></div></div>';
+  const html='<div class="nh">'+
+    '<div class="nh-hero"><div class="nh-htop"><span class="nh-hlbl">Portefeuille · estimé</span>'+
+      '<div class="nh-mktpill">'+['JP','EU','US'].map(function(k){return '<button class="'+(k===MKT?'on':'')+'" onclick="setMarket(\''+k+'\')">'+k+'</button>';}).join('')+'</div></div>'+
+      '<div class="nh-big">'+eur0(global)+'</div>'+
+      (deltaHtml?deltaHtml.replace('class="delta','class="nh-delta'):'')+
+      '<div class="nh-spark">'+heroSpark(snaps)+'</div>'+
+      '<div class="nh-real">Valeur réelle '+esc(MKT_LABEL[MKT])+' : <b>'+eur0(globalStrict)+'</b> — '+cov+' % couverte par un vrai prix '+MKT+(MKT==='JP'?'':' (reste estimé JP)')+'<div class="nh-cov"><i style="width:'+cov+'%"></i></div></div>'+
+      '<div class="nh-split"><div class="nh-seg"><div class="k"><span class="dotc" style="background:#c7d2fe"></span>Cartes</div><div class="v">'+eur0(cardsVal)+'</div></div>'+
+        '<div class="nh-seg"><div class="k"><span class="dotc" style="background:#fcd34d"></span>Produits &amp; sets</div><div class="v">'+eur0(prodVal)+'</div></div></div>'+
+    '</div>'+
+    '<div class="nh-nova"><div class="nvh"><span class="orb"></span><b>Nova</b><span class="tag">IA · '+esc(MKT)+'</span></div>'+
+      '<div id="homeBriefBox" class="nvbody"><div style="opacity:.85">Ton stratège te fait le point : portefeuille, mouvement clé et LA priorité du jour.</div><button class="nvbtn" onclick="homeBriefing()">✨ Générer mon briefing</button></div>'+
+      '<div class="nvask"><input id="nhAskInput" placeholder="Demande à Nova… (faut-il grader ma Boa ?)" onkeydown="nhAskKey(event)"><button onclick="nhAsk()">➤</button></div>'+
+    '</div>'+
+    '<div class="nh-stats">'+
+      '<div class="nh-stat"><span class="bar" style="background:#3457e8"></span><div class="ic">🃏</div><div class="n">'+qty.toLocaleString('fr-FR')+'</div><div class="k">Cartes</div></div>'+
+      '<div class="nh-stat"><span class="bar" style="background:#8b5cf6"></span><div class="ic">🔖</div><div class="n">'+uniq.toLocaleString('fr-FR')+'</div><div class="k">Uniques</div></div>'+
+      '<div class="nh-stat"><span class="bar" style="background:#c2892a"></span><div class="ic">🏆</div><div class="n">'+gradedN.toLocaleString('fr-FR')+'</div><div class="k">Gradées</div></div>'+
+    '</div>'+
+    (gradeChips?('<div class="nh-card2"><div class="nh-ct"><h3>🏅 Cartes gradées</h3></div><div class="graderow">'+gradeChips+'</div></div>'):'')+
+    '<div class="nh-card2"><div class="nh-ct"><h3>📈 Évolution du portefeuille</h3></div>'+homeChart(snaps)+'</div>'+
+    '<div class="nh-card2"><div class="nh-ct"><h3>🔥 Top mouvements</h3><span class="mkt">'+esc(MKT_LABEL[MKT])+'</span></div><div id="homeMovers"><div class="chdates">Chargement…</div></div></div>'+
+    '<div class="nh-card2"><div class="nh-ct"><h3>🗓️ Suivi des relevés</h3></div>'+(hist||'<div class="chdates">Aucun relevé pour l’instant.</div>')+'</div>'+
+  '</div>';
   stage.innerHTML=html;
   loadMovers();
 }
