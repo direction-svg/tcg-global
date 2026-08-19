@@ -107,13 +107,16 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Ar
 .dprints h4{margin:10px 0 4px;font-size:15px}
 .pstrip{display:flex;gap:10px;overflow-x:auto;padding-bottom:6px;scrollbar-width:none;margin-top:8px}
 .pstrip::-webkit-scrollbar{display:none}
-.pcard{flex:none;width:108px}
-.pcard .pi{width:108px;height:150px;border-radius:10px;overflow:hidden;background:linear-gradient(135deg,#dde8fa,#c8d8f2);position:relative;border:2px solid transparent}
+.pcard{flex:none;width:124px}
+.pcard .pi{width:124px;height:172px;border-radius:10px;overflow:hidden;background:linear-gradient(135deg,#dde8fa,#c8d8f2);position:relative;border:2px solid transparent}
 .pcard.sel .pi{border-color:var(--accent);box-shadow:0 0 0 3px rgba(47,111,237,.18)}
 .pcard.sel .pi::after{content:"\2713";position:absolute;top:5px;right:5px;background:var(--accent);color:#fff;width:20px;height:20px;border-radius:50%;display:grid;place-items:center;font-size:12px;font-weight:900}
 .pcard.sel .pl{color:var(--accent);font-weight:800}
 .pcard .pi img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain}
-.pcard .pl{font-size:10px;color:var(--muted);margin-top:5px;white-space:normal;line-height:1.15;height:26px;overflow:hidden}
+.pcard .pl{font-size:10px;color:var(--muted);margin-top:5px;white-space:normal;line-height:1.2;overflow:visible}
+.pcard .pl .prv{font-weight:800;color:var(--ink);font-size:11px;display:block;margin-bottom:1px}
+.pcard .pl .rar{display:inline-block;background:#eef2ff;color:#3730a3;font-weight:800;font-size:9px;padding:1px 5px;border-radius:6px;margin-bottom:2px}
+.pcard .pl .px{color:#0f766e;font-weight:800}
 .vlist{display:flex;flex-direction:column;gap:8px;margin-top:8px}
 .vrow{display:flex;align-items:center;gap:11px;padding:8px;border-radius:12px;background:var(--chip);border:1.5px solid transparent;cursor:pointer}
 .vrow.sel{border-color:var(--accent);background:rgba(47,111,237,.06)}
@@ -608,7 +611,7 @@ body{-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
 <div class="wrap">
   <div class="hero">
     <div class="topbar">
-      <div class="logo"><div class="mark">OP</div> TCG GLOBAL <span id="buildTag" style="font-size:11px;font-weight:700;margin-left:8px;background:#e11d48;color:#fff;padding:2px 8px;border-radius:10px;letter-spacing:.2px;white-space:nowrap" title="Version en ligne">v10:19</span></div>
+      <div class="logo"><div class="mark">OP</div> TCG GLOBAL <span id="buildTag" style="font-size:11px;font-weight:700;margin-left:8px;background:#e11d48;color:#fff;padding:2px 8px;border-radius:10px;letter-spacing:.2px;white-space:nowrap" title="Version en ligne">v10:21</span></div>
       <div class="grow"></div>
       <div class="mktseg" id="mktSeg" title="Marché de valorisation">
         <button data-k="JP" class="on">🇯🇵 JP</button>
@@ -881,7 +884,7 @@ async function loadMarketVals(){
 async function load(){
   let all=[],from=0,step=1000;
   while(true){
-    const r=await fetch(SB+"/rest/v1/app_collection?select=item_id,printing_id,card_number,card_name,card_type,category,color,rarity,language,is_graded,grading_company,grade,cert_number,quantity,market_value_eur,seed_value_eur,live_value_eur,psa_estimate_eur,population,pop_higher,price_source,price_asof,image_url,set_code,set_name,variant,art_suffix&order=market_value_eur.desc.nullslast&limit="+step+"&offset="+from,{headers:{apikey:ANON,Authorization:"Bearer "+ANON}});
+    const r=await fetch(SB+"/rest/v1/app_collection?select=item_id,printing_id,card_number,card_name,card_type,category,color,rarity,language,is_graded,grading_company,grade,cert_number,quantity,market_value_eur,seed_value_eur,live_value_eur,psa_estimate_eur,population,pop_higher,price_source,price_asof,image_url,set_code,set_name,variant,variant_label,art_suffix&order=market_value_eur.desc.nullslast&limit="+step+"&offset="+from,{headers:{apikey:ANON,Authorization:"Bearer "+ANON}});
     if(!r.ok){document.getElementById("stage").innerHTML='<div class="empty">Erreur de chargement ('+r.status+').</div>';return;}
     const b=await r.json(); all=all.concat(b); if(b.length<step)break; from+=step;
   }
@@ -1047,13 +1050,15 @@ function render(){
     stage.className=""; stage.innerHTML='<div class="grid">'+a.map(c=>{
       const g=c.is_graded?'<span class="grade">'+(c.grading_company||"")+' '+(c.grade!=null?String(c.grade).replace(/\.0$/,''):'')+'</span>':'<span></span>';
       const q=(c.quantity>1)?'<span class="qty">x'+c.quantity+'</span>':'';
+      const vt=(c.variant_label&&String(c.variant_label).toLowerCase()!=='normal')?'<span class="tp" style="background:#eef2ff;color:#3730a3;font-weight:800">'+esc(c.variant_label)+'</span>':'';
       return '<div class="card" data-id="'+c.item_id+'"><div class="imgwrap">'+imgTag(c)+'<div class="badges"><span class="flag">'+(FLAG[c.language]||"")+'</span>'+g+'</div>'+q+'</div>'+
-      '<div class="meta"><p class="nm">'+esc(c.card_name||"")+'</p><div class="sub"><span>'+esc(c.card_number||"")+'</span><span class="tp">'+(TYPE_LABELS[c.card_type]||c.card_type||"")+'</span></div><div class="val">'+eur(val(c))+'</div></div></div>';
+      '<div class="meta"><p class="nm">'+esc(c.card_name||"")+'</p><div class="sub"><span>'+esc(c.card_number||"")+'</span><span class="tp">'+(TYPE_LABELS[c.card_type]||c.card_type||"")+'</span>'+vt+'</div><div class="val">'+eur(val(c))+'</div></div></div>';
     }).join("")+'</div>';
   } else {
     stage.className="list"; stage.innerHTML=a.map(c=>{
       const g=c.is_graded?'<span class="grade">'+(c.grading_company||"")+' '+(c.grade!=null?String(c.grade).replace(/\.0$/,''):'')+'</span>':'';
-      return '<div class="row" data-id="'+c.item_id+'"><div class="lthumb">'+imgTag(c)+'</div><div><p class="nm">'+esc(c.card_name||"")+'</p><div class="sub"><span>'+(FLAG[c.language]||"")+'</span><span>'+esc(c.card_number||"")+'</span><span class="tp">'+(TYPE_LABELS[c.card_type]||c.card_type||"")+'</span> '+g+'</div></div><div class="r"><div class="val">'+eur(val(c))+'</div>'+(c.quantity>1?'<div class="sub">x'+c.quantity+'</div>':'')+'</div></div>';
+      const vt=(c.variant_label&&String(c.variant_label).toLowerCase()!=='normal')?'<span class="tp" style="background:#eef2ff;color:#3730a3;font-weight:800">'+esc(c.variant_label)+'</span>':'';
+      return '<div class="row" data-id="'+c.item_id+'"><div class="lthumb">'+imgTag(c)+'</div><div><p class="nm">'+esc(c.card_name||"")+'</p><div class="sub"><span>'+(FLAG[c.language]||"")+'</span><span>'+esc(c.card_number||"")+'</span><span class="tp">'+(TYPE_LABELS[c.card_type]||c.card_type||"")+'</span>'+vt+' '+g+'</div></div><div class="r"><div class="val">'+eur(val(c))+'</div>'+(c.quantity>1?'<div class="sub">x'+c.quantity+'</div>':'')+'</div></div>';
     }).join("");
   }
 }
@@ -2136,7 +2141,7 @@ async function loadPrints(number){
   box.innerHTML='<div class="dprints"><div class="sub">Chargement…</div></div>';
   try{
     const [ri,rv]=await Promise.all([
-      fetch(SB+'/rest/v1/app_variants?card_number=eq.'+encodeURIComponent(number)+'&select=suffix,label,jp_image_url&order=suffix.asc',{headers:{apikey:ANON,Authorization:"Bearer "+ANON}}),
+      fetch(SB+'/rest/v1/app_variants?card_number=eq.'+encodeURIComponent(number)+'&select=suffix,label,jp_image_url,price_eur,rarity,provenance&order=suffix.asc',{headers:{apikey:ANON,Authorization:"Bearer "+ANON}}),
       fetch(SB+'/rest/v1/app_card_variants?card_number=eq.'+encodeURIComponent(number)+'&select=printing_id,label,price_eur&order=price_eur.desc.nullslast',{headers:{apikey:ANON,Authorization:"Bearer "+ANON}})
     ]);
     if(!detailCard || detailCard.card_number!==number) return;
@@ -2149,7 +2154,11 @@ async function loadPrints(number){
     const imgItems=imgs.map(p=>{
       const img='<img referrerpolicy="no-referrer" src="'+esc(p.jp_image_url)+'" onerror="this.remove()">';
       const on=(cur!=null && cur===p.suffix)?' sel':'';
-      return '<div class="pcard'+on+'" data-suf="'+esc(p.suffix)+'" data-img="'+esc(p.jp_image_url)+'"><div class="pi">'+img+'</div><div class="pl">'+esc(p.label||(p.suffix?p.suffix:'Normale'))+'</div></div>';
+      const prov=p.provenance||p.label||(p.suffix?p.suffix:'Normale');
+      const rar=p.rarity?'<span class="rar">'+esc(p.rarity)+'</span>':'';
+      const px=p.price_eur!=null?'<span class="px">'+eur(p.price_eur)+'</span>':'';
+      const pl='<div class="pl">'+rar+'<span class="prv">'+esc(prov)+'</span>'+px+'</div>';
+      return '<div class="pcard'+on+'" data-suf="'+esc(p.suffix)+'" data-img="'+esc(p.jp_image_url)+'"><div class="pi">'+img+'</div>'+pl+'</div>';
     }).join("");
     const vItems=vars.map(v=>{
       const on=(String(v.printing_id)===String(detailCard.printing_id))?' on':'';
@@ -2202,6 +2211,13 @@ async function validateCurrent(){
   }catch(e){}
 }
 function closeDetail(){ document.getElementById("overlay").classList.add("hidden"); }
+const VARIANT_FR={alternate_art:'Alternate Art',special_alternate_art:'Alternate Art spéciale',manga:'Manga',manga_art:'Manga',black_white_alternate_art:'Manga (N&B)',full_art:'Full Art',championship:'Championship',jolly_roger:'Jolly Roger Foil',parallel:'Parallèle',sp:'SP',wanted:'Wanted',foil:'Foil',textured:'Textured Foil'};
+function variantNice(c){
+  if(c.variant_label && String(c.variant_label).trim() && String(c.variant_label).toLowerCase()!=='normal') return esc(c.variant_label);
+  const v=(c.variant||'').toLowerCase();
+  if(!v||v==='normal'||v==='') return 'Normale (standard)';
+  return VARIANT_FR[v]||esc(c.variant);
+}
 function renderDetail(){ const c=detailCard; if(!c)return; const body=document.getElementById("dbody");
   if(detailTab==="col"){
     const g=c.is_graded?('<span class="pill gold">'+(c.grading_company||"")+' '+(c.grade!=null?String(c.grade).replace(/\.0$/,''):'')+(c.cert_number?(' · '+c.cert_number):'')+'</span>'):'Brute';
@@ -2216,9 +2232,9 @@ function renderDetail(){ const c=detailCard; if(!c)return; const body=document.g
     body.innerHTML='<div class="dval"><div class="b">'+eur(val(c))+'</div><div class="s">valeur marchande'+((c.quantity||1)>1?(' · total '+eur(val(c)*(c.quantity||1))):'')+'</div>'+srcline+cmp+'</div>'+
       (VERIFY.has(c.item_id)?'<div style="margin:8px 0;padding:10px 12px;border:1px solid #fdba74;background:#fff7ed;border-radius:10px;font-size:13px;color:#9a3412">🔍 <b>Photo à vérifier.</b> Tape la bonne illustration ci-dessous pour la valider, ou <button onclick=\'validateCurrent()\' style="border:0;background:#f97316;color:#fff;font-weight:800;padding:4px 10px;border-radius:8px;cursor:pointer">✓ Valider cette photo</button></div>':'')+
       '<div class="qtybox"><span class="s">Possédé :</span> <span class="b">'+(c.quantity||1)+'</span></div>'+
-      drow("État", g)+drow("Langue", (FLAG[c.language]||"")+' '+(LANG_LABELS[c.language]||c.language))+drow("Nom", esc(c.card_name))+drow("Numéro", esc(c.card_number));
+      drow("Variante", '<b>'+variantNice(c)+'</b>')+drow("Rareté", RAR_LABELS[c.rarity]||c.rarity||"—")+drow("État", g)+drow("Langue", (FLAG[c.language]||"")+' '+(LANG_LABELS[c.language]||c.language))+drow("Nom", esc(c.card_name))+drow("Numéro", esc(c.card_number))+drow("Set", esc((c.set_code||"")+(c.set_name?(" — "+c.set_name):"")));
   } else {
-    body.innerHTML=drow("Nom", esc(c.card_name))+drow("Numéro", esc(c.card_number))+drow("Set", esc((c.set_code||"")+(c.set_name?(" — "+c.set_name):"")))+drow("Catégorie", CAT_LABELS[c.category]||c.category)+drow("Rareté", RAR_LABELS[c.rarity]||c.rarity)+drow("Artwork", TYPE_LABELS[c.card_type]||c.card_type)+drow("Couleur", (c.color||"").split(";").join(" / "))+drow("Langue", LANG_LABELS[c.language]||c.language);
+    body.innerHTML=drow("Nom", esc(c.card_name))+drow("Numéro", esc(c.card_number))+drow("Variante", '<b>'+variantNice(c)+'</b>')+drow("Rareté", RAR_LABELS[c.rarity]||c.rarity)+drow("Set / Édition", esc((c.set_code||"")+(c.set_name?(" — "+c.set_name):"")))+drow("Catégorie", CAT_LABELS[c.category]||c.category)+drow("Type d’illustration", TYPE_LABELS[c.card_type]||c.card_type)+drow("Couleur", (c.color||"").split(";").join(" / "))+drow("Langue", LANG_LABELS[c.language]||c.language);
   }
 }
 function findCard(id){ return DATA.find(c=>String(c.item_id)===String(id)); }
