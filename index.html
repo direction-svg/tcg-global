@@ -62,6 +62,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Ar
 :root.dark .imgwrap{background:linear-gradient(135deg,#1a2b45,#16223b)}
 .imgwrap img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;display:block}
 .ph{position:absolute;inset:0;display:grid;place-items:center;padding:8px;text-align:center;color:#40598a;font-size:12px;font-weight:700}
+.vfy{position:absolute;inset:0;display:grid;place-items:center;padding:8px;text-align:center;background:repeating-linear-gradient(45deg,#fff7ed,#fff7ed 8px,#ffedd5 8px,#ffedd5 16px);color:#9a3412;font-size:11px;font-weight:800;z-index:3}
+.vfy .vt{display:block;font-size:15px;margin-bottom:2px}
+.lthumb .vfy{font-size:7px}.lthumb .vfy .vt{font-size:11px;margin-bottom:0}
+.vfybadge{position:absolute;top:6px;right:6px;background:#f97316;color:#fff;font-size:9px;font-weight:800;padding:2px 6px;border-radius:8px;z-index:4}
 .badges{position:absolute;top:6px;left:6px;right:6px;display:flex;justify-content:space-between;pointer-events:none}
 .flag{font-size:15px;filter:drop-shadow(0 1px 1px rgba(0,0,0,.25))}
 .grade{background:var(--gold);color:#3a2a06;font-weight:900;font-size:10px;padding:2px 6px;border-radius:7px}
@@ -604,7 +608,7 @@ body{-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
 <div class="wrap">
   <div class="hero">
     <div class="topbar">
-      <div class="logo"><div class="mark">OP</div> TCG GLOBAL <span id="buildTag" style="font-size:11px;font-weight:700;margin-left:8px;background:#e11d48;color:#fff;padding:2px 8px;border-radius:10px;letter-spacing:.2px;white-space:nowrap" title="Version en ligne">v10:14</span></div>
+      <div class="logo"><div class="mark">OP</div> TCG GLOBAL <span id="buildTag" style="font-size:11px;font-weight:700;margin-left:8px;background:#e11d48;color:#fff;padding:2px 8px;border-radius:10px;letter-spacing:.2px;white-space:nowrap" title="Version en ligne">v10:16</span></div>
       <div class="grow"></div>
       <div class="mktseg" id="mktSeg" title="Marché de valorisation">
         <button data-k="JP" class="on">🇯🇵 JP</button>
@@ -672,7 +676,7 @@ body{-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
 <!-- Fiche carte -->
 <div id="overlay" class="overlay hidden">
   <div class="sheet">
-    <div class="dhead"><button class="dclose" id="dclose">&times;</button><img id="dimg" referrerpolicy="no-referrer"></div>
+    <div class="dhead"><button class="dclose" id="dclose">&times;</button><img id="dimg" referrerpolicy="no-referrer"><div id="dvfy" class="vfy" style="display:none"><span class="vt">🔍</span>Photo à vérifier</div></div>
     <div class="dtabs"><button data-t="col" class="on">Collection</button><button data-t="det">D&eacute;tails</button></div>
     <div id="dbody"></div>
     <div id="dsrc" class="dprices"></div>
@@ -683,7 +687,7 @@ body{-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
 
 <div id="catOverlay" class="overlay hidden">
   <div class="sheet">
-    <div class="dhead"><button class="dclose" id="cdclose">&times;</button><img id="cdimg" referrerpolicy="no-referrer"></div>
+    <div class="dhead"><button class="dclose" id="cdclose">&times;</button><img id="cdimg" referrerpolicy="no-referrer"><div id="cdvfy" class="vfy" style="display:none"><span class="vt">🔍</span>Photo à vérifier</div></div>
     <div id="cdbody"></div>
     <div id="cdprints"></div>
   </div>
@@ -882,6 +886,7 @@ async function load(){
     const b=await r.json(); all=all.concat(b); if(b.length<step)break; from+=step;
   }
   DATA=all; DATALOADED=true; buildFilterModal();
+  await loadVerify();
   await loadMarketVals();
   if(state.mode==="accueil"){ renderHome(); }
   else { render(); if(state.mode==="collection") loadBriefing(); }
@@ -979,7 +984,20 @@ function apply(){
   return a;
 }
 
+let VERIFY=new Set();
+async function loadVerify(){
+  try{
+    VERIFY=new Set();
+    let from=0,step=1000;
+    while(true){
+      const r=await fetch(SB+'/rest/v1/app_img_status?select=item_id,img_status&img_status=eq.verify&limit='+step+'&offset='+from,{headers:{apikey:ANON,Authorization:'Bearer '+ANON}});
+      if(!r.ok)break; const b=await r.json(); if(!Array.isArray(b))break;
+      b.forEach(x=>VERIFY.add(x.item_id)); if(b.length<step)break; from+=step;
+    }
+  }catch(e){}
+}
 function imgTag(c){
+  if(VERIFY.has(c.item_id)) return '<div class="vfy"><span class="vt">🔍</span>Photo à vérifier</div>';
   const ph='<div class="ph">'+esc(c.card_name||c.card_number||"")+'<br>'+esc(c.card_number||"")+'</div>';
   if(!c.image_url) return ph;
   return ph+'<img loading="lazy" referrerpolicy="no-referrer" src="'+esc(c.image_url)+'" onerror="this.remove()">';
@@ -1590,7 +1608,7 @@ async function fetchCatalog(append){
   const noFilters=!term && !state.catLangs.length && !state.catCats.length && !state.catRarities.length && !state.catTypes.length && !state.catColors.length;
   if(!append){ state.catOffset=0; CATACC=[]; stage.className=""; stage.innerHTML='<div class="loading">Recherche…</div>'; }
   const ord=state.catSort==="name"?"name.asc":(state.catSort==="lang"?"language.asc,card_number.asc":(state.catSort==="price_desc"?"price_eur.desc.nullslast":(state.catSort==="price_asc"?"price_eur.asc.nullslast":"card_number.asc")));
-  let url=SB+"/rest/v1/app_catalog_priced?select=card_number,language,name,image_url,owned,variant,variant_label,rarity,set_code,set_name,category,origin,printing_id,price_eur,price_source&limit="+CATPAGE+"&offset="+(state.catOffset||0)+"&order="+ord;
+  let url=SB+"/rest/v1/app_catalog_priced?select=card_number,language,name,image_url,img_verify,owned,variant,variant_label,rarity,set_code,set_name,category,origin,printing_id,price_eur,price_source&limit="+CATPAGE+"&offset="+(state.catOffset||0)+"&order="+ord;
   // Par défaut (aucun filtre / aucune recherche) on masque les DON, sinon ils monopolisent la 1re page (tri alphabétique). Ils restent accessibles via l'onglet Sets ou une recherche « DON ».
   if(noFilters) url+="&category=neq.DON";
   if(state.catLangs.length) url+="&language=in.("+state.catLangs.join(",")+")";
@@ -1618,7 +1636,7 @@ function renderCatalog(rows, hasMore){
   document.getElementById('countLine').textContent=rows.length+" carte"+(rows.length>1?"s":"")+(hasMore?" (fais défiler, puis « Charger plus »)":"");
   if(!rows.length){ stage.innerHTML='<div class="empty">Aucune carte trouvée.</div>'; return; }
   const grid='<div class="grid">'+rows.map((c,i)=>{
-    const img=c.image_url?('<img loading="lazy" referrerpolicy="no-referrer" src="'+esc(c.image_url)+'" onerror="this.remove()">'):('<div class="ph">'+esc(c.name||c.card_number||"")+'</div>');
+    const img=c.img_verify?('<div class="vfy"><span class="vt">🔍</span>Photo à vérifier</div>'):(c.image_url?('<img loading="lazy" referrerpolicy="no-referrer" src="'+esc(c.image_url)+'" onerror="this.remove()">'):('<div class="ph">'+esc(c.name||c.card_number||"")+'</div>'));
     const badge=c.owned?'<span class="owntag own">✓ Possédée</span>':'<span class="owntag no">Non possédée</span>';
     const vl=c.variant_label||c.variant; const vtag=(vl&&String(vl).toLowerCase()!=='normal')?'<span class="tp">'+esc(vl)+'</span>':'';
     const px=(c.price_eur!=null)?'<span class="pxg">'+eur(c.price_eur)+'</span>':'';
@@ -1722,7 +1740,7 @@ document.getElementById('omodal').addEventListener('click',e=>{ if(e.target.id==
 document.getElementById('osave').addEventListener('click',saveOrient);
 async function openCatDetail(c){
   if(!c) return;
-  document.getElementById("cdimg").src=c.image_url||""; document.getElementById("cdimg").style.visibility=c.image_url?"visible":"hidden";
+  { const cv=document.getElementById("cdvfy"); if(cv) cv.style.display=c.img_verify?"grid":"none"; document.getElementById("cdimg").src=c.img_verify?"":(c.image_url||""); document.getElementById("cdimg").style.visibility=(!c.img_verify&&c.image_url)?"visible":"hidden"; }
   const vl=c.variant_label||c.variant;
   document.getElementById("cdbody").innerHTML=
     '<div class="dval"><div class="b">'+esc(c.name||"")+'</div><div class="s">'+(FLAG[c.language]||"")+' '+(LANG_LABELS[c.language]||c.language)+' · '+esc(c.card_number||"")+'</div><div class="collact" id="cdcollact"></div></div>'+
@@ -1741,7 +1759,7 @@ async function loadCardVersions(c){
   const box=document.getElementById("cdprints"); if(!box) return;
   let rows=[];
   try{
-    const r=await fetch(SB+'/rest/v1/app_catalog_priced?card_number=eq.'+encodeURIComponent(c.card_number)+'&select=card_number,language,name,image_url,variant,variant_label,rarity,set_code,set_name,category,origin,owned,printing_id,price_eur,price_source&limit=80',{headers:{apikey:ANON,Authorization:"Bearer "+ANON}});
+    const r=await fetch(SB+'/rest/v1/app_catalog_priced?card_number=eq.'+encodeURIComponent(c.card_number)+'&select=card_number,language,name,image_url,img_verify,variant,variant_label,rarity,set_code,set_name,category,origin,owned,printing_id,price_eur,price_source&limit=80',{headers:{apikey:ANON,Authorization:"Bearer "+ANON}});
     rows=await r.json(); if(!Array.isArray(rows)) rows=[];
   }catch(e){ box.innerHTML=""; return; }
   // tri : langue (JP,EN,FR,CN) puis prix décroissant
@@ -1754,7 +1772,7 @@ async function loadCardVersions(c){
   const qmap={};
   if(pids.length){ try{ const rq=await fetch(SB+'/rest/v1/app_collection?printing_id=in.('+pids.join(',')+')&select=printing_id,quantity',{headers:{apikey:ANON,Authorization:"Bearer "+ANON}}); const jq=await rq.json(); if(Array.isArray(jq)) jq.forEach(x=>{ qmap[x.printing_id]=(qmap[x.printing_id]||0)+(x.quantity||0); }); }catch(e){} }
   const items=rows.map((p,i)=>{
-    const im=p.image_url?('<img referrerpolicy="no-referrer" src="'+esc(p.image_url)+'" onerror="this.remove()">'):'';
+    const im=p.img_verify?('<div class="vfy" style="font-size:7px"><span class="vt" style="font-size:12px">🔍</span>à vérifier</div>'):(p.image_url?('<img referrerpolicy="no-referrer" src="'+esc(p.image_url)+'" onerror="this.remove()">'):'');
     const artv=isArtVariant(p.variant);
     const vb='<span class="vbadge'+(artv?' art':'')+'">'+esc(vNice(p.variant))+'</span>';
     const rn=rarNice(p.rarity); const rar=rn?('<span class="vbadge">'+esc(rn)+'</span>'):'';
@@ -2046,7 +2064,7 @@ document.getElementById("themeBtn").addEventListener("click",()=>{document.docum
 let detailCard=null, detailTab="col";
 const LANG_LABELS={JP:"Japonais",EN:"Anglais",FR:"Français",CN:"Chinois"};
 function drow(k,v){ return v?('<div class="drow"><span class="k">'+k+'</span><span class="v">'+v+'</span></div>'):''; }
-function openDetail(c){ detailCard=c; detailTab="col"; const im=document.getElementById("dimg"); im.src=c.image_url||""; im.onerror=function(){this.style.visibility="hidden"}; im.style.visibility="visible"; document.querySelectorAll('.dtabs button').forEach(b=>b.classList.toggle('on',b.dataset.t==='col')); renderDetail(); document.getElementById("dprints").innerHTML=""; document.getElementById("dladder").innerHTML=""; document.getElementById("dsrc").innerHTML='<div class="pxhdr">Prix marché — toutes sources</div><div class="pxloading">…</div>'; document.getElementById("overlay").classList.remove("hidden"); loadCardPrices(c,'dsrc'); loadLadder(c); loadPrints(c.card_number); }
+function openDetail(c){ detailCard=c; detailTab="col"; const im=document.getElementById("dimg"); const vf=document.getElementById("dvfy"); const isV=VERIFY.has(c.item_id); if(vf) vf.style.display=isV?"grid":"none"; if(isV){ im.src=""; im.style.visibility="hidden"; } else { im.src=c.image_url||""; im.onerror=function(){this.style.visibility="hidden"}; im.style.visibility="visible"; } document.querySelectorAll('.dtabs button').forEach(b=>b.classList.toggle('on',b.dataset.t==='col')); renderDetail(); document.getElementById("dprints").innerHTML=""; document.getElementById("dladder").innerHTML=""; document.getElementById("dsrc").innerHTML='<div class="pxhdr">Prix marché — toutes sources</div><div class="pxloading">…</div>'; document.getElementById("overlay").classList.remove("hidden"); loadCardPrices(c,'dsrc'); loadLadder(c); loadPrints(c.card_number); }
 async function loadLadder(c){
   const box=document.getElementById("dladder"); box.innerHTML="";
   if(!c || !c.is_graded || !c.printing_id) return;
@@ -2140,7 +2158,7 @@ async function chooseArt(suf, imgurl){
   try{
     await fetch(SB+'/rest/v1/rpc/set_owned_art',{method:"POST",headers:{apikey:ANON,Authorization:"Bearer "+ANON,"Content-Type":"application/json"},body:JSON.stringify({p_item:detailCard.item_id,p_suffix:suf})});
     detailCard.art_suffix=suf;
-    if(imgurl){ detailCard.image_url=imgurl; const di=document.getElementById("dimg"); di.src=imgurl; di.style.visibility="visible"; const d=findCard(detailCard.item_id); if(d) d.image_url=imgurl; }
+    if(imgurl){ detailCard.image_url=imgurl; VERIFY.delete(detailCard.item_id); const dv=document.getElementById("dvfy"); if(dv) dv.style.display="none"; const di=document.getElementById("dimg"); di.src=imgurl; di.style.visibility="visible"; const d=findCard(detailCard.item_id); if(d) d.image_url=imgurl; }
     document.querySelectorAll('#dprints .pcard').forEach(x=>x.classList.toggle('sel', x.getAttribute('data-suf')===suf));
     render();
   }catch(e){}
