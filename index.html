@@ -608,7 +608,7 @@ body{-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
 <div class="wrap">
   <div class="hero">
     <div class="topbar">
-      <div class="logo"><div class="mark">OP</div> TCG GLOBAL <span id="buildTag" style="font-size:11px;font-weight:700;margin-left:8px;background:#e11d48;color:#fff;padding:2px 8px;border-radius:10px;letter-spacing:.2px;white-space:nowrap" title="Version en ligne">v10:18</span></div>
+      <div class="logo"><div class="mark">OP</div> TCG GLOBAL <span id="buildTag" style="font-size:11px;font-weight:700;margin-left:8px;background:#e11d48;color:#fff;padding:2px 8px;border-radius:10px;letter-spacing:.2px;white-space:nowrap" title="Version en ligne">v10:19</span></div>
       <div class="grow"></div>
       <div class="mktseg" id="mktSeg" title="Marché de valorisation">
         <button data-k="JP" class="on">🇯🇵 JP</button>
@@ -886,11 +886,15 @@ async function load(){
     const b=await r.json(); all=all.concat(b); if(b.length<step)break; from+=step;
   }
   DATA=all; DATALOADED=true; buildFilterModal();
-  await loadVerify();
-  await loadPcImages();
-  await loadMarketVals();
+  // 1) Rendu immédiat depuis DATA — la collection s'affiche quoi qu'il arrive
   if(state.mode==="accueil"){ renderHome(); }
   else { render(); if(state.mode==="collection") loadBriefing(); }
+  // 2) Enrichissements non bloquants (verify / images PriceCharting / valeurs marché)
+  try{ await loadVerify(); }catch(e){}
+  try{ await loadPcImages(); }catch(e){}
+  try{ await loadMarketVals(); }catch(e){}
+  if(state.mode==="accueil"){ renderHome(); }
+  else if(state.mode==="collection"||state.mode==="catalog"){ render(); }
 }
 let DATALOADED=false;
 const USER_NAME="Christopher";
