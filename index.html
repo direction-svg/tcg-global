@@ -611,7 +611,7 @@ body{-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
 <div class="wrap">
   <div class="hero">
     <div class="topbar">
-      <div class="logo"><div class="mark">OP</div> TCG GLOBAL <span id="buildTag" style="font-size:11px;font-weight:700;margin-left:8px;background:#e11d48;color:#fff;padding:2px 8px;border-radius:10px;letter-spacing:.2px;white-space:nowrap" title="Version en ligne">v10:21</span></div>
+      <div class="logo"><div class="mark">OP</div> TCG GLOBAL <span id="buildTag" style="font-size:11px;font-weight:700;margin-left:8px;background:#e11d48;color:#fff;padding:2px 8px;border-radius:10px;letter-spacing:.2px;white-space:nowrap" title="Version en ligne">v10:25</span></div>
       <div class="grow"></div>
       <div class="mktseg" id="mktSeg" title="Marché de valorisation">
         <button data-k="JP" class="on">🇯🇵 JP</button>
@@ -857,6 +857,7 @@ const MKT_LABEL={JP:'🇯🇵 Japon',EU:'🇪🇺 Europe',US:'🇺🇸 US'};
 function mkStrict(c){ const v=c[MKT_FIELD[MKT]]; return (v==null)?null:Number(v); }        // vrai prix marché (ou null)
 function mkEst(c){ const v=c[MKT_FIELD[MKT]]; if(v!=null) return Number(v); return c.market_value_eur==null?0:Number(c.market_value_eur); } // estimé (repli)
 const val=c=> mkEst(c);   // toutes les listes/totaux suivent le marché choisi (estimé)
+function catMkPrice(c){ const v=c[MKT.toLowerCase()+'_eur']; if(v!=null) return Number(v); return c.price_eur!=null?Number(c.price_eur):null; }  // catalogue : prix du marché sélectionné (repli prix unique)
 function esc(s){ return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
 function setMarket(k){
   if(!MKT_FIELD[k]||k===MKT) { if(k) MKT=k; }
@@ -867,7 +868,9 @@ function setMarket(k){
   else if(m==='collection') render();
   else if(m==='products') fetchProducts();
   else if(m==='catalog') fetchCatalog();
+  else if(m==='ops') renderOps();
   else if(m==='ia'){} else render();
+  try{ if(!document.getElementById('overlay').classList.contains('hidden')) renderDetail(); }catch(e){}
   // rafraîchit la mini-ligne portefeuille
   const mb=document.getElementById('miniBar');
   if(mb && m!=='accueil'){ const cv=DATA.reduce((s,c)=>s+val(c)*(c.quantity||1),0)+(PROD_VALUE||0); const q=DATA.reduce((s,c)=>s+(c.quantity||1),0); mb.innerHTML='Portefeuille ('+MKT_LABEL[MKT]+') : <b>'+eur0(cv)+'</b> &middot; '+q+' cartes'; }
@@ -1558,6 +1561,7 @@ function iaMicTap(){
 }
 function iaSubmit(msg){ msg=(msg||'').trim(); if(msg) iaSendMsg(msg); }
 async function iaSend(){ const inp=document.getElementById('iaInput'); const msg=inp?(inp.value||'').trim():''; if(inp){ inp.value=''; iaGrow(inp); } iaSubmit(msg); }
+function mktHint(){ return MKT?('\n\n[Contexte système : Christopher regarde actuellement le marché '+MKT+'. Priorise CE marché — cite son prix en premier et calcule le gain de gradation sur ce marché quand la donnée existe ; garde les autres marchés en référence secondaire.]'):''; }
 async function iaSendMsg(msg){
   if(iaBusy||!msg) return;
   const chips=document.getElementById('iaChips'); if(chips) chips.style.display='none';
@@ -1567,7 +1571,7 @@ async function iaSendMsg(msg){
   const think=iaThink();
   try{
     const hist=IACONV.filter(m=>m.text).slice(0,-1).map(m=>({role:m.role,text:m.text})).slice(-8);
-    const r=await fetch(SB+'/functions/v1/agent-chat',{method:'POST',headers:{'Content-Type':'application/json',apikey:ANON,Authorization:'Bearer '+ANON},body:JSON.stringify({message:msg, history:hist, search:iaSearch, rich:true})});
+    const r=await fetch(SB+'/functions/v1/agent-chat',{method:'POST',headers:{'Content-Type':'application/json',apikey:ANON,Authorization:'Bearer '+ANON},body:JSON.stringify({message:msg+mktHint(), history:hist, search:iaSearch, rich:true, market:MKT})});
     const j=await r.json();
     if(think) think.remove();
     if(j&&j.rate_limited){ iaRenderRich({say:'',cards:[{kind:'note',thesis:'⏳ L\'IA est très sollicitée à l\'instant (limite Gemini). Réessaie dans une minute.'}]}); }
@@ -1581,7 +1585,7 @@ async function iaBriefing(){
   if(iaBusy) return; iaBusy=true; iaOrb('think'); iaStatus('Nova prépare ton briefing…');
   const think=iaThink();
   try{
-    const r=await fetch(SB+'/functions/v1/agent-chat',{method:'POST',headers:{'Content-Type':'application/json',apikey:ANON,Authorization:'Bearer '+ANON},body:JSON.stringify({message:'Fais mon briefing du jour en cartes : un point portefeuille (valeur + mouvement), un signal du moment, et LA carte à grader en priorité avec son gain net. Concis.', rich:true})});
+    const r=await fetch(SB+'/functions/v1/agent-chat',{method:'POST',headers:{'Content-Type':'application/json',apikey:ANON,Authorization:'Bearer '+ANON},body:JSON.stringify({message:'Fais mon briefing du jour en cartes : un point portefeuille (valeur + mouvement), un signal du moment, et LA carte à grader en priorité avec son gain net. Concis.'+mktHint(), rich:true, market:MKT})});
     const j=await r.json(); if(think) think.remove();
     if(j&&j.rich){ iaRenderRich(j.rich); IACONV.push({role:'assistant',text:j.reply||'',rich:j.rich}); iaSpeak(j.rich.speak); }
   }catch(e){ if(think) think.remove(); }
@@ -1591,7 +1595,7 @@ async function homeBriefing(){
   const box=document.getElementById('homeBriefBox'); if(!box) return;
   box.innerHTML='<div class="txt" style="color:var(--muted);font-size:13px">Le stratège prépare ton briefing&hellip;</div>';
   try{
-    const r=await fetch(SB+'/functions/v1/agent-chat',{method:'POST',headers:{'Content-Type':'application/json',apikey:ANON,Authorization:'Bearer '+ANON},body:JSON.stringify({message:'Fais mon briefing du jour : 3 points courts (portefeuille + mouvement, un signal, la priorité du moment), puis LA carte à grader en priorité avec son gain net. Sois concis et direct.'})});
+    const r=await fetch(SB+'/functions/v1/agent-chat',{method:'POST',headers:{'Content-Type':'application/json',apikey:ANON,Authorization:'Bearer '+ANON},body:JSON.stringify({message:'Fais mon briefing du jour : 3 points courts (portefeuille + mouvement, un signal, la priorité du moment), puis LA carte à grader en priorité avec son gain net. Sois concis et direct.'+mktHint(), market:MKT})});
     const j=await r.json();
     if(j&&j.rate_limited){ box.innerHTML='<div class="txt" style="color:var(--muted);font-size:13px">&#9203; IA très sollicitée, réessaie dans un instant.</div><button class="hbriefbtn" onclick="homeBriefing()">Réessayer</button>'; return; }
     if(j&&j.reply){ box.innerHTML=''; const d=document.createElement('div'); d.className='hbrief'; d.textContent=j.reply; box.appendChild(d); const b=document.createElement('button'); b.className='hbriefbtn'; b.style.marginTop='10px'; b.textContent='Rafraîchir'; b.onclick=homeBriefing; box.appendChild(b); }
@@ -1640,7 +1644,7 @@ async function fetchCatalog(append){
   const noFilters=!term && !state.catLangs.length && !state.catCats.length && !state.catRarities.length && !state.catTypes.length && !state.catColors.length;
   if(!append){ state.catOffset=0; CATACC=[]; stage.className=""; stage.innerHTML='<div class="loading">Recherche…</div>'; }
   const ord=state.catSort==="name"?"name.asc":(state.catSort==="lang"?"language.asc,card_number.asc":(state.catSort==="price_desc"?"price_eur.desc.nullslast":(state.catSort==="price_asc"?"price_eur.asc.nullslast":"card_number.asc")));
-  let url=SB+"/rest/v1/app_catalog_priced?select=card_number,language,name,image_url,img_verify,owned,variant,variant_label,rarity,set_code,set_name,category,origin,printing_id,price_eur,price_source&limit="+CATPAGE+"&offset="+(state.catOffset||0)+"&order="+ord;
+  let url=SB+"/rest/v1/app_catalog_priced?select=card_number,language,name,image_url,img_verify,owned,variant,variant_label,rarity,set_code,set_name,category,origin,printing_id,price_eur,price_source,jp_eur,eu_eur,us_eur&limit="+CATPAGE+"&offset="+(state.catOffset||0)+"&order="+ord;
   // Par défaut (aucun filtre / aucune recherche) on masque les DON, sinon ils monopolisent la 1re page (tri alphabétique). Ils restent accessibles via l'onglet Sets ou une recherche « DON ».
   if(noFilters) url+="&category=neq.DON";
   if(state.catLangs.length) url+="&language=in.("+state.catLangs.join(",")+")";
@@ -1672,7 +1676,7 @@ function renderCatalog(rows, hasMore){
     const img=vfy?('<div class="vfy"><span class="vt">🔍</span>Photo à vérifier</div>'):(eff?('<img loading="lazy" referrerpolicy="no-referrer" src="'+esc(eff)+'" onerror="this.remove()">'):('<div class="ph">'+esc(c.name||c.card_number||"")+'</div>'));
     const badge=c.owned?'<span class="owntag own">✓ Possédée</span>':'<span class="owntag no">Non possédée</span>';
     const vl=c.variant_label||c.variant; const vtag=(vl&&String(vl).toLowerCase()!=='normal')?'<span class="tp">'+esc(vl)+'</span>':'';
-    const px=(c.price_eur!=null)?'<span class="pxg">'+eur(c.price_eur)+'</span>':'';
+    const cpx=catMkPrice(c); const px=(cpx!=null)?'<span class="pxg">'+eur(cpx)+'</span>':'';
     return '<div class="card" data-idx="'+i+'"><div class="imgwrap">'+img+'<div class="badges"><span class="flag">'+(FLAG[c.language]||"")+'</span></div>'+(px?'<div class="pxcorner">'+px+'</div>':'')+'</div><div class="meta"><p class="nm">'+esc(c.name||"")+'</p><div class="sub"><span>'+esc(c.card_number||"")+'</span>'+vtag+'</div>'+badge+'</div></div>';
   }).join("")+'</div>';
   stage.innerHTML=grid+(hasMore?'<div class="loadmore"><button onclick="fetchCatalog(true)">Charger plus</button></div>':'');
@@ -1685,11 +1689,12 @@ const OPFILT={lang:'all'};
 function setOpFilt(v){ OPFILT.lang=v; renderOps(); }
 function opFiltered(rows){ return OPFILT.lang==='all'?rows:rows.filter(c=>c.language===OPFILT.lang); }
 const GRADE_SHIP=12; // transport + assurance estimé par carte (aller-retour PSA)
-function opMult(c){ return (c.raw&&c.g10)?Math.round(c.g10/c.raw*10)/10:0; }
+function opRaw(c){ const v=c[MKT.toLowerCase()+'_eur']; return (v!=null)?Number(v):(c.raw||0); } // prix d'achat brut du marché sélectionné (repli : brut de référence)
+function opMult(c){ const r=opRaw(c); return (r&&c.g10)?Math.round(c.g10/r*10)/10:0; }
 function opCost(c){ return Math.round(((c.fee||0)+GRADE_SHIP)*100)/100; }
-function opGainUnit(c){ return Math.round(((c.g10||0)-(c.raw||0)-opCost(c))*100)/100; }
+function opGainUnit(c){ return Math.round(((c.g10||0)-(opRaw(c)||0)-opCost(c))*100)/100; }
 function opGain(c){ return opGainUnit(c); } // gain PAR carte (grader 1 exemplaire), pas ×quantité
-function opVal(c,k){ if(k==='name')return (c.name||c.card_number||'').toLowerCase(); if(k==='language'){const LO={JP:0,FR:1,CN:2,EN:3};return LO[c.language]??9;} if(k==='raw')return c.raw||0; if(k==='g10')return c.g10||0; if(k==='cost')return opCost(c); if(k==='mult')return opMult(c); if(k==='gain')return opGain(c)||0; if(k==='score')return c.score||0; return 0; }
+function opVal(c,k){ if(k==='name')return (c.name||c.card_number||'').toLowerCase(); if(k==='language'){const LO={JP:0,FR:1,CN:2,EN:3};return LO[c.language]??9;} if(k==='raw')return opRaw(c)||0; if(k==='g10')return c.g10||0; if(k==='cost')return opCost(c); if(k==='mult')return opMult(c); if(k==='gain')return opGain(c)||0; if(k==='score')return c.score||0; return 0; }
 function sortOp(kind,k){ const s=OPSORT[kind]; if(s.k===k)s.dir=-s.dir; else{s.k=k;s.dir=(k==='name')?1:-1;} renderOps(); }
 let ORIENT={markets:{JP:3,CN:3,EN:1,FR:0},types:["PROMO","PRODUCT_EXCLUSIVE"],note:""};
 let orientLoaded=false;
@@ -1707,11 +1712,22 @@ async function fetchOps(){
   let owned=[], buy=[];
   try{ const r=await fetch(SB+'/rest/v1/app_op_grading_owned?select=printing_id,card_number,language,name,image_url,variant_label,rarity,origin,raw,g10,fee,breakeven_p10,upside_if_10,upside_total,qty,score&order=upside_if_10.desc&limit=80',{headers:{apikey:ANON,Authorization:"Bearer "+ANON}}); owned=await r.json(); if(!Array.isArray(owned))owned=[]; }catch(e){ owned=[]; }
   try{ const r=await fetch(SB+'/rest/v1/app_op_grading?select=printing_id,card_number,language,name,image_url,variant_label,rarity,origin,raw,g10,fee,breakeven_p10,upside_if_10,score&order=score.desc&limit=300',{headers:{apikey:ANON,Authorization:"Bearer "+ANON}}); buy=await r.json(); if(!Array.isArray(buy))buy=[]; }catch(e){ buy=[]; }
+  await attachOpMarket(owned); await attachOpMarket(buy);
   if(state.mode!=="ops") return;
   OWNEDRAW=owned; BUYRAW=buy;
   renderOps();
 }
-const OPCOLS=[{k:'name',l:'Carte',cls:'l'},{k:'language',l:'Langue',cls:'lg'},{k:'raw',l:'Valeur'},{k:'g10',l:'PSA 10'},{k:'cost',l:'Frais'},{k:'mult',l:'Coef'},{k:'gain',l:'Gain net'},{k:'score',l:'Score'}];
+async function attachOpMarket(rows){
+  const pids=[...new Set(rows.map(r=>r.printing_id).filter(Boolean))];
+  for(let i=0;i<pids.length;i+=200){
+    const chunk=pids.slice(i,i+200);
+    try{
+      const r=await fetch(SB+'/rest/v1/app_op_market?printing_id=in.('+chunk.join(',')+')&select=printing_id,jp_eur,eu_eur,us_eur',{headers:{apikey:ANON,Authorization:'Bearer '+ANON}});
+      const b=await r.json(); if(Array.isArray(b)){ const map={}; b.forEach(x=>map[x.printing_id]=x); rows.forEach(rw=>{ const mm=map[rw.printing_id]; if(mm){ rw.jp_eur=mm.jp_eur; rw.eu_eur=mm.eu_eur; rw.us_eur=mm.us_eur; } }); }
+    }catch(e){}
+  }
+}
+const OPCOLS=[{k:'name',l:'Carte',cls:'l'},{k:'language',l:'Langue',cls:'lg'},{k:'raw',l:'Achat'},{k:'g10',l:'PSA 10'},{k:'cost',l:'Frais'},{k:'mult',l:'Coef'},{k:'gain',l:'Gain net'},{k:'score',l:'Score'}];
 function opTable(rows, kind){
   const s=OPSORT[kind];
   const sorted=rows.slice().sort((a,b)=>{ const va=opVal(a,s.k),vb=opVal(b,s.k); return (va<vb?-1:va>vb?1:0)*s.dir; });
@@ -1724,7 +1740,7 @@ function opTable(rows, kind){
     const qb=(c.qty>1)?'<span class="qbadge">×'+c.qty+'</span>':'';
     return '<tr '+attr+'="'+i+'"><td class="l"><div class="cc">'+img+'<div><div class="cnm">'+esc(c.name||c.card_number)+qb+'</div><div class="cnb">'+esc(c.card_number)+vl+'</div></div></div></td>'+
       '<td class="lg">'+(FLAG[c.language]||'')+' <span class="lgc">'+(c.language||'')+'</span></td>'+
-      '<td>'+eur(c.raw)+'</td><td>'+eur(c.g10)+'</td><td class="fee">−'+eur(opCost(c))+'</td><td class="cf"><b>×'+opMult(c)+'</b></td><td class="gv">+'+eur(opGain(c))+'</td><td class="scv"><span class="scpill '+scoreClass(c.score)+'">'+(c.score!=null?c.score:'–')+'</span></td></tr>';
+      '<td>'+eur(opRaw(c))+'</td><td>'+eur(c.g10)+'</td><td class="fee">−'+eur(opCost(c))+'</td><td class="cf"><b>×'+opMult(c)+'</b></td><td class="gv">+'+eur(opGain(c))+'</td><td class="scv"><span class="scpill '+scoreClass(c.score)+'">'+(c.score!=null?c.score:'–')+'</span></td></tr>';
   }).join('');
   return '<div class="optblwrap"><table class="optbl"><thead>'+head+'</thead><tbody>'+body+'</tbody></table></div>';
 }
@@ -1778,7 +1794,7 @@ async function openCatDetail(c){
   document.getElementById("cdbody").innerHTML=
     '<div class="dval"><div class="b">'+esc(c.name||"")+'</div><div class="s">'+(FLAG[c.language]||"")+' '+(LANG_LABELS[c.language]||c.language)+' · '+esc(c.card_number||"")+'</div><div class="collact" id="cdcollact"></div></div>'+
     drow("Rareté", RAR_LABELS[c.rarity]||c.rarity)+drow("Variante", (vl&&String(vl).toLowerCase()!=='normal')?esc(vl):"Normale")+drow("Type", c.origin?(ORIGIN_LABELS[c.origin]||c.origin):"")+drow("Catégorie", CAT_LABELS[c.category]||c.category)+drow("Set", esc((c.set_code||"")+(c.set_name?(" — "+c.set_name):"")))+
-    '<div id="cdprice" class="dprices"><div class="pxhdr">Prix marché — toutes sources</div>'+(c.price_eur!=null?('<div class="pxquick" style="font-size:20px;font-weight:800;margin:2px 0 4px">&asymp; '+eur0(c.price_eur)+(c.price_source?(' <span class="dt" style="font-size:11px;font-weight:600">'+esc(c.price_source)+'</span>'):'')+'</div>'):'')+'<div class="pxloading">…</div></div>';
+    '<div id="cdprice" class="dprices"><div class="pxhdr">Prix marché — '+esc(MKT_LABEL[MKT])+'</div>'+((catMkPrice(c)!=null)?('<div class="pxquick" style="font-size:20px;font-weight:800;margin:2px 0 2px">&asymp; '+eur0(catMkPrice(c))+' <span class="dt" style="font-size:11px;font-weight:600">'+esc(MKSRC[MKT])+'</span></div>'):'')+'<div class="dt" style="font-size:11px;margin-bottom:4px">'+['JP','EU','US'].map(function(k){var v=c[k.toLowerCase()+'_eur'];var on=k===MKT;return (on?'<b style="color:#1e3a8a">':'<span>')+k+' '+(v!=null?eur0(v):'—')+(on?'</b>':'</span>');}).join(' · ')+'</div><div class="pxloading">…</div></div>';
   document.getElementById("cdprints").innerHTML='<div class="dprints"><h4>Toutes les versions</h4><div class="pxloading">…</div></div>';
   document.getElementById("catOverlay").classList.remove("hidden");
   detailCatPid=c.printing_id||null;
@@ -2212,6 +2228,16 @@ async function validateCurrent(){
 }
 function closeDetail(){ document.getElementById("overlay").classList.add("hidden"); }
 const VARIANT_FR={alternate_art:'Alternate Art',special_alternate_art:'Alternate Art spéciale',manga:'Manga',manga_art:'Manga',black_white_alternate_art:'Manga (N&B)',full_art:'Full Art',championship:'Championship',jolly_roger:'Jolly Roger Foil',parallel:'Parallèle',sp:'SP',wanted:'Wanted',foil:'Foil',textured:'Textured Foil'};
+const MKSRC={JP:'Cardrush · Japon',EU:'CardTrader · Europe',US:'PriceCharting · US'};
+function mktBlock(c){
+  const rows=['JP','EU','US'].map(function(k){
+    const v=c['_'+k.toLowerCase()]; const on=(k===MKT);
+    return '<div style="display:flex;justify-content:space-between;align-items:center;padding:7px 11px;border-radius:9px;margin-bottom:3px;'+(on?'background:#eef2ff;border:1px solid #c7d2fe':'background:#f8fafc;border:1px solid #eef2f7')+'">'+
+      '<span style="font-size:12px;'+(on?'font-weight:800;color:#1e3a8a':'color:var(--muted)')+'">'+MKT_LABEL[k]+' <span style="font-size:10px;opacity:.7;font-weight:600">'+esc(MKSRC[k])+'</span>'+(on?' <span style="font-size:9px;background:#1e3a8a;color:#fff;padding:1px 5px;border-radius:6px;margin-left:2px">SÉLECTIONNÉ</span>':'')+'</span>'+
+      '<b style="font-size:'+(on?'15px':'13px')+';'+(on?'color:#1e3a8a':'color:var(--ink)')+'">'+(v!=null?eur(v):'—')+'</b></div>';
+  }).join('');
+  return '<div style="margin:8px 0">'+rows+'</div>';
+}
 function variantNice(c){
   if(c.variant_label && String(c.variant_label).trim() && String(c.variant_label).toLowerCase()!=='normal') return esc(c.variant_label);
   const v=(c.variant||'').toLowerCase();
@@ -2230,6 +2256,7 @@ function renderDetail(){ const c=detailCard; if(!c)return; const body=document.g
       cmp='<div class="s" style="margin-top:1px;opacity:.75">Réf. import Logia : '+eur(sd)+'</div>';
     }
     body.innerHTML='<div class="dval"><div class="b">'+eur(val(c))+'</div><div class="s">valeur marchande'+((c.quantity||1)>1?(' · total '+eur(val(c)*(c.quantity||1))):'')+'</div>'+srcline+cmp+'</div>'+
+      mktBlock(c)+
       (VERIFY.has(c.item_id)?'<div style="margin:8px 0;padding:10px 12px;border:1px solid #fdba74;background:#fff7ed;border-radius:10px;font-size:13px;color:#9a3412">🔍 <b>Photo à vérifier.</b> Tape la bonne illustration ci-dessous pour la valider, ou <button onclick=\'validateCurrent()\' style="border:0;background:#f97316;color:#fff;font-weight:800;padding:4px 10px;border-radius:8px;cursor:pointer">✓ Valider cette photo</button></div>':'')+
       '<div class="qtybox"><span class="s">Possédé :</span> <span class="b">'+(c.quantity||1)+'</span></div>'+
       drow("Variante", '<b>'+variantNice(c)+'</b>')+drow("Rareté", RAR_LABELS[c.rarity]||c.rarity||"—")+drow("État", g)+drow("Langue", (FLAG[c.language]||"")+' '+(LANG_LABELS[c.language]||c.language))+drow("Nom", esc(c.card_name))+drow("Numéro", esc(c.card_number))+drow("Set", esc((c.set_code||"")+(c.set_name?(" — "+c.set_name):"")));
