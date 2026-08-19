@@ -608,7 +608,7 @@ body{-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
 <div class="wrap">
   <div class="hero">
     <div class="topbar">
-      <div class="logo"><div class="mark">OP</div> TCG GLOBAL <span id="buildTag" style="font-size:11px;font-weight:700;margin-left:8px;background:#e11d48;color:#fff;padding:2px 8px;border-radius:10px;letter-spacing:.2px;white-space:nowrap" title="Version en ligne">v10:16</span></div>
+      <div class="logo"><div class="mark">OP</div> TCG GLOBAL <span id="buildTag" style="font-size:11px;font-weight:700;margin-left:8px;background:#e11d48;color:#fff;padding:2px 8px;border-radius:10px;letter-spacing:.2px;white-space:nowrap" title="Version en ligne">v10:17</span></div>
       <div class="grow"></div>
       <div class="mktseg" id="mktSeg" title="Marché de valorisation">
         <button data-k="JP" class="on">🇯🇵 JP</button>
@@ -676,7 +676,7 @@ body{-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
 <!-- Fiche carte -->
 <div id="overlay" class="overlay hidden">
   <div class="sheet">
-    <div class="dhead"><button class="dclose" id="dclose">&times;</button><img id="dimg" referrerpolicy="no-referrer"><div id="dvfy" class="vfy" style="display:none"><span class="vt">🔍</span>Photo à vérifier</div></div>
+    <div class="dhead"><button class="dclose" id="dclose">&times;</button><img id="dimg" referrerpolicy="no-referrer"><div id="dvfy" style="display:none;position:absolute;top:8px;left:8px;background:#f97316;color:#fff;font-weight:800;font-size:11px;padding:3px 9px;border-radius:9px;z-index:4">🔍 à vérifier</div></div>
     <div class="dtabs"><button data-t="col" class="on">Collection</button><button data-t="det">D&eacute;tails</button></div>
     <div id="dbody"></div>
     <div id="dsrc" class="dprices"></div>
@@ -791,7 +791,7 @@ const COLOR_HEX={Red:"#d64545",Green:"#2f9e57",Blue:"#2f6fed",Purple:"#8b57d6",B
 const TYPE_ORDER=["normal","alternate_art","sp","manga","full_art","textured_foil","jolly_roger_foil","promo","tournament"];
 const CAT_ORDER=["LEADER","CHARACTER","EVENT","STAGE","DON"];
 const SORTS=[["val_desc","Valeur ↓ (décroissant)"],["val_asc","Valeur ↑ (croissant)"],["name","Nom (A→Z)"],["num","Numéro"],["qty","Quantité"]];
-const DEF={q:"",lang:"all",color:"all",type:"all",cat:"all",rarity:"all",character:"all",grade:"all",minVal:0,sort:"val_desc",view:"grid",mode:"accueil",catLang:"all",catQuery:"",catLangs:[],catColors:[],catCats:[],catRarities:[],catTypes:[],catSort:"num",setLang:"JP",prodLang:"JP"};
+const DEF={q:"",lang:"all",color:"all",type:"all",cat:"all",rarity:"all",character:"all",grade:"all",minVal:0,imgf:"all",sort:"val_desc",view:"grid",mode:"accueil",catLang:"all",catQuery:"",catLangs:[],catColors:[],catCats:[],catRarities:[],catTypes:[],catSort:"num",setLang:"JP",prodLang:"JP"};
 let PROD_VALUE=0;
 const CATLANGS=[["all","Toutes"],["JP","Japonais"],["EN","Anglais"],["FR","Français"],["CN","Chinois"]];
 const CATCATS=[["all","Toutes catégories"],["LEADER","Leader"],["CHARACTER","Personnage"],["EVENT","Event"],["STAGE","Stage"],["DON","DON!!"]];
@@ -964,8 +964,16 @@ function activeCount(){ let n=0; ["lang","color","type","cat","rarity","characte
 function afterFilter(){ buildFilterModal(); syncBadge(); render(); }
 function syncBadge(){ const n=activeCount(); const b=document.getElementById("fbadge"); b.textContent=n; b.style.display=n?"grid":"none"; document.getElementById("filterBtn").classList.toggle("act",!!n); }
 const VALSTEPS=[[0,'Tout'],[1,'≥ 1 €'],[5,'≥ 5 €'],[20,'≥ 20 €'],[50,'≥ 50 €'],[100,'≥ 100 €']];
-function buildValRow(){ const row=document.getElementById('valFilterRow'); if(!row)return; row.innerHTML='<span class="dt" style="align-self:center;margin-right:4px">Valeur min :</span>'+VALSTEPS.map(s=>'<div class="chip'+(state.minVal===s[0]?' on':'')+'" onclick="setMinVal('+s[0]+')">'+s[1]+'</div>').join(''); }
+function buildValRow(){ const row=document.getElementById('valFilterRow'); if(!row)return;
+  const nV=DATA.filter(c=>VERIFY.has(c.item_id)).length;
+  const nN=DATA.filter(c=>!c.image_url && !VERIFY.has(c.item_id)).length;
+  const imgChips='<span class="dt" style="align-self:center;margin:0 4px 0 10px">Photo :</span>'+
+    '<div class="chip'+(state.imgf==="all"?' on':'')+'" onclick="setImgf(\'all\')">Toutes</div>'+
+    '<div class="chip'+(state.imgf==="verify"?' on':'')+'" style="'+(state.imgf==="verify"?'':'border-color:#f59e0b;color:#b45309')+'" onclick="setImgf(\'verify\')">🔍 À vérifier ('+nV+')</div>'+
+    (nN>0?'<div class="chip'+(state.imgf==="noimg"?' on':'')+'" onclick="setImgf(\'noimg\')">Sans image ('+nN+')</div>':'');
+  row.innerHTML='<span class="dt" style="align-self:center;margin-right:4px">Valeur min :</span>'+VALSTEPS.map(s=>'<div class="chip'+(state.minVal===s[0]?' on':'')+'" onclick="setMinVal('+s[0]+')">'+s[1]+'</div>').join('')+imgChips; }
 function setMinVal(v){ state.minVal=v; buildValRow(); render(); }
+function setImgf(v){ state.imgf=v; buildValRow(); render(); }
 
 function apply(){
   let a=DATA.slice();
@@ -978,6 +986,8 @@ function apply(){
   if(state.grade==="graded") a=a.filter(c=>c.is_graded);
   if(state.grade==="raw") a=a.filter(c=>!c.is_graded);
   if(state.minVal>0) a=a.filter(c=>val(c)>=state.minVal);
+  if(state.imgf==="verify") a=a.filter(c=>VERIFY.has(c.item_id));
+  else if(state.imgf==="noimg") a=a.filter(c=>!c.image_url && !VERIFY.has(c.item_id));
   if(state.q){const q=state.q.toLowerCase();a=a.filter(c=>(c.card_name||"").toLowerCase().includes(q)||(c.card_number||"").toLowerCase().includes(q));}
   const s=state.sort;
   a.sort((x,y)=> s==="val_asc"?val(x)-val(y): s==="name"?(x.card_name||"").localeCompare(y.card_name||""): s==="num"?(x.card_number||"").localeCompare(y.card_number||""): s==="qty"?(y.quantity||1)-(x.quantity||1): val(y)-val(x));
@@ -2064,7 +2074,7 @@ document.getElementById("themeBtn").addEventListener("click",()=>{document.docum
 let detailCard=null, detailTab="col";
 const LANG_LABELS={JP:"Japonais",EN:"Anglais",FR:"Français",CN:"Chinois"};
 function drow(k,v){ return v?('<div class="drow"><span class="k">'+k+'</span><span class="v">'+v+'</span></div>'):''; }
-function openDetail(c){ detailCard=c; detailTab="col"; const im=document.getElementById("dimg"); const vf=document.getElementById("dvfy"); const isV=VERIFY.has(c.item_id); if(vf) vf.style.display=isV?"grid":"none"; if(isV){ im.src=""; im.style.visibility="hidden"; } else { im.src=c.image_url||""; im.onerror=function(){this.style.visibility="hidden"}; im.style.visibility="visible"; } document.querySelectorAll('.dtabs button').forEach(b=>b.classList.toggle('on',b.dataset.t==='col')); renderDetail(); document.getElementById("dprints").innerHTML=""; document.getElementById("dladder").innerHTML=""; document.getElementById("dsrc").innerHTML='<div class="pxhdr">Prix marché — toutes sources</div><div class="pxloading">…</div>'; document.getElementById("overlay").classList.remove("hidden"); loadCardPrices(c,'dsrc'); loadLadder(c); loadPrints(c.card_number); }
+function openDetail(c){ detailCard=c; detailTab="col"; const im=document.getElementById("dimg"); const vf=document.getElementById("dvfy"); const isV=VERIFY.has(c.item_id); if(vf) vf.style.display=isV?"inline-block":"none"; im.src=c.image_url||""; im.onerror=function(){this.style.visibility="hidden"}; im.style.visibility=c.image_url?"visible":"hidden"; document.querySelectorAll('.dtabs button').forEach(b=>b.classList.toggle('on',b.dataset.t==='col')); renderDetail(); document.getElementById("dprints").innerHTML=""; document.getElementById("dladder").innerHTML=""; document.getElementById("dsrc").innerHTML='<div class="pxhdr">Prix marché — toutes sources</div><div class="pxloading">…</div>'; document.getElementById("overlay").classList.remove("hidden"); loadCardPrices(c,'dsrc'); loadLadder(c); loadPrints(c.card_number); }
 async function loadLadder(c){
   const box=document.getElementById("dladder"); box.innerHTML="";
   if(!c || !c.is_graded || !c.printing_id) return;
@@ -2163,6 +2173,15 @@ async function chooseArt(suf, imgurl){
     render();
   }catch(e){}
 }
+async function validateCurrent(){
+  if(!detailCard) return; const item=detailCard.item_id;
+  try{
+    await fetch(SB+'/rest/v1/rpc/validate_owned_image',{method:"POST",headers:{apikey:ANON,Authorization:"Bearer "+ANON,"Content-Type":"application/json"},body:JSON.stringify({p_item:item})});
+    VERIFY.delete(item);
+    const dv=document.getElementById("dvfy"); if(dv) dv.style.display="none";
+    renderDetail(); if(typeof buildValRow==='function') buildValRow(); render();
+  }catch(e){}
+}
 function closeDetail(){ document.getElementById("overlay").classList.add("hidden"); }
 function renderDetail(){ const c=detailCard; if(!c)return; const body=document.getElementById("dbody");
   if(detailTab==="col"){
@@ -2176,6 +2195,7 @@ function renderDetail(){ const c=detailCard; if(!c)return; const body=document.g
       cmp='<div class="s" style="margin-top:1px;opacity:.75">Réf. import Logia : '+eur(sd)+'</div>';
     }
     body.innerHTML='<div class="dval"><div class="b">'+eur(val(c))+'</div><div class="s">valeur marchande'+((c.quantity||1)>1?(' · total '+eur(val(c)*(c.quantity||1))):'')+'</div>'+srcline+cmp+'</div>'+
+      (VERIFY.has(c.item_id)?'<div style="margin:8px 0;padding:10px 12px;border:1px solid #fdba74;background:#fff7ed;border-radius:10px;font-size:13px;color:#9a3412">🔍 <b>Photo à vérifier.</b> Tape la bonne illustration ci-dessous pour la valider, ou <button onclick=\'validateCurrent()\' style="border:0;background:#f97316;color:#fff;font-weight:800;padding:4px 10px;border-radius:8px;cursor:pointer">✓ Valider cette photo</button></div>':'')+
       '<div class="qtybox"><span class="s">Possédé :</span> <span class="b">'+(c.quantity||1)+'</span></div>'+
       drow("État", g)+drow("Langue", (FLAG[c.language]||"")+' '+(LANG_LABELS[c.language]||c.language))+drow("Nom", esc(c.card_name))+drow("Numéro", esc(c.card_number));
   } else {
