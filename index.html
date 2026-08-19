@@ -608,7 +608,7 @@ body{-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
 <div class="wrap">
   <div class="hero">
     <div class="topbar">
-      <div class="logo"><div class="mark">OP</div> TCG GLOBAL <span id="buildTag" style="font-size:11px;font-weight:700;margin-left:8px;background:#e11d48;color:#fff;padding:2px 8px;border-radius:10px;letter-spacing:.2px;white-space:nowrap" title="Version en ligne">v10:17</span></div>
+      <div class="logo"><div class="mark">OP</div> TCG GLOBAL <span id="buildTag" style="font-size:11px;font-weight:700;margin-left:8px;background:#e11d48;color:#fff;padding:2px 8px;border-radius:10px;letter-spacing:.2px;white-space:nowrap" title="Version en ligne">v10:18</span></div>
       <div class="grow"></div>
       <div class="mktseg" id="mktSeg" title="Marché de valorisation">
         <button data-k="JP" class="on">🇯🇵 JP</button>
@@ -887,6 +887,7 @@ async function load(){
   }
   DATA=all; DATALOADED=true; buildFilterModal();
   await loadVerify();
+  await loadPcImages();
   await loadMarketVals();
   if(state.mode==="accueil"){ renderHome(); }
   else { render(); if(state.mode==="collection") loadBriefing(); }
@@ -995,6 +996,18 @@ function apply(){
 }
 
 let VERIFY=new Set();
+let PCIMG={};
+async function loadPcImages(){
+  try{
+    PCIMG={}; let from=0,step=1000;
+    while(true){
+      const r=await fetch(SB+'/rest/v1/app_pc_image?select=printing_id,pc_image_url&limit='+step+'&offset='+from,{headers:{apikey:ANON,Authorization:'Bearer '+ANON}});
+      if(!r.ok)break; const b=await r.json(); if(!Array.isArray(b))break;
+      b.forEach(x=>{ PCIMG[x.printing_id]=x.pc_image_url; }); if(b.length<step)break; from+=step;
+    }
+    DATA.forEach(c=>{ const u=PCIMG[c.printing_id]; if(u){ c.image_url=u; VERIFY.delete(c.item_id); } });
+  }catch(e){}
+}
 async function loadVerify(){
   try{
     VERIFY=new Set();
@@ -1646,7 +1659,8 @@ function renderCatalog(rows, hasMore){
   document.getElementById('countLine').textContent=rows.length+" carte"+(rows.length>1?"s":"")+(hasMore?" (fais défiler, puis « Charger plus »)":"");
   if(!rows.length){ stage.innerHTML='<div class="empty">Aucune carte trouvée.</div>'; return; }
   const grid='<div class="grid">'+rows.map((c,i)=>{
-    const img=c.img_verify?('<div class="vfy"><span class="vt">🔍</span>Photo à vérifier</div>'):(c.image_url?('<img loading="lazy" referrerpolicy="no-referrer" src="'+esc(c.image_url)+'" onerror="this.remove()">'):('<div class="ph">'+esc(c.name||c.card_number||"")+'</div>'));
+    const pcu=PCIMG[c.printing_id]; const eff=pcu||c.image_url; const vfy=c.img_verify&&!pcu;
+    const img=vfy?('<div class="vfy"><span class="vt">🔍</span>Photo à vérifier</div>'):(eff?('<img loading="lazy" referrerpolicy="no-referrer" src="'+esc(eff)+'" onerror="this.remove()">'):('<div class="ph">'+esc(c.name||c.card_number||"")+'</div>'));
     const badge=c.owned?'<span class="owntag own">✓ Possédée</span>':'<span class="owntag no">Non possédée</span>';
     const vl=c.variant_label||c.variant; const vtag=(vl&&String(vl).toLowerCase()!=='normal')?'<span class="tp">'+esc(vl)+'</span>':'';
     const px=(c.price_eur!=null)?'<span class="pxg">'+eur(c.price_eur)+'</span>':'';
@@ -1750,7 +1764,7 @@ document.getElementById('omodal').addEventListener('click',e=>{ if(e.target.id==
 document.getElementById('osave').addEventListener('click',saveOrient);
 async function openCatDetail(c){
   if(!c) return;
-  { const cv=document.getElementById("cdvfy"); if(cv) cv.style.display=c.img_verify?"grid":"none"; document.getElementById("cdimg").src=c.img_verify?"":(c.image_url||""); document.getElementById("cdimg").style.visibility=(!c.img_verify&&c.image_url)?"visible":"hidden"; }
+  { const pcu=PCIMG[c.printing_id]; const eff=pcu||c.image_url; const vfy=c.img_verify&&!pcu; const cv=document.getElementById("cdvfy"); if(cv) cv.style.display=vfy?"grid":"none"; document.getElementById("cdimg").src=vfy?"":(eff||""); document.getElementById("cdimg").style.visibility=(!vfy&&eff)?"visible":"hidden"; }
   const vl=c.variant_label||c.variant;
   document.getElementById("cdbody").innerHTML=
     '<div class="dval"><div class="b">'+esc(c.name||"")+'</div><div class="s">'+(FLAG[c.language]||"")+' '+(LANG_LABELS[c.language]||c.language)+' · '+esc(c.card_number||"")+'</div><div class="collact" id="cdcollact"></div></div>'+
@@ -1782,7 +1796,8 @@ async function loadCardVersions(c){
   const qmap={};
   if(pids.length){ try{ const rq=await fetch(SB+'/rest/v1/app_collection?printing_id=in.('+pids.join(',')+')&select=printing_id,quantity',{headers:{apikey:ANON,Authorization:"Bearer "+ANON}}); const jq=await rq.json(); if(Array.isArray(jq)) jq.forEach(x=>{ qmap[x.printing_id]=(qmap[x.printing_id]||0)+(x.quantity||0); }); }catch(e){} }
   const items=rows.map((p,i)=>{
-    const im=p.img_verify?('<div class="vfy" style="font-size:7px"><span class="vt" style="font-size:12px">🔍</span>à vérifier</div>'):(p.image_url?('<img referrerpolicy="no-referrer" src="'+esc(p.image_url)+'" onerror="this.remove()">'):'');
+    const pcu=PCIMG[p.printing_id]; const effp=pcu||p.image_url; const vfyp=p.img_verify&&!pcu;
+    const im=vfyp?('<div class="vfy" style="font-size:7px"><span class="vt" style="font-size:12px">🔍</span>à vérifier</div>'):(effp?('<img referrerpolicy="no-referrer" src="'+esc(effp)+'" onerror="this.remove()">'):'');
     const artv=isArtVariant(p.variant);
     const vb='<span class="vbadge'+(artv?' art':'')+'">'+esc(vNice(p.variant))+'</span>';
     const rn=rarNice(p.rarity); const rar=rn?('<span class="vbadge">'+esc(rn)+'</span>'):'';
