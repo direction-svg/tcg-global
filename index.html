@@ -667,7 +667,7 @@ body{-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
 <div class="wrap">
   <div class="hero">
     <div class="topbar">
-      <div class="logo"><div class="mark">OP</div> TCG GLOBAL <span id="buildTag" style="font-size:11px;font-weight:700;margin-left:8px;background:#e11d48;color:#fff;padding:2px 8px;border-radius:10px;letter-spacing:.2px;white-space:nowrap" title="Version en ligne">v10:29</span></div>
+      <div class="logo"><div class="mark">OP</div> TCG GLOBAL <span id="buildTag" style="font-size:11px;font-weight:700;margin-left:8px;background:#e11d48;color:#fff;padding:2px 8px;border-radius:10px;letter-spacing:.2px;white-space:nowrap" title="Version en ligne">v10:30</span></div>
       <div class="grow"></div>
       <div class="mktseg" id="mktSeg" title="Marché de valorisation">
         <button data-k="JP" class="on">🇯🇵 JP</button>
@@ -943,7 +943,7 @@ async function loadMarketVals(){
 async function load(){
   let all=[],from=0,step=1000;
   while(true){
-    const r=await fetch(SB+"/rest/v1/app_collection?select=item_id,printing_id,card_number,card_name,card_type,category,color,rarity,language,is_graded,grading_company,grade,cert_number,quantity,market_value_eur,seed_value_eur,live_value_eur,psa_estimate_eur,population,pop_higher,price_source,price_asof,image_url,set_code,set_name,variant,variant_label,art_suffix&order=market_value_eur.desc.nullslast&limit="+step+"&offset="+from,{headers:{apikey:ANON,Authorization:"Bearer "+ANON}});
+    const r=await fetch(SB+"/rest/v1/app_collection?select=item_id,printing_id,card_number,card_name,card_type,category,color,rarity,language,is_graded,grading_company,grade,cert_number,quantity,market_value_eur,seed_value_eur,live_value_eur,psa_estimate_eur,population,pop_higher,price_source,price_asof,image_url,set_code,set_name,variant,variant_label,origin,art_suffix&order=market_value_eur.desc.nullslast&limit="+step+"&offset="+from,{headers:{apikey:ANON,Authorization:"Bearer "+ANON}});
     if(!r.ok){document.getElementById("stage").innerHTML='<div class="empty">Erreur de chargement ('+r.status+').</div>';return;}
     const b=await r.json(); all=all.concat(b); if(b.length<step)break; from+=step;
   }
@@ -1111,15 +1111,13 @@ function render(){
     stage.className=""; stage.innerHTML='<div class="grid">'+a.map(c=>{
       const g=c.is_graded?'<span class="grade">'+(c.grading_company||"")+' '+(c.grade!=null?String(c.grade).replace(/\.0$/,''):'')+'</span>':'<span></span>';
       const q=(c.quantity>1)?'<span class="qty">x'+c.quantity+'</span>':'';
-      const vt=(c.variant_label&&String(c.variant_label).toLowerCase()!=='normal')?'<span class="tp" style="background:#eef2ff;color:#3730a3;font-weight:800">'+esc(c.variant_label)+'</span>':'';
       return '<div class="card" data-id="'+c.item_id+'"><div class="imgwrap">'+imgTag(c)+'<div class="badges"><span class="flag">'+(FLAG[c.language]||"")+'</span>'+g+'</div>'+q+'</div>'+
-      '<div class="meta"><p class="nm">'+esc(c.card_name||"")+'</p><div class="sub"><span>'+esc(c.card_number||"")+'</span><span class="tp">'+(TYPE_LABELS[c.card_type]||c.card_type||"")+'</span>'+vt+'</div><div class="val">'+eur(val(c))+'</div></div></div>';
+      '<div class="meta"><p class="nm">'+esc(c.card_name||"")+'</p><div class="sub"><span>'+esc(c.card_number||"")+'</span>'+descTags(c)+'</div><div class="val">'+eur(val(c))+'</div></div></div>';
     }).join("")+'</div>';
   } else {
     stage.className="list"; stage.innerHTML=a.map(c=>{
       const g=c.is_graded?'<span class="grade">'+(c.grading_company||"")+' '+(c.grade!=null?String(c.grade).replace(/\.0$/,''):'')+'</span>':'';
-      const vt=(c.variant_label&&String(c.variant_label).toLowerCase()!=='normal')?'<span class="tp" style="background:#eef2ff;color:#3730a3;font-weight:800">'+esc(c.variant_label)+'</span>':'';
-      return '<div class="row" data-id="'+c.item_id+'"><div class="lthumb">'+imgTag(c)+'</div><div><p class="nm">'+esc(c.card_name||"")+'</p><div class="sub"><span>'+(FLAG[c.language]||"")+'</span><span>'+esc(c.card_number||"")+'</span><span class="tp">'+(TYPE_LABELS[c.card_type]||c.card_type||"")+'</span>'+vt+' '+g+'</div></div><div class="r"><div class="val">'+eur(val(c))+'</div>'+(c.quantity>1?'<div class="sub">x'+c.quantity+'</div>':'')+'</div></div>';
+      return '<div class="row" data-id="'+c.item_id+'"><div class="lthumb">'+imgTag(c)+'</div><div><p class="nm">'+esc(c.card_name||"")+'</p><div class="sub"><span>'+(FLAG[c.language]||"")+'</span><span>'+esc(c.card_number||"")+'</span>'+descTags(c)+' '+g+'</div></div><div class="r"><div class="val">'+eur(val(c))+'</div>'+(c.quantity>1?'<div class="sub">x'+c.quantity+'</div>':'')+'</div></div>';
     }).join("");
   }
 }
@@ -1763,9 +1761,8 @@ function renderCatalog(rows, hasMore){
     const pcu=PCIMG[c.printing_id]; const eff=pcu||c.image_url; const vfy=c.img_verify&&!pcu;
     const img=vfy?('<div class="vfy"><span class="vt">🔍</span>Photo à vérifier</div>'):(eff?('<img loading="lazy" referrerpolicy="no-referrer" src="'+esc(eff)+'" onerror="this.remove()">'):('<div class="ph">'+esc(c.name||c.card_number||"")+'</div>'));
     const badge=c.owned?'<span class="owntag own">✓ Possédée</span>':'<span class="owntag no">Non possédée</span>';
-    const vl=c.variant_label||c.variant; const vtag=(vl&&String(vl).toLowerCase()!=='normal')?'<span class="tp">'+esc(vl)+'</span>':'';
     const cpx=catMkPrice(c); const px=(cpx!=null)?'<span class="pxg">'+eur(cpx)+'</span>':'';
-    return '<div class="card" data-idx="'+i+'"><div class="imgwrap">'+img+'<div class="badges"><span class="flag">'+(FLAG[c.language]||"")+'</span></div>'+(px?'<div class="pxcorner">'+px+'</div>':'')+'</div><div class="meta"><p class="nm">'+esc(c.name||"")+'</p><div class="sub"><span>'+esc(c.card_number||"")+'</span>'+vtag+'</div>'+badge+'</div></div>';
+    return '<div class="card" data-idx="'+i+'"><div class="imgwrap">'+img+'<div class="badges"><span class="flag">'+(FLAG[c.language]||"")+'</span></div>'+(px?'<div class="pxcorner">'+px+'</div>':'')+'</div><div class="meta"><p class="nm">'+esc(c.name||"")+'</p><div class="sub"><span>'+esc(c.card_number||"")+'</span>'+descTags(c)+'</div>'+badge+'</div></div>';
   }).join("")+'</div>';
   stage.innerHTML=grid+(hasMore?'<div class="loadmore"><button onclick="fetchCatalog(true)">Charger plus</button></div>':'');
 }
@@ -1845,7 +1842,18 @@ function renderOps(){
   h+= buy.length? opTable(buy,'buy') : '<div class="empty">Aucune opportunité pour ce filtre.</div>';
   stage.innerHTML=h;
 }
-const ORIGIN_LABELS={STANDARD:"Standard",PROMO:"Promo",BATTLE_EVENT:"Battleship",PREMIUM_COLLECTION:"Premium Collection",TOURNAMENT:"Tournoi",PRODUCT_EXCLUSIVE:"Exclusivité produit"};
+const ORIGIN_LABELS={STANDARD:"Standard",PROMO:"Promo",BATTLE_EVENT:"Battleship",PREMIUM_COLLECTION:"Premium Collection",TOURNAMENT:"Tournoi",PRODUCT_EXCLUSIVE:"Exclusivité produit",OTHER:"Autre source"};
+// Provenance lisible (n'affiche rien pour les cartes standard). Utilisé partout : collection, catalogue, fiches.
+function provNice(c){ return (c&&c.origin&&c.origin!=='STANDARD')?(ORIGIN_LABELS[c.origin]||c.origin):''; }
+// Étiquettes descriptives d'une carte (variante + provenance) — mêmes chips partout.
+function descTags(c){
+  let s='';
+  const vl=(c.variant_label&&String(c.variant_label).toLowerCase()!=='normal')?c.variant_label:'';
+  if(vl) s+='<span class="tp" style="background:#eef2ff;color:#3730a3;font-weight:800">'+esc(vl)+'</span>';
+  const pv=provNice(c);
+  if(pv) s+='<span class="tp" style="background:#fef3c7;color:#92400e;font-weight:800">'+esc(pv)+'</span>';
+  return s;
+}
 const OMARKETS=[["JP","Japon"],["CN","Chinois"],["EN","Anglais"],["FR","Français"]];
 const OPRIOS=[[3,"Prioritaire"],[1,"Secondaire"],[0,"Ignorer"]];
 const OTYPES=[["PROMO","Promo"],["PRODUCT_EXCLUSIVE","Exclusivité"],["BATTLE_EVENT","Battleship"],["TOURNAMENT","Tournoi"],["PREMIUM_COLLECTION","Premium"]];
@@ -2347,9 +2355,9 @@ function renderDetail(){ const c=detailCard; if(!c)return; const body=document.g
       mktBlock(c)+
       (VERIFY.has(c.item_id)?'<div style="margin:8px 0;padding:10px 12px;border:1px solid #fdba74;background:#fff7ed;border-radius:10px;font-size:13px;color:#9a3412">🔍 <b>Photo à vérifier.</b> Tape la bonne illustration ci-dessous pour la valider, ou <button onclick=\'validateCurrent()\' style="border:0;background:#f97316;color:#fff;font-weight:800;padding:4px 10px;border-radius:8px;cursor:pointer">✓ Valider cette photo</button></div>':'')+
       '<div class="qtybox"><span class="s">Possédé :</span> <span class="b">'+(c.quantity||1)+'</span></div>'+
-      drow("Variante", '<b>'+variantNice(c)+'</b>')+drow("Rareté", RAR_LABELS[c.rarity]||c.rarity||"—")+drow("État", g)+drow("Langue", (FLAG[c.language]||"")+' '+(LANG_LABELS[c.language]||c.language))+drow("Nom", esc(c.card_name))+drow("Numéro", esc(c.card_number))+drow("Set", esc((c.set_code||"")+(c.set_name?(" — "+c.set_name):"")));
+      drow("Variante", '<b>'+variantNice(c)+'</b>')+drow("Provenance", c.origin?(ORIGIN_LABELS[c.origin]||c.origin):"")+drow("Rareté", RAR_LABELS[c.rarity]||c.rarity||"—")+drow("État", g)+drow("Langue", (FLAG[c.language]||"")+' '+(LANG_LABELS[c.language]||c.language))+drow("Nom", esc(c.card_name))+drow("Numéro", esc(c.card_number))+drow("Set", esc((c.set_code||"")+(c.set_name?(" — "+c.set_name):"")));
   } else {
-    body.innerHTML=drow("Nom", esc(c.card_name))+drow("Numéro", esc(c.card_number))+drow("Variante", '<b>'+variantNice(c)+'</b>')+drow("Rareté", RAR_LABELS[c.rarity]||c.rarity)+drow("Set / Édition", esc((c.set_code||"")+(c.set_name?(" — "+c.set_name):"")))+drow("Catégorie", CAT_LABELS[c.category]||c.category)+drow("Type d’illustration", TYPE_LABELS[c.card_type]||c.card_type)+drow("Couleur", (c.color||"").split(";").join(" / "))+drow("Langue", LANG_LABELS[c.language]||c.language);
+    body.innerHTML=drow("Nom", esc(c.card_name))+drow("Numéro", esc(c.card_number))+drow("Variante", '<b>'+variantNice(c)+'</b>')+drow("Provenance", c.origin?(ORIGIN_LABELS[c.origin]||c.origin):"")+drow("Rareté", RAR_LABELS[c.rarity]||c.rarity)+drow("Set / Édition", esc((c.set_code||"")+(c.set_name?(" — "+c.set_name):"")))+drow("Catégorie", CAT_LABELS[c.category]||c.category)+drow("Type d’illustration", TYPE_LABELS[c.card_type]||c.card_type)+drow("Couleur", (c.color||"").split(";").join(" / "))+drow("Langue", LANG_LABELS[c.language]||c.language);
   }
 }
 function findCard(id){ return DATA.find(c=>String(c.item_id)===String(id)); }
