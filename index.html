@@ -667,7 +667,7 @@ body{-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
 <div class="wrap">
   <div class="hero">
     <div class="topbar">
-      <div class="logo"><div class="mark">OP</div> TCG GLOBAL <span id="buildTag" style="font-size:11px;font-weight:700;margin-left:8px;background:#e11d48;color:#fff;padding:2px 8px;border-radius:10px;letter-spacing:.2px;white-space:nowrap" title="Version en ligne">v10:30</span></div>
+      <div class="logo"><div class="mark">OP</div> TCG GLOBAL <span id="buildTag" style="font-size:11px;font-weight:700;margin-left:8px;background:#e11d48;color:#fff;padding:2px 8px;border-radius:10px;letter-spacing:.2px;white-space:nowrap" title="Version en ligne">v10:33</span></div>
       <div class="grow"></div>
       <div class="mktseg" id="mktSeg" title="Marché de valorisation">
         <button data-k="JP" class="on">🇯🇵 JP</button>
@@ -850,7 +850,7 @@ const COLOR_HEX={Red:"#d64545",Green:"#2f9e57",Blue:"#2f6fed",Purple:"#8b57d6",B
 const TYPE_ORDER=["normal","alternate_art","sp","manga","full_art","textured_foil","jolly_roger_foil","promo","tournament"];
 const CAT_ORDER=["LEADER","CHARACTER","EVENT","STAGE","DON"];
 const SORTS=[["val_desc","Valeur ↓ (décroissant)"],["val_asc","Valeur ↑ (croissant)"],["name","Nom (A→Z)"],["num","Numéro"],["qty","Quantité"]];
-const DEF={q:"",lang:"all",color:"all",type:"all",cat:"all",rarity:"all",character:"all",grade:"all",minVal:0,imgf:"all",sort:"val_desc",view:"grid",mode:"accueil",catLang:"all",catQuery:"",catLangs:[],catColors:[],catCats:[],catRarities:[],catTypes:[],catSort:"num",setLang:"JP",prodLang:"JP"};
+const DEF={q:"",lang:"all",color:"all",type:"all",cat:"all",rarity:"all",character:"all",grade:"all",minVal:0,imgf:"all",sort:"val_desc",view:"grid",mode:"accueil",catLang:"all",catQuery:"",catLangs:[],catColors:[],catCats:[],catRarities:[],catTypes:[],catSort:"price_desc",setLang:"JP",prodLang:"JP"};
 let PROD_VALUE=0;
 const CATLANGS=[["all","Toutes"],["JP","Japonais"],["EN","Anglais"]];
 const CATCATS=[["all","Toutes catégories"],["LEADER","Leader"],["CHARACTER","Personnage"],["EVENT","Event"],["STAGE","Stage"],["DON","DON!!"]];
@@ -913,7 +913,9 @@ const MKT_LABEL={JP:'🇯🇵 Japon',EU:'🇪🇺 Europe',US:'🇺🇸 US'};
 function mkStrict(c){ const v=c[MKT_FIELD[MKT]]; return (v==null)?null:Number(v); }        // vrai prix marché (ou null)
 function mkEst(c){ const v=c[MKT_FIELD[MKT]]; if(v!=null) return Number(v); return c.market_value_eur==null?0:Number(c.market_value_eur); } // estimé (repli)
 const val=c=> mkEst(c);   // toutes les listes/totaux suivent le marché choisi (estimé)
-function catMkPrice(c){ const v=c[MKT.toLowerCase()+'_eur']; if(v!=null) return Number(v); return c.price_eur!=null?Number(c.price_eur):null; }  // catalogue : prix du marché sélectionné (repli prix unique)
+function catMkPrice(c){ const d=c['disp_'+MKT.toLowerCase()]; if(d!=null) return Number(d); const v=c['mk_'+MKT.toLowerCase()]; if(v!=null) return Number(v); const f=c[MKT.toLowerCase()+'_eur']; if(f!=null) return Number(f); return c.price_eur!=null?Number(c.price_eur):null; }  // catalogue : prix du marché sélectionné (disp_* = brut sinon repli gradé ; même valeur que le tri)
+// Quand le prix affiché vient d'une cote GRADÉE (aucune vente brute), renvoie le libellé (ex "PSA 10") pour l'étiqueter clairement.
+function catGradedTag(c){ if(MKT==='JP') return (c.mk_jp==null && c.jp_g!=null)?(c.jp_gl||'gradé'):null; if(MKT==='US') return (c.mk_us==null && c.us_g!=null)?(c.us_gl||'gradé'):null; return null; }
 function esc(s){ return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
 function setMarket(k){
   if(!MKT_FIELD[k]||k===MKT) { if(k) MKT=k; }
@@ -1726,8 +1728,10 @@ async function fetchCatalog(append){
   const term=(state.catQuery||"").replace(/[%*(),]/g," ").trim();
   const noFilters=!term && !state.catLangs.length && !state.catCats.length && !state.catRarities.length && !state.catTypes.length && !state.catColors.length;
   if(!append){ state.catOffset=0; CATACC=[]; stage.className=""; stage.innerHTML='<div class="loading">Recherche…</div>'; }
-  const ord=state.catSort==="name"?"name.asc":(state.catSort==="lang"?"language.asc,card_number.asc":(state.catSort==="price_desc"?"price_eur.desc.nullslast":(state.catSort==="price_asc"?"price_eur.asc.nullslast":"card_number.asc")));
-  let url=SB+"/rest/v1/app_catalog_priced?select=card_number,language,name,image_url,img_verify,owned,variant,variant_label,rarity,set_code,set_name,category,origin,printing_id,price_eur,price_source,jp_eur,eu_eur,us_eur&limit="+CATPAGE+"&offset="+(state.catOffset||0)+"&order="+ord;
+  // Le tri prix suit le marché sélectionné (JP/EU/US) — même colonne que le prix affiché, sinon l'ordre paraît aléatoire.
+  const mkcol=(MKT==='EU'?'mk_eu':'disp_'+(MKT_FIELD[MKT]?MKT.toLowerCase():'jp'));
+  const ord=state.catSort==="name"?"name.asc":(state.catSort==="lang"?"language.asc,card_number.asc":(state.catSort==="price_desc"?(mkcol+".desc.nullslast"):(state.catSort==="price_asc"?(mkcol+".asc.nullslast"):"card_number.asc")));
+  let url=SB+"/rest/v1/app_catalog_priced?select=card_number,language,name,image_url,img_verify,owned,variant,variant_label,rarity,set_code,set_name,category,origin,printing_id,price_eur,price_source,jp_eur,eu_eur,us_eur,mk_jp,mk_eu,mk_us,jp_g,jp_gl,us_g,us_gl,disp_jp,disp_us&limit="+CATPAGE+"&offset="+(state.catOffset||0)+"&order="+ord;
   // Par défaut (aucun filtre / aucune recherche) on masque les DON, sinon ils monopolisent la 1re page (tri alphabétique). Ils restent accessibles via l'onglet Sets ou une recherche « DON ».
   if(noFilters) url+="&category=neq.DON";
   // Catalogue = Japonais + Anglais uniquement. FR/CN n'existent que dans la collection (volet « Autre »), ajoutés au scan.
@@ -1761,7 +1765,7 @@ function renderCatalog(rows, hasMore){
     const pcu=PCIMG[c.printing_id]; const eff=pcu||c.image_url; const vfy=c.img_verify&&!pcu;
     const img=vfy?('<div class="vfy"><span class="vt">🔍</span>Photo à vérifier</div>'):(eff?('<img loading="lazy" referrerpolicy="no-referrer" src="'+esc(eff)+'" onerror="this.remove()">'):('<div class="ph">'+esc(c.name||c.card_number||"")+'</div>'));
     const badge=c.owned?'<span class="owntag own">✓ Possédée</span>':'<span class="owntag no">Non possédée</span>';
-    const cpx=catMkPrice(c); const px=(cpx!=null)?'<span class="pxg">'+eur(cpx)+'</span>':'';
+    const cpx=catMkPrice(c); const gtag=catGradedTag(c); const px=(cpx!=null)?('<span class="pxg">'+eur(cpx)+(gtag?(' <span style="font-size:9px;background:#7c3aed;color:#fff;padding:1px 4px;border-radius:5px;font-weight:800;vertical-align:middle">'+esc(gtag)+'</span>'):'')+'</span>'):'';
     return '<div class="card" data-idx="'+i+'"><div class="imgwrap">'+img+'<div class="badges"><span class="flag">'+(FLAG[c.language]||"")+'</span></div>'+(px?'<div class="pxcorner">'+px+'</div>':'')+'</div><div class="meta"><p class="nm">'+esc(c.name||"")+'</p><div class="sub"><span>'+esc(c.card_number||"")+'</span>'+descTags(c)+'</div>'+badge+'</div></div>';
   }).join("")+'</div>';
   stage.innerHTML=grid+(hasMore?'<div class="loadmore"><button onclick="fetchCatalog(true)">Charger plus</button></div>':'');
@@ -1890,7 +1894,7 @@ async function openCatDetail(c){
   document.getElementById("cdbody").innerHTML=
     '<div class="dval"><div class="b">'+esc(c.name||"")+'</div><div class="s">'+(FLAG[c.language]||"")+' '+(LANG_LABELS[c.language]||c.language)+' · '+esc(c.card_number||"")+'</div><div class="collact" id="cdcollact"></div></div>'+
     drow("Rareté", RAR_LABELS[c.rarity]||c.rarity)+drow("Variante", (vl&&String(vl).toLowerCase()!=='normal')?esc(vl):"Normale")+drow("Type", c.origin?(ORIGIN_LABELS[c.origin]||c.origin):"")+drow("Catégorie", CAT_LABELS[c.category]||c.category)+drow("Set", esc((c.set_code||"")+(c.set_name?(" — "+c.set_name):"")))+
-    '<div id="cdprice" class="dprices"><div class="pxhdr">Prix marché — '+esc(MKT_LABEL[MKT])+'</div>'+((catMkPrice(c)!=null)?('<div class="pxquick" style="font-size:20px;font-weight:800;margin:2px 0 2px">&asymp; '+eur0(catMkPrice(c))+' <span class="dt" style="font-size:11px;font-weight:600">'+esc(MKSRC[MKT])+'</span></div>'):'')+'<div class="dt" style="font-size:11px;margin-bottom:4px">'+['JP','EU','US'].map(function(k){var v=c[k.toLowerCase()+'_eur'];var on=k===MKT;return (on?'<b style="color:#1e3a8a">':'<span>')+k+' '+(v!=null?eur0(v):'—')+(on?'</b>':'</span>');}).join(' · ')+'</div><div class="pxloading">…</div></div>';
+    '<div id="cdprice" class="dprices"><div class="pxhdr">Prix marché — '+esc(MKT_LABEL[MKT])+'</div>'+((catMkPrice(c)!=null)?('<div class="pxquick" style="font-size:20px;font-weight:800;margin:2px 0 2px">&asymp; '+eur0(catMkPrice(c))+(catGradedTag(c)?(' <span style="font-size:11px;background:#7c3aed;color:#fff;padding:1px 6px;border-radius:6px;font-weight:800;vertical-align:middle">'+esc(catGradedTag(c))+'</span>'):'')+' <span class="dt" style="font-size:11px;font-weight:600">'+esc(catGradedTag(c)?('Cote gradée · '+MKSRC[MKT]):MKSRC[MKT])+'</span></div>'):'')+'<div class="dt" style="font-size:11px;margin-bottom:4px">'+['JP','EU','US'].map(function(k){var lk=k.toLowerCase();var v=(k==='EU')?(c.mk_eu!=null?c.mk_eu:c.eu_eur):c['disp_'+lk];var grd=(k==='JP')?(c.mk_jp==null&&c.jp_g!=null):((k==='US')?(c.mk_us==null&&c.us_g!=null):false);var on=k===MKT;return (on?'<b style="color:#1e3a8a">':'<span>')+k+' '+(v!=null?eur0(v):'—')+(grd&&v!=null?'*':'')+(on?'</b>':'</span>');}).join(' · ')+(((c.mk_jp==null&&c.jp_g!=null)||(c.mk_us==null&&c.us_g!=null))?' <span style="opacity:.7">(* cote gradée)</span>':'')+'</div><div class="pxloading">…</div></div>';
   document.getElementById("cdprints").innerHTML='<div class="dprints"><h4>Toutes les versions</h4><div class="pxloading">…</div></div>';
   document.getElementById("catOverlay").classList.remove("hidden");
   detailCatPid=c.printing_id||null;
@@ -1904,7 +1908,7 @@ async function loadCardVersions(c){
   const box=document.getElementById("cdprints"); if(!box) return;
   let rows=[];
   try{
-    const r=await fetch(SB+'/rest/v1/app_catalog_priced?card_number=eq.'+encodeURIComponent(c.card_number)+'&select=card_number,language,name,image_url,img_verify,variant,variant_label,rarity,set_code,set_name,category,origin,owned,printing_id,price_eur,price_source&limit=80',{headers:{apikey:ANON,Authorization:"Bearer "+ANON}});
+    const r=await fetch(SB+'/rest/v1/app_catalog_priced?card_number=eq.'+encodeURIComponent(c.card_number)+'&select=card_number,language,name,image_url,img_verify,variant,variant_label,rarity,set_code,set_name,category,origin,owned,printing_id,price_eur,price_source,jp_eur,eu_eur,us_eur,mk_jp,mk_eu,mk_us,jp_g,jp_gl,us_g,us_gl,disp_jp,disp_us&limit=80',{headers:{apikey:ANON,Authorization:"Bearer "+ANON}});
     rows=await r.json(); if(!Array.isArray(rows)) rows=[];
   }catch(e){ box.innerHTML=""; return; }
   // tri : langue (JP,EN,FR,CN) puis prix décroissant
@@ -1922,7 +1926,7 @@ async function loadCardVersions(c){
     const artv=isArtVariant(p.variant);
     const vb='<span class="vbadge'+(artv?' art':'')+'">'+esc(vNice(p.variant))+'</span>';
     const rn=rarNice(p.rarity); const rar=rn?('<span class="vbadge">'+esc(rn)+'</span>'):'';
-    const px=(p.price_eur!=null)?('<span class="vpx">'+eur(p.price_eur)+'</span>'):'<span class="vpx none">—</span>';
+    const pxv=catMkPrice(p); const pgt=catGradedTag(p); const px=(pxv!=null)?('<span class="vpx">'+eur(pxv)+(pgt?(' <span style="font-size:8px;background:#7c3aed;color:#fff;padding:0 3px;border-radius:4px;font-weight:800">'+esc(pgt)+'</span>'):'')+'</span>'):'<span class="vpx none">—</span>';
     const q=qmap[p.printing_id]||0;
     const add='<button class="vadd'+(q>0?' have':'')+'" onclick="event.stopPropagation();collAddFromList(\''+esc(p.printing_id||'')+'\',this)">'+(q>0?('✓ ×'+q):'+ Ajouter')+'</button>';
     const sel=(p.printing_id===c.printing_id)?' sel':'';
