@@ -44,9 +44,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Ar
 .tbtn.act{background:var(--accent);color:#fff;border-color:transparent}
 .fbadge{position:absolute;top:-6px;right:-6px;background:var(--neg);color:#fff;font-size:10px;font-weight:900;min-width:17px;height:17px;border-radius:9px;display:grid;place-items:center;padding:0 4px}
 .count{color:var(--muted);font-size:13px;margin:2px 2px 8px}
-.modeseg{display:flex;gap:4px;background:var(--panel);border:1px solid var(--line);border-radius:13px;padding:4px;margin-top:12px;box-shadow:var(--shadow)}
-.modeseg button{flex:1;border:0;background:transparent;color:var(--muted);font-weight:800;padding:10px;border-radius:10px;cursor:pointer;font-size:14px}
-.modeseg button.on{background:var(--accent);color:#fff}
+.modeseg{display:flex;align-items:center;gap:3px;background:var(--chip);border:0;border-radius:14px;padding:4px;margin-top:12px;box-shadow:none;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+.modeseg::-webkit-scrollbar{display:none}
+.modeseg button{flex:1 0 auto;white-space:nowrap;border:0;background:transparent;color:var(--muted);font-weight:800;padding:10px 14px;border-radius:10px;cursor:pointer;font-size:14px}
+.modeseg button.on{background:var(--panel);color:var(--ink);box-shadow:var(--shadow)}
+.msep{flex:0 0 auto;width:1px;height:20px;background:var(--line);margin:0 5px}
+.iaback{border:1px solid var(--line);background:var(--panel);color:var(--ink);width:36px;height:36px;border-radius:11px;font-size:18px;font-weight:700;cursor:pointer;flex:none;margin-right:2px}
 .chiprow.catlang{display:flex;gap:8px;overflow-x:auto;padding:6px 0 2px;scrollbar-width:none}
 .chiprow.catlang::-webkit-scrollbar{display:none}
 .owntag{display:inline-block;margin-top:6px;font-size:10px;font-weight:800;padding:2px 8px;border-radius:7px}
@@ -331,9 +334,8 @@ body{-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
 .stat .k{font-size:10px;letter-spacing:.08em;text-transform:uppercase;font-weight:700}
 .stat .v{font-size:26px;font-weight:800;letter-spacing:-.03em;font-variant-numeric:tabular-nums}
 .stat .v.small{font-size:20px}
-.modeseg{max-width:460px;margin:18px auto 4px;background:var(--chip);border:0;padding:4px;gap:3px;box-shadow:none}
-.modeseg button{font-size:13.5px;font-weight:700;border-radius:10px;padding:9px}
-.modeseg button.on{background:var(--panel);color:var(--ink);box-shadow:var(--shadow)}
+.modeseg{margin:16px 0 4px;overflow:visible}
+.modeseg button{font-size:14px;font-weight:800;border-radius:10px;padding:10px 16px}
 .toolbar{gap:8px;padding:12px 0}
 .search{border-radius:13px;box-shadow:none}
 .tbtn{box-shadow:none;color:var(--muted);font-weight:700}
@@ -643,7 +645,12 @@ body{-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
 .nh-nova .nvask input{flex:1;border:1px solid rgba(255,255,255,.22);background:rgba(255,255,255,.1);color:#fff;border-radius:12px;padding:11px 14px;font-size:14px;outline:none}
 .nh-nova .nvask input::placeholder{color:rgba(255,255,255,.6)}
 .nh-nova .nvask button{border:0;background:#6c8bff;color:#fff;font-weight:900;border-radius:12px;padding:0 17px;cursor:pointer;font-size:16px}
-@media(min-width:720px){ .nh-hero .nh-big{font-size:54px} .nh{display:grid;grid-template-columns:1fr 1fr;align-items:start} .nh-hero,.nh-nova,.nh-stats{grid-column:1 / -1} }
+.nh-novacard{padding:12px}
+.nh-novacard .ianew{height:auto;min-height:0;gap:11px}
+.nh-novacard .ialog2{max-height:min(46vh,360px);flex:0 1 auto}
+.ibtn{width:auto;min-width:52px;height:50px;padding:0 15px;font-size:14px;font-weight:800}
+.ivo{width:auto;min-width:40px;padding:0 13px;font-size:13px;font-weight:800}
+@media(min-width:720px){ .nh-hero .nh-big{font-size:54px} .nh{display:grid;grid-template-columns:1fr 1fr;align-items:start} .nh-hero,.nh-novacard,.nh-stats{grid-column:1 / -1} }
 /* comparatif 3 marchés sur la fiche carte */
 .mkc{margin:2px 0 10px;border:1px solid var(--line);border-radius:12px;overflow:hidden}
 .mkc .mkchd{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.3px;color:var(--muted);padding:8px 11px;background:var(--chip)}
@@ -660,7 +667,7 @@ body{-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
 <div class="wrap">
   <div class="hero">
     <div class="topbar">
-      <div class="logo"><div class="mark">OP</div> TCG GLOBAL <span id="buildTag" style="font-size:11px;font-weight:700;margin-left:8px;background:#e11d48;color:#fff;padding:2px 8px;border-radius:10px;letter-spacing:.2px;white-space:nowrap" title="Version en ligne">v10:26</span></div>
+      <div class="logo"><div class="mark">OP</div> TCG GLOBAL <span id="buildTag" style="font-size:11px;font-weight:700;margin-left:8px;background:#e11d48;color:#fff;padding:2px 8px;border-radius:10px;letter-spacing:.2px;white-space:nowrap" title="Version en ligne">v10:29</span></div>
       <div class="grow"></div>
       <div class="mktseg" id="mktSeg" title="Marché de valorisation">
         <button data-k="JP" class="on">🇯🇵 JP</button>
@@ -672,16 +679,16 @@ body{-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
     <div class="minibar" id="miniBar"></div>
   </div>
 
-  <div class="modeseg" id="modeSeg">
+  <nav class="modeseg" id="modeSeg" aria-label="Navigation principale">
     <button data-m="accueil" class="on">Accueil</button>
-    <button data-m="ia">✨ IA</button>
     <button data-m="collection">Collection</button>
     <button data-m="catalog">Catalogue</button>
+    <button data-m="ops">Opportunités</button>
+    <span class="msep" aria-hidden="true"></span>
     <button data-m="sets">Sets</button>
     <button data-m="products">Produits</button>
-    <button data-m="ops">Opportunités</button>
-    <button data-m="live">🔴 Live</button>
-  </div>
+    <button data-m="live">Live</button>
+  </nav>
 
   <div class="toolbar">
     <div class="search">
@@ -825,7 +832,7 @@ const ANON="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI
 
 const TYPE_LABELS={normal:"Normal",alternate_art:"Alt Art",sp:"SP",manga:"Manga",full_art:"Full Art",jolly_roger_foil:"Jolly Roger",textured_foil:"Textured",promo:"Promo",tournament:"Tournoi"};
 const FLAG={JP:"🇯🇵",EN:"🇺🇸",FR:"🇫🇷",CN:"🇨🇳"};
-const LANGS=[["all","Toutes"],["JP","Japonais"],["EN","Anglais"],["FR","Français"],["CN","Chinois"]];
+const LANGS=[["all","Toutes"],["JP","Japonais"],["EN","Anglais"],["autre","Autre"]];
 const CAT_LABELS={LEADER:"Leader",CHARACTER:"Personnage",EVENT:"Event",STAGE:"Stage",DON:"DON!!"};
 const RAR_LABELS={C:"Common",UC:"Uncommon",R:"Rare",SR:"Super Rare",SEC:"Secret Rare",L:"Leader",PR:"Promo",TR:"Treasure Rare",SP:"Special"};
 const VMAP={normal:"Normale",parallel:"Parallèle",alternate_art:"Alt-Art",manga:"Manga",red_manga:"Manga rouge",sp:"SP",sp_gold:"SP Or",sp_silver:"SP Argent",serial:"Serial",serial_prize:"Serial (prix)",top_prize:"Top Prize",get_campaign:"Get Campaign",magazine_promo:"Promo Magazine",psa_magazine:"Magazine",championship:"Championship"};
@@ -845,7 +852,7 @@ const CAT_ORDER=["LEADER","CHARACTER","EVENT","STAGE","DON"];
 const SORTS=[["val_desc","Valeur ↓ (décroissant)"],["val_asc","Valeur ↑ (croissant)"],["name","Nom (A→Z)"],["num","Numéro"],["qty","Quantité"]];
 const DEF={q:"",lang:"all",color:"all",type:"all",cat:"all",rarity:"all",character:"all",grade:"all",minVal:0,imgf:"all",sort:"val_desc",view:"grid",mode:"accueil",catLang:"all",catQuery:"",catLangs:[],catColors:[],catCats:[],catRarities:[],catTypes:[],catSort:"num",setLang:"JP",prodLang:"JP"};
 let PROD_VALUE=0;
-const CATLANGS=[["all","Toutes"],["JP","Japonais"],["EN","Anglais"],["FR","Français"],["CN","Chinois"]];
+const CATLANGS=[["all","Toutes"],["JP","Japonais"],["EN","Anglais"]];
 const CATCATS=[["all","Toutes catégories"],["LEADER","Leader"],["CHARACTER","Personnage"],["EVENT","Event"],["STAGE","Stage"],["DON","DON!!"]];
 const CATRARS=[["all","Toutes raretés"],["L","Leader"],["C","Common"],["UC","Uncommon"],["R","Rare"],["SR","Super Rare"],["SEC","Secret Rare"],["TR","Treasure Rare"],["SP","Special"],["P","Promo"]];
 const CATTYPES=[["all","Tous types"],["STANDARD","Standard"],["PROMO","Promo"],["BATTLE_EVENT","Battleship"],["PREMIUM_COLLECTION","Premium Collection"],["TOURNAMENT","Tournoi"],["PRODUCT_EXCLUSIVE","Exclusivité produit"]];
@@ -981,8 +988,9 @@ function makeChip(label,count,active,on){
 function buildFilterModal(){
   const lc={}; DATA.forEach(c=>lc[c.language]=(lc[c.language]||0)+1);
   const mL=document.getElementById("mLang"); mL.innerHTML="";
-  LANGS.forEach(([code,label])=>{ const n=code==="all"?DATA.length:(lc[code]||0); if(code!=="all"&&!n)return;
-    mL.appendChild(makeChip((code==="all"?"":FLAG[code]+" ")+label,n,state.lang===code,()=>{state.lang=code;afterFilter()})); });
+  const autreN=DATA.filter(c=>c.language!=="JP"&&c.language!=="EN").length;
+  LANGS.forEach(([code,label])=>{ const n=code==="all"?DATA.length:(code==="autre"?autreN:(lc[code]||0)); if(code!=="all"&&!n)return;
+    mL.appendChild(makeChip(((code==="all"||code==="autre")?"":FLAG[code]+" ")+label,n,state.lang===code,()=>{state.lang=code;afterFilter()})); });
 
   const colc={}; DATA.forEach(c=>{ if(c.color) c.color.split(";").forEach(x=>colc[x]=(colc[x]||0)+1); });
   const mC=document.getElementById("mColor"); mC.innerHTML="";
@@ -1037,7 +1045,8 @@ function setImgf(v){ state.imgf=v; buildValRow(); render(); }
 
 function apply(){
   let a=DATA.slice();
-  if(state.lang!=="all") a=a.filter(c=>c.language===state.lang);
+  if(state.lang==="autre") a=a.filter(c=>c.language!=="JP"&&c.language!=="EN");
+  else if(state.lang!=="all") a=a.filter(c=>c.language===state.lang);
   if(state.type!=="all") a=a.filter(c=>c.card_type===state.type);
   if(state.cat!=="all") a=a.filter(c=>c.category===state.cat);
   if(state.color!=="all") a=a.filter(c=>(c.color||"").split(";").includes(state.color));
@@ -1336,21 +1345,19 @@ async function renderHome(){
       '<div class="nh-split"><div class="nh-seg"><div class="k"><span class="dotc" style="background:#c7d2fe"></span>Cartes</div><div class="v">'+eur0(cardsVal)+'</div></div>'+
         '<div class="nh-seg"><div class="k"><span class="dotc" style="background:#fcd34d"></span>Produits &amp; sets</div><div class="v">'+eur0(prodVal)+'</div></div></div>'+
     '</div>'+
-    '<div class="nh-nova"><div class="nvh"><span class="orb"></span><b>Nova</b><span class="tag">IA · '+esc(MKT)+'</span></div>'+
-      '<div id="homeBriefBox" class="nvbody"><div style="opacity:.85">Ton stratège te fait le point : portefeuille, mouvement clé et LA priorité du jour.</div><button class="nvbtn" onclick="homeBriefing()">✨ Générer mon briefing</button></div>'+
-      '<div class="nvask"><input id="nhAskInput" placeholder="Demande à Nova… (faut-il grader ma Boa ?)" onkeydown="nhAskKey(event)"><button onclick="nhAsk()">➤</button></div>'+
-    '</div>'+
+    '<div class="nh-card2 nh-novacard"><div class="ianew">'+novaInnerHTML(false)+'</div></div>'+
     '<div class="nh-stats">'+
-      '<div class="nh-stat"><span class="bar" style="background:#3457e8"></span><div class="ic">🃏</div><div class="n">'+qty.toLocaleString('fr-FR')+'</div><div class="k">Cartes</div></div>'+
-      '<div class="nh-stat"><span class="bar" style="background:#8b5cf6"></span><div class="ic">🔖</div><div class="n">'+uniq.toLocaleString('fr-FR')+'</div><div class="k">Uniques</div></div>'+
-      '<div class="nh-stat"><span class="bar" style="background:#c2892a"></span><div class="ic">🏆</div><div class="n">'+gradedN.toLocaleString('fr-FR')+'</div><div class="k">Gradées</div></div>'+
+      '<div class="nh-stat"><span class="bar" style="background:#3457e8"></span><div class="n">'+qty.toLocaleString('fr-FR')+'</div><div class="k">Cartes</div></div>'+
+      '<div class="nh-stat"><span class="bar" style="background:#8b5cf6"></span><div class="n">'+uniq.toLocaleString('fr-FR')+'</div><div class="k">Uniques</div></div>'+
+      '<div class="nh-stat"><span class="bar" style="background:#c2892a"></span><div class="n">'+gradedN.toLocaleString('fr-FR')+'</div><div class="k">Gradées</div></div>'+
     '</div>'+
-    (gradeChips?('<div class="nh-card2"><div class="nh-ct"><h3>🏅 Cartes gradées</h3></div><div class="graderow">'+gradeChips+'</div></div>'):'')+
-    '<div class="nh-card2"><div class="nh-ct"><h3>📈 Évolution du portefeuille</h3></div>'+homeChart(snaps)+'</div>'+
-    '<div class="nh-card2"><div class="nh-ct"><h3>🔥 Top mouvements</h3><span class="mkt">'+esc(MKT_LABEL[MKT])+'</span></div><div id="homeMovers"><div class="chdates">Chargement…</div></div></div>'+
-    '<div class="nh-card2"><div class="nh-ct"><h3>🗓️ Suivi des relevés</h3></div>'+(hist||'<div class="chdates">Aucun relevé pour l’instant.</div>')+'</div>'+
+    (gradeChips?('<div class="nh-card2"><div class="nh-ct"><h3>Cartes gradées</h3></div><div class="graderow">'+gradeChips+'</div></div>'):'')+
+    '<div class="nh-card2"><div class="nh-ct"><h3>Évolution du portefeuille</h3></div>'+homeChart(snaps)+'</div>'+
+    '<div class="nh-card2"><div class="nh-ct"><h3>Top mouvements</h3><span class="mkt">'+esc(MKT_LABEL[MKT])+'</span></div><div id="homeMovers"><div class="chdates">Chargement…</div></div></div>'+
+    '<div class="nh-card2"><div class="nh-ct"><h3>Suivi des relevés</h3></div>'+(hist||'<div class="chdates">Aucun relevé pour l’instant.</div>')+'</div>'+
   '</div>';
   stage.innerHTML=html;
+  initNovaHome();
   loadMovers();
 }
 async function loadMovers(){
@@ -1523,35 +1530,38 @@ const IA_STATUS_IDLE='Ton stratège One Piece · veille prête';
 function iaOrb(st){ const o=document.getElementById('iaOrb'); if(o) o.className='orb '+(st||''); }
 function iaStatus(t){ const s=document.getElementById('iaStatus'); if(s) s.textContent=t; }
 function iaLogEl(){ return document.getElementById('iaLog'); }
-function renderIA(){
-  const stage=document.getElementById('stage'); if(!stage) return; stage.className='ia';
+function novaInnerHTML(withBack){
   const chips=['Mon briefing du jour','Quelle carte grader en priorité ?','Une carte JP à surveiller ?','Où en est mon portefeuille ?'];
-  stage.innerHTML='<div class="ianew">'+
-    '<div class="iahero">'+
-      '<div class="orb" id="iaOrb"><span class="rings"></span><span class="orbcore">✦</span></div>'+
+  return '<div class="iahero">'+
+      (withBack?'<button class="iaback" onclick="setMode(\'accueil\')" title="Retour à l\'accueil">←</button>':'')+
+      '<div class="orb" id="iaOrb"><span class="rings"></span><span class="orbcore"></span></div>'+
       '<div class="iheroinfo"><div class="inm">Nova <span class="idot"></span></div><div class="ist" id="iaStatus">'+esc(IA_STATUS_IDLE)+'</div></div>'+
-      '<button class="ivo'+(iaVoiceOut?'':' off')+'" id="iaVoBtn" onclick="iaToggleVoice()" title="Lire les réponses à voix haute">'+(iaVoiceOut?'🔊':'🔇')+'</button>'+
+      '<button class="ivo'+(iaVoiceOut?'':' off')+'" id="iaVoBtn" onclick="iaToggleVoice()" title="Lire les réponses à voix haute">'+(iaVoiceOut?'Voix':'Muet')+'</button>'+
     '</div>'+
     '<div class="ialog2" id="iaLog"></div>'+
-    '<div class="iachips" id="iaChips"><span class="iachip radar" onclick="iaRadar()">🔥 Quoi de neuf ? (web)</span><span class="iachip radar" onclick="iaVeille()">📈 Pourquoi ça bouge ?</span>'+chips.map(s=>'<span class="iachip" onclick="iaChip(this)">'+esc(s)+'</span>').join('')+'</div>'+
-    iaInputHTML()+
-  '</div>';
+    '<div class="iachips" id="iaChips">'+chips.map(s=>'<span class="iachip" onclick="iaChip(this)">'+esc(s)+'</span>').join('')+'<span class="iachip" onclick="iaRadar()">Quoi de neuf ? (web)</span><span class="iachip" onclick="iaVeille()">Pourquoi ça bouge ?</span></div>'+
+    iaInputHTML();
+}
+function renderIA(){
+  const stage=document.getElementById('stage'); if(!stage) return; stage.className='ia';
+  stage.innerHTML='<div class="ianew">'+novaInnerHTML(true)+'</div>';
   iaRenderConv();
   if(!IACONV.length){ iaWelcome(); if(!iaBriefed){ iaBriefed=true; setTimeout(iaBriefing,400); } }
 }
+function initNovaHome(){ iaRenderConv(); if(!IACONV.length){ iaWelcome(); } }
 function iaInputHTML(){
   if(iaInputMode==='voice'){
     return '<div class="iainput">'+
-      '<button class="imic" id="iaMic" onclick="iaMicTap()"><span class="mico">🎤</span><span id="iaMicLbl">Parler à Nova</span></button>'+
-      '<button class="ibtn isearch'+(iaSearch?' on':'')+'" id="iaSearchBtn" onclick="iaToggleSearch()" title="Actu web">🔍</button>'+
-      '<button class="ibtn iswap" onclick="iaSwapMode()" title="Écrire au clavier">⌨️</button>'+
+      '<button class="imic" id="iaMic" onclick="iaMicTap()"><span id="iaMicLbl">Parler à Nova</span></button>'+
+      '<button class="ibtn isearch'+(iaSearch?' on':'')+'" id="iaSearchBtn" onclick="iaToggleSearch()" title="Inclure l\'actu web">Web</button>'+
+      '<button class="ibtn iswap" onclick="iaSwapMode()" title="Écrire au clavier">Clavier</button>'+
     '</div>';
   }
   return '<div class="iainput">'+
     '<textarea class="itxt" id="iaInput" rows="1" placeholder="'+(iaSearch?'Actu web activée — écris…':'Écris à Nova…')+'" oninput="iaGrow(this)" onkeydown="iaKey(event)"></textarea>'+
-    '<button class="ibtn isearch'+(iaSearch?' on':'')+'" id="iaSearchBtn" onclick="iaToggleSearch()" title="Actu web">🔍</button>'+
-    '<button class="ibtn iswap" onclick="iaSwapMode()" title="Parler">🎤</button>'+
-    '<button class="ibtn isend" id="iaSendBtn" onclick="iaSend()">➤</button>'+
+    '<button class="ibtn isearch'+(iaSearch?' on':'')+'" id="iaSearchBtn" onclick="iaToggleSearch()" title="Inclure l\'actu web">Web</button>'+
+    '<button class="ibtn iswap" onclick="iaSwapMode()" title="Parler à Nova">Vocal</button>'+
+    '<button class="ibtn isend" id="iaSendBtn" onclick="iaSend()">Envoyer</button>'+
   '</div>';
 }
 function iaSwapMode(){ iaInputMode=iaInputMode==='voice'?'text':'voice'; const c=document.querySelector('.iainput'); if(c){ const w=document.createElement('div'); w.innerHTML=iaInputHTML(); c.replaceWith(w.firstChild); } if(iaInputMode==='text'){ const t=document.getElementById('iaInput'); if(t) t.focus(); } else { try{speechSynthesis.cancel();}catch(e){} } }
@@ -1562,7 +1572,7 @@ function iaKey(e){ if(e.key==='Enter' && !e.shiftKey){ e.preventDefault(); iaSen
 function iaChip(el){ iaSubmit(el.textContent); }
 function iaRadar(){ iaSearch=true; const b=document.getElementById('iaSearchBtn'); if(b) b.classList.add('on'); iaSubmit('Radar actu One Piece TCG : dernières sorties/annonces JP, fuites de cartes récentes, et ce que disent les gros influenceurs. Relie à des cartes concernées, cite les sources et étiquette Officiel / Fuite / Rumeur.'); }
 function iaVeille(){ iaSearch=true; const b=document.getElementById('iaSearchBtn'); if(b) b.classList.add('on'); iaSubmit('Veille ciblée sur MES cartes. Dans les données (top_mouvements), prends celles qui ont le plus bougé et explique POURQUOI chacune monte ou baisse : sortie/annonce JP, hype, tournoi, avancée manga/anime. Une carte par fiche (kind news), badge Hausse/Baisse, cite la source et étiquette Officiel/Fuite/Rumeur. Si aucune de mes cartes n\'a encore bougé (le suivi quotidien vient de démarrer), prends plutôt mes 3 cartes possédées les plus fortes et dis, pour chacune, LE catalyseur à surveiller qui pourrait la faire bouger prochainement.'); }
-function iaWelcome(){ const log=iaLogEl(); if(!log) return; const t=document.createElement('div'); t.className='iaturn'; t.innerHTML='<div class="asay">Salut Christopher 👋 Je suis Nova, ton stratège One Piece. Parle-moi ou écris — je connais ta collection, tes prix, l\'univers et l\'actu du marché.</div>'; log.appendChild(t); }
+function iaWelcome(){ const log=iaLogEl(); if(!log) return; const t=document.createElement('div'); t.className='iaturn'; t.innerHTML='<div class="asay">Salut Christopher. Je suis Nova, ton stratège One Piece. Parle-moi ou écris — je connais ta collection, tes prix, l\'univers et l\'actu du marché.</div>'; log.appendChild(t); }
 function iaRenderConv(){ const log=iaLogEl(); if(!log) return; log.innerHTML=''; IACONV.forEach(m=>{ if(m.role==='user') iaAddUser(m.text,true); else iaRenderRich(m.rich||{say:m.text,cards:[]},true); }); log.scrollTop=log.scrollHeight; }
 function iaAddUser(text,noStore){ const log=iaLogEl(); if(!log) return; const t=document.createElement('div'); t.className='iaturn'; const b=document.createElement('div'); b.className='ubub'; b.textContent=text; t.appendChild(b); log.appendChild(t); log.scrollTop=log.scrollHeight; if(!noStore) IACONV.push({role:'user',text:text}); }
 function iaThink(){ const log=iaLogEl(); if(!log) return null; const d=document.createElement('div'); d.className='iaturn'; d.innerHTML='<div class="athink"><span>Nova '+(iaSearch?'scanne l\'actu':'réfléchit')+'</span><span class="tdots"><i></i><i></i><i></i></span></div>'; log.appendChild(d); log.scrollTop=log.scrollHeight; return d; }
@@ -1688,7 +1698,7 @@ function buildCatLangRow(){
   CATLANGS.forEach(([code,label])=>{
     const active = code==="all" ? state.catLangs.length===0 : state.catLangs.includes(code);
     const el=document.createElement('div'); el.className="chip"+(active?" on":"");
-    el.innerHTML=(code==="all"?"":FLAG[code]+" ")+label;
+    el.innerHTML=((code==="all"||code==="autre")?"":FLAG[code]+" ")+label;
     el.onclick=()=>{ toggleCat("catLangs",code); buildCatLangRow(); fetchCatalog(); };
     row.appendChild(el);
   });
@@ -1722,7 +1732,10 @@ async function fetchCatalog(append){
   let url=SB+"/rest/v1/app_catalog_priced?select=card_number,language,name,image_url,img_verify,owned,variant,variant_label,rarity,set_code,set_name,category,origin,printing_id,price_eur,price_source,jp_eur,eu_eur,us_eur&limit="+CATPAGE+"&offset="+(state.catOffset||0)+"&order="+ord;
   // Par défaut (aucun filtre / aucune recherche) on masque les DON, sinon ils monopolisent la 1re page (tri alphabétique). Ils restent accessibles via l'onglet Sets ou une recherche « DON ».
   if(noFilters) url+="&category=neq.DON";
-  if(state.catLangs.length) url+="&language=in.("+state.catLangs.join(",")+")";
+  // Catalogue = Japonais + Anglais uniquement. FR/CN n'existent que dans la collection (volet « Autre »), ajoutés au scan.
+  let cls=state.catLangs.filter(x=>x==="JP"||x==="EN");
+  if(!cls.length) cls=["JP","EN"];
+  url+="&language=in.("+cls.join(",")+")";
   if(state.catCats.length) url+="&category=in.("+state.catCats.join(",")+")";
   if(state.catRarities.length) url+="&rarity=in.("+state.catRarities.join(",")+")";
   if(state.catTypes.length) url+="&origin=in.("+state.catTypes.join(",")+")";
