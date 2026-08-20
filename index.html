@@ -667,7 +667,7 @@ body{-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
 <div class="wrap">
   <div class="hero">
     <div class="topbar">
-      <div class="logo"><div class="mark">OP</div> TCG GLOBAL <span id="buildTag" style="font-size:11px;font-weight:700;margin-left:8px;background:#e11d48;color:#fff;padding:2px 8px;border-radius:10px;letter-spacing:.2px;white-space:nowrap" title="Version en ligne">v10:33</span></div>
+      <div class="logo"><div class="mark">OP</div> TCG GLOBAL <span id="buildTag" style="font-size:11px;font-weight:700;margin-left:8px;background:#e11d48;color:#fff;padding:2px 8px;border-radius:10px;letter-spacing:.2px;white-space:nowrap" title="Version en ligne">v10:34</span></div>
       <div class="grow"></div>
       <div class="mktseg" id="mktSeg" title="Marché de valorisation">
         <button data-k="JP" class="on">🇯🇵 JP</button>
@@ -939,6 +939,17 @@ async function loadMarketVals(){
     while(true){ const r=await fetch(SB+'/rest/v1/app_collection_market?select=item_id,jp_eur,eu_eur,us_eur&limit='+step+'&offset='+from,{headers:{apikey:ANON,Authorization:'Bearer '+ANON}}); const b=await r.json(); if(!Array.isArray(b))break; mm=mm.concat(b); if(b.length<step)break; from+=step; }
     const map={}; mm.forEach(x=>{ map[x.item_id]=x; });
     DATA.forEach(c=>{ const x=map[c.item_id]; if(x){ c._jp=x.jp_eur; c._eu=x.eu_eur; c._us=x.us_eur; } });
+  }catch(e){}
+}
+// Rafraîchit le prix marché (JP/EU/US) d'UN seul item — après un changement de variante, sinon le prix affiché reste celui de l'ancienne variante.
+async function refreshItemMarket(item){
+  try{
+    const r=await fetch(SB+'/rest/v1/app_collection_market?item_id=eq.'+encodeURIComponent(item)+'&select=item_id,jp_eur,eu_eur,us_eur',{headers:{apikey:ANON,Authorization:'Bearer '+ANON}});
+    const b=await r.json();
+    if(Array.isArray(b)&&b[0]){ const x=b[0];
+      if(detailCard&&String(detailCard.item_id)===String(item)){ detailCard._jp=x.jp_eur; detailCard._eu=x.eu_eur; detailCard._us=x.us_eur; }
+      const d=findCard(item); if(d){ d._jp=x.jp_eur; d._eu=x.eu_eur; d._us=x.us_eur; }
+    }
   }catch(e){}
 }
 
@@ -2303,7 +2314,9 @@ async function chooseVariant(pid){
     const rows=await r.json();
     if(!detailCard || detailCard.item_id!==item) return;
     if(Array.isArray(rows)&&rows[0]){ Object.assign(detailCard,rows[0]); const d=findCard(item); if(d) Object.assign(d,rows[0]);
-      const di=document.getElementById("dimg"); if(detailCard.image_url){ di.src=detailCard.image_url; di.style.visibility="visible"; } }
+      const eff=PCIMG[detailCard.printing_id]||detailCard.image_url; detailCard.image_url=eff; if(d) d.image_url=eff;
+      const di=document.getElementById("dimg"); if(eff){ di.src=eff; di.style.visibility="visible"; } else { di.style.visibility="hidden"; } }
+    await refreshItemMarket(item);
     renderDetail(); loadLadder(detailCard); loadPrints(detailCard.card_number); render();
   }catch(e){}
 }
