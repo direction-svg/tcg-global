@@ -667,7 +667,7 @@ body{-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
 <div class="wrap">
   <div class="hero">
     <div class="topbar">
-      <div class="logo"><div class="mark">OP</div> TCG GLOBAL <span id="buildTag" style="font-size:11px;font-weight:700;margin-left:8px;background:#e11d48;color:#fff;padding:2px 8px;border-radius:10px;letter-spacing:.2px;white-space:nowrap" title="Version en ligne">v10:35</span></div>
+      <div class="logo"><div class="mark">OP</div> TCG GLOBAL <span id="buildTag" style="font-size:11px;font-weight:700;margin-left:8px;background:#e11d48;color:#fff;padding:2px 8px;border-radius:10px;letter-spacing:.2px;white-space:nowrap" title="Version en ligne">v10:36</span></div>
       <div class="grow"></div>
       <div class="mktseg" id="mktSeg" title="Marché de valorisation">
         <button data-k="JP" class="on">🇯🇵 JP</button>
@@ -927,6 +927,7 @@ function setMarket(k){
   else if(m==='collection') render();
   else if(m==='products') fetchProducts();
   else if(m==='catalog') fetchCatalog();
+  else if(m==='achats'){ if(Array.isArray(ACHATS)&&ACHATS.length) renderAchats(); else fetchAchats(); }
   else if(m==='ops') renderOps();
   else if(m==='ia'){} else render();
   try{ if(!document.getElementById('overlay').classList.contains('hidden')) renderDetail(); }catch(e){}
@@ -1266,13 +1267,21 @@ function renderAchats(){
   });
   const shown=rows.reduce((s,x)=>s+num(x),0);
   const tile=(k,v,c)=>'<div style="flex:1 1 120px;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:12px 14px"><div style="font-size:10.5px;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);font-weight:800">'+k+'</div><div style="font-size:21px;font-weight:900;letter-spacing:-.4px;margin-top:3px;'+(c||'')+'">'+v+'</div></div>';
-  let h='<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px">'+
-    tile('Total investi',eur0(total),'color:var(--accent)')+
+  // P&L : valeur actuelle de la collection (marché sélectionné) vs investi (all-in, taxes/douane comprises)
+  const curVal=(Array.isArray(DATA)?DATA.reduce((s,c)=>s+val(c)*(c.quantity||1),0):0)+(PROD_VALUE||0);
+  const invested=total; const pnl=curVal-invested; const pct=invested?(pnl/invested*100):0; const pos=pnl>=0;
+  let h='<div style="background:'+(pos?'linear-gradient(135deg,#047857,#10b981)':'linear-gradient(135deg,#b91c1c,#ef4444)')+';color:#fff;border-radius:16px;padding:15px 18px;margin-bottom:12px;box-shadow:0 4px 14px rgba(15,23,42,.12)">'+
+    '<div style="font-size:11px;text-transform:uppercase;letter-spacing:.5px;opacity:.9;font-weight:800">'+(pos?'Plus-value':'Moins-value')+' &middot; marché '+MKT_LABEL[MKT]+'</div>'+
+    '<div style="font-size:29px;font-weight:900;letter-spacing:-.6px;margin:3px 0">'+(pos?'+':'')+eur0(pnl)+' <span style="font-size:16px;opacity:.92;font-weight:800">('+(pos?'+':'')+Math.round(pct)+'%)</span></div>'+
+    '<div style="font-size:12.5px;opacity:.95">Valeur actuelle <b>'+eur0(curVal)+'</b> &nbsp;·&nbsp; Investi all-in <b>'+eur0(invested)+'</b></div>'+
+  '</div>';
+  h+='<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px">'+
+    tile('Investi (all-in)',eur0(total),'color:var(--accent)')+
     tile('Cartes',eur0(cartes))+
     tile('Scellés',eur0(scelles))+
     tile('Solde initial',eur0(base),'color:var(--muted)')+
   '</div>';
-  h+='<div style="font-size:11.5px;color:var(--muted);margin:0 2px 8px">Le « solde initial » = ta collection existante non détaillée ('+eur0(base)+'). Le reste = achats suivis ligne par ligne.</div>';
+  h+='<div style="font-size:11.5px;color:var(--muted);margin:0 2px 8px">Montants = coût <b>all-in</b> (prix + TVA import + douane pour les imports hors UE ; prix réel pour les achats UE). « Solde initial » = ta collection existante non détaillée ('+eur0(base)+').</div>';
   // tri
   h+='<div class="chiprow" style="margin-bottom:6px">'+ACHAT_SORTS.map(([v,l])=>'<div class="chip'+(sort===v?' on':'')+'" onclick="setAchatSort(\''+v+'\')">'+l+'</div>').join('')+'</div>';
   // vendeurs
