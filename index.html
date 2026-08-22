@@ -664,7 +664,7 @@ body{-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
 <div class="wrap">
   <div class="hero">
     <div class="topbar">
-      <div class="logo"><div class="mark">OP</div> TCG GLOBAL <span id="buildTag" style="font-size:11px;font-weight:700;margin-left:8px;background:#e11d48;color:#fff;padding:2px 8px;border-radius:10px;letter-spacing:.2px;white-space:nowrap" title="Version en ligne">v10:48</span></div>
+      <div class="logo"><div class="mark">OP</div> TCG GLOBAL <span id="buildTag" style="font-size:11px;font-weight:700;margin-left:8px;background:#e11d48;color:#fff;padding:2px 8px;border-radius:10px;letter-spacing:.2px;white-space:nowrap" title="Version en ligne">v10:49</span></div>
       <div class="grow"></div>
       <div class="mktseg" id="mktSeg" title="Marché de valorisation">
         <button data-k="JP" class="on">🇯🇵 JP</button>
@@ -1377,7 +1377,7 @@ async function fetchGrading(){
   catch(e){ stage.innerHTML='<div class="empty">Erreur de chargement de la gradation.</div>'; }
 }
 function grNameHTML(x){ const dt=descTags(x)+provNice(x); return '<div style="font-weight:800;font-size:13.5px">'+esc(x.name||'')+'</div><div style="font-size:11px;color:var(--muted)">'+esc(x.number||'')+(x.variant_label?' · '+esc(x.variant_label):'')+' · '+esc(x.language||'')+'</div>'+(dt?'<div style="margin-top:3px">'+dt+'</div>':''); }
-function grThumb(x){ const u=x.image_url; return '<div style="width:52px;height:73px;border-radius:8px;flex:none;background:var(--chip) center/cover no-repeat'+(u?';background-image:url('+JSON.stringify(u)+')':'')+'"></div>'; }
+function grThumb(x){ const u=x.image_url; const box='width:52px;height:73px;border-radius:8px;flex:none;background:var(--chip);object-fit:cover'; return u? '<img src="'+esc(u)+'" loading="lazy" style="'+box+'" onerror="this.style.visibility=\'hidden\'">' : '<div style="'+box+'"></div>'; }
 function grBar(lbl,g){ const v=g==null?0:Number(g); const c=v>=9.5?'#059669':v>=9?'#65a30d':v>=8?'#d97706':'#dc2626'; const pct=Math.max(0,Math.min(100,v*10)); return '<div style="display:flex;align-items:center;gap:8px;margin:3px 0"><span style="width:70px;font-size:11px;color:var(--muted)">'+lbl+'</span><div style="flex:1;height:7px;background:var(--chip);border-radius:4px;overflow:hidden"><i style="display:block;height:100%;width:'+pct+'%;background:'+c+'"></i></div><b style="width:30px;text-align:right;font-size:12px">'+(g==null?'—':g)+'</b></div>'; }
 function grPgHTML(r,id){
   const p10=Math.round((+r.psa10_probability||0)*100);
