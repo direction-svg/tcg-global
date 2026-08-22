@@ -667,7 +667,7 @@ body{-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
 <div class="wrap">
   <div class="hero">
     <div class="topbar">
-      <div class="logo"><div class="mark">OP</div> TCG GLOBAL <span id="buildTag" style="font-size:11px;font-weight:700;margin-left:8px;background:#e11d48;color:#fff;padding:2px 8px;border-radius:10px;letter-spacing:.2px;white-space:nowrap" title="Version en ligne">v10:38</span></div>
+      <div class="logo"><div class="mark">OP</div> TCG GLOBAL <span id="buildTag" style="font-size:11px;font-weight:700;margin-left:8px;background:#e11d48;color:#fff;padding:2px 8px;border-radius:10px;letter-spacing:.2px;white-space:nowrap" title="Version en ligne">v10:39</span></div>
       <div class="grow"></div>
       <div class="mktseg" id="mktSeg" title="Marché de valorisation">
         <button data-k="JP" class="on">🇯🇵 JP</button>
@@ -1286,11 +1286,11 @@ function renderAchats(){
     tile('Scellés',eur0(scelles))+
     tile('Solde initial',eur0(base),'color:var(--muted)')+
   '</div>';
-  h+='<div style="font-size:11.5px;color:var(--muted);margin:0 2px 8px">Montants = coût <b>all-in</b> (prix + TVA import + douane hors UE ; prix réel en UE). « Solde initial » = ta collection existante non détaillée ('+eur0(base)+'). Filtre par mois ou par vendeur, et coche « Livré » quand le colis est arrivé.</div>';
+  h+='<div style="font-size:11.5px;color:var(--muted);margin:0 2px 8px">Montants = coût <b>all-in</b> (prix + TVA import + douane hors UE ; prix réel en UE). « Solde initial » = ta collection existante non détaillée ('+eur0(base)+'). Ouvre <b>Filtres &amp; tri</b> pour classer par prix, date ou vendeur, et coche « Réceptionné » quand le colis est arrivé.</div>';
   // données achats (hors baseline)
   const list=ACHATS.filter(x=>x.category!=='baseline');
-  const sc={}; list.forEach(x=>{ if(x.seller) sc[x.seller]=(sc[x.seller]||0)+1; });
-  const sellers=Object.keys(sc).sort((a,b)=>sc[b]-sc[a]);
+  const sc={}, stot={}; list.forEach(x=>{ if(x.seller){ sc[x.seller]=(sc[x.seller]||0)+1; stot[x.seller]=(stot[x.seller]||0)+num(x); } });
+  const sellers=Object.keys(sc).sort((a,b)=>(stot[b]-stot[a])||(sc[b]-sc[a]));
   const selSeller=state.achatSeller||'all';
   const selMonth=state.achatMonth||'all';
   const sort=state.achatSort||'date_desc';
@@ -1305,19 +1305,31 @@ function renderAchats(){
     return (b.purchase_date||'').localeCompare(a.purchase_date||'');
   });
   const shown=rows.reduce((s,x)=>s+num(x),0);
-  // tri
-  h+='<div class="chiprow" style="margin-bottom:6px">'+ACHAT_SORTS.map(([v,l])=>'<div class="chip'+(sort===v?' on':'')+'" onclick="setAchatSort(\''+v+'\')">'+l+'</div>').join('')+'</div>';
-  // mois
-  h+='<div class="chiprow" style="margin-bottom:6px"><div class="chip'+(selMonth==='all'?' on':'')+'" onclick="setAchatMonth(\'all\')">Tous mois</div>'+months.map(m=>'<div class="chip'+(selMonth===m?' on':'')+'" onclick="setAchatMonth(\''+m+'\')">'+achatMonthLabel(m)+'</div>').join('')+'</div>';
-  // vendeurs
-  h+='<div class="chiprow" style="margin-bottom:10px"><div class="chip'+(selSeller==='all'?' on':'')+'" onclick="setAchatSeller(\'all\')">Tous ('+list.length+')</div>'+
-    sellers.map(s=>'<div class="chip'+(selSeller===s?' on':'')+'" onclick="setAchatSeller('+JSON.stringify(s).replace(/"/g,'&quot;')+')">'+esc(s)+' ('+sc[s]+')</div>').join('')+'</div>';
+  const grandTot=list.reduce((s,x)=>s+num(x),0);
+  // résumé des filtres actifs (affiché replié)
+  const sortLbl=(ACHAT_SORTS.find(s=>s[0]===sort)||['','Date ↓'])[1];
+  const actBits=[]; if(selMonth!=='all') actBits.push(achatMonthLabel(selMonth)); if(selSeller!=='all') actBits.push(selSeller);
+  const filtRight=esc((actBits.length?actBits.join(' · '):'Tout')+' · '+sortLbl);
+  const lbl=t=>'<div style="font-size:10.5px;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);font-weight:800;margin:0 0 5px 2px">'+t+'</div>';
+  // panneau filtres repliable
+  h+='<details class="pxdet"'+(state.achatFiltOpen?' open':'')+' ontoggle="state.achatFiltOpen=this.open" style="margin-top:0;margin-bottom:10px">'+
+    '<summary>Filtres &amp; tri<span style="text-transform:none;letter-spacing:0;font-weight:700;color:var(--muted);font-size:11px;margin-left:auto;margin-right:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:60%">'+filtRight+'</span></summary>'+
+    '<div class="pxbody" style="padding-top:12px">'+
+      lbl('Trier')+
+      '<div class="chiprow" style="margin-bottom:12px">'+ACHAT_SORTS.map(([v,l])=>'<div class="chip'+(sort===v?' on':'')+'" onclick="setAchatSort(\''+v+'\')">'+l+'</div>').join('')+'</div>'+
+      lbl('Mois')+
+      '<div class="chiprow" style="margin-bottom:12px"><div class="chip'+(selMonth==='all'?' on':'')+'" onclick="setAchatMonth(\'all\')">Tous mois</div>'+months.map(m=>'<div class="chip'+(selMonth===m?' on':'')+'" onclick="setAchatMonth(\''+m+'\')">'+achatMonthLabel(m)+'</div>').join('')+'</div>'+
+      lbl('Vendeur (nombre · total investi)')+
+      '<div class="chiprow" style="margin-bottom:2px"><div class="chip'+(selSeller==='all'?' on':'')+'" onclick="setAchatSeller(\'all\')">Tous <span style="opacity:.7">'+list.length+' · '+eur0(grandTot)+'</span></div>'+
+        sellers.map(s=>'<div class="chip'+(selSeller===s?' on':'')+'" onclick="setAchatSeller('+JSON.stringify(s).replace(/"/g,'&quot;')+')">'+esc(s)+' <span style="opacity:.7">'+sc[s]+' · '+eur0(stot[s])+'</span></div>').join('')+'</div>'+
+    '</div>'+
+  '</details>';
   // liste
   h+='<div style="display:flex;flex-direction:column;gap:7px">'+rows.map(x=>{
     const gr=x.grade?'<span style="font-size:10px;font-weight:800;background:#fef9c3;color:#854d0e;padding:1px 6px;border-radius:6px;margin-left:5px">'+esc(x.grade)+'</span>':'';
     const qty=(x.quantity>1)?'<span style="font-size:10px;font-weight:800;background:#eef2ff;color:#3730a3;padding:1px 6px;border-radius:6px;margin-left:5px">×'+x.quantity+'</span>':'';
     const recu=isRecu(x.received);
-    const rec='<label onclick="event.stopPropagation();toggleReceived(\''+esc(x.id)+'\')" style="display:inline-flex;align-items:center;gap:5px;cursor:pointer;font-weight:800;color:'+(recu?'#059669':'#d97706')+'"><input type="checkbox" '+(recu?'checked':'')+' readonly style="width:15px;height:15px;accent-color:#059669;pointer-events:none;margin:0">'+(recu?'Livré':'À livrer')+'</label>';
+    const rec='<label onclick="event.stopPropagation();toggleReceived(\''+esc(x.id)+'\')" style="display:inline-flex;align-items:center;gap:5px;cursor:pointer;font-weight:800;color:'+(recu?'#059669':'#d97706')+'"><input type="checkbox" '+(recu?'checked':'')+' readonly style="width:15px;height:15px;accent-color:#059669;pointer-events:none;margin:0">'+(recu?'Réceptionné':'À réceptionner')+'</label>';
     const typ=x.ptype?esc(x.ptype):'';
     return '<div style="display:flex;gap:10px;align-items:flex-start;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px 12px">'+
       '<div style="flex:1;min-width:0">'+
