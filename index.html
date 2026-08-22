@@ -316,9 +316,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Ar
 .srow .tick{color:var(--accent);font-weight:900;font-size:18px;visibility:hidden}
 .srow.on .tick{visibility:visible}
 .srow.on{color:var(--accent)}
-footer{position:fixed;bottom:0;left:0;right:0;background:var(--panel);border-top:1px solid var(--line);display:flex;justify-content:space-around;padding:8px 0 calc(8px + env(safe-area-inset-bottom));z-index:20}
-footer .fb{color:var(--muted);font-size:11px;font-weight:700;display:flex;flex-direction:column;align-items:center;gap:2px}
-footer .fb b{font-size:14px;color:var(--ink)}
 
 /* ============ Refonte épurée + desktop ============ */
 body{-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
@@ -667,7 +664,7 @@ body{-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
 <div class="wrap">
   <div class="hero">
     <div class="topbar">
-      <div class="logo"><div class="mark">OP</div> TCG GLOBAL <span id="buildTag" style="font-size:11px;font-weight:700;margin-left:8px;background:#e11d48;color:#fff;padding:2px 8px;border-radius:10px;letter-spacing:.2px;white-space:nowrap" title="Version en ligne">v10:40</span></div>
+      <div class="logo"><div class="mark">OP</div> TCG GLOBAL <span id="buildTag" style="font-size:11px;font-weight:700;margin-left:8px;background:#e11d48;color:#fff;padding:2px 8px;border-radius:10px;letter-spacing:.2px;white-space:nowrap" title="Version en ligne">v10:43</span></div>
       <div class="grow"></div>
       <div class="mktseg" id="mktSeg" title="Marché de valorisation">
         <button data-k="JP" class="on">🇯🇵 JP</button>
@@ -688,6 +685,7 @@ body{-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
     <button data-m="sets">Sets</button>
     <button data-m="products">Produits</button>
     <button data-m="achats">Achats</button>
+    <button data-m="gradation">Gradation</button>
     <button data-m="live">Live</button>
   </nav>
 
@@ -705,7 +703,6 @@ body{-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
   <div id="catFilters" class="hidden"></div>
   <div class="chiprow" id="valFilterRow" style="display:none"></div>
   <div class="count" id="countLine"></div>
-  <div id="briefing"></div>
   <div id="stage"><div class="loading">Chargement de ta collection&hellip;</div></div>
 </div>
 
@@ -820,12 +817,6 @@ body{-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
 
 <button id="scanFab" class="scanfab hidden" aria-label="Scanner une carte">&#128247;</button>
 
-<footer>
-  <div class="fb"><b id="fTotal">&mdash;</b>Valeur</div>
-  <div class="fb"><b id="fCount">&mdash;</b>Cartes</div>
-  <div class="fb"><b id="fJP">&mdash;</b>JP</div>
-  <div class="fb"><b id="fGraded">&mdash;</b>Grad&eacute;es</div>
-</footer>
 
 <script>
 const SB="https://bvnjkiivuntbjbmltpkl.supabase.co";
@@ -853,6 +844,13 @@ const CAT_ORDER=["LEADER","CHARACTER","EVENT","STAGE","DON"];
 const SORTS=[["val_desc","Valeur ↓ (décroissant)"],["val_asc","Valeur ↑ (croissant)"],["name","Nom (A→Z)"],["num","Numéro"],["qty","Quantité"]];
 const DEF={q:"",lang:"all",color:"all",type:"all",cat:"all",rarity:"all",character:"all",grade:"all",minVal:0,imgf:"all",sort:"val_desc",view:"grid",mode:"accueil",catLang:"all",catQuery:"",catLangs:[],catColors:[],catCats:[],catRarities:[],catTypes:[],catSort:"price_desc",setLang:"JP",prodLang:"JP"};
 let PROD_VALUE=0;
+// Barre du haut : portefeuille détaillé (total = cartes + scellés), même valeur live que l'accueil
+function portfolioMini(){
+  const cv=DATA.reduce((s,c)=>s+val(c)*(c.quantity||1),0);
+  const pv=PROD_VALUE||0;
+  const q=DATA.reduce((s,c)=>s+(c.quantity||1),0);
+  return 'Portefeuille ('+MKT_LABEL[MKT]+') : <b>'+eur0(cv+pv)+'</b> <span class="dt">&middot; cartes '+eur0(cv)+' &middot; scellés '+eur0(pv)+' &middot; '+q+' cartes</span>';
+}
 const CATLANGS=[["all","Toutes"],["JP","Japonais"],["EN","Anglais"]];
 const CATCATS=[["all","Toutes catégories"],["LEADER","Leader"],["CHARACTER","Personnage"],["EVENT","Event"],["STAGE","Stage"],["DON","DON!!"]];
 const CATRARS=[["all","Toutes raretés"],["L","Leader"],["C","Common"],["UC","Uncommon"],["R","Rare"],["SR","Super Rare"],["SEC","Secret Rare"],["TR","Treasure Rare"],["SP","Special"],["P","Promo"]];
@@ -928,12 +926,13 @@ function setMarket(k){
   else if(m==='products') fetchProducts();
   else if(m==='catalog') fetchCatalog();
   else if(m==='achats'){ if(Array.isArray(ACHATS)&&ACHATS.length) renderAchats(); else fetchAchats(); }
+  else if(m==='gradation'){ if(Array.isArray(GRADING)) renderGrading(); else fetchGrading(); }
   else if(m==='ops') renderOps();
   else if(m==='ia'){} else render();
   try{ if(!document.getElementById('overlay').classList.contains('hidden')) renderDetail(); }catch(e){}
   // rafraîchit la mini-ligne portefeuille
   const mb=document.getElementById('miniBar');
-  if(mb && m!=='accueil'){ const cv=DATA.reduce((s,c)=>s+val(c)*(c.quantity||1),0)+(PROD_VALUE||0); const q=DATA.reduce((s,c)=>s+(c.quantity||1),0); mb.innerHTML='Portefeuille ('+MKT_LABEL[MKT]+') : <b>'+eur0(cv)+'</b> &middot; '+q+' cartes'; }
+  if(mb && m!=='accueil'){ mb.innerHTML=portfolioMini(); }
 }
 async function loadMarketVals(){
   try{
@@ -985,11 +984,14 @@ async function loadBriefing(){
   const hi=(h<18?'Bonjour':'Bonsoir')+' '+USER_NAME;
   let dateStr=''; try{ dateStr=now.toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'}); }catch(e){}
   let valLine='';
-  if(snaps.length){
-    const cur=+snaps[0].total_eur; const prev=snaps.length>1?+snaps[1].total_eur:null;
+  if(DATALOADED && Array.isArray(DATA) && DATA.length){
+    // valeur live (identique à l'accueil) — évite l'écart avec le snapshot quotidien périmé
+    const cardsVal=DATA.reduce((s,c)=>s+val(c)*(c.quantity||1),0);
     let d='';
-    if(prev!=null){ const diff=cur-prev; const pct=prev?(diff/prev*100):0; const cls=diff>=0?'up':'down'; d=' <span class="bd '+cls+'">'+(diff>=0?'+':'')+eur(diff)+' ('+(diff>=0?'+':'')+pct.toFixed(1).replace('.',',')+' %)</span> <span class="dt">depuis le dernier relevé</span>'; }
-    valLine='<div class="bval">Ta collection vaut <b>'+eur(cur)+'</b>'+d+'</div>';
+    if(snaps.length){ const prev=+snaps[0].total_eur; if(prev){ const diff=cardsVal-prev; const pct=prev?(diff/prev*100):0; const cls=diff>=0?'up':'down'; d=' <span class="bd '+cls+'">'+(diff>=0?'+':'')+eur(diff)+' ('+(diff>=0?'+':'')+pct.toFixed(1).replace('.',',')+' %)</span> <span class="dt">depuis le dernier relevé</span>'; } }
+    valLine='<div class="bval">Ta collection vaut <b>'+eur(cardsVal)+'</b> <span class="dt">· cartes · marché '+MKT+'</span>'+d+'</div>';
+  } else if(snaps.length){
+    valLine='<div class="bval">Ta collection vaut <b>'+eur(+snaps[0].total_eur)+'</b> <span class="dt">· dernier relevé</span></div>';
   }
   box.innerHTML='<div class="brief"><div class="bhi">'+hi+' <span class="dt" style="text-transform:capitalize">· '+dateStr+'</span></div>'+valLine+'</div>';
 }
@@ -1115,11 +1117,7 @@ function render(){
   const total=cardsTotal+(PROD_VALUE||0);
   const shownTotal=a.reduce((s,c)=>s+val(c)*(c.quantity||1),0);
   const jp=DATA.filter(c=>c.language==="JP").length, gr=DATA.filter(c=>c.is_graded).length;
-  const mb=document.getElementById("miniBar"); if(mb) mb.innerHTML='Portefeuille : <b>'+eur0(total)+'</b> &middot; '+DATA.reduce((s,c)=>s+(c.quantity||1),0)+' cartes';
-  document.getElementById("fTotal").textContent=eur0(total);
-  document.getElementById("fCount").textContent=DATA.length;
-  document.getElementById("fJP").textContent=jp;
-  document.getElementById("fGraded").textContent=gr;
+  const mb=document.getElementById("miniBar"); if(mb) mb.innerHTML=portfolioMini();
   document.getElementById("countLine").textContent=a.length+" carte"+(a.length>1?"s":"")+" · "+eur0(shownTotal);
   if(!a.length){stage.innerHTML='<div class="empty">Aucune carte pour ce filtre.</div>';return;}
   if(state.view==="grid"){
@@ -1159,21 +1157,21 @@ document.getElementById("q").addEventListener("input",e=>{
 function setMode(m){
   state.mode=m;
   document.querySelectorAll('#modeSeg button').forEach(b=>b.classList.toggle('on',b.dataset.m===m));
-  const home=m==="accueil", cat=m==="catalog", ops=m==="ops", sets=m==="sets", prods=m==="products", live=m==="live", ia=m==="ia", achats=m==="achats";
+  const home=m==="accueil", cat=m==="catalog", ops=m==="ops", sets=m==="sets", prods=m==="products", live=m==="live", ia=m==="ia", achats=m==="achats", grad=m==="gradation";
   if(!live) stopLive();
   document.getElementById('catLangRow').classList.toggle('hidden',!cat);
   document.getElementById('catFilters').classList.add('hidden');
-  document.getElementById('viewBtn').classList.toggle('hidden',home||cat||ops||sets||prods||live||ia||achats);
-  document.getElementById('filterBtn').classList.toggle('hidden',home||ops||sets||prods||live||ia||achats);
-  document.getElementById('sortBtn').classList.toggle('hidden',home||ops||sets||prods||live||ia||achats);
-  document.querySelector('.search').classList.toggle('hidden',home||ops||sets||prods||live||ia||achats);
+  document.getElementById('viewBtn').classList.toggle('hidden',home||cat||ops||sets||prods||live||ia||achats||grad);
+  document.getElementById('filterBtn').classList.toggle('hidden',home||ops||sets||prods||live||ia||achats||grad);
+  document.getElementById('sortBtn').classList.toggle('hidden',home||ops||sets||prods||live||ia||achats||grad);
+  document.querySelector('.search').classList.toggle('hidden',home||ops||sets||prods||live||ia||achats||grad);
   document.getElementById('scanFab').classList.toggle('hidden',!(m==='collection'||m==='catalog'));
   const vfr=document.getElementById('valFilterRow'); if(vfr){ if(m==='collection'){ vfr.style.display='flex'; buildValRow(); } else { vfr.style.display='none'; } }
   document.getElementById('q').placeholder=cat?"Chercher une carte (nom ou numéro), toutes langues…":"Rechercher (nom ou numéro)…";
   const brief=document.getElementById('briefing'); if(brief){ brief.innerHTML=''; }
   // mini portfolio line: shown everywhere except the Accueil dashboard
   const mb=document.getElementById('miniBar');
-  if(mb){ if(home){ mb.style.display='none'; } else { mb.style.display='block'; const cv=DATA.reduce((s,c)=>s+val(c)*(c.quantity||1),0)+(PROD_VALUE||0); const q=DATA.reduce((s,c)=>s+(c.quantity||1),0); mb.innerHTML='Portefeuille ('+MKT_LABEL[MKT]+') : <b>'+eur0(cv)+'</b> &middot; '+q+' cartes'; } }
+  if(mb){ if(home){ mb.style.display='none'; } else { mb.style.display='block'; mb.innerHTML=portfolioMini(); } }
   if(home){ document.getElementById('countLine').textContent=''; renderHome(); }
   else if(ia){ document.getElementById('countLine').textContent=''; renderIA(); }
   else if(live){ document.getElementById('countLine').textContent=''; renderLive(); }
@@ -1182,6 +1180,7 @@ function setMode(m){
   else if(sets){ document.getElementById('countLine').textContent=''; fetchSets(); }
   else if(prods){ document.getElementById('countLine').textContent=''; fetchProducts(); }
   else if(achats){ document.getElementById('countLine').textContent=''; fetchAchats(); }
+  else if(grad){ document.getElementById('countLine').textContent=''; fetchGrading(); }
   else { syncBadge(); document.getElementById('countLine').textContent=''; render(); loadBriefing(); }
 }
 const SET_NAMES={OP01:"Romance Dawn",OP02:"Paramount War",OP03:"Pillars of Strength",OP04:"Kingdoms of Intrigue",OP05:"Awakening of the New Era",OP06:"Wings of the Captain",OP07:"500 Years in the Future",OP08:"Two Legends",OP09:"Emperors in the New World",OP10:"Royal Blood",OP11:"A Fist of Divine Speed",OP12:"Legacy of the Master",OP13:"Carrying On His Will",OP14:"The Azure Sea's Seven",OP15:"Adventure on KAMI's Island",OP16:"The Time of Battle",EB01:"Memorial Collection",EB02:"Anime 25th Collection",EB03:"Heroines Edition",EB04:"Egghead Crisis",PRB01:"Premium Booster -The Best-",PRB02:"One Piece The Best Vol.2",ST01:"Straw Hat Crew",ST02:"Worst Generation",ST03:"The Seven Warlords",ST04:"Animal Kingdom Pirates",ST32:"Green Roronoa Zoro",ST33:"Blue Kuzan",ST34:"Purple Charlotte Katakuri",ST35:"Red/Black Sabo",ST36:"Yellow Eustass Kid",PROMO:"Promos (toutes)",DON:"DON!! Cards"};
@@ -1342,6 +1341,124 @@ function renderAchats(){
   }).join('')+'</div>';
   stage.innerHTML=h;
   document.getElementById('countLine').textContent=rows.length+' achat'+(rows.length>1?'s':'')+' · '+eur0(shown)+(selSeller!=='all'?(' ('+selSeller+')'):'');
+}
+// ---------- Gradation ----------
+let GRADING=null; const GR_IMGS={}, GR_PG={};
+const GRADE_FEE=25; // frais estimés (gradation + port) par carte, EUR — ajustable
+const GR_STLBL={to_submit:'À envoyer',submitted:'En cours',returned:'Revenue'};
+function grRaw(x){ const f=MKT.toLowerCase(); const v=x['raw_'+f]; return v!=null?Number(v):(x.mv_eur!=null?Number(x.mv_eur):0); }
+function grCote(x){ if(MKT==='US') return x.graded_us!=null?Number(x.graded_us):null; return x.graded_jp!=null?Number(x.graded_jp):null; }
+function grCoteLbl(x){ return MKT==='US'?(x.graded_us_label||'gradé'):(x.graded_jp_label||'gradé'); }
+async function fetchGrading(){
+  const stage=document.getElementById('stage'); stage.className=''; stage.innerHTML='<div class="loading">Chargement de la gradation…</div>';
+  try{ const r=await fetch(SB+'/rest/v1/app_grading?select=*&limit=3000',{headers:{apikey:ANON,Authorization:'Bearer '+ANON}}); let rows=await r.json(); GRADING=Array.isArray(rows)?rows:[]; if(state.mode!=='gradation')return; renderGrading(); }
+  catch(e){ stage.innerHTML='<div class="empty">Erreur de chargement de la gradation.</div>'; }
+}
+function grNameHTML(x){ const dt=descTags(x)+provNice(x); return '<div style="font-weight:800;font-size:13.5px">'+esc(x.name||'')+'</div><div style="font-size:11px;color:var(--muted)">'+esc(x.number||'')+(x.variant_label?' · '+esc(x.variant_label):'')+' · '+esc(x.language||'')+'</div>'+(dt?'<div style="margin-top:3px">'+dt+'</div>':''); }
+function grThumb(x){ const u=x.image_url; return '<div style="width:52px;height:73px;border-radius:8px;flex:none;background:var(--chip) center/cover no-repeat'+(u?';background-image:url('+JSON.stringify(u)+')':'')+'"></div>'; }
+function grBar(lbl,g){ const v=g==null?0:Number(g); const c=v>=9.5?'#059669':v>=9?'#65a30d':v>=8?'#d97706':'#dc2626'; const pct=Math.max(0,Math.min(100,v*10)); return '<div style="display:flex;align-items:center;gap:8px;margin:3px 0"><span style="width:70px;font-size:11px;color:var(--muted)">'+lbl+'</span><div style="flex:1;height:7px;background:var(--chip);border-radius:4px;overflow:hidden"><i style="display:block;height:100%;width:'+pct+'%;background:'+c+'"></i></div><b style="width:30px;text-align:right;font-size:12px">'+(g==null?'—':g)+'</b></div>'; }
+function grPgHTML(r,id){
+  const p10=Math.round((+r.psa10_probability||0)*100);
+  const pc=p10>=70?'#059669':p10>=40?'#d97706':'#dc2626';
+  const c=r.centering||{};
+  let h='<div style="margin-top:8px;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:var(--panel)">';
+  h+='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><b style="font-size:13px">Verdict IA</b><span style="font-size:12px;color:var(--muted)">estimation PSA <b style="color:var(--ink)">'+(r.psa_estimate!=null?r.psa_estimate:'?')+'</b> · conf. '+Math.round((+r.confidence||0)*100)+'%</span></div>';
+  h+='<div style="font-size:12px;margin-bottom:8px">'+esc(r.verdict||'')+'</div>';
+  h+='<div style="display:flex;gap:6px;margin-bottom:8px"><span style="flex:1;text-align:center;background:'+pc+';color:#fff;font-weight:800;border-radius:8px;padding:5px;font-size:12px">PSA 10 : '+p10+'%</span><span style="flex:1;text-align:center;background:var(--chip);color:var(--ink);font-weight:800;border-radius:8px;padding:5px;font-size:12px">BGS ≈ '+((r.bgs&&r.bgs.estimate!=null)?r.bgs.estimate:'?')+' · BL '+Math.round((+r.black_label_probability||0)*100)+'%</span></div>';
+  h+=grBar('Centrage',(c.grade))+grBar('Coins',(r.corners||{}).grade)+grBar('Bords',(r.edges||{}).grade)+grBar('Surface',(r.surface||{}).grade);
+  if(c.front_lr) h+='<div style="font-size:11px;color:var(--muted);margin-top:4px">Centrage recto '+esc(c.front_lr)+' / '+esc(c.front_tb||'')+(c.back_lr?(' · verso '+esc(c.back_lr)+' / '+esc(c.back_tb||'')):'')+'</div>';
+  if(Array.isArray(r.red_flags)&&r.red_flags.length) h+='<div style="font-size:11px;color:#b45309;margin-top:4px">⚠️ '+r.red_flags.map(esc).join(' · ')+'</div>';
+  if(r.image_quality&&r.image_quality!=='good') h+='<div style="font-size:11px;color:#dc2626;margin-top:4px">Qualité photo : '+esc(r.image_quality)+' — refais une photo bien à plat pour un verdict fiable.</div>';
+  h+='<button onclick="grSavePg(\''+id+'\')" style="margin-top:8px;width:100%;border:0;background:var(--accent);color:#fff;font-weight:800;padding:9px;border-radius:10px;cursor:pointer">Valider ce pré-grade &amp; mettre en file</button>';
+  h+='</div>';
+  return h;
+}
+function grStore(id,side,inp){ const f=inp.files&&inp.files[0]; if(!f)return; const rd=new FileReader(); rd.onload=()=>{ GR_IMGS[id]=GR_IMGS[id]||{}; GR_IMGS[id][side]=rd.result; const el=document.getElementById('lbl_'+side+'_'+id); if(el){ el.textContent=(side==='front'?'Recto ✓':'Verso ✓'); el.style.color='#059669'; } }; rd.readAsDataURL(f); }
+async function grAnalyze(id){
+  const imgs=GR_IMGS[id]||{}; const box=document.getElementById('pgres_'+id); if(!box)return;
+  if(!imgs.front){ box.innerHTML='<span style="color:#dc2626;font-size:12px">Ajoute au moins la photo recto.</span>'; return; }
+  box.innerHTML='<div style="font-size:12px;color:var(--muted);padding:8px 0">🔍 Analyse IA en cours…</div>';
+  try{
+    const r=await fetch(SB+'/functions/v1/card-pregrade',{method:'POST',headers:{'Content-Type':'application/json',apikey:ANON,Authorization:'Bearer '+ANON},body:JSON.stringify({front_b64:imgs.front,back_b64:imgs.back||null})});
+    const j=await r.json(); const res=j&&j.result;
+    if(!res){ box.innerHTML='<span style="color:#dc2626;font-size:12px">Analyse indisponible — réessaie avec une photo plus nette, bien à plat.</span>'; return; }
+    GR_PG[id]=res; box.innerHTML=grPgHTML(res,id);
+  }catch(e){ box.innerHTML='<span style="color:#dc2626;font-size:12px">Erreur d\'analyse.</span>'; }
+}
+async function grSavePg(id){ const res=GR_PG[id]; if(res){ try{ await fetch(SB+'/rest/v1/rpc/gr_save_pregrade',{method:'POST',headers:{apikey:ANON,Authorization:'Bearer '+ANON,'Content-Type':'application/json'},body:JSON.stringify({p_id:id,p_json:res})}); }catch(e){} } await grQueue(id,(res&&res.psa10_probability>=0.5)?'PSA':'PSA',true); }
+function grPgToggle(id){ const el=document.getElementById('pg_'+id); if(el) el.classList.toggle('hidden'); }
+async function grQueue(id,company,silent){ try{ await fetch(SB+'/rest/v1/rpc/gr_set_status',{method:'POST',headers:{apikey:ANON,Authorization:'Bearer '+ANON,'Content-Type':'application/json'},body:JSON.stringify({p_id:id,p_status:'to_submit',p_company:company||'PSA',p_target:10})}); }catch(e){} fetchGrading(); }
+async function grSetStatus(id,st){ try{ await fetch(SB+'/rest/v1/rpc/gr_set_status',{method:'POST',headers:{apikey:ANON,Authorization:'Bearer '+ANON,'Content-Type':'application/json'},body:JSON.stringify({p_id:id,p_status:st})}); }catch(e){} fetchGrading(); }
+async function grRemove(id){ try{ await fetch(SB+'/rest/v1/rpc/gr_set_status',{method:'POST',headers:{apikey:ANON,Authorization:'Bearer '+ANON,'Content-Type':'application/json'},body:JSON.stringify({p_id:id,p_status:null})}); }catch(e){} fetchGrading(); }
+function grApplyToggle(id){ const el=document.getElementById('apply_'+id); if(el) el.classList.toggle('hidden'); }
+async function grApplySubmit(id){
+  const co=document.getElementById('ac_'+id).value; const gv=parseFloat(document.getElementById('ag_'+id).value); const cert=document.getElementById('acert_'+id).value.trim();
+  if(!gv){ const m=document.getElementById('amsg_'+id); if(m)m.textContent='Renseigne la note obtenue.'; return; }
+  let sub=null; if(co==='BGS'){ const g=id2=>{ const e=document.getElementById(id2+'_'+id); return e&&e.value?parseFloat(e.value):null; }; sub={centering:g('bce'),corners:g('bco'),edges:g('bed'),surface:g('bsu')}; }
+  try{ await fetch(SB+'/rest/v1/rpc/gr_apply_grade',{method:'POST',headers:{apikey:ANON,Authorization:'Bearer '+ANON,'Content-Type':'application/json'},body:JSON.stringify({p_id:id,p_company:co,p_grade:gv,p_cert:cert||null,p_sub:sub})}); }catch(e){}
+  fetchGrading();
+}
+function grPipeCard(x){
+  const st=x.grading_status, co=x.grade_target_company||'PSA';
+  let h='<div style="background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin-bottom:8px">';
+  h+='<div style="display:flex;gap:10px;align-items:flex-start">'+grThumb(x)+'<div style="flex:1;min-width:0">'+grNameHTML(x)+
+     '<div style="margin-top:5px;display:flex;gap:6px;flex-wrap:wrap;align-items:center"><span style="font-size:10px;font-weight:800;background:#eef2ff;color:#3730a3;padding:2px 7px;border-radius:6px">'+(GR_STLBL[st]||st)+'</span><span style="font-size:10px;font-weight:800;background:var(--chip);color:var(--muted);padding:2px 7px;border-radius:6px">cible '+esc(co)+' '+(x.grade_target||10)+'</span>'+(x.grade_submit_date?'<span style="font-size:10px;color:var(--muted)">envoyée '+achatDate(x.grade_submit_date)+'</span>':'')+'</div>'+
+     '</div></div>';
+  h+='<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:9px">';
+  if(st==='to_submit') h+='<button onclick="grSetStatus(\''+x.item_id+'\',\'submitted\')" style="border:0;background:var(--accent);color:#fff;font-weight:800;padding:7px 11px;border-radius:9px;cursor:pointer;font-size:12px">Marquer envoyée</button>';
+  h+='<button onclick="grApplyToggle(\''+x.item_id+'\')" style="border:1px solid var(--accent);background:transparent;color:var(--accent);font-weight:800;padding:7px 11px;border-radius:9px;cursor:pointer;font-size:12px">Passer en gradée</button>';
+  h+='<button onclick="grRemove(\''+x.item_id+'\')" style="border:1px solid var(--line);background:transparent;color:var(--muted);font-weight:700;padding:7px 11px;border-radius:9px;cursor:pointer;font-size:12px">Retirer</button>';
+  h+='</div>';
+  // formulaire "passer en gradée"
+  h+='<div id="apply_'+x.item_id+'" class="hidden" style="margin-top:9px;padding:10px;border:1px dashed var(--accent);border-radius:10px">'+
+     '<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">'+
+       '<select id="ac_'+x.item_id+'" onchange="var b=document.getElementById(\'bgsrow_'+x.item_id+'\'); if(b)b.style.display=(this.value===\'BGS\'?\'flex\':\'none\')" style="padding:7px;border:1px solid var(--line);border-radius:8px;background:var(--panel);color:var(--ink)"><option value="PSA"'+(co==='PSA'?' selected':'')+'>PSA</option><option value="BGS"'+(co==='BGS'?' selected':'')+'>BGS</option></select>'+
+       '<input id="ag_'+x.item_id+'" type="number" step="0.5" min="1" max="10" placeholder="note (ex 10)" style="width:110px;padding:7px;border:1px solid var(--line);border-radius:8px;background:var(--panel);color:var(--ink)">'+
+       '<input id="acert_'+x.item_id+'" type="text" placeholder="n° certification" style="flex:1;min-width:120px;padding:7px;border:1px solid var(--line);border-radius:8px;background:var(--panel);color:var(--ink)">'+
+     '</div>'+
+     '<div id="bgsrow_'+x.item_id+'" style="display:'+(co==='BGS'?'flex':'none')+';gap:6px;flex-wrap:wrap;margin-top:6px">'+
+       ['bce','bco','bed','bsu'].map((k,i)=>'<input id="'+k+'_'+x.item_id+'" type="number" step="0.5" min="1" max="10" placeholder="'+['centr.','coins','bords','surf.'][i]+'" style="width:80px;padding:6px;border:1px solid var(--line);border-radius:8px;background:var(--panel);color:var(--ink);font-size:12px">').join('')+
+     '</div>'+
+     '<div id="amsg_'+x.item_id+'" style="font-size:11px;color:#dc2626;margin-top:4px"></div>'+
+     '<button onclick="grApplySubmit(\''+x.item_id+'\')" style="margin-top:7px;width:100%;border:0;background:#059669;color:#fff;font-weight:800;padding:9px;border-radius:10px;cursor:pointer">✓ Valider la note — la carte prend sa valeur gradée</button>'+
+  '</div>';
+  h+='</div>';
+  return h;
+}
+function grCandCard(x){
+  const raw=x._raw, gr=x._gr, net=x._net, id=x.item_id;
+  let h='<div style="background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin-bottom:8px">';
+  h+='<div style="display:flex;gap:10px;align-items:flex-start">'+grThumb(x)+'<div style="flex:1;min-width:0">'+grNameHTML(x)+
+     '<div style="margin-top:6px;display:flex;gap:12px;flex-wrap:wrap;font-size:12px"><span>Brut <b>'+eur0(raw)+'</b></span><span>Cote '+esc(grCoteLbl(x))+' <b>'+eur0(gr)+'</b></span></div>'+
+     '</div><div style="text-align:right;white-space:nowrap"><div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.3px">Gain net est.</div><div style="font-weight:900;font-size:16px;color:#059669">+'+eur0(net)+'</div></div></div>';
+  h+='<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:9px">'+
+     '<button onclick="grPgToggle(\''+id+'\')" style="border:1px solid var(--accent);background:transparent;color:var(--accent);font-weight:800;padding:7px 11px;border-radius:9px;cursor:pointer;font-size:12px">📷 Pré-grade IA</button>'+
+     '<button onclick="grQueue(\''+id+'\',\'PSA\')" style="border:0;background:var(--accent);color:#fff;font-weight:800;padding:7px 11px;border-radius:9px;cursor:pointer;font-size:12px">Mettre à grader</button>'+
+     '</div>';
+  h+='<div id="pg_'+id+'" class="hidden" style="margin-top:9px;padding:10px;border:1px dashed var(--line);border-radius:10px">'+
+     '<div style="font-size:12px;color:var(--muted);margin-bottom:7px">Photographie la carte <b>bien à plat, sans reflet</b> — recto obligatoire, verso recommandé.</div>'+
+     '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">'+
+       '<label style="border:1px solid var(--line);border-radius:9px;padding:8px 11px;cursor:pointer;font-size:12px;font-weight:700"><span id="lbl_front_'+id+'">Recto…</span><input type="file" accept="image/*" capture="environment" onchange="grStore(\''+id+'\',\'front\',this)" style="display:none"></label>'+
+       '<label style="border:1px solid var(--line);border-radius:9px;padding:8px 11px;cursor:pointer;font-size:12px;font-weight:700"><span id="lbl_back_'+id+'">Verso…</span><input type="file" accept="image/*" capture="environment" onchange="grStore(\''+id+'\',\'back\',this)" style="display:none"></label>'+
+       '<button onclick="grAnalyze(\''+id+'\')" style="border:0;background:#0ea5e9;color:#fff;font-weight:800;padding:8px 13px;border-radius:9px;cursor:pointer;font-size:12px">Analyser</button>'+
+     '</div>'+
+     '<div id="pgres_'+id+'"></div>'+
+  '</div>';
+  h+='</div>';
+  return h;
+}
+function renderGrading(){
+  const stage=document.getElementById('stage'); stage.className='';
+  const rows=GRADING||[];
+  const pipeline=rows.filter(x=>x.grading_status && x.grading_status!=='returned' && !x.is_graded);
+  const cand=rows.filter(x=>!x.is_graded && !x.grading_status).map(x=>{ const raw=grRaw(x), gr=grCote(x); return Object.assign({},x,{_raw:raw,_gr:gr,_net:(gr!=null)?(gr-raw-GRADE_FEE):null}); }).filter(x=>x._gr!=null && x._net>0).sort((a,b)=>b._net-a._net);
+  let h='<div style="font-size:12px;color:var(--muted);margin:2px 2px 10px">Le <b>gain net</b> = cote gradée − valeur brute − '+eur0(GRADE_FEE)+' de frais estimés (gradation + port). Le <b>pré-grade IA</b> note le centrage, les coins, les bords et la surface depuis tes photos, et estime la probabilité de PSA 10 — c\'est un pré-tri, ta loupe confirme avant l\'envoi.</div>';
+  if(pipeline.length){ h+='<h3 style="margin:6px 2px 8px;font-size:15px">En cours ('+pipeline.length+')</h3>'+pipeline.map(grPipeCard).join(''); }
+  const CAND_MAX=60; const shownC=cand.slice(0,CAND_MAX);
+  h+='<h3 style="margin:14px 2px 8px;font-size:15px">Candidates à grader ('+cand.length+')</h3>';
+  h+= cand.length? (shownC.map(grCandCard).join('')+(cand.length>CAND_MAX?'<div style="font-size:12px;color:var(--muted);text-align:center;padding:8px">+ '+(cand.length-CAND_MAX)+' autres candidates rentables (les '+CAND_MAX+' meilleures par gain net sont affichées)</div>':'')) : '<div class="empty">Aucune candidate rentable au marché '+esc(MKT)+' pour l\'instant.</div>';
+  stage.innerHTML=h;
+  document.getElementById('countLine').textContent=cand.length+' candidate'+(cand.length>1?'s':'')+' · '+pipeline.length+' en cours';
 }
 const PROD_CAT_LABELS={BOOSTER_BOX:"Booster Box",CASE:"Booster Box Case",BOOSTER_PACK:"Booster Pack",STARTER_DECK:"Starter Deck",PREMIUM_BOOSTER:"Premium Booster",CARD_COLLECTION_SET:"Premium Collection",GIFT_COLLECTION:"Collections & Coffrets",PROMO_PACK:"Promo / Tournoi",ULTRA_DECK:"Ultra Deck",DOUBLE_PACK_SET:"Double Pack",OTHER:"Autres"};
 const PROD_CAT_ORDER=["BOOSTER_BOX","CASE","BOOSTER_PACK","STARTER_DECK","PREMIUM_BOOSTER","CARD_COLLECTION_SET","GIFT_COLLECTION","PROMO_PACK","ULTRA_DECK","DOUBLE_PACK_SET","OTHER"];
