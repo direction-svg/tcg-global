@@ -667,7 +667,7 @@ body{-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
 <div class="wrap">
   <div class="hero">
     <div class="topbar">
-      <div class="logo"><div class="mark">OP</div> TCG GLOBAL <span id="buildTag" style="font-size:11px;font-weight:700;margin-left:8px;background:#e11d48;color:#fff;padding:2px 8px;border-radius:10px;letter-spacing:.2px;white-space:nowrap" title="Version en ligne">v10:34</span></div>
+      <div class="logo"><div class="mark">OP</div> TCG GLOBAL <span id="buildTag" style="font-size:11px;font-weight:700;margin-left:8px;background:#e11d48;color:#fff;padding:2px 8px;border-radius:10px;letter-spacing:.2px;white-space:nowrap" title="Version en ligne">v10:35</span></div>
       <div class="grow"></div>
       <div class="mktseg" id="mktSeg" title="Marché de valorisation">
         <button data-k="JP" class="on">🇯🇵 JP</button>
@@ -687,6 +687,7 @@ body{-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
     <span class="msep" aria-hidden="true"></span>
     <button data-m="sets">Sets</button>
     <button data-m="products">Produits</button>
+    <button data-m="achats">Achats</button>
     <button data-m="live">Live</button>
   </nav>
 
@@ -1157,14 +1158,14 @@ document.getElementById("q").addEventListener("input",e=>{
 function setMode(m){
   state.mode=m;
   document.querySelectorAll('#modeSeg button').forEach(b=>b.classList.toggle('on',b.dataset.m===m));
-  const home=m==="accueil", cat=m==="catalog", ops=m==="ops", sets=m==="sets", prods=m==="products", live=m==="live", ia=m==="ia";
+  const home=m==="accueil", cat=m==="catalog", ops=m==="ops", sets=m==="sets", prods=m==="products", live=m==="live", ia=m==="ia", achats=m==="achats";
   if(!live) stopLive();
   document.getElementById('catLangRow').classList.toggle('hidden',!cat);
   document.getElementById('catFilters').classList.add('hidden');
-  document.getElementById('viewBtn').classList.toggle('hidden',home||cat||ops||sets||prods||live||ia);
-  document.getElementById('filterBtn').classList.toggle('hidden',home||ops||sets||prods||live||ia);
-  document.getElementById('sortBtn').classList.toggle('hidden',home||ops||sets||prods||live||ia);
-  document.querySelector('.search').classList.toggle('hidden',home||ops||sets||prods||live||ia);
+  document.getElementById('viewBtn').classList.toggle('hidden',home||cat||ops||sets||prods||live||ia||achats);
+  document.getElementById('filterBtn').classList.toggle('hidden',home||ops||sets||prods||live||ia||achats);
+  document.getElementById('sortBtn').classList.toggle('hidden',home||ops||sets||prods||live||ia||achats);
+  document.querySelector('.search').classList.toggle('hidden',home||ops||sets||prods||live||ia||achats);
   document.getElementById('scanFab').classList.toggle('hidden',!(m==='collection'||m==='catalog'));
   const vfr=document.getElementById('valFilterRow'); if(vfr){ if(m==='collection'){ vfr.style.display='flex'; buildValRow(); } else { vfr.style.display='none'; } }
   document.getElementById('q').placeholder=cat?"Chercher une carte (nom ou numéro), toutes langues…":"Rechercher (nom ou numéro)…";
@@ -1179,6 +1180,7 @@ function setMode(m){
   else if(cat){ buildCatLangRow(); syncCatBadge(); fetchCatalog(); }
   else if(sets){ document.getElementById('countLine').textContent=''; fetchSets(); }
   else if(prods){ document.getElementById('countLine').textContent=''; fetchProducts(); }
+  else if(achats){ document.getElementById('countLine').textContent=''; fetchAchats(); }
   else { syncBadge(); document.getElementById('countLine').textContent=''; render(); loadBriefing(); }
 }
 const SET_NAMES={OP01:"Romance Dawn",OP02:"Paramount War",OP03:"Pillars of Strength",OP04:"Kingdoms of Intrigue",OP05:"Awakening of the New Era",OP06:"Wings of the Captain",OP07:"500 Years in the Future",OP08:"Two Legends",OP09:"Emperors in the New World",OP10:"Royal Blood",OP11:"A Fist of Divine Speed",OP12:"Legacy of the Master",OP13:"Carrying On His Will",OP14:"The Azure Sea's Seven",OP15:"Adventure on KAMI's Island",OP16:"The Time of Battle",EB01:"Memorial Collection",EB02:"Anime 25th Collection",EB03:"Heroines Edition",EB04:"Egghead Crisis",PRB01:"Premium Booster -The Best-",PRB02:"One Piece The Best Vol.2",ST01:"Straw Hat Crew",ST02:"Worst Generation",ST03:"The Seven Warlords",ST04:"Animal Kingdom Pirates",ST32:"Green Roronoa Zoro",ST33:"Blue Kuzan",ST34:"Purple Charlotte Katakuri",ST35:"Red/Black Sabo",ST36:"Yellow Eustass Kid",PROMO:"Promos (toutes)",DON:"DON!! Cards"};
@@ -1225,6 +1227,74 @@ function openSetInCatalog(setCode,lang){
   state.catLangs=[lang]; state.catQuery=q;
   const qi=document.getElementById('q'); if(qi) qi.value=q;
   setMode('catalog');
+}
+// ---------- Achats (suivi investissement) ----------
+let ACHATS=[];
+const ACHAT_SORTS=[["date_desc","Date ↓"],["price_desc","Prix ↓"],["price_asc","Prix ↑"],["seller","Vendeur"]];
+async function fetchAchats(){
+  const stage=document.getElementById('stage'); stage.className=""; stage.innerHTML='<div class="loading">Chargement des achats…</div>';
+  try{
+    const r=await fetch(SB+'/rest/v1/app_purchases?select=purchase_date,seller,item_name,reference,quantity,ptype,grade,cert_number,ordered,received,currency,amount_origin,amount_eur,category,note&order=purchase_date.desc',{headers:{apikey:ANON,Authorization:"Bearer "+ANON}});
+    let rows=await r.json(); if(!Array.isArray(rows))rows=[];
+    if(state.mode!=='achats') return;
+    ACHATS=rows; renderAchats();
+  }catch(e){ stage.innerHTML='<div class="empty">Erreur de chargement des achats.</div>'; }
+}
+function setAchatSort(s){ state.achatSort=s; renderAchats(); }
+function setAchatSeller(s){ state.achatSeller=s; renderAchats(); }
+function achatDate(d){ if(!d)return''; const p=String(d).split('-'); return p.length===3?(p[2]+'/'+p[1]+'/'+p[0].slice(2)):d; }
+function renderAchats(){
+  const stage=document.getElementById('stage'); stage.className="";
+  const all=ACHATS.slice();
+  const num=x=>+x.amount_eur||0;
+  const total=all.reduce((s,x)=>s+num(x),0);
+  const cartes=all.filter(x=>x.category==='card').reduce((s,x)=>s+num(x),0);
+  const scelles=all.filter(x=>x.category==='sealed').reduce((s,x)=>s+num(x),0);
+  const base=all.filter(x=>x.category==='baseline').reduce((s,x)=>s+num(x),0);
+  // vendeurs (hors baseline)
+  const sc={}; all.forEach(x=>{ if(x.seller&&x.category!=='baseline') sc[x.seller]=(sc[x.seller]||0)+1; });
+  const sellers=Object.keys(sc).sort((a,b)=>sc[b]-sc[a]);
+  const selSeller=state.achatSeller||'all';
+  const sort=state.achatSort||'date_desc';
+  let rows=all.filter(x=>x.category!=='baseline');
+  if(selSeller!=='all') rows=rows.filter(x=>x.seller===selSeller);
+  rows.sort((a,b)=>{
+    if(sort==='price_desc') return num(b)-num(a);
+    if(sort==='price_asc') return num(a)-num(b);
+    if(sort==='seller') return (a.seller||'').localeCompare(b.seller||'')|| (num(b)-num(a));
+    return (b.purchase_date||'').localeCompare(a.purchase_date||'');
+  });
+  const shown=rows.reduce((s,x)=>s+num(x),0);
+  const tile=(k,v,c)=>'<div style="flex:1 1 120px;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:12px 14px"><div style="font-size:10.5px;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);font-weight:800">'+k+'</div><div style="font-size:21px;font-weight:900;letter-spacing:-.4px;margin-top:3px;'+(c||'')+'">'+v+'</div></div>';
+  let h='<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px">'+
+    tile('Total investi',eur0(total),'color:var(--accent)')+
+    tile('Cartes',eur0(cartes))+
+    tile('Scellés',eur0(scelles))+
+    tile('Solde initial',eur0(base),'color:var(--muted)')+
+  '</div>';
+  h+='<div style="font-size:11.5px;color:var(--muted);margin:0 2px 8px">Le « solde initial » = ta collection existante non détaillée ('+eur0(base)+'). Le reste = achats suivis ligne par ligne.</div>';
+  // tri
+  h+='<div class="chiprow" style="margin-bottom:6px">'+ACHAT_SORTS.map(([v,l])=>'<div class="chip'+(sort===v?' on':'')+'" onclick="setAchatSort(\''+v+'\')">'+l+'</div>').join('')+'</div>';
+  // vendeurs
+  h+='<div class="chiprow" style="margin-bottom:10px"><div class="chip'+(selSeller==='all'?' on':'')+'" onclick="setAchatSeller(\'all\')">Tous</div>'+
+    sellers.map(s=>'<div class="chip'+(selSeller===s?' on':'')+'" onclick="setAchatSeller('+JSON.stringify(s).replace(/"/g,'&quot;')+')">'+esc(s)+' ('+sc[s]+')</div>').join('')+'</div>';
+  // liste
+  h+='<div style="display:flex;flex-direction:column;gap:7px">'+rows.map(x=>{
+    const gr=x.grade?'<span style="font-size:10px;font-weight:800;background:#fef9c3;color:#854d0e;padding:1px 6px;border-radius:6px;margin-left:5px">'+esc(x.grade)+'</span>':'';
+    const qty=(x.quantity>1)?'<span style="font-size:10px;font-weight:800;background:#eef2ff;color:#3730a3;padding:1px 6px;border-radius:6px;margin-left:5px">×'+x.quantity+'</span>':'';
+    const rec=(String(x.received).toLowerCase()==='oui'||String(x.received).toLowerCase()==='recue')?'<span style="color:#059669">● reçu</span>':'<span style="color:#d97706">● en attente</span>';
+    const typ=x.ptype?esc(x.ptype):'';
+    return '<div style="display:flex;gap:10px;align-items:flex-start;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px 12px">'+
+      '<div style="flex:1;min-width:0">'+
+        '<div style="font-weight:800;font-size:13.5px">'+esc(x.item_name||'')+gr+qty+'</div>'+
+        '<div style="font-size:11px;color:var(--muted);margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(x.reference||'')+'</div>'+
+        '<div style="font-size:10.5px;color:var(--muted);margin-top:4px;display:flex;gap:8px;flex-wrap:wrap"><span>'+achatDate(x.purchase_date)+'</span><span>·</span><span>'+esc(x.seller||'')+'</span>'+(typ?'<span>·</span><span>'+typ+'</span>':'')+'<span>·</span>'+rec+'</div>'+
+      '</div>'+
+      '<div style="text-align:right;white-space:nowrap"><div style="font-weight:900;font-size:15px">'+eur0(num(x))+'</div>'+((x.currency&&x.currency!=='EUR')?('<div style="font-size:10px;color:var(--muted)">'+(x.amount_origin!=null?Math.round(x.amount_origin).toLocaleString('fr-FR'):'')+' '+esc(x.currency)+'</div>'):'')+'</div>'+
+    '</div>';
+  }).join('')+'</div>';
+  stage.innerHTML=h;
+  document.getElementById('countLine').textContent=rows.length+' achat'+(rows.length>1?'s':'')+' · '+eur0(shown)+(selSeller!=='all'?(' ('+selSeller+')'):'');
 }
 const PROD_CAT_LABELS={BOOSTER_BOX:"Booster Box",CASE:"Booster Box Case",BOOSTER_PACK:"Booster Pack",STARTER_DECK:"Starter Deck",PREMIUM_BOOSTER:"Premium Booster",CARD_COLLECTION_SET:"Premium Collection",GIFT_COLLECTION:"Collections & Coffrets",PROMO_PACK:"Promo / Tournoi",ULTRA_DECK:"Ultra Deck",DOUBLE_PACK_SET:"Double Pack",OTHER:"Autres"};
 const PROD_CAT_ORDER=["BOOSTER_BOX","CASE","BOOSTER_PACK","STARTER_DECK","PREMIUM_BOOSTER","CARD_COLLECTION_SET","GIFT_COLLECTION","PROMO_PACK","ULTRA_DECK","DOUBLE_PACK_SET","OTHER"];
