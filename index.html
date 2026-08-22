@@ -664,7 +664,7 @@ body{-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
 <div class="wrap">
   <div class="hero">
     <div class="topbar">
-      <div class="logo"><div class="mark">OP</div> TCG GLOBAL <span id="buildTag" style="font-size:11px;font-weight:700;margin-left:8px;background:#e11d48;color:#fff;padding:2px 8px;border-radius:10px;letter-spacing:.2px;white-space:nowrap" title="Version en ligne">v10:45</span></div>
+      <div class="logo"><div class="mark">OP</div> TCG GLOBAL <span id="buildTag" style="font-size:11px;font-weight:700;margin-left:8px;background:#e11d48;color:#fff;padding:2px 8px;border-radius:10px;letter-spacing:.2px;white-space:nowrap" title="Version en ligne">v10:47</span></div>
       <div class="grow"></div>
       <div class="mktseg" id="mktSeg" title="Marché de valorisation">
         <button data-k="JP" class="on">🇯🇵 JP</button>
@@ -1353,6 +1353,14 @@ const PSA_TIERS=[[300,30,'≤300€'],[500,35,'301-500€'],[1500,65,'501-1500�
 const BGS_TIERS=[[1000,34.95,'Standard'],[2500,79.95,'Express'],[Infinity,124.95,'Priority']];
 let GR_SHIP=0;       // frais additionnels port/assurance par carte (EUR) — PSA Europe = tout compris (0) ; BGS = mets ton port
 let GR_FEECO='PSA';  // certificateur de référence pour le calcul du gain
+const GR_MINRAW=8;   // valeur brute minimale (€) pour proposer la gradation — ancre fiable
+const GR_MAXRATIO=15;// premium max cote/brut accepté — au-delà = donnée gradée polluée, on écarte
+let GR_SORT='net_desc', GR_LANG='all', GR_MINGAIN=0, GR_FILTOPEN=false;
+const GR_SORTS=[['net_desc','Gain ↓'],['prem_desc','Premium ↓'],['cote_desc','Cote ↓'],['brut_desc','Valeur ↓'],['net_asc','Gain ↑']];
+function grSetSort(v){ GR_SORT=v; renderGrading(); }
+function grSetLang(v){ GR_LANG=v; renderGrading(); }
+function grSetMinGain(v){ const n=parseFloat(v); GR_MINGAIN=isNaN(n)?0:n; renderGrading(); }
+function grSortCmp(a,b){ switch(GR_SORT){ case 'net_asc': return a._net-b._net; case 'prem_desc': return (b._gr/b._raw)-(a._gr/a._raw); case 'cote_desc': return b._gr-a._gr; case 'brut_desc': return b._raw-a._raw; default: return b._net-a._net; } }
 function grTier(company, declaredEUR){
   if(company==='BGS'){ const usd=(declaredEUR||0)/GR_FX; let row=BGS_TIERS[BGS_TIERS.length-1]; for(const r of BGS_TIERS){ if(usd<=r[0]){ row=r; break; } } return {feeEUR:row[1]*GR_FX, label:row[2]}; }
   let row=PSA_TIERS[PSA_TIERS.length-1]; for(const r of PSA_TIERS){ if((declaredEUR||0)<=r[0]){ row=r; break; } } return {feeEUR:row[1], label:row[2]};
@@ -1465,17 +1473,34 @@ function renderGrading(){
   const stage=document.getElementById('stage'); stage.className='';
   const rows=GRADING||[];
   const pipeline=rows.filter(x=>x.grading_status && x.grading_status!=='returned' && !x.is_graded);
-  const cand=rows.filter(x=>!x.is_graded && !x.grading_status).map(x=>{ const raw=grRaw(x), gr=grCote(x); const t=(gr!=null)?grTier(GR_FEECO,gr):null; const fee=(gr!=null)?(t.feeEUR+GR_SHIP):null; return Object.assign({},x,{_raw:raw,_gr:gr,_fee:fee,_feeLabel:t?t.label:'',_net:(gr!=null)?(gr-raw-fee):null}); }).filter(x=>x._gr!=null && x._net>0).sort((a,b)=>b._net-a._net);
+  const langs=[...new Set(rows.filter(x=>!x.is_graded && !x.grading_status).map(x=>x.language).filter(Boolean))].sort();
+  // base : toute la collection non gradée, hors pipeline, avec ancre brute réelle + premium plausible + cote PSA/BGS
+  let cand=rows.filter(x=>!x.is_graded && !x.grading_status).map(x=>{ const raw=grRaw(x), gr=grCote(x); const t=(gr!=null)?grTier(GR_FEECO,gr):null; const fee=(gr!=null)?(t.feeEUR+GR_SHIP):null; return Object.assign({},x,{_raw:raw,_gr:gr,_fee:fee,_feeLabel:t?t.label:'',_net:(gr!=null)?(gr-raw-fee):null}); })
+    .filter(x=>x._gr!=null && x._raw>=GR_MINRAW && x._gr<=x._raw*GR_MAXRATIO && x._net>0 && /^(PSA|BGS)/.test(grCoteLbl(x)||''));
+  const totalRentable=cand.length;
+  cand=cand.filter(x=>(GR_LANG==='all'||x.language===GR_LANG) && x._net>=GR_MINGAIN).sort(grSortCmp);
+  const lbl=t=>'<div style="font-size:10.5px;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);font-weight:800;margin:0 0 5px 2px">'+t+'</div>';
+  const sortLbl=(GR_SORTS.find(s=>s[0]===GR_SORT)||['','Gain ↓'])[1];
+  // ligne frais de référence
   let h='<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:2px 2px 8px">'+
     '<span style="font-size:11px;color:var(--muted);font-weight:800">Frais de réf.</span>'+
     '<select onchange="grSetFeeCo(this.value)" style="padding:6px 8px;border:1px solid var(--line);border-radius:8px;background:var(--panel);color:var(--ink);font-size:12px"><option value="PSA"'+(GR_FEECO==='PSA'?' selected':'')+'>PSA</option><option value="BGS"'+(GR_FEECO==='BGS'?' selected':'')+'>BGS</option></select>'+
     '<span style="font-size:11px;color:var(--muted)">port/carte</span><input type="number" value="'+GR_SHIP+'" min="0" step="1" onchange="grSetShip(this.value)" style="width:66px;padding:6px 8px;border:1px solid var(--line);border-radius:8px;background:var(--panel);color:var(--ink);font-size:12px"><span style="font-size:11px;color:var(--muted)">€</span>'+
   '</div>';
-  h+='<div style="font-size:11.5px;color:var(--muted);margin:0 2px 10px">Le <b>gain net</b> = cote gradée − valeur brute − <b>frais '+GR_FEECO+'</b>'+(GR_FEECO==='PSA'?' (Europe, <b>TTC tout compris</b> : TVA + envoi + retour, pas de douane)':' (USD→€, ajoute ton port international)')+'. Tarif choisi auto selon la valeur déclarée. Le <b>pré-grade IA</b> note centrage/coins/bords/surface depuis tes photos et estime la proba PSA 10 — pré-tri, ta loupe confirme avant l\'envoi.</div>';
+  // panneau filtres & tri (repliable)
+  h+='<details class="pxdet"'+(GR_FILTOPEN?' open':'')+' ontoggle="GR_FILTOPEN=this.open" style="margin:0 0 10px">'+
+    '<summary>Filtres &amp; tri<span style="text-transform:none;letter-spacing:0;font-weight:700;color:var(--muted);font-size:11px;margin-left:auto;margin-right:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:60%">'+esc((GR_LANG==='all'?'Toutes langues':GR_LANG)+(GR_MINGAIN?(' · ≥'+eur0(GR_MINGAIN)):'')+' · '+sortLbl)+'</span></summary>'+
+    '<div class="pxbody" style="padding-top:12px">'+
+      lbl('Trier')+'<div class="chiprow" style="margin-bottom:12px">'+GR_SORTS.map(([v,l])=>'<div class="chip'+(GR_SORT===v?' on':'')+'" onclick="grSetSort(\''+v+'\')">'+l+'</div>').join('')+'</div>'+
+      lbl('Langue')+'<div class="chiprow" style="margin-bottom:12px"><div class="chip'+(GR_LANG==='all'?' on':'')+'" onclick="grSetLang(\'all\')">Toutes</div>'+langs.map(l=>'<div class="chip'+(GR_LANG===l?' on':'')+'" onclick="grSetLang(\''+l+'\')">'+esc(l)+'</div>').join('')+'</div>'+
+      lbl('Gain net minimum (€)')+'<input type="number" min="0" step="10" value="'+GR_MINGAIN+'" onchange="grSetMinGain(this.value)" style="width:120px;padding:7px;border:1px solid var(--line);border-radius:8px;background:var(--panel);color:var(--ink)">'+
+    '</div>'+
+  '</details>';
+  h+='<div style="font-size:11.5px;color:var(--muted);margin:0 2px 10px">Proposées depuis <b>toute ta collection</b> : cartes non gradées, pas déjà en file, à valeur brute réelle (≥ '+eur0(GR_MINRAW)+') et premium plausible (cote PSA/BGS écartée si incohérente). <b>Gain net</b> = cote gradée − valeur brute − <b>frais '+GR_FEECO+'</b>'+(GR_FEECO==='PSA'?' (Europe, <b>TTC tout compris</b>, pas de douane)':' (USD→€, ajoute ton port)')+'. Le <b>pré-grade IA</b> depuis tes photos est un pré-tri — ta loupe confirme avant l\'envoi.</div>';
   if(pipeline.length){ h+='<h3 style="margin:6px 2px 8px;font-size:15px">En cours ('+pipeline.length+')</h3>'+pipeline.map(grPipeCard).join(''); }
   const CAND_MAX=60; const shownC=cand.slice(0,CAND_MAX);
-  h+='<h3 style="margin:14px 2px 8px;font-size:15px">Candidates à grader ('+cand.length+')</h3>';
-  h+= cand.length? (shownC.map(grCandCard).join('')+(cand.length>CAND_MAX?'<div style="font-size:12px;color:var(--muted);text-align:center;padding:8px">+ '+(cand.length-CAND_MAX)+' autres candidates rentables (les '+CAND_MAX+' meilleures par gain net sont affichées)</div>':'')) : '<div class="empty">Aucune candidate rentable au marché '+esc(MKT)+' pour l\'instant.</div>';
+  h+='<h3 style="margin:14px 2px 8px;font-size:15px">Candidates à grader ('+cand.length+(cand.length!==totalRentable?(' / '+totalRentable):'')+')</h3>';
+  h+= cand.length? (shownC.map(grCandCard).join('')+(cand.length>CAND_MAX?'<div style="font-size:12px;color:var(--muted);text-align:center;padding:8px">+ '+(cand.length-CAND_MAX)+' autres — affine avec les filtres ou le gain minimum</div>':'')) : '<div class="empty">Aucune candidate pour ces filtres.</div>';
   stage.innerHTML=h;
   document.getElementById('countLine').textContent=cand.length+' candidate'+(cand.length>1?'s':'')+' · '+pipeline.length+' en cours';
 }
