@@ -667,7 +667,7 @@ body{-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
 <div class="wrap">
   <div class="hero">
     <div class="topbar">
-      <div class="logo"><div class="mark">OP</div> TCG GLOBAL <span id="buildTag" style="font-size:11px;font-weight:700;margin-left:8px;background:#e11d48;color:#fff;padding:2px 8px;border-radius:10px;letter-spacing:.2px;white-space:nowrap" title="Version en ligne">v10:36</span></div>
+      <div class="logo"><div class="mark">OP</div> TCG GLOBAL <span id="buildTag" style="font-size:11px;font-weight:700;margin-left:8px;background:#e11d48;color:#fff;padding:2px 8px;border-radius:10px;letter-spacing:.2px;white-space:nowrap" title="Version en ligne">v10:37</span></div>
       <div class="grow"></div>
       <div class="mktseg" id="mktSeg" title="Marché de valorisation">
         <button data-k="JP" class="on">🇯🇵 JP</button>
@@ -1230,13 +1230,17 @@ function openSetInCatalog(setCode,lang){
   setMode('catalog');
 }
 // ---------- Achats (suivi investissement) ----------
-let ACHATS=[];
+let ACHATS=[], PORTVAL=null;
 const ACHAT_SORTS=[["date_desc","Date ↓"],["price_desc","Prix ↓"],["price_asc","Prix ↑"],["seller","Vendeur"]];
 async function fetchAchats(){
   const stage=document.getElementById('stage'); stage.className=""; stage.innerHTML='<div class="loading">Chargement des achats…</div>';
   try{
-    const r=await fetch(SB+'/rest/v1/app_purchases?select=purchase_date,seller,item_name,reference,quantity,ptype,grade,cert_number,ordered,received,currency,amount_origin,amount_eur,category,note&order=purchase_date.desc',{headers:{apikey:ANON,Authorization:"Bearer "+ANON}});
-    let rows=await r.json(); if(!Array.isArray(rows))rows=[];
+    const [ra,rp]=await Promise.all([
+      fetch(SB+'/rest/v1/app_purchases?select=id,purchase_date,seller,item_name,reference,quantity,ptype,grade,cert_number,ordered,received,currency,amount_origin,amount_eur,category,note&order=purchase_date.desc&limit=1000',{headers:{apikey:ANON,Authorization:"Bearer "+ANON}}),
+      fetch(SB+'/rest/v1/app_portfolio_value?select=*',{headers:{apikey:ANON,Authorization:"Bearer "+ANON}})
+    ]);
+    let rows=await ra.json(); if(!Array.isArray(rows))rows=[];
+    let pv=await rp.json(); PORTVAL=(Array.isArray(pv)&&pv[0])?pv[0]:null;
     if(state.mode!=='achats') return;
     ACHATS=rows; renderAchats();
   }catch(e){ stage.innerHTML='<div class="empty">Erreur de chargement des achats.</div>'; }
@@ -1244,60 +1248,73 @@ async function fetchAchats(){
 function setAchatSort(s){ state.achatSort=s; renderAchats(); }
 function setAchatSeller(s){ state.achatSeller=s; renderAchats(); }
 function achatDate(d){ if(!d)return''; const p=String(d).split('-'); return p.length===3?(p[2]+'/'+p[1]+'/'+p[0].slice(2)):d; }
+function isRecu(v){ v=String(v||'').toLowerCase(); return v==='oui'||v==='recue'||v==='reçue'||v==='received'||v==='yes'; }
+async function toggleReceived(id){
+  const a=ACHATS.find(x=>String(x.id)===String(id)); if(!a) return;
+  const nv=isRecu(a.received)?'Non':'Oui'; a.received=nv; renderAchats();
+  try{ await fetch(SB+'/rest/v1/rpc/set_purchase_received',{method:'POST',headers:{apikey:ANON,Authorization:'Bearer '+ANON,'Content-Type':'application/json'},body:JSON.stringify({p_id:id,p_val:nv})}); }catch(e){}
+}
 function renderAchats(){
   const stage=document.getElementById('stage'); stage.className="";
-  const all=ACHATS.slice();
   const num=x=>+x.amount_eur||0;
-  const total=all.reduce((s,x)=>s+num(x),0);
-  const cartes=all.filter(x=>x.category==='card').reduce((s,x)=>s+num(x),0);
-  const scelles=all.filter(x=>x.category==='sealed').reduce((s,x)=>s+num(x),0);
-  const base=all.filter(x=>x.category==='baseline').reduce((s,x)=>s+num(x),0);
-  // vendeurs (hors baseline)
-  const sc={}; all.forEach(x=>{ if(x.seller&&x.category!=='baseline') sc[x.seller]=(sc[x.seller]||0)+1; });
-  const sellers=Object.keys(sc).sort((a,b)=>sc[b]-sc[a]);
-  const selSeller=state.achatSeller||'all';
-  const sort=state.achatSort||'date_desc';
-  let rows=all.filter(x=>x.category!=='baseline');
-  if(selSeller!=='all') rows=rows.filter(x=>x.seller===selSeller);
-  rows.sort((a,b)=>{
-    if(sort==='price_desc') return num(b)-num(a);
-    if(sort==='price_asc') return num(a)-num(b);
-    if(sort==='seller') return (a.seller||'').localeCompare(b.seller||'')|| (num(b)-num(a));
-    return (b.purchase_date||'').localeCompare(a.purchase_date||'');
-  });
-  const shown=rows.reduce((s,x)=>s+num(x),0);
+  const mk=(MKT||'EU').toLowerCase();
+  const pv=PORTVAL||{};
+  const invested=+pv.invested||0;
+  const cartes=+pv.invested_cards||0, scelles=+pv.invested_sealed||0, base=+pv.invested_baseline||0;
+  const curVal=(+pv['cards_'+mk]||0)+(+pv.products||0);
+  const havePv=!!PORTVAL;
+  const pnl=curVal-invested; const pct=invested?(pnl/invested*100):0; const pos=pnl>=0;
   const tile=(k,v,c)=>'<div style="flex:1 1 120px;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:12px 14px"><div style="font-size:10.5px;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);font-weight:800">'+k+'</div><div style="font-size:21px;font-weight:900;letter-spacing:-.4px;margin-top:3px;'+(c||'')+'">'+v+'</div></div>';
-  // P&L : valeur actuelle de la collection (marché sélectionné) vs investi (all-in, taxes/douane comprises)
-  const curVal=(Array.isArray(DATA)?DATA.reduce((s,c)=>s+val(c)*(c.quantity||1),0):0)+(PROD_VALUE||0);
-  const invested=total; const pnl=curVal-invested; const pct=invested?(pnl/invested*100):0; const pos=pnl>=0;
-  let h='<div style="background:'+(pos?'linear-gradient(135deg,#047857,#10b981)':'linear-gradient(135deg,#b91c1c,#ef4444)')+';color:#fff;border-radius:16px;padding:15px 18px;margin-bottom:12px;box-shadow:0 4px 14px rgba(15,23,42,.12)">'+
-    '<div style="font-size:11px;text-transform:uppercase;letter-spacing:.5px;opacity:.9;font-weight:800">'+(pos?'Plus-value':'Moins-value')+' &middot; marché '+MKT_LABEL[MKT]+'</div>'+
-    '<div style="font-size:29px;font-weight:900;letter-spacing:-.6px;margin:3px 0">'+(pos?'+':'')+eur0(pnl)+' <span style="font-size:16px;opacity:.92;font-weight:800">('+(pos?'+':'')+Math.round(pct)+'%)</span></div>'+
-    '<div style="font-size:12.5px;opacity:.95">Valeur actuelle <b>'+eur0(curVal)+'</b> &nbsp;·&nbsp; Investi all-in <b>'+eur0(invested)+'</b></div>'+
-  '</div>';
+  // Bannière P&L — valeur (marché sélectionné) lue directement en base, indépendante du chargement de la collection
+  let h='';
+  if(havePv){
+    h+='<div style="background:'+(pos?'linear-gradient(135deg,#047857,#10b981)':'linear-gradient(135deg,#b91c1c,#ef4444)')+';color:#fff;border-radius:16px;padding:15px 18px;margin-bottom:12px;box-shadow:0 4px 14px rgba(15,23,42,.12)">'+
+      '<div style="font-size:11px;text-transform:uppercase;letter-spacing:.5px;opacity:.9;font-weight:800">'+(pos?'Plus-value':'Moins-value')+' &middot; marché '+MKT_LABEL[MKT]+'</div>'+
+      '<div style="font-size:29px;font-weight:900;letter-spacing:-.6px;margin:3px 0">'+(pos?'+':'')+eur0(pnl)+' <span style="font-size:16px;opacity:.92;font-weight:800">('+(pos?'+':'')+Math.round(pct)+'%)</span></div>'+
+      '<div style="font-size:12.5px;opacity:.95">Valeur actuelle <b>'+eur0(curVal)+'</b> &nbsp;·&nbsp; Investi all-in <b>'+eur0(invested)+'</b></div>'+
+    '</div>';
+  } else {
+    h+='<div style="background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:15px 18px;margin-bottom:12px;color:var(--muted)">Calcul de la plus-value en cours…</div>';
+  }
   h+='<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px">'+
-    tile('Investi (all-in)',eur0(total),'color:var(--accent)')+
+    tile('Investi (all-in)',eur0(invested),'color:var(--accent)')+
     tile('Cartes',eur0(cartes))+
     tile('Scellés',eur0(scelles))+
     tile('Solde initial',eur0(base),'color:var(--muted)')+
   '</div>';
-  h+='<div style="font-size:11.5px;color:var(--muted);margin:0 2px 8px">Montants = coût <b>all-in</b> (prix + TVA import + douane pour les imports hors UE ; prix réel pour les achats UE). « Solde initial » = ta collection existante non détaillée ('+eur0(base)+').</div>';
+  h+='<div style="font-size:11.5px;color:var(--muted);margin:0 2px 8px">Montants = coût <b>all-in</b> (prix + TVA import + douane hors UE ; prix réel en UE). « Solde initial » = ta collection existante non détaillée ('+eur0(base)+'). Touche « en attente / reçu » pour basculer le statut.</div>';
+  // données achats (hors baseline)
+  const list=ACHATS.filter(x=>x.category!=='baseline');
+  const sc={}; list.forEach(x=>{ if(x.seller) sc[x.seller]=(sc[x.seller]||0)+1; });
+  const sellers=Object.keys(sc).sort((a,b)=>sc[b]-sc[a]);
+  const selSeller=state.achatSeller||'all';
+  const sort=state.achatSort||'date_desc';
+  let rows=list.slice();
+  if(selSeller!=='all') rows=rows.filter(x=>x.seller===selSeller);
+  rows.sort((a,b)=>{
+    if(sort==='price_desc') return num(b)-num(a);
+    if(sort==='price_asc') return num(a)-num(b);
+    if(sort==='seller') return (a.seller||'').localeCompare(b.seller||'')||(num(b)-num(a));
+    return (b.purchase_date||'').localeCompare(a.purchase_date||'');
+  });
+  const shown=rows.reduce((s,x)=>s+num(x),0);
   // tri
   h+='<div class="chiprow" style="margin-bottom:6px">'+ACHAT_SORTS.map(([v,l])=>'<div class="chip'+(sort===v?' on':'')+'" onclick="setAchatSort(\''+v+'\')">'+l+'</div>').join('')+'</div>';
   // vendeurs
-  h+='<div class="chiprow" style="margin-bottom:10px"><div class="chip'+(selSeller==='all'?' on':'')+'" onclick="setAchatSeller(\'all\')">Tous</div>'+
+  h+='<div class="chiprow" style="margin-bottom:10px"><div class="chip'+(selSeller==='all'?' on':'')+'" onclick="setAchatSeller(\'all\')">Tous ('+list.length+')</div>'+
     sellers.map(s=>'<div class="chip'+(selSeller===s?' on':'')+'" onclick="setAchatSeller('+JSON.stringify(s).replace(/"/g,'&quot;')+')">'+esc(s)+' ('+sc[s]+')</div>').join('')+'</div>';
   // liste
   h+='<div style="display:flex;flex-direction:column;gap:7px">'+rows.map(x=>{
     const gr=x.grade?'<span style="font-size:10px;font-weight:800;background:#fef9c3;color:#854d0e;padding:1px 6px;border-radius:6px;margin-left:5px">'+esc(x.grade)+'</span>':'';
     const qty=(x.quantity>1)?'<span style="font-size:10px;font-weight:800;background:#eef2ff;color:#3730a3;padding:1px 6px;border-radius:6px;margin-left:5px">×'+x.quantity+'</span>':'';
-    const rec=(String(x.received).toLowerCase()==='oui'||String(x.received).toLowerCase()==='recue')?'<span style="color:#059669">● reçu</span>':'<span style="color:#d97706">● en attente</span>';
+    const recu=isRecu(x.received);
+    const rec='<span onclick="event.stopPropagation();toggleReceived(\''+esc(x.id)+'\')" style="cursor:pointer;font-weight:800;color:'+(recu?'#059669':'#d97706')+'">'+(recu?'✓ Reçu':'⏳ En attente')+'</span>';
     const typ=x.ptype?esc(x.ptype):'';
     return '<div style="display:flex;gap:10px;align-items:flex-start;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px 12px">'+
       '<div style="flex:1;min-width:0">'+
         '<div style="font-weight:800;font-size:13.5px">'+esc(x.item_name||'')+gr+qty+'</div>'+
         '<div style="font-size:11px;color:var(--muted);margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(x.reference||'')+'</div>'+
-        '<div style="font-size:10.5px;color:var(--muted);margin-top:4px;display:flex;gap:8px;flex-wrap:wrap"><span>'+achatDate(x.purchase_date)+'</span><span>·</span><span>'+esc(x.seller||'')+'</span>'+(typ?'<span>·</span><span>'+typ+'</span>':'')+'<span>·</span>'+rec+'</div>'+
+        '<div style="font-size:10.5px;color:var(--muted);margin-top:4px;display:flex;gap:8px;flex-wrap:wrap;align-items:center"><span>'+achatDate(x.purchase_date)+'</span><span>·</span><span>'+esc(x.seller||'')+'</span>'+(typ?'<span>·</span><span>'+typ+'</span>':'')+'<span>·</span>'+rec+'</div>'+
       '</div>'+
       '<div style="text-align:right;white-space:nowrap"><div style="font-weight:900;font-size:15px">'+eur0(num(x))+'</div>'+((x.currency&&x.currency!=='EUR')?('<div style="font-size:10px;color:var(--muted)">'+(x.amount_origin!=null?Math.round(x.amount_origin).toLocaleString('fr-FR'):'')+' '+esc(x.currency)+'</div>'):'')+'</div>'+
     '</div>';
