@@ -667,7 +667,7 @@ body{-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
 <div class="wrap">
   <div class="hero">
     <div class="topbar">
-      <div class="logo"><div class="mark">OP</div> TCG GLOBAL <span id="buildTag" style="font-size:11px;font-weight:700;margin-left:8px;background:#e11d48;color:#fff;padding:2px 8px;border-radius:10px;letter-spacing:.2px;white-space:nowrap" title="Version en ligne">v10:37</span></div>
+      <div class="logo"><div class="mark">OP</div> TCG GLOBAL <span id="buildTag" style="font-size:11px;font-weight:700;margin-left:8px;background:#e11d48;color:#fff;padding:2px 8px;border-radius:10px;letter-spacing:.2px;white-space:nowrap" title="Version en ligne">v10:38</span></div>
       <div class="grow"></div>
       <div class="mktseg" id="mktSeg" title="Marché de valorisation">
         <button data-k="JP" class="on">🇯🇵 JP</button>
@@ -1231,7 +1231,11 @@ function openSetInCatalog(setCode,lang){
 }
 // ---------- Achats (suivi investissement) ----------
 let ACHATS=[], PORTVAL=null;
-const ACHAT_SORTS=[["date_desc","Date ↓"],["price_desc","Prix ↓"],["price_asc","Prix ↑"],["seller","Vendeur"]];
+const ACHAT_SORTS=[["date_desc","Date ↓"],["date_asc","Date ↑"],["price_desc","Prix ↓"],["price_asc","Prix ↑"],["seller","Vendeur"]];
+const MOIS_FR=["janv.","févr.","mars","avr.","mai","juin","juil.","août","sept.","oct.","nov.","déc."];
+function achatMonthKey(d){ const p=String(d||'').split('-'); return p.length>=2?(p[0]+'-'+p[1]):''; }
+function achatMonthLabel(k){ const p=k.split('-'); return p.length===2?(MOIS_FR[(+p[1])-1]+' '+p[0].slice(2)):k; }
+function setAchatMonth(m){ state.achatMonth=m; renderAchats(); }
 async function fetchAchats(){
   const stage=document.getElementById('stage'); stage.className=""; stage.innerHTML='<div class="loading">Chargement des achats…</div>';
   try{
@@ -1282,15 +1286,18 @@ function renderAchats(){
     tile('Scellés',eur0(scelles))+
     tile('Solde initial',eur0(base),'color:var(--muted)')+
   '</div>';
-  h+='<div style="font-size:11.5px;color:var(--muted);margin:0 2px 8px">Montants = coût <b>all-in</b> (prix + TVA import + douane hors UE ; prix réel en UE). « Solde initial » = ta collection existante non détaillée ('+eur0(base)+'). Touche « en attente / reçu » pour basculer le statut.</div>';
+  h+='<div style="font-size:11.5px;color:var(--muted);margin:0 2px 8px">Montants = coût <b>all-in</b> (prix + TVA import + douane hors UE ; prix réel en UE). « Solde initial » = ta collection existante non détaillée ('+eur0(base)+'). Filtre par mois ou par vendeur, et coche « Livré » quand le colis est arrivé.</div>';
   // données achats (hors baseline)
   const list=ACHATS.filter(x=>x.category!=='baseline');
   const sc={}; list.forEach(x=>{ if(x.seller) sc[x.seller]=(sc[x.seller]||0)+1; });
   const sellers=Object.keys(sc).sort((a,b)=>sc[b]-sc[a]);
   const selSeller=state.achatSeller||'all';
+  const selMonth=state.achatMonth||'all';
   const sort=state.achatSort||'date_desc';
+  const months=[...new Set(list.map(x=>achatMonthKey(x.purchase_date)).filter(Boolean))].sort().reverse();
   let rows=list.slice();
   if(selSeller!=='all') rows=rows.filter(x=>x.seller===selSeller);
+  if(selMonth!=='all') rows=rows.filter(x=>achatMonthKey(x.purchase_date)===selMonth);
   rows.sort((a,b)=>{
     if(sort==='price_desc') return num(b)-num(a);
     if(sort==='price_asc') return num(a)-num(b);
@@ -1300,6 +1307,8 @@ function renderAchats(){
   const shown=rows.reduce((s,x)=>s+num(x),0);
   // tri
   h+='<div class="chiprow" style="margin-bottom:6px">'+ACHAT_SORTS.map(([v,l])=>'<div class="chip'+(sort===v?' on':'')+'" onclick="setAchatSort(\''+v+'\')">'+l+'</div>').join('')+'</div>';
+  // mois
+  h+='<div class="chiprow" style="margin-bottom:6px"><div class="chip'+(selMonth==='all'?' on':'')+'" onclick="setAchatMonth(\'all\')">Tous mois</div>'+months.map(m=>'<div class="chip'+(selMonth===m?' on':'')+'" onclick="setAchatMonth(\''+m+'\')">'+achatMonthLabel(m)+'</div>').join('')+'</div>';
   // vendeurs
   h+='<div class="chiprow" style="margin-bottom:10px"><div class="chip'+(selSeller==='all'?' on':'')+'" onclick="setAchatSeller(\'all\')">Tous ('+list.length+')</div>'+
     sellers.map(s=>'<div class="chip'+(selSeller===s?' on':'')+'" onclick="setAchatSeller('+JSON.stringify(s).replace(/"/g,'&quot;')+')">'+esc(s)+' ('+sc[s]+')</div>').join('')+'</div>';
@@ -1308,7 +1317,7 @@ function renderAchats(){
     const gr=x.grade?'<span style="font-size:10px;font-weight:800;background:#fef9c3;color:#854d0e;padding:1px 6px;border-radius:6px;margin-left:5px">'+esc(x.grade)+'</span>':'';
     const qty=(x.quantity>1)?'<span style="font-size:10px;font-weight:800;background:#eef2ff;color:#3730a3;padding:1px 6px;border-radius:6px;margin-left:5px">×'+x.quantity+'</span>':'';
     const recu=isRecu(x.received);
-    const rec='<span onclick="event.stopPropagation();toggleReceived(\''+esc(x.id)+'\')" style="cursor:pointer;font-weight:800;color:'+(recu?'#059669':'#d97706')+'">'+(recu?'✓ Reçu':'⏳ En attente')+'</span>';
+    const rec='<label onclick="event.stopPropagation();toggleReceived(\''+esc(x.id)+'\')" style="display:inline-flex;align-items:center;gap:5px;cursor:pointer;font-weight:800;color:'+(recu?'#059669':'#d97706')+'"><input type="checkbox" '+(recu?'checked':'')+' readonly style="width:15px;height:15px;accent-color:#059669;pointer-events:none;margin:0">'+(recu?'Livré':'À livrer')+'</label>';
     const typ=x.ptype?esc(x.ptype):'';
     return '<div style="display:flex;gap:10px;align-items:flex-start;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px 12px">'+
       '<div style="flex:1;min-width:0">'+
