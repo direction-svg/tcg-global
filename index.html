@@ -845,7 +845,7 @@ const COLOR_HEX={Red:"#d64545",Green:"#2f9e57",Blue:"#2f6fed",Purple:"#8b57d6",B
 const TYPE_ORDER=["normal","alternate_art","sp","manga","full_art","textured_foil","jolly_roger_foil","promo","tournament"];
 const CAT_ORDER=["LEADER","CHARACTER","EVENT","STAGE","DON"];
 const SORTS=[["val_desc","Valeur ↓ (décroissant)"],["val_asc","Valeur ↑ (croissant)"],["name","Nom (A→Z)"],["num","Numéro"],["qty","Quantité"]];
-const DEF={q:"",lang:"all",color:"all",type:"all",cat:"all",rarity:"all",character:"all",grade:"all",minVal:0,imgf:"all",authf:"all",sort:"val_desc",view:"grid",mode:"accueil",catLang:"all",catQuery:"",catLangs:[],catColors:[],catCats:[],catRarities:[],catTypes:[],catSort:"price_desc",setLang:"JP",prodLang:"JP"};
+const DEF={q:"",lang:"all",color:"all",type:"all",cat:"all",rarity:"all",character:"all",grade:"all",minVal:0,imgf:"all",authf:"all",achatPeriod:"all",sort:"val_desc",view:"grid",mode:"accueil",catLang:"all",catQuery:"",catLangs:[],catColors:[],catCats:[],catRarities:[],catTypes:[],catSort:"price_desc",setLang:"JP",prodLang:"JP"};
 let PROD_VALUE=0;
 // Barre du haut : portefeuille détaillé (total = cartes + scellés), même valeur live que l'accueil
 function portfolioMini(){
@@ -960,7 +960,7 @@ async function refreshItemMarket(item){
 async function load(){
   let all=[],from=0,step=1000;
   while(true){
-    const r=await fetch(SB+"/rest/v1/app_collection?select=item_id,printing_id,card_number,card_name,card_type,category,color,rarity,language,is_graded,grading_company,grade,cert_number,quantity,market_value_eur,seed_value_eur,live_value_eur,psa_estimate_eur,population,pop_higher,price_source,price_asof,image_url,set_code,set_name,variant,variant_label,origin,art_suffix,reverify&order=market_value_eur.desc.nullslast&limit="+step+"&offset="+from,{headers:{apikey:ANON,Authorization:"Bearer "+ANON}});
+    const r=await fetch(SB+"/rest/v1/app_collection?select=item_id,printing_id,card_number,card_name,card_type,category,color,rarity,language,is_graded,grading_company,grade,cert_number,quantity,market_value_eur,seed_value_eur,live_value_eur,psa_estimate_eur,population,pop_higher,price_source,price_asof,image_url,set_code,set_name,variant,variant_label,origin,art_suffix,reverify,acquired_from,acquired_date,acquired_price&order=market_value_eur.desc.nullslast&limit="+step+"&offset="+from,{headers:{apikey:ANON,Authorization:"Bearer "+ANON}});
     if(!r.ok){document.getElementById("stage").innerHTML='<div class="empty">Erreur de chargement ('+r.status+').</div>';return;}
     const b=await r.json(); all=all.concat(b); if(b.length<step)break; from+=step;
   }
@@ -1238,7 +1238,9 @@ function openSetInCatalog(setCode,lang){
   setMode('catalog');
 }
 // ---------- Achats (suivi investissement) ----------
-let ACHATS=[], PORTVAL=null;
+let ACHATS=[], PORTVAL=null, ACQ=[];
+const ACHAT_PERIODS=[["all","Depuis le début"],["2026-06-01","Depuis juin 2026"]];
+function setAchatPeriod(p){ state.achatPeriod=p; renderAchats(); }
 const ACHAT_SORTS=[["date_desc","Date ↓"],["date_asc","Date ↑"],["price_desc","Prix ↓"],["price_asc","Prix ↑"],["seller","Vendeur"]];
 const MOIS_FR=["janv.","févr.","mars","avr.","mai","juin","juil.","août","sept.","oct.","nov.","déc."];
 function achatMonthKey(d){ const p=String(d||'').split('-'); return p.length>=2?(p[0]+'-'+p[1]):''; }
@@ -1247,12 +1249,14 @@ function setAchatMonth(m){ state.achatMonth=m; renderAchats(); }
 async function fetchAchats(){
   const stage=document.getElementById('stage'); stage.className=""; stage.innerHTML='<div class="loading">Chargement des achats…</div>';
   try{
-    const [ra,rp]=await Promise.all([
+    const [ra,rp,rc]=await Promise.all([
       fetch(SB+'/rest/v1/app_purchases?select=id,purchase_date,seller,item_name,reference,quantity,ptype,grade,cert_number,ordered,received,currency,amount_origin,amount_eur,category,note&order=purchase_date.desc&limit=1000',{headers:{apikey:ANON,Authorization:"Bearer "+ANON}}),
-      fetch(SB+'/rest/v1/app_portfolio_value?select=*',{headers:{apikey:ANON,Authorization:"Bearer "+ANON}})
+      fetch(SB+'/rest/v1/app_portfolio_value?select=*',{headers:{apikey:ANON,Authorization:"Bearer "+ANON}}),
+      fetch(SB+'/rest/v1/app_collection?select=acquired_date,acquired_price,market_value_eur&acquired_price=not.is.null&acquired_date=not.is.null&limit=3000',{headers:{apikey:ANON,Authorization:"Bearer "+ANON}})
     ]);
     let rows=await ra.json(); if(!Array.isArray(rows))rows=[];
     let pv=await rp.json(); PORTVAL=(Array.isArray(pv)&&pv[0])?pv[0]:null;
+    let acq=await rc.json(); ACQ=Array.isArray(acq)?acq:[];
     if(state.mode!=='achats') return;
     ACHATS=rows; renderAchats();
   }catch(e){ stage.innerHTML='<div class="empty">Erreur de chargement des achats.</div>'; }
@@ -1271,17 +1275,36 @@ function renderAchats(){
   const num=x=>+x.amount_eur||0;
   const mk=(MKT||'EU').toLowerCase();
   const pv=PORTVAL||{};
-  const invested=+pv.invested||0;
-  const cartes=+pv.invested_cards||0, scelles=+pv.invested_sealed||0, base=+pv.invested_baseline||0;
-  const curVal=(+pv['cards_'+mk]||0)+(+pv.products||0);
   const havePv=!!PORTVAL;
-  const pnl=curVal-invested; const pct=invested?(pnl/invested*100):0; const pos=pnl>=0;
+  const cutoff=(state.achatPeriod&&state.achatPeriod!=='all')?state.achatPeriod:null;
+  const periodLbl=(ACHAT_PERIODS.find(p=>p[0]===state.achatPeriod)||['','Depuis le début'])[1];
+  // achats hors baseline, filtrés par période
+  const listAll=ACHATS.filter(x=>x.category!=='baseline');
+  const list=cutoff?listAll.filter(x=>(x.purchase_date||'')>=cutoff):listAll;
+  const catSum=c=>list.filter(x=>x.category===c).reduce((s,x)=>s+num(x),0);
+  const invCase=catSum('case'), invCard=catSum('card'), invSealed=catSum('sealed'), invOther=catSum('other');
+  const invTot=list.reduce((s,x)=>s+num(x),0);
+  // valeur/coût des cartes reliées (pour la plus-value de la période)
+  const acqP=cutoff?ACQ.filter(a=>(a.acquired_date||'')>=cutoff):ACQ;
+  const acqCost=acqP.reduce((s,a)=>s+(+a.acquired_price||0),0);
+  const acqVal=acqP.reduce((s,a)=>s+(+a.market_value_eur||0),0);
   const tile=(k,v,c)=>'<div style="flex:1 1 120px;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:12px 14px"><div style="font-size:10.5px;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);font-weight:800">'+k+'</div><div style="font-size:21px;font-weight:900;letter-spacing:-.4px;margin-top:3px;'+(c||'')+'">'+v+'</div></div>';
-  // Bannière P&L — valeur (marché sélectionné) lue directement en base, indépendante du chargement de la collection
   let h='';
-  if(havePv){
+  // sélecteur de période
+  h+='<div class="chiprow" style="margin-bottom:12px">'+ACHAT_PERIODS.map(([v,l])=>'<div class="chip'+(state.achatPeriod===v?' on':'')+'" onclick="setAchatPeriod(\''+v+'\')">'+l+'</div>').join('')+'</div>';
+  if(cutoff){
+    // Plus-value CARTES sur la période (achats reliés à la collection)
+    const pnl=acqVal-acqCost; const pct=acqCost?(pnl/acqCost*100):0; const pos=pnl>=0;
     h+='<div style="background:'+(pos?'linear-gradient(135deg,#047857,#10b981)':'linear-gradient(135deg,#b91c1c,#ef4444)')+';color:#fff;border-radius:16px;padding:15px 18px;margin-bottom:12px;box-shadow:0 4px 14px rgba(15,23,42,.12)">'+
-      '<div style="font-size:11px;text-transform:uppercase;letter-spacing:.5px;opacity:.9;font-weight:800">'+(pos?'Plus-value':'Moins-value')+' &middot; marché '+MKT_LABEL[MKT]+'</div>'+
+      '<div style="font-size:11px;text-transform:uppercase;letter-spacing:.5px;opacity:.9;font-weight:800">'+(pos?'Plus-value':'Moins-value')+' cartes &middot; '+esc(periodLbl)+'</div>'+
+      '<div style="font-size:29px;font-weight:900;letter-spacing:-.6px;margin:3px 0">'+(pos?'+':'')+eur0(pnl)+' <span style="font-size:16px;opacity:.92;font-weight:800">('+(pos?'+':'')+Math.round(pct)+'%)</span></div>'+
+      '<div style="font-size:12.5px;opacity:.95">Valeur cartes <b>'+eur0(acqVal)+'</b> &middot; Investi cartes <b>'+eur0(acqCost)+'</b> &middot; Caisses <b>'+eur0(invCase)+'</b></div>'+
+    '</div>';
+  } else if(havePv){
+    const invested=+pv.invested||0; const curVal=(+pv['cards_'+mk]||0)+(+pv.products||0);
+    const pnl=curVal-invested; const pct=invested?(pnl/invested*100):0; const pos=pnl>=0;
+    h+='<div style="background:'+(pos?'linear-gradient(135deg,#047857,#10b981)':'linear-gradient(135deg,#b91c1c,#ef4444)')+';color:#fff;border-radius:16px;padding:15px 18px;margin-bottom:12px;box-shadow:0 4px 14px rgba(15,23,42,.12)">'+
+      '<div style="font-size:11px;text-transform:uppercase;letter-spacing:.5px;opacity:.9;font-weight:800">'+(pos?'Plus-value':'Moins-value')+' globale &middot; marché '+MKT_LABEL[MKT]+'</div>'+
       '<div style="font-size:29px;font-weight:900;letter-spacing:-.6px;margin:3px 0">'+(pos?'+':'')+eur0(pnl)+' <span style="font-size:16px;opacity:.92;font-weight:800">('+(pos?'+':'')+Math.round(pct)+'%)</span></div>'+
       '<div style="font-size:12.5px;opacity:.95">Valeur actuelle <b>'+eur0(curVal)+'</b> &nbsp;·&nbsp; Investi all-in <b>'+eur0(invested)+'</b></div>'+
     '</div>';
@@ -1289,14 +1312,14 @@ function renderAchats(){
     h+='<div style="background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:15px 18px;margin-bottom:12px;color:var(--muted)">Calcul de la plus-value en cours…</div>';
   }
   h+='<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px">'+
-    tile('Investi (all-in)',eur0(invested),'color:var(--accent)')+
-    tile('Cartes',eur0(cartes))+
-    tile('Scellés',eur0(scelles))+
-    tile('Solde initial',eur0(base),'color:var(--muted)')+
+    tile((cutoff?'Investi (période)':'Investi (all-in)'),eur0(invTot),'color:var(--accent)')+
+    tile('Caisses',eur0(invCase),invCase>0?'color:#b45309':'color:var(--muted)')+
+    tile('Cartes',eur0(invCard))+
+    tile('Scellés',eur0(invSealed))+
+    (invOther>0?tile('Autre',eur0(invOther),'color:var(--muted)'):'')+
   '</div>';
-  h+='<div style="font-size:11.5px;color:var(--muted);margin:0 2px 8px">Montants = coût <b>all-in</b> (prix + TVA import + douane hors UE ; prix réel en UE). « Solde initial » = ta collection existante non détaillée ('+eur0(base)+'). Ouvre <b>Filtres &amp; tri</b> pour classer par prix, date ou vendeur, et coche « Réceptionné » quand le colis est arrivé.</div>';
-  // données achats (hors baseline)
-  const list=ACHATS.filter(x=>x.category!=='baseline');
+  h+='<div style="font-size:11.5px;color:var(--muted);margin:0 2px 8px">Montants = coût <b>all-in</b> (prix + TVA/douane hors UE). '+(cutoff?('<b>'+esc(periodLbl)+'</b> : plus-value calculée sur tes <b>cartes reliées</b> à un achat. '):'La plus-value globale compare la valeur marché de tout ton portefeuille à ton investi total (caisses comprises). ')+'« Caisses » = cases ouvertes. Ouvre <b>Filtres &amp; tri</b> pour classer par prix, date ou vendeur.</div>';
+  // données achats (hors baseline, déjà filtrées par période)
   const sc={}, stot={}; list.forEach(x=>{ if(x.seller){ sc[x.seller]=(sc[x.seller]||0)+1; stot[x.seller]=(stot[x.seller]||0)+num(x); } });
   const sellers=Object.keys(sc).sort((a,b)=>(stot[b]-stot[a])||(sc[b]-sc[a]));
   const selSeller=state.achatSeller||'all';
@@ -2666,6 +2689,10 @@ function renderDetail(){ const c=detailCard; if(!c)return; const body=document.g
     const src=c.price_source||"";
     const asof=c.price_asof?(" · maj "+new Date(c.price_asof).toLocaleDateString("fr-FR",{day:"2-digit",month:"2-digit"})):"";
     const srcline=src?('<div class="s" style="margin-top:3px">'+(src.indexOf("Logia")>=0?"⚠ ":"● ")+esc(SRC_LABELS[src]||src)+asof+'</div>'):'';
+    const nd='<span style="opacity:.55">Non défini</span>';
+    const achFrom=(c.acquired_from&&String(c.acquired_from).trim())?esc(c.acquired_from):nd;
+    const achDate=c.acquired_date?new Date(c.acquired_date).toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit',year:'numeric'}):nd;
+    const achPrice=(c.acquired_price!=null&&c.acquired_price!=='')?eur(c.acquired_price):nd;
     const lv=c.live_value_eur, sd=c.seed_value_eur;
     let cmp="";
     if(lv!=null && sd!=null && Math.abs(Number(lv)-Number(sd))/Math.max(Number(sd),1) > 0.15){
@@ -2676,6 +2703,7 @@ function renderDetail(){ const c=detailCard; if(!c)return; const body=document.g
       (VERIFY.has(c.item_id)?'<div style="margin:8px 0;padding:10px 12px;border:1px solid #fdba74;background:#fff7ed;border-radius:10px;font-size:13px;color:#9a3412">🔍 <b>Photo à vérifier.</b> Tape la bonne illustration ci-dessous pour la valider, ou <button onclick=\'validateCurrent()\' style="border:0;background:#f97316;color:#fff;font-weight:800;padding:4px 10px;border-radius:8px;cursor:pointer">✓ Valider cette photo</button></div>':'')+
       (c.reverify?'<div style="margin:8px 0;padding:10px 12px;border:1px solid #fecaca;background:#fef2f2;border-radius:10px;font-size:13px;color:#991b1b">🔴 <b>À revérifier — authenticité.</b> Carte à contrôler (test de la tranche / lumière / comparaison avec une vraie). <button onclick=\'clearReverify()\' style="border:0;background:#ef4444;color:#fff;font-weight:800;padding:4px 10px;border-radius:8px;cursor:pointer;margin-left:4px">✓ Vérifiée (authentique)</button></div>':'')+
       '<div class="qtybox"><span class="s">Possédé :</span> <span class="b">'+(c.quantity||1)+'</span></div>'+
+      drow("Acheté chez", achFrom)+drow("Date d’achat", achDate)+drow("Prix payé", achPrice)+
       drow("Variante", '<b>'+variantNice(c)+'</b>')+drow("Provenance", c.origin?(ORIGIN_LABELS[c.origin]||c.origin):"")+drow("Rareté", RAR_LABELS[c.rarity]||c.rarity||"—")+drow("État", g)+drow("Langue", (FLAG[c.language]||"")+' '+(LANG_LABELS[c.language]||c.language))+drow("Nom", esc(c.card_name))+drow("Numéro", esc(c.card_number))+drow("Set", esc((c.set_code||"")+(c.set_name?(" — "+c.set_name):"")));
   } else {
     body.innerHTML=drow("Nom", esc(c.card_name))+drow("Numéro", esc(c.card_number))+drow("Variante", '<b>'+variantNice(c)+'</b>')+drow("Provenance", c.origin?(ORIGIN_LABELS[c.origin]||c.origin):"")+drow("Rareté", RAR_LABELS[c.rarity]||c.rarity)+drow("Set / Édition", esc((c.set_code||"")+(c.set_name?(" — "+c.set_name):"")))+drow("Catégorie", CAT_LABELS[c.category]||c.category)+drow("Type d’illustration", TYPE_LABELS[c.card_type]||c.card_type)+drow("Couleur", (c.color||"").split(";").join(" / "))+drow("Langue", LANG_LABELS[c.language]||c.language);
