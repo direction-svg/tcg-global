@@ -689,6 +689,7 @@ body{-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
     <button data-m="products">Produits</button>
     <button data-m="achats">Achats</button>
     <button data-m="gradation">Gradation</button>
+    <button data-m="sante">Santé</button>
     <button data-m="live">Live</button>
   </nav>
 
@@ -1166,14 +1167,14 @@ document.getElementById("q").addEventListener("input",e=>{
 function setMode(m){
   state.mode=m;
   document.querySelectorAll('#modeSeg button').forEach(b=>b.classList.toggle('on',b.dataset.m===m));
-  const home=m==="accueil", cat=m==="catalog", ops=m==="ops", sets=m==="sets", prods=m==="products", live=m==="live", ia=m==="ia", achats=m==="achats", grad=m==="gradation";
+  const home=m==="accueil", cat=m==="catalog", ops=m==="ops", sets=m==="sets", prods=m==="products", live=m==="live", ia=m==="ia", achats=m==="achats", grad=m==="gradation", sante=m==="sante";
   if(!live) stopLive();
   document.getElementById('catLangRow').classList.toggle('hidden',!cat);
   document.getElementById('catFilters').classList.add('hidden');
-  document.getElementById('viewBtn').classList.toggle('hidden',home||cat||ops||sets||prods||live||ia||achats||grad);
-  document.getElementById('filterBtn').classList.toggle('hidden',home||ops||sets||prods||live||ia||achats||grad);
-  document.getElementById('sortBtn').classList.toggle('hidden',home||ops||sets||prods||live||ia||achats||grad);
-  document.querySelector('.search').classList.toggle('hidden',home||ops||sets||prods||live||ia||achats||grad);
+  document.getElementById('viewBtn').classList.toggle('hidden',home||cat||ops||sets||prods||live||ia||achats||grad||sante);
+  document.getElementById('filterBtn').classList.toggle('hidden',home||ops||sets||prods||live||ia||achats||grad||sante);
+  document.getElementById('sortBtn').classList.toggle('hidden',home||ops||sets||prods||live||ia||achats||grad||sante);
+  document.querySelector('.search').classList.toggle('hidden',home||ops||sets||prods||live||ia||achats||grad||sante);
   document.getElementById('scanFab').classList.toggle('hidden',!(m==='collection'||m==='catalog'));
   const vfr=document.getElementById('valFilterRow'); if(vfr){ if(m==='collection'){ vfr.style.display='flex'; buildValRow(); } else { vfr.style.display='none'; } }
   document.getElementById('q').placeholder=cat?"Chercher une carte (nom ou numéro), toutes langues…":"Rechercher (nom ou numéro)…";
@@ -1190,7 +1191,53 @@ function setMode(m){
   else if(prods){ document.getElementById('countLine').textContent=''; fetchProducts(); }
   else if(achats){ document.getElementById('countLine').textContent=''; fetchAchats(); }
   else if(grad){ document.getElementById('countLine').textContent=''; fetchGrading(); }
+  else if(sante){ document.getElementById('countLine').textContent=''; fetchSante(); }
   else { syncBadge(); document.getElementById('countLine').textContent=''; render(); loadBriefing(); }
+}
+// ---------- Santé des données ----------
+let SANTE=null;
+const SANTE_META={
+  a_reverifier:{t:'À revérifier (authenticité)',ic:'🔴',c:'#ef4444',d:'Cartes à contrôler physiquement (test tranche / lumière / comparaison).'},
+  valeur_incoherente:{t:'Valeur incohérente',ic:'⚠️',c:'#f59e0b',d:"Cote de marché suspecte (ex. prix gradé < prix brut, ou saut anormal). À vérifier avant de s'y fier."},
+  sans_valeur:{t:'Sans valeur de marché',ic:'∅',c:'#64748b',d:'Aucune cote trouvée pour cette carte — à sourcer.'},
+  prix_perime:{t:'Prix périmé',ic:'🕗',c:'#64748b',d:'Dernière cote de plus de 21 jours.'}
+};
+const SANTE_ORDER=['a_reverifier','valeur_incoherente','sans_valeur','prix_perime'];
+async function fetchSante(){
+  const stage=document.getElementById('stage'); stage.className=''; stage.innerHTML='<div class="loading">Analyse de la santé des données…</div>';
+  try{
+    const r=await fetch(SB+'/rest/v1/app_health_owned?select=categorie,severite,item_id,card_number,card_name,variant_label,detail,valeur&order=severite.desc&limit=2000',{headers:{apikey:ANON,Authorization:'Bearer '+ANON}});
+    let rows=await r.json(); SANTE=Array.isArray(rows)?rows:[];
+    if(state.mode!=='sante')return; renderSante();
+  }catch(e){ stage.innerHTML='<div class="empty">Erreur de chargement de la santé.</div>'; }
+}
+function renderSante(){
+  const stage=document.getElementById('stage'); stage.className='';
+  if(!SANTE){ stage.innerHTML='<div class="loading">…</div>'; return; }
+  const total=SANTE.length;
+  const totalCards=(DATALOADED?DATA.length:0);
+  const affected=new Set(SANTE.map(x=>x.item_id)).size;
+  const score= totalCards? Math.max(0,Math.round(100*(1-affected/totalCards))) : (total?0:100);
+  const groups={}; SANTE.forEach(x=>{ (groups[x.categorie]=groups[x.categorie]||[]).push(x); });
+  const sc= score>=90?'#059669': score>=75?'#f59e0b':'#ef4444';
+  let h='';
+  h+='<div style="background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:16px 18px;margin-bottom:12px;display:flex;align-items:center;gap:16px">'+
+     '<div style="width:64px;height:64px;border-radius:50%;display:grid;place-items:center;background:conic-gradient('+sc+' '+(score*3.6)+'deg,var(--line) 0);flex:none"><div style="width:50px;height:50px;border-radius:50%;background:var(--panel);display:grid;place-items:center;font-weight:900;font-size:16px">'+score+'</div></div>'+
+     '<div><div style="font-size:15px;font-weight:900">Score de fiabilité</div><div class="dt" style="font-size:12.5px">'+total+' alerte'+(total>1?'s':'')+' sur '+affected+' carte'+(affected>1?'s':'')+'. Traite-les pour monter le score.</div></div>'+
+     '</div>';
+  SANTE_ORDER.forEach(cat=>{
+    const g=groups[cat]; if(!g||!g.length)return; const m=SANTE_META[cat];
+    const sumv=g.reduce((s,x)=>s+(+x.valeur||0),0);
+    h+='<details class="pxdet" style="margin-bottom:10px"><summary><span style="font-weight:800">'+m.ic+' '+m.t+'</span><span style="margin-left:auto;margin-right:10px;font-weight:800;color:'+m.c+'">'+g.length+(sumv?(' · '+eur0(sumv)):'')+'</span></summary>'+
+      '<div class="pxbody" style="padding-top:10px"><div class="dt" style="margin-bottom:8px">'+m.d+'</div>'+
+      g.map(x=>'<div onclick="grOpenCard(\''+esc(x.item_id)+'\')" style="display:flex;gap:10px;align-items:center;padding:8px 0;border-top:1px solid var(--line);cursor:pointer">'+
+        '<div style="flex:1;min-width:0"><div style="font-weight:700;font-size:13px">'+esc(x.card_name||'')+' <span class="dt">'+esc(x.card_number||'')+(x.variant_label?(' · '+esc(x.variant_label)):'')+'</span></div>'+
+        '<div class="dt" style="font-size:11px;margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(x.detail||'')+'</div></div>'+
+        '<div style="text-align:right;white-space:nowrap;font-weight:800;font-size:12.5px">'+(x.valeur!=null?eur0(x.valeur):'—')+'</div></div>').join('')+
+      '</div></details>';
+  });
+  if(!total) h='<div class="empty">✓ Aucune alerte — tout est propre.</div>';
+  stage.innerHTML=h;
 }
 const SET_NAMES={OP01:"Romance Dawn",OP02:"Paramount War",OP03:"Pillars of Strength",OP04:"Kingdoms of Intrigue",OP05:"Awakening of the New Era",OP06:"Wings of the Captain",OP07:"500 Years in the Future",OP08:"Two Legends",OP09:"Emperors in the New World",OP10:"Royal Blood",OP11:"A Fist of Divine Speed",OP12:"Legacy of the Master",OP13:"Carrying On His Will",OP14:"The Azure Sea's Seven",OP15:"Adventure on KAMI's Island",OP16:"The Time of Battle",EB01:"Memorial Collection",EB02:"Anime 25th Collection",EB03:"Heroines Edition",EB04:"Egghead Crisis",PRB01:"Premium Booster -The Best-",PRB02:"One Piece The Best Vol.2",ST01:"Straw Hat Crew",ST02:"Worst Generation",ST03:"The Seven Warlords",ST04:"Animal Kingdom Pirates",ST32:"Green Roronoa Zoro",ST33:"Blue Kuzan",ST34:"Purple Charlotte Katakuri",ST35:"Red/Black Sabo",ST36:"Yellow Eustass Kid",PROMO:"Promos (toutes)",DON:"DON!! Cards"};
 const SET_GRP_LABELS={BOOSTER:"Booster / Extra / Premium",STARTER:"Starter Decks",PROMO:"Promo",DON:"DON!!",AUTRES:"Autres"};
