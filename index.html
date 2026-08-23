@@ -78,6 +78,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Ar
 .tp{background:var(--chip);color:var(--muted);padding:1px 6px;border-radius:6px;font-weight:700;font-size:10px}
 .val{font-weight:900;font-size:15px;margin-top:6px}
 .qty{position:absolute;top:6px;right:6px;background:rgba(15,30,52,.82);color:#fff;font-size:10px;font-weight:800;padding:2px 6px;border-radius:7px}
+.rvdot{position:absolute;bottom:7px;left:7px;width:14px;height:14px;border-radius:50%;background:#ef4444;border:2px solid #fff;box-shadow:0 0 0 1px rgba(0,0,0,.15),0 0 8px rgba(239,68,68,.7);z-index:4}
+.rvdot.rvinline{position:static;display:inline-block;width:9px;height:9px;margin-right:6px;border-width:1px;vertical-align:middle;box-shadow:0 0 5px rgba(239,68,68,.6)}
+.lthumb{position:relative}
 .list .row{display:flex;gap:12px;align-items:center;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:8px;margin-bottom:8px;box-shadow:var(--shadow)}
 .lthumb{position:relative;width:44px;height:62px;flex:none;border-radius:6px;overflow:hidden;background:#dde8fa}
 .lthumb .ph{font-size:8px;padding:2px}
@@ -664,7 +667,7 @@ body{-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
 <div class="wrap">
   <div class="hero">
     <div class="topbar">
-      <div class="logo"><div class="mark">OP</div> TCG GLOBAL <span id="buildTag" style="font-size:11px;font-weight:700;margin-left:8px;background:#e11d48;color:#fff;padding:2px 8px;border-radius:10px;letter-spacing:.2px;white-space:nowrap" title="Version en ligne">v10:49</span></div>
+      <div class="logo"><div class="mark">OP</div> TCG GLOBAL <span id="buildTag" style="font-size:11px;font-weight:700;margin-left:8px;background:#e11d48;color:#fff;padding:2px 8px;border-radius:10px;letter-spacing:.2px;white-space:nowrap" title="Version en ligne">v10:50</span></div>
       <div class="grow"></div>
       <div class="mktseg" id="mktSeg" title="Marché de valorisation">
         <button data-k="JP" class="on">🇯🇵 JP</button>
@@ -842,7 +845,7 @@ const COLOR_HEX={Red:"#d64545",Green:"#2f9e57",Blue:"#2f6fed",Purple:"#8b57d6",B
 const TYPE_ORDER=["normal","alternate_art","sp","manga","full_art","textured_foil","jolly_roger_foil","promo","tournament"];
 const CAT_ORDER=["LEADER","CHARACTER","EVENT","STAGE","DON"];
 const SORTS=[["val_desc","Valeur ↓ (décroissant)"],["val_asc","Valeur ↑ (croissant)"],["name","Nom (A→Z)"],["num","Numéro"],["qty","Quantité"]];
-const DEF={q:"",lang:"all",color:"all",type:"all",cat:"all",rarity:"all",character:"all",grade:"all",minVal:0,imgf:"all",sort:"val_desc",view:"grid",mode:"accueil",catLang:"all",catQuery:"",catLangs:[],catColors:[],catCats:[],catRarities:[],catTypes:[],catSort:"price_desc",setLang:"JP",prodLang:"JP"};
+const DEF={q:"",lang:"all",color:"all",type:"all",cat:"all",rarity:"all",character:"all",grade:"all",minVal:0,imgf:"all",authf:"all",sort:"val_desc",view:"grid",mode:"accueil",catLang:"all",catQuery:"",catLangs:[],catColors:[],catCats:[],catRarities:[],catTypes:[],catSort:"price_desc",setLang:"JP",prodLang:"JP"};
 let PROD_VALUE=0;
 // Barre du haut : portefeuille détaillé (total = cartes + scellés), même valeur live que l'accueil
 function portfolioMini(){
@@ -957,7 +960,7 @@ async function refreshItemMarket(item){
 async function load(){
   let all=[],from=0,step=1000;
   while(true){
-    const r=await fetch(SB+"/rest/v1/app_collection?select=item_id,printing_id,card_number,card_name,card_type,category,color,rarity,language,is_graded,grading_company,grade,cert_number,quantity,market_value_eur,seed_value_eur,live_value_eur,psa_estimate_eur,population,pop_higher,price_source,price_asof,image_url,set_code,set_name,variant,variant_label,origin,art_suffix&order=market_value_eur.desc.nullslast&limit="+step+"&offset="+from,{headers:{apikey:ANON,Authorization:"Bearer "+ANON}});
+    const r=await fetch(SB+"/rest/v1/app_collection?select=item_id,printing_id,card_number,card_name,card_type,category,color,rarity,language,is_graded,grading_company,grade,cert_number,quantity,market_value_eur,seed_value_eur,live_value_eur,psa_estimate_eur,population,pop_higher,price_source,price_asof,image_url,set_code,set_name,variant,variant_label,origin,art_suffix,reverify&order=market_value_eur.desc.nullslast&limit="+step+"&offset="+from,{headers:{apikey:ANON,Authorization:"Bearer "+ANON}});
     if(!r.ok){document.getElementById("stage").innerHTML='<div class="empty">Erreur de chargement ('+r.status+').</div>';return;}
     const b=await r.json(); all=all.concat(b); if(b.length<step)break; from+=step;
   }
@@ -1056,9 +1059,14 @@ function buildValRow(){ const row=document.getElementById('valFilterRow'); if(!r
     '<div class="chip'+(state.imgf==="all"?' on':'')+'" onclick="setImgf(\'all\')">Toutes</div>'+
     '<div class="chip'+(state.imgf==="verify"?' on':'')+'" style="'+(state.imgf==="verify"?'':'border-color:#f59e0b;color:#b45309')+'" onclick="setImgf(\'verify\')">🔍 À vérifier ('+nV+')</div>'+
     (nN>0?'<div class="chip'+(state.imgf==="noimg"?' on':'')+'" onclick="setImgf(\'noimg\')">Sans image ('+nN+')</div>':'');
-  row.innerHTML='<span class="dt" style="align-self:center;margin-right:4px">Valeur min :</span>'+VALSTEPS.map(s=>'<div class="chip'+(state.minVal===s[0]?' on':'')+'" onclick="setMinVal('+s[0]+')">'+s[1]+'</div>').join('')+imgChips; }
+  const nRv=DATA.filter(c=>c.reverify).length;
+  const authChips=nRv>0?('<span class="dt" style="align-self:center;margin:0 4px 0 10px">Authenticité :</span>'+
+    '<div class="chip'+(state.authf==="all"?' on':'')+'" onclick="setAuthf(\'all\')">Toutes</div>'+
+    '<div class="chip'+(state.authf==="reverify"?' on':'')+'" style="'+(state.authf==="reverify"?'':'border-color:#ef4444;color:#dc2626')+'" onclick="setAuthf(\'reverify\')">🔴 À revérifier ('+nRv+')</div>'):'';
+  row.innerHTML='<span class="dt" style="align-self:center;margin-right:4px">Valeur min :</span>'+VALSTEPS.map(s=>'<div class="chip'+(state.minVal===s[0]?' on':'')+'" onclick="setMinVal('+s[0]+')">'+s[1]+'</div>').join('')+imgChips+authChips; }
 function setMinVal(v){ state.minVal=v; buildValRow(); render(); }
 function setImgf(v){ state.imgf=v; buildValRow(); render(); }
+function setAuthf(v){ state.authf=v; buildValRow(); render(); }
 
 function apply(){
   let a=DATA.slice();
@@ -1074,6 +1082,7 @@ function apply(){
   if(state.minVal>0) a=a.filter(c=>val(c)>=state.minVal);
   if(state.imgf==="verify") a=a.filter(c=>VERIFY.has(c.item_id));
   else if(state.imgf==="noimg") a=a.filter(c=>!c.image_url && !VERIFY.has(c.item_id));
+  if(state.authf==="reverify") a=a.filter(c=>c.reverify);
   if(state.q){const q=state.q.toLowerCase();a=a.filter(c=>(c.card_name||"").toLowerCase().includes(q)||(c.card_number||"").toLowerCase().includes(q));}
   const s=state.sort;
   a.sort((x,y)=> s==="val_asc"?val(x)-val(y): s==="name"?(x.card_name||"").localeCompare(y.card_name||""): s==="num"?(x.card_number||"").localeCompare(y.card_number||""): s==="qty"?(y.quantity||1)-(x.quantity||1): val(y)-val(x));
@@ -1124,13 +1133,13 @@ function render(){
     stage.className=""; stage.innerHTML='<div class="grid">'+a.map(c=>{
       const g=c.is_graded?'<span class="grade">'+(c.grading_company||"")+' '+(c.grade!=null?String(c.grade).replace(/\.0$/,''):'')+'</span>':'<span></span>';
       const q=(c.quantity>1)?'<span class="qty">x'+c.quantity+'</span>':'';
-      return '<div class="card" data-id="'+c.item_id+'"><div class="imgwrap">'+imgTag(c)+'<div class="badges"><span class="flag">'+(FLAG[c.language]||"")+'</span>'+g+'</div>'+q+'</div>'+
+      return '<div class="card" data-id="'+c.item_id+'"><div class="imgwrap">'+imgTag(c)+'<div class="badges"><span class="flag">'+(FLAG[c.language]||"")+'</span>'+g+'</div>'+q+(c.reverify?'<span class="rvdot" title="À revérifier (authenticité)"></span>':'')+'</div>'+
       '<div class="meta"><p class="nm">'+esc(c.card_name||"")+'</p><div class="sub"><span>'+esc(c.card_number||"")+'</span>'+descTags(c)+'</div><div class="val">'+eur(val(c))+'</div></div></div>';
     }).join("")+'</div>';
   } else {
     stage.className="list"; stage.innerHTML=a.map(c=>{
       const g=c.is_graded?'<span class="grade">'+(c.grading_company||"")+' '+(c.grade!=null?String(c.grade).replace(/\.0$/,''):'')+'</span>':'';
-      return '<div class="row" data-id="'+c.item_id+'"><div class="lthumb">'+imgTag(c)+'</div><div><p class="nm">'+esc(c.card_name||"")+'</p><div class="sub"><span>'+(FLAG[c.language]||"")+'</span><span>'+esc(c.card_number||"")+'</span>'+descTags(c)+' '+g+'</div></div><div class="r"><div class="val">'+eur(val(c))+'</div>'+(c.quantity>1?'<div class="sub">x'+c.quantity+'</div>':'')+'</div></div>';
+      return '<div class="row" data-id="'+c.item_id+'"><div class="lthumb">'+imgTag(c)+'</div><div><p class="nm">'+(c.reverify?'<span class="rvdot rvinline" title="À revérifier (authenticité)"></span>':'')+esc(c.card_name||"")+'</p><div class="sub"><span>'+(FLAG[c.language]||"")+'</span><span>'+esc(c.card_number||"")+'</span>'+descTags(c)+' '+g+'</div></div><div class="r"><div class="val">'+eur(val(c))+'</div>'+(c.quantity>1?'<div class="sub">x'+c.quantity+'</div>':'')+'</div></div>';
     }).join("");
   }
 }
@@ -1378,6 +1387,22 @@ async function fetchGrading(){
 }
 function grNameHTML(x){ const dt=descTags(x)+provNice(x); return '<div style="font-weight:800;font-size:13.5px">'+esc(x.name||'')+'</div><div style="font-size:11px;color:var(--muted)">'+esc(x.number||'')+(x.variant_label?' · '+esc(x.variant_label):'')+' · '+esc(x.language||'')+'</div>'+(dt?'<div style="margin-top:3px">'+dt+'</div>':''); }
 function grThumb(x){ const u=x.image_url; const box='width:52px;height:73px;border-radius:8px;flex:none;background:var(--chip);object-fit:cover'; return u? '<img src="'+esc(u)+'" loading="lazy" style="'+box+'" onerror="this.style.visibility=\'hidden\'">' : '<div style="'+box+'"></div>'; }
+async function grOpenCard(itemId){
+  let c=(Array.isArray(DATA)?DATA.find(x=>String(x.item_id)===String(itemId)):null);
+  if(!c){
+    try{
+      const sel='item_id,printing_id,card_number,card_name,card_type,category,color,rarity,language,is_graded,grading_company,grade,cert_number,quantity,market_value_eur,seed_value_eur,live_value_eur,psa_estimate_eur,population,pop_higher,price_source,price_asof,image_url,set_code,set_name,variant,variant_label,origin,art_suffix';
+      const [rc,rm]=await Promise.all([
+        fetch(SB+'/rest/v1/app_collection?item_id=eq.'+encodeURIComponent(itemId)+'&select='+sel+'&limit=1',{headers:{apikey:ANON,Authorization:'Bearer '+ANON}}).then(r=>r.json()),
+        fetch(SB+'/rest/v1/app_collection_market?item_id=eq.'+encodeURIComponent(itemId)+'&select=item_id,jp_eur,eu_eur,us_eur',{headers:{apikey:ANON,Authorization:'Bearer '+ANON}}).then(r=>r.json())
+      ]);
+      c=(Array.isArray(rc)&&rc[0])?rc[0]:null; const m=(Array.isArray(rm)&&rm[0])?rm[0]:null;
+      if(c&&m){ c._jp=m.jp_eur; c._eu=m.eu_eur; c._us=m.us_eur; }
+      if(c){ const u=PCIMG[c.printing_id]; if(u) c.image_url=u; }
+    }catch(e){}
+  }
+  if(c) openDetail(c); else { const s=document.getElementById('countLine'); if(s) s.textContent='Fiche indisponible pour cette carte.'; }
+}
 function grBar(lbl,g){ const v=g==null?0:Number(g); const c=v>=9.5?'#059669':v>=9?'#65a30d':v>=8?'#d97706':'#dc2626'; const pct=Math.max(0,Math.min(100,v*10)); return '<div style="display:flex;align-items:center;gap:8px;margin:3px 0"><span style="width:70px;font-size:11px;color:var(--muted)">'+lbl+'</span><div style="flex:1;height:7px;background:var(--chip);border-radius:4px;overflow:hidden"><i style="display:block;height:100%;width:'+pct+'%;background:'+c+'"></i></div><b style="width:30px;text-align:right;font-size:12px">'+(g==null?'—':g)+'</b></div>'; }
 function grPgHTML(r,id){
   const p10=Math.round((+r.psa10_probability||0)*100);
@@ -1423,7 +1448,7 @@ async function grApplySubmit(id){
 function grPipeCard(x){
   const st=x.grading_status, co=x.grade_target_company||'PSA';
   let h='<div style="background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin-bottom:8px">';
-  h+='<div style="display:flex;gap:10px;align-items:flex-start">'+grThumb(x)+'<div style="flex:1;min-width:0">'+grNameHTML(x)+
+  h+='<div onclick="grOpenCard(\''+x.item_id+'\')" style="display:flex;gap:10px;align-items:flex-start;cursor:pointer">'+grThumb(x)+'<div style="flex:1;min-width:0">'+grNameHTML(x)+
      '<div style="margin-top:5px;display:flex;gap:6px;flex-wrap:wrap;align-items:center"><span style="font-size:10px;font-weight:800;background:#eef2ff;color:#3730a3;padding:2px 7px;border-radius:6px">'+(GR_STLBL[st]||st)+'</span><span style="font-size:10px;font-weight:800;background:var(--chip);color:var(--muted);padding:2px 7px;border-radius:6px">cible '+esc(co)+' '+(x.grade_target||10)+'</span>'+(x.grade_submit_date?'<span style="font-size:10px;color:var(--muted)">envoyée '+achatDate(x.grade_submit_date)+'</span>':'')+'</div>'+
      '</div></div>';
   h+='<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:9px">';
@@ -1450,7 +1475,7 @@ function grPipeCard(x){
 function grCandCard(x){
   const raw=x._raw, gr=x._gr, net=x._net, id=x.item_id;
   let h='<div style="background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin-bottom:8px">';
-  h+='<div style="display:flex;gap:10px;align-items:flex-start">'+grThumb(x)+'<div style="flex:1;min-width:0">'+grNameHTML(x)+
+  h+='<div onclick="grOpenCard(\''+id+'\')" style="display:flex;gap:10px;align-items:flex-start;cursor:pointer">'+grThumb(x)+'<div style="flex:1;min-width:0">'+grNameHTML(x)+
      '<div style="margin-top:6px;display:flex;gap:12px;flex-wrap:wrap;font-size:12px"><span>Brut <b>'+eur0(raw)+'</b></span><span>Cote '+esc(grCoteLbl(x))+' <b>'+eur0(gr)+'</b></span><span style="color:var(--muted)">frais '+GR_FEECO+' '+esc(x._feeLabel)+' <b>'+eur0(x._fee)+'</b></span></div>'+
      '</div><div style="text-align:right;white-space:nowrap"><div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.3px">Gain net est.</div><div style="font-weight:900;font-size:16px;color:#059669">+'+eur0(net)+'</div></div></div>';
   h+='<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:9px">'+
@@ -2649,11 +2674,21 @@ function renderDetail(){ const c=detailCard; if(!c)return; const body=document.g
     body.innerHTML='<div class="dval"><div class="b">'+eur(val(c))+'</div><div class="s">valeur marchande'+((c.quantity||1)>1?(' · total '+eur(val(c)*(c.quantity||1))):'')+'</div>'+srcline+cmp+'</div>'+
       mktBlock(c)+
       (VERIFY.has(c.item_id)?'<div style="margin:8px 0;padding:10px 12px;border:1px solid #fdba74;background:#fff7ed;border-radius:10px;font-size:13px;color:#9a3412">🔍 <b>Photo à vérifier.</b> Tape la bonne illustration ci-dessous pour la valider, ou <button onclick=\'validateCurrent()\' style="border:0;background:#f97316;color:#fff;font-weight:800;padding:4px 10px;border-radius:8px;cursor:pointer">✓ Valider cette photo</button></div>':'')+
+      (c.reverify?'<div style="margin:8px 0;padding:10px 12px;border:1px solid #fecaca;background:#fef2f2;border-radius:10px;font-size:13px;color:#991b1b">🔴 <b>À revérifier — authenticité.</b> Carte à contrôler (test de la tranche / lumière / comparaison avec une vraie). <button onclick=\'clearReverify()\' style="border:0;background:#ef4444;color:#fff;font-weight:800;padding:4px 10px;border-radius:8px;cursor:pointer;margin-left:4px">✓ Vérifiée (authentique)</button></div>':'')+
       '<div class="qtybox"><span class="s">Possédé :</span> <span class="b">'+(c.quantity||1)+'</span></div>'+
       drow("Variante", '<b>'+variantNice(c)+'</b>')+drow("Provenance", c.origin?(ORIGIN_LABELS[c.origin]||c.origin):"")+drow("Rareté", RAR_LABELS[c.rarity]||c.rarity||"—")+drow("État", g)+drow("Langue", (FLAG[c.language]||"")+' '+(LANG_LABELS[c.language]||c.language))+drow("Nom", esc(c.card_name))+drow("Numéro", esc(c.card_number))+drow("Set", esc((c.set_code||"")+(c.set_name?(" — "+c.set_name):"")));
   } else {
     body.innerHTML=drow("Nom", esc(c.card_name))+drow("Numéro", esc(c.card_number))+drow("Variante", '<b>'+variantNice(c)+'</b>')+drow("Provenance", c.origin?(ORIGIN_LABELS[c.origin]||c.origin):"")+drow("Rareté", RAR_LABELS[c.rarity]||c.rarity)+drow("Set / Édition", esc((c.set_code||"")+(c.set_name?(" — "+c.set_name):"")))+drow("Catégorie", CAT_LABELS[c.category]||c.category)+drow("Type d’illustration", TYPE_LABELS[c.card_type]||c.card_type)+drow("Couleur", (c.color||"").split(";").join(" / "))+drow("Langue", LANG_LABELS[c.language]||c.language);
   }
+}
+async function clearReverify(){
+  const c=detailCard; if(!c)return;
+  try{
+    const r=await fetch(SB+'/rest/v1/rpc/ci_set_reverify',{method:'POST',headers:{apikey:ANON,Authorization:'Bearer '+ANON,'Content-Type':'application/json'},body:JSON.stringify({p_item:c.item_id,p_val:false})});
+    if(!r.ok)throw 0;
+    c.reverify=false; const d=DATA.find(x=>String(x.item_id)===String(c.item_id)); if(d)d.reverify=false;
+    renderDetail(); if(typeof buildValRow==='function')buildValRow(); render();
+  }catch(e){ alert('Impossible de mettre à jour le statut.'); }
 }
 function findCard(id){ return DATA.find(c=>String(c.item_id)===String(id)); }
 document.getElementById("stage").addEventListener("click",e=>{
