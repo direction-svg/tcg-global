@@ -755,6 +755,7 @@ body{-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
     <div class="fsec"><h5>Type d'artwork</h5><div class="chipwrap" id="mType"></div></div>
     <div class="fsec"><h5>Raret&eacute;</h5><div class="chipwrap" id="mRarity"></div></div>
     <div class="fsec"><h5>&Eacute;tat</h5><div class="chipwrap" id="mGrade"></div></div>
+    <div class="fsec"><h5>Variante</h5><select id="mVariant"><option value="all">Toutes variantes</option></select></div>
     <div class="fsec"><h5>Personnage</h5><select id="mChar"><option value="all">Tous personnages</option></select></div>
     <div class="ffoot"><button class="reset" id="freset">R&eacute;initialiser</button><button class="apply" id="fapply">Voir les cartes</button></div>
   </div>
@@ -881,7 +882,7 @@ const COLOR_HEX={Red:"#d64545",Green:"#2f9e57",Blue:"#2f6fed",Purple:"#8b57d6",B
 const TYPE_ORDER=["normal","alternate_art","sp","manga","full_art","textured_foil","jolly_roger_foil","promo","tournament"];
 const CAT_ORDER=["LEADER","CHARACTER","EVENT","STAGE","DON"];
 const SORTS=[["val_desc","Valeur ↓ (décroissant)"],["val_asc","Valeur ↑ (croissant)"],["name","Nom (A→Z)"],["num","Numéro"],["qty","Quantité"]];
-const DEF={q:"",lang:"all",color:"all",type:"all",cat:"all",rarity:"all",character:"all",grade:"all",minVal:0,imgf:"all",authf:"all",pricef:"all",achatPeriod:"all",openRatio:null,openLiquid:false,gapView:"mine",tgtLang:"JP",tgtBudget:0,sort:"val_desc",view:"grid",mode:"accueil",catLang:"all",catQuery:"",catLangs:[],catColors:[],catCats:[],catRarities:[],catTypes:[],catSort:"price_desc",setLang:"JP",prodLang:"JP"};
+const DEF={q:"",lang:"all",color:"all",type:"all",cat:"all",rarity:"all",character:"all",grade:"all",minVal:0,imgf:"all",authf:"all",pricef:"all",variant:"all",achatPeriod:"all",openRatio:null,openLiquid:false,gapView:"mine",tgtLang:"JP",tgtBudget:0,sort:"val_desc",view:"grid",mode:"accueil",catLang:"all",catQuery:"",catLangs:[],catColors:[],catCats:[],catRarities:[],catTypes:[],catSort:"price_desc",setLang:"JP",prodLang:"JP"};
 let PROD_VALUE=0;
 // Barre du haut : portefeuille détaillé (total = cartes + scellés), même valeur live que l'accueil
 function portfolioMini(){
@@ -1105,8 +1106,20 @@ function buildFilterModal(){
     sel.innerHTML=html;
   }
   sel.value=state.character;
+  const vsel=document.getElementById("mVariant");
+  if(vsel){
+    if(vsel.options.length<=1){
+      const vc={}; DATA.forEach(c=>{ const v=(c.variant_label&&String(c.variant_label).trim()&&String(c.variant_label).toLowerCase()!=='normal')?c.variant_label:'(normale)'; vc[v]=(vc[v]||0)+1; });
+      const vs=Object.keys(vc).sort((a,b)=> vc[b]-vc[a] || a.localeCompare(b));
+      let vh='<option value="all">Toutes variantes ('+vs.length+')</option>';
+      vs.forEach(v=>{ vh+='<option value="'+esc(v)+'">'+esc(v)+' ('+vc[v]+')</option>'; });
+      vsel.innerHTML=vh;
+    }
+    vsel.value=state.variant;
+  }
 }
-function activeCount(){ let n=0; ["lang","color","type","cat","rarity","character","grade"].forEach(k=>{ if(state[k]!=="all")n++; }); return n; }
+function varKey(c){ return (c.variant_label&&String(c.variant_label).trim()&&String(c.variant_label).toLowerCase()!=='normal')?c.variant_label:'(normale)'; }
+function activeCount(){ let n=0; ["lang","color","type","cat","rarity","character","variant","grade"].forEach(k=>{ if(state[k]!=="all")n++; }); return n; }
 function afterFilter(){ buildFilterModal(); syncBadge(); render(); }
 function syncBadge(){ const n=activeCount(); const b=document.getElementById("fbadge"); b.textContent=n; b.style.display=n?"grid":"none"; document.getElementById("filterBtn").classList.toggle("act",!!n); }
 const VALSTEPS=[[0,'Tout'],[1,'≥ 1 €'],[5,'≥ 5 €'],[20,'≥ 20 €'],[50,'≥ 50 €'],[100,'≥ 100 €']];
@@ -1144,6 +1157,7 @@ function apply(){
   if(state.color!=="all") a=a.filter(c=>(c.color||"").split(";").includes(state.color));
   if(state.rarity!=="all") a=a.filter(c=>c.rarity===state.rarity);
   if(state.character!=="all") a=a.filter(c=>c.card_name===state.character);
+  if(state.variant!=="all") a=a.filter(c=>varKey(c)===state.variant);
   if(state.grade==="graded") a=a.filter(c=>c.is_graded);
   if(state.grade==="raw") a=a.filter(c=>!c.is_graded);
   if(state.minVal>0) a=a.filter(c=>val(c)>=state.minVal);
@@ -1170,7 +1184,7 @@ async function loadPcImages(){
       if(!r.ok)break; const b=await r.json(); if(!Array.isArray(b))break;
       b.forEach(x=>{ PCIMG[x.printing_id]=x.pc_image_url; }); if(b.length<step)break; from+=step;
     }
-    DATA.forEach(c=>{ const u=PCIMG[c.printing_id]; if(u){ c.image_url=u; VERIFY.delete(c.item_id); NEWPHOTO.delete(c.item_id); } });
+    DATA.forEach(c=>{ const u=PCIMG[c.printing_id]; if(u && !c.is_graded){ c.image_url=u; VERIFY.delete(c.item_id); NEWPHOTO.delete(c.item_id); } });
   }catch(e){}
 }
 async function loadVerify(){
@@ -1232,7 +1246,7 @@ function closeSort(){ document.getElementById("smodal").classList.add("hidden");
 // ---------- Filtres open/close ----------
 function openFilters(){ buildFilterModal(); document.getElementById("fmodal").classList.remove("hidden"); }
 function closeFilters(){ document.getElementById("fmodal").classList.add("hidden"); }
-function resetFilters(){ ["lang","color","type","cat","rarity","character","grade"].forEach(k=>{ state[k==="cat"?"cat":k]="all"; }); state.character="all"; afterFilter(); }
+function resetFilters(){ ["lang","color","type","cat","rarity","character","variant","grade"].forEach(k=>{ state[k]="all"; }); state.pricef="all"; afterFilter(); }
 
 // ---------- Events ----------
 let catTimer=null;
@@ -2220,7 +2234,7 @@ async function grOpenCard(itemId){
       ]);
       c=(Array.isArray(rc)&&rc[0])?rc[0]:null; const m=(Array.isArray(rm)&&rm[0])?rm[0]:null;
       if(c&&m){ c._jp=m.jp_eur; c._eu=m.eu_eur; c._us=m.us_eur; c._euof=m.eu_offres; c._jplive=m.jp_live; c._eulive=m.eu_live; c._uslive=m.us_live; }
-      if(c){ const u=PCIMG[c.printing_id]; if(u) c.image_url=u; }
+      if(c){ const u=PCIMG[c.printing_id]; if(u && !c.is_graded) c.image_url=u; }
     }catch(e){}
   }
   if(c) openDetail(c); else { const s=document.getElementById('countLine'); if(s) s.textContent='Fiche indisponible pour cette carte.'; }
@@ -3060,7 +3074,7 @@ document.getElementById('omodal').addEventListener('click',e=>{ if(e.target.id==
 document.getElementById('osave').addEventListener('click',saveOrient);
 async function openCatDetail(c){
   if(!c) return;
-  { const pcu=PCIMG[c.printing_id]; const eff=pcu||c.image_url; const vfy=c.img_verify&&!pcu; const cv=document.getElementById("cdvfy"); if(cv) cv.style.display=vfy?"grid":"none"; document.getElementById("cdimg").src=vfy?"":(eff||""); document.getElementById("cdimg").style.visibility=(!vfy&&eff)?"visible":"hidden"; }
+  { const pcu=c.is_graded?null:PCIMG[c.printing_id]; const eff=pcu||c.image_url; const vfy=c.img_verify&&!pcu&&!c.is_graded; const cv=document.getElementById("cdvfy"); if(cv) cv.style.display=vfy?"grid":"none"; document.getElementById("cdimg").src=vfy?"":(eff||""); document.getElementById("cdimg").style.visibility=(!vfy&&eff)?"visible":"hidden"; }
   const vl=c.variant_label||c.variant;
   document.getElementById("cdbody").innerHTML=
     '<div class="dval"><div class="b">'+esc(c.name||"")+'</div><div class="s">'+(FLAG[c.language]||"")+' '+(LANG_LABELS[c.language]||c.language)+' · '+esc(c.card_number||"")+'</div><div class="collact" id="cdcollact"></div></div>'+
@@ -3379,6 +3393,7 @@ document.getElementById("fclose").addEventListener("click",closeFilters);
 document.getElementById("fapply").addEventListener("click",closeFilters);
 document.getElementById("freset").addEventListener("click",resetFilters);
 document.getElementById("mChar").addEventListener("change",e=>{state.character=e.target.value;afterFilter()});
+document.getElementById("mVariant").addEventListener("change",e=>{state.variant=e.target.value;afterFilter()});
 document.getElementById("viewBtn").addEventListener("click",()=>{ state.view=state.view==="grid"?"list":"grid"; document.getElementById("viewBtn").innerHTML=state.view==="grid"?"▦":"☰"; render(); });
 document.getElementById("themeBtn").addEventListener("click",()=>{document.documentElement.classList.toggle("dark")});
 [["smodal",closeSort],["fmodal",closeFilters]].forEach(([id,fn])=>document.getElementById(id).addEventListener("click",e=>{ if(e.target.id===id)fn(); }));
@@ -3476,7 +3491,7 @@ async function chooseVariant(pid){
     const rows=await r.json();
     if(!detailCard || detailCard.item_id!==item) return;
     if(Array.isArray(rows)&&rows[0]){ Object.assign(detailCard,rows[0]); const d=findCard(item); if(d) Object.assign(d,rows[0]);
-      const eff=PCIMG[detailCard.printing_id]||detailCard.image_url; detailCard.image_url=eff; if(d) d.image_url=eff;
+      const eff=(!detailCard.is_graded&&PCIMG[detailCard.printing_id])||detailCard.image_url; detailCard.image_url=eff; if(d) d.image_url=eff;
       const di=document.getElementById("dimg"); if(eff){ di.src=eff; di.style.visibility="visible"; } else { di.style.visibility="hidden"; } }
     await refreshItemMarket(item);
     renderDetail(); loadLadder(detailCard); loadPrints(detailCard.card_number); render();
