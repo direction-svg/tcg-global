@@ -703,6 +703,7 @@ body{-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
     <button data-m="sets">🎴 Sets</button>
     <button data-m="products">📦 Produits scellés</button>
     <div class="navgrp">Décisions d'investisseur</div>
+    <button data-m="cibler">🎯 À cibler (achats)</button>
     <button data-m="conviction">★ Conviction</button>
     <button data-m="ops">💡 Opportunités</button>
     <button data-m="ecarts">⇄ Écarts JP/EN</button>
@@ -873,7 +874,7 @@ const COLOR_HEX={Red:"#d64545",Green:"#2f9e57",Blue:"#2f6fed",Purple:"#8b57d6",B
 const TYPE_ORDER=["normal","alternate_art","sp","manga","full_art","textured_foil","jolly_roger_foil","promo","tournament"];
 const CAT_ORDER=["LEADER","CHARACTER","EVENT","STAGE","DON"];
 const SORTS=[["val_desc","Valeur ↓ (décroissant)"],["val_asc","Valeur ↑ (croissant)"],["name","Nom (A→Z)"],["num","Numéro"],["qty","Quantité"]];
-const DEF={q:"",lang:"all",color:"all",type:"all",cat:"all",rarity:"all",character:"all",grade:"all",minVal:0,imgf:"all",authf:"all",achatPeriod:"all",openRatio:null,openLiquid:false,gapView:"mine",sort:"val_desc",view:"grid",mode:"accueil",catLang:"all",catQuery:"",catLangs:[],catColors:[],catCats:[],catRarities:[],catTypes:[],catSort:"price_desc",setLang:"JP",prodLang:"JP"};
+const DEF={q:"",lang:"all",color:"all",type:"all",cat:"all",rarity:"all",character:"all",grade:"all",minVal:0,imgf:"all",authf:"all",achatPeriod:"all",openRatio:null,openLiquid:false,gapView:"mine",tgtLang:"JP",tgtBudget:0,sort:"val_desc",view:"grid",mode:"accueil",catLang:"all",catQuery:"",catLangs:[],catColors:[],catCats:[],catRarities:[],catTypes:[],catSort:"price_desc",setLang:"JP",prodLang:"JP"};
 let PROD_VALUE=0;
 // Barre du haut : portefeuille détaillé (total = cartes + scellés), même valeur live que l'accueil
 function portfolioMini(){
@@ -1191,7 +1192,7 @@ document.getElementById("q").addEventListener("input",e=>{
   if(state.mode==="catalog"){ state.catQuery=e.target.value; clearTimeout(catTimer); catTimer=setTimeout(fetchCatalog,320); }
   else { state.q=e.target.value; render(); }
 });
-const NAV_TITLES={accueil:'Accueil',collection:'Collection',catalog:'Catalogue',sets:'Sets',products:'Produits scellés',conviction:'Conviction',ops:'Opportunités',ecarts:'Écarts JP/EN',offre:'Offre & reprint',risque:'Risque',agenda:'Agenda',achats:'Achats',ventes:'Ventes',mouv:'Mouvements',gradation:'Gradation',ouvrir:'Ouvrir ?',sante:'Santé des données',live:'Live'};
+const NAV_TITLES={accueil:'Accueil',collection:'Collection',catalog:'Catalogue',sets:'Sets',products:'Produits scellés',cibler:'À cibler',conviction:'Conviction',ops:'Opportunités',ecarts:'Écarts JP/EN',offre:'Offre & reprint',risque:'Risque',agenda:'Agenda',achats:'Achats',ventes:'Ventes',mouv:'Mouvements',gradation:'Gradation',ouvrir:'Ouvrir ?',sante:'Santé des données',live:'Live'};
 function toggleNav(){ const d=document.getElementById('modeSeg'), s=document.getElementById('navScrim'); const open=!d.classList.contains('open'); d.classList.toggle('open',open); s.classList.toggle('open',open); }
 function closeNav(){ document.getElementById('modeSeg').classList.remove('open'); document.getElementById('navScrim').classList.remove('open'); }
 function setMode(m){
@@ -1199,14 +1200,14 @@ function setMode(m){
   document.querySelectorAll('#modeSeg button').forEach(b=>b.classList.toggle('on',b.dataset.m===m));
   { const pt=document.getElementById('pageTitle'); if(pt) pt.textContent=(m==='accueil'?'':(NAV_TITLES[m]||'')); }
   closeNav();
-  const home=m==="accueil", cat=m==="catalog", ops=m==="ops", sets=m==="sets", prods=m==="products", live=m==="live", ia=m==="ia", achats=m==="achats", grad=m==="gradation", sante=m==="sante", ouvrir=m==="ouvrir", ventes=m==="ventes", mouv=m==="mouv", conv=m==="conviction", ecarts=m==="ecarts", offre=m==="offre", agenda=m==="agenda", risque=m==="risque";
+  const home=m==="accueil", cat=m==="catalog", ops=m==="ops", sets=m==="sets", prods=m==="products", live=m==="live", ia=m==="ia", achats=m==="achats", grad=m==="gradation", sante=m==="sante", ouvrir=m==="ouvrir", ventes=m==="ventes", mouv=m==="mouv", conv=m==="conviction", ecarts=m==="ecarts", offre=m==="offre", agenda=m==="agenda", risque=m==="risque", cibler=m==="cibler";
   if(!live) stopLive();
   document.getElementById('catLangRow').classList.toggle('hidden',!cat);
   document.getElementById('catFilters').classList.add('hidden');
-  document.getElementById('viewBtn').classList.toggle('hidden',home||cat||ops||sets||prods||live||ia||achats||grad||sante||ouvrir||ventes||mouv||conv||ecarts||offre||agenda||risque);
-  document.getElementById('filterBtn').classList.toggle('hidden',home||ops||sets||prods||live||ia||achats||grad||sante||ouvrir||ventes||mouv||conv||ecarts||offre||agenda||risque);
-  document.getElementById('sortBtn').classList.toggle('hidden',home||ops||sets||prods||live||ia||achats||grad||sante||ouvrir||ventes||mouv||conv||ecarts||offre||agenda||risque);
-  document.querySelector('.search').classList.toggle('hidden',home||ops||sets||prods||live||ia||achats||grad||sante||ouvrir||ventes||mouv||conv||ecarts||offre||agenda||risque);
+  document.getElementById('viewBtn').classList.toggle('hidden',home||cat||ops||sets||prods||live||ia||achats||grad||sante||ouvrir||ventes||mouv||conv||ecarts||offre||agenda||risque||cibler);
+  document.getElementById('filterBtn').classList.toggle('hidden',home||ops||sets||prods||live||ia||achats||grad||sante||ouvrir||ventes||mouv||conv||ecarts||offre||agenda||risque||cibler);
+  document.getElementById('sortBtn').classList.toggle('hidden',home||ops||sets||prods||live||ia||achats||grad||sante||ouvrir||ventes||mouv||conv||ecarts||offre||agenda||risque||cibler);
+  document.querySelector('.search').classList.toggle('hidden',home||ops||sets||prods||live||ia||achats||grad||sante||ouvrir||ventes||mouv||conv||ecarts||offre||agenda||risque||cibler);
   document.getElementById('scanFab').classList.toggle('hidden',!(m==='collection'||m==='catalog'));
   const vfr=document.getElementById('valFilterRow'); if(vfr){ if(m==='collection'){ vfr.style.display='flex'; buildValRow(); } else { vfr.style.display='none'; } }
   document.getElementById('q').placeholder=cat?"Chercher une carte (nom ou numéro), toutes langues…":"Rechercher (nom ou numéro)…";
@@ -1232,6 +1233,7 @@ function setMode(m){
   else if(offre){ document.getElementById('countLine').textContent=''; fetchSupply(); }
   else if(agenda){ document.getElementById('countLine').textContent=''; fetchCalendar(); }
   else if(risque){ document.getElementById('countLine').textContent=''; renderRisque(); }
+  else if(cibler){ document.getElementById('countLine').textContent=''; fetchTargets(); }
   else { syncBadge(); document.getElementById('countLine').textContent=''; render(); loadBriefing(); }
 }
 // ---------- Santé des données ----------
@@ -1836,6 +1838,64 @@ function renderRisque(){
   h+='<div class="dt" style="font-size:11px;margin:16px 2px 0;line-height:1.5">Score de diversification basé sur la répartition de la valeur (indice de concentration). Une carte multicolore répartit sa valeur entre ses couleurs. Prochaine étape possible : part <b>liquide</b> (revendable vite) et scénarios de <b>drawdown</b>.</div>';
   stage.innerHTML=h;
   document.getElementById('countLine').textContent='diversification '+divScore+'/100';
+}
+// ---------- À cibler (assistant d'achat) ----------
+let TARGETS=[];
+const TGT_LANGS=[['JP','🇯🇵 Japon'],['CN','🇨🇳 Chine'],['EN','🇬🇧 Anglais'],['all','Tous']];
+const TGT_BUDGETS=[[0,'Tous prix'],[30,'≤ 30 €'],[100,'≤ 100 €'],[300,'≤ 300 €']];
+function setTgtLang(l){ state.tgtLang=l; fetchTargets(); }
+function setTgtBudget(b){ state.tgtBudget=+b; renderTargets(); }
+async function fetchTargets(){
+  const stage=document.getElementById('stage'); stage.className=''; stage.innerHTML='<div class="loading">Analyse des cibles d\'achat…</div>';
+  const lang=state.tgtLang||'JP';
+  const q=(lang==='all'?'':'&lang=eq.'+lang);
+  try{
+    const r=await fetch(SB+'/rest/v1/app_targets_mat?select=*'+q+'&order=score.desc&limit=150',{headers:{apikey:ANON,Authorization:'Bearer '+ANON}});
+    let rows=await r.json(); TARGETS=Array.isArray(rows)?rows:[];
+  }catch(e){ TARGETS=[]; }
+  if(state.mode!=='cibler')return; renderTargets();
+}
+function tgtWhy(x){
+  const r=[];
+  if(x.vclass==='manga') r.push('format Manga (chase)');
+  else if(['alt','sp','parallel','fullart','wanted'].indexOf(x.vclass)>=0) r.push('format '+(x.vclass==='alt'?'Alt-art':x.vclass==='sp'?'Special':x.vclass==='fullart'?'Full Art':x.vclass)+' (chase)');
+  if(x.rarity && /SEC/i.test(x.rarity)) r.push('Secret Rare');
+  if(+x.excl_score>=85) r.push('exclusivité / promo (offre gelée)');
+  if(+x.narr_score>=70 && x.narr_char) r.push('perso porteur : '+x.narr_char);
+  if(x.lang==='JP') r.push('marché japonais'); else if(x.lang==='CN') r.push('exclu chinoise');
+  if(+x.liq_score>=78) r.push('liquide');
+  return r.slice(0,3);
+}
+function tgtOpenCatalog(num){ try{ setMode('catalog'); const q=document.getElementById('q'); if(q){ q.value=num; state.catQuery=num; if(typeof fetchCatalog==='function') fetchCatalog(); } }catch(e){} }
+function renderTargets(){
+  const stage=document.getElementById('stage'); stage.className='';
+  const lang=state.tgtLang||'JP', bud=+state.tgtBudget||0;
+  let list=TARGETS.slice();
+  if(bud>0) list=list.filter(x=>(+x.price_eur||0)<=bud);
+  let h='';
+  h+='<div style="background:linear-gradient(135deg,#7c2d12,#ea580c);color:#fff;border-radius:16px;padding:15px 18px;margin-bottom:12px;box-shadow:0 4px 14px rgba(15,23,42,.14)">'+
+     '<div style="font-size:11px;text-transform:uppercase;letter-spacing:.5px;opacity:.9;font-weight:800">Assistant d\'achat · à cibler</div>'+
+     '<div style="font-size:16px;font-weight:800;margin:4px 0 5px">Les cartes à plus fort potentiel long terme</div>'+
+     '<div style="font-size:12px;opacity:.95;line-height:1.5">Classées selon <b>ta doctrine</b> : offre gelée / exclusivité (25 %), prestige & format — manga, alt-art, gros chase (25 %), marché asiatique JP/CN (20 %), <b>narratif / lore</b> — personnage porteur de l\'arc en cours (15 %), momentum & liquidité (8 %), catalyseur (7 %). Marché live, narratif basé sur l\'arc <b>Elbaf</b>. Cartes que tu possèdes déjà exclues.</div></div>';
+  h+='<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">'+TGT_LANGS.map(([k,l])=>'<button class="chip'+(lang===k?' on':'')+'" onclick="setTgtLang(\''+k+'\')" style="cursor:pointer">'+l+'</button>').join('')+'</div>';
+  h+='<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px">'+TGT_BUDGETS.map(([k,l])=>'<button class="chip'+(bud===k?' on':'')+'" onclick="setTgtBudget('+k+')" style="cursor:pointer">'+l+'</button>').join('')+'</div>';
+  if(!list.length){ h+='<div class="empty">Aucune cible pour ces filtres.</div>'; stage.innerHTML=h; document.getElementById('countLine').textContent='0 cible'; return; }
+  h+='<div style="display:flex;flex-direction:column;gap:8px">'+list.slice(0,80).map(x=>{
+    const vl=(x.variant_label&&String(x.variant_label).toLowerCase()!=='normal')?(' · '+esc(x.variant_label)):'';
+    const why=tgtWhy(x); const sc=+x.score;
+    const col=sc>=72?'#059669':sc>=60?'#ea580c':'#64748b';
+    return '<div onclick="tgtOpenCatalog('+JSON.stringify(String(x.card_number)).replace(/"/g,'&quot;')+')" style="display:flex;gap:11px;align-items:flex-start;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:11px 13px;cursor:pointer">'+
+      '<div style="text-align:center;flex:none"><div style="font-size:20px;font-weight:900;color:'+col+';letter-spacing:-.5px">'+sc+'</div><div style="font-size:9px;color:var(--mut);font-weight:800">/100</div></div>'+
+      '<div style="flex:1;min-width:0"><div style="font-weight:800;font-size:13px">'+(FLAG[x.lang]||'')+' '+esc(x.card_number||'')+vl+'</div>'+
+        '<div class="dt" style="font-size:11.5px">'+esc(x.name||'')+'</div>'+
+        (why.length?('<div style="margin-top:5px;display:flex;gap:5px;flex-wrap:wrap">'+why.map(w=>'<span style="font-size:10px;font-weight:700;background:var(--bg);border:1px solid var(--line);border-radius:20px;padding:2px 8px;color:var(--mut)">'+esc(w)+'</span>').join('')+'</div>'):'')+
+        (x.narr_note && +x.narr_score>=70?('<div class="dt" style="font-size:10.5px;margin-top:4px;font-style:italic">'+esc(x.narr_note)+'</div>'):'')+
+      '</div>'+
+      '<div style="text-align:right;flex:none;font-weight:900;font-size:13px;white-space:nowrap">'+eur0(x.price_eur)+'</div></div>';
+  }).join('')+'</div>';
+  h+='<div class="dt" style="font-size:11px;margin:14px 2px 0;line-height:1.5">Prix marché live ('+(lang==='all'?'tous marchés':lang)+'). Le <b>narratif</b> suit l\'actualité One Piece et se met à jour automatiquement. Clique une carte pour l\'ouvrir dans le catalogue. Ceci t\'oriente — la décision reste la tienne.</div>';
+  stage.innerHTML=h;
+  document.getElementById('countLine').textContent=list.length+' cible'+(list.length>1?'s':'');
 }
 const SET_NAMES={OP01:"Romance Dawn",OP02:"Paramount War",OP03:"Pillars of Strength",OP04:"Kingdoms of Intrigue",OP05:"Awakening of the New Era",OP06:"Wings of the Captain",OP07:"500 Years in the Future",OP08:"Two Legends",OP09:"Emperors in the New World",OP10:"Royal Blood",OP11:"A Fist of Divine Speed",OP12:"Legacy of the Master",OP13:"Carrying On His Will",OP14:"The Azure Sea's Seven",OP15:"Adventure on KAMI's Island",OP16:"The Time of Battle",EB01:"Memorial Collection",EB02:"Anime 25th Collection",EB03:"Heroines Edition",EB04:"Egghead Crisis",PRB01:"Premium Booster -The Best-",PRB02:"One Piece The Best Vol.2",ST01:"Straw Hat Crew",ST02:"Worst Generation",ST03:"The Seven Warlords",ST04:"Animal Kingdom Pirates",ST32:"Green Roronoa Zoro",ST33:"Blue Kuzan",ST34:"Purple Charlotte Katakuri",ST35:"Red/Black Sabo",ST36:"Yellow Eustass Kid",PROMO:"Promos (toutes)",DON:"DON!! Cards"};
 const SET_GRP_LABELS={BOOSTER:"Booster / Extra / Premium",STARTER:"Starter Decks",PROMO:"Promo",DON:"DON!!",AUTRES:"Autres"};
