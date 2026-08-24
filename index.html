@@ -310,6 +310,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Ar
 .chip .n{opacity:.55;font-weight:700;font-size:11px}
 .chip.on{background:var(--chipOn);color:var(--chipOnInk);border-color:transparent}
 .gaprow{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px 12px}
+.pmode{display:flex;gap:5px;margin-top:6px;flex-wrap:wrap}
+.pmodebtn{font-size:10.5px;font-weight:700;padding:4px 9px;border-radius:20px;border:1px solid var(--line);background:var(--bg);color:var(--mut);cursor:pointer}
+.pmodebtn.on{background:var(--chipOn);color:var(--chipOnInk);border-color:transparent}
+.parb{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:5px;font-size:11px}
+.parb span{color:var(--mut);font-weight:700}
+.parb span.win{color:#059669;font-weight:900}
+.parb .pmap{color:var(--mut);font-weight:600;font-size:10px}
 .chip.on .n{opacity:.8}
 .fsec select{width:100%;border:1px solid var(--line);background:var(--panel);color:var(--ink);border-radius:12px;padding:11px 12px;font-size:15px;font-weight:600}
 .ffoot{position:sticky;bottom:0;display:flex;gap:10px;padding:12px 16px calc(14px + env(safe-area-inset-bottom));background:var(--bg);border-top:1px solid var(--line)}
@@ -696,6 +703,8 @@ body{-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
     <button data-m="sante">Santé</button>
     <button data-m="conviction">Conviction</button>
     <button data-m="ecarts">Écarts JP/EN</button>
+    <button data-m="offre">Offre</button>
+    <button data-m="agenda">Agenda</button>
     <button data-m="live">Live</button>
   </nav>
 
@@ -856,7 +865,7 @@ const DEF={q:"",lang:"all",color:"all",type:"all",cat:"all",rarity:"all",charact
 let PROD_VALUE=0;
 // Barre du haut : portefeuille détaillé (total = cartes + scellés), même valeur live que l'accueil
 function portfolioMini(){
-  const cv=DATA.reduce((s,c)=>s+val(c)*(c.quantity||1),0);
+  const cv=collValue();
   const pv=PROD_VALUE||0;
   const q=DATA.reduce((s,c)=>s+(c.quantity||1),0);
   return 'Portefeuille ('+MKT_LABEL[MKT]+') : <b>'+eur0(cv+pv)+'</b> <span class="dt">&middot; cartes '+eur0(cv)+' &middot; scellés '+eur0(pv)+' &middot; '+q+' cartes</span>';
@@ -1129,7 +1138,7 @@ function imgTag(c){
 function render(){
   const a=apply();
   const stage=document.getElementById("stage");
-  const cardsTotal=DATA.reduce((s,c)=>s+val(c)*(c.quantity||1),0);
+  const cardsTotal=collValue();
   const total=cardsTotal+(PROD_VALUE||0);
   const shownTotal=a.reduce((s,c)=>s+val(c)*(c.quantity||1),0);
   const jp=DATA.filter(c=>c.language==="JP").length, gr=DATA.filter(c=>c.is_graded).length;
@@ -1173,14 +1182,14 @@ document.getElementById("q").addEventListener("input",e=>{
 function setMode(m){
   state.mode=m;
   document.querySelectorAll('#modeSeg button').forEach(b=>b.classList.toggle('on',b.dataset.m===m));
-  const home=m==="accueil", cat=m==="catalog", ops=m==="ops", sets=m==="sets", prods=m==="products", live=m==="live", ia=m==="ia", achats=m==="achats", grad=m==="gradation", sante=m==="sante", ouvrir=m==="ouvrir", ventes=m==="ventes", mouv=m==="mouv", conv=m==="conviction", ecarts=m==="ecarts";
+  const home=m==="accueil", cat=m==="catalog", ops=m==="ops", sets=m==="sets", prods=m==="products", live=m==="live", ia=m==="ia", achats=m==="achats", grad=m==="gradation", sante=m==="sante", ouvrir=m==="ouvrir", ventes=m==="ventes", mouv=m==="mouv", conv=m==="conviction", ecarts=m==="ecarts", offre=m==="offre", agenda=m==="agenda";
   if(!live) stopLive();
   document.getElementById('catLangRow').classList.toggle('hidden',!cat);
   document.getElementById('catFilters').classList.add('hidden');
-  document.getElementById('viewBtn').classList.toggle('hidden',home||cat||ops||sets||prods||live||ia||achats||grad||sante||ouvrir||ventes||mouv||conv||ecarts);
-  document.getElementById('filterBtn').classList.toggle('hidden',home||ops||sets||prods||live||ia||achats||grad||sante||ouvrir||ventes||mouv||conv||ecarts);
-  document.getElementById('sortBtn').classList.toggle('hidden',home||ops||sets||prods||live||ia||achats||grad||sante||ouvrir||ventes||mouv||conv||ecarts);
-  document.querySelector('.search').classList.toggle('hidden',home||ops||sets||prods||live||ia||achats||grad||sante||ouvrir||ventes||mouv||conv||ecarts);
+  document.getElementById('viewBtn').classList.toggle('hidden',home||cat||ops||sets||prods||live||ia||achats||grad||sante||ouvrir||ventes||mouv||conv||ecarts||offre||agenda);
+  document.getElementById('filterBtn').classList.toggle('hidden',home||ops||sets||prods||live||ia||achats||grad||sante||ouvrir||ventes||mouv||conv||ecarts||offre||agenda);
+  document.getElementById('sortBtn').classList.toggle('hidden',home||ops||sets||prods||live||ia||achats||grad||sante||ouvrir||ventes||mouv||conv||ecarts||offre||agenda);
+  document.querySelector('.search').classList.toggle('hidden',home||ops||sets||prods||live||ia||achats||grad||sante||ouvrir||ventes||mouv||conv||ecarts||offre||agenda);
   document.getElementById('scanFab').classList.toggle('hidden',!(m==='collection'||m==='catalog'));
   const vfr=document.getElementById('valFilterRow'); if(vfr){ if(m==='collection'){ vfr.style.display='flex'; buildValRow(); } else { vfr.style.display='none'; } }
   document.getElementById('q').placeholder=cat?"Chercher une carte (nom ou numéro), toutes langues…":"Rechercher (nom ou numéro)…";
@@ -1203,6 +1212,8 @@ function setMode(m){
   else if(mouv){ document.getElementById('countLine').textContent=''; fetchMouv(); }
   else if(conv){ document.getElementById('countLine').textContent=''; fetchConviction(); }
   else if(ecarts){ document.getElementById('countLine').textContent=''; fetchGap(); }
+  else if(offre){ document.getElementById('countLine').textContent=''; fetchSupply(); }
+  else if(agenda){ document.getElementById('countLine').textContent=''; fetchCalendar(); }
   else { syncBadge(); document.getElementById('countLine').textContent=''; render(); loadBriefing(); }
 }
 // ---------- Santé des données ----------
@@ -1276,7 +1287,7 @@ async function fetchOuvrir(){
   try{
     const [rb,rp]=await Promise.all([
       fetch(SB+'/rest/v1/app_sealed_bilan?select=*',{headers:{apikey:ANON,Authorization:'Bearer '+ANON}}),
-      fetch(SB+'/rest/v1/app_products?owned_qty=gt.0&category=in.(BOOSTER_BOX,PREMIUM_BOOSTER)&select=name,set_code,category,price_eur,owned_qty&order=price_eur.desc.nullslast',{headers:{apikey:ANON,Authorization:'Bearer '+ANON}})
+      fetch(SB+'/rest/v1/app_products?owned_qty=gt.0&category=in.(BOOSTER_BOX,PREMIUM_BOOSTER,CARD_COLLECTION_SET,PROMO_PACK,OTHER)&select=name,set_code,category,price_eur,owned_qty&order=price_eur.desc.nullslast',{headers:{apikey:ANON,Authorization:'Bearer '+ANON}})
     ]);
     let b=await rb.json(); SEALEDBILAN=(Array.isArray(b)&&b[0])?b[0]:null;
     let p=await rp.json(); SEALEDBOXES=Array.isArray(p)?p:[];
@@ -1304,10 +1315,15 @@ function renderOuvrir(){
   h+='<div style="font-size:12.5px;color:var(--muted);margin:0 2px 10px;line-height:1.4">Sur ton historique, ouvrir tes caisses t\'a rendu <b>'+pctReal+'&nbsp;%</b> de leur valeur. On utilise <b>ton propre taux</b> comme estimation honnête pour décider — pas des probabilités de pull inventées. Tu peux l\'ajuster :</div>';
   h+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap"><span class="dt">Taux « ouvrir » estimé :</span> <input inputmode="decimal" value="'+Math.round(ratio*100)+'" onchange="setOpenRatio(this.value/100)" style="width:66px;padding:6px 8px;border:1px solid var(--line);border-radius:8px;background:var(--panel);color:var(--ink);font-weight:800;text-align:center"> %'+(state.openRatio!=null?' <span class="chip" onclick="setOpenRatio(0)">↺ Auto</span>':'')+'</div>';
   h+='<div style="margin-bottom:16px"><span class="chip'+(state.openLiquid?' on':'')+'" onclick="setOpenLiquid('+(state.openLiquid?'false':'true')+')">'+(state.openLiquid?'✓ ':'')+'Valeur vendable seulement (ignore le bulk &lt; 1 €)</span></div>';
-  h+='<div style="font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);font-weight:800;margin:0 2px 8px">Garder scellé vs ouvrir — par box possédée</div>';
-  if(!SEALEDBOXES.length){ h+='<div class="empty">Aucune box scellée enregistrée.</div>'; }
+  const RANDOM_CATS=['BOOSTER_BOX','PREMIUM_BOOSTER','OTHER'];
+  const randoms=SEALEDBOXES.filter(x=>RANDOM_CATS.indexOf(x.category)>=0);
+  const fixes=SEALEDBOXES.filter(x=>RANDOM_CATS.indexOf(x.category)<0);
+  const totRandom=randoms.reduce((s,x)=>s+(+x.price_eur||0)*(x.owned_qty||1),0);
+  const totFixe=fixes.reduce((s,x)=>s+(+x.price_eur||0)*(x.owned_qty||1),0);
+  h+='<div style="font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);font-weight:800;margin:0 2px 8px">Boîtes à contenu aléatoire — garder scellé vs ouvrir ('+eur0(totRandom)+')</div>';
+  if(!randoms.length){ h+='<div class="empty">Aucune boîte aléatoire enregistrée.</div>'; }
   else {
-    h+='<div style="display:flex;flex-direction:column;gap:7px">'+SEALEDBOXES.map(x=>{
+    h+='<div style="display:flex;flex-direction:column;gap:7px">'+randoms.map(x=>{
       const garder=(+x.price_eur||0)*(x.owned_qty||1); const ouvrir=Math.round(garder*ratio); const keep=ouvrir<=garder;
       return '<div style="background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:11px 13px">'+
         '<div style="font-weight:800;font-size:13.5px">'+esc(x.name||'')+(x.owned_qty>1?(' ×'+x.owned_qty):'')+'</div>'+
@@ -1318,6 +1334,17 @@ function renderOuvrir(){
         '</div></div>';
     }).join('')+'</div>';
     h+='<div style="font-size:11.5px;color:var(--muted);margin:12px 2px 0;line-height:1.4">« Ouvrir (est.) » = prix de la box × ton taux de rendement. Tant que ce taux est &lt; 100&nbsp;%, garder scellé est statistiquement gagnant sur ton historique. Le scellé a aussi tendance à prendre de la valeur avec le temps.</div>';
+  }
+  if(fixes.length){
+    h+='<div style="font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);font-weight:800;margin:20px 2px 4px">Coffrets &amp; promos à contenu fixe ('+eur0(totFixe)+')</div>';
+    h+='<div class="dt" style="font-size:11.5px;margin:0 2px 9px;line-height:1.45">Contenu connu (pas un tirage aléatoire). Les ouvrir <b>détruit la prime au scellé</b> : le coffret scellé vaut presque toujours plus que ses cartes en vrac. Verdict par défaut : garder scellé.</div>';
+    h+='<div style="display:flex;flex-direction:column;gap:7px">'+fixes.map(x=>{
+      const garder=(+x.price_eur||0)*(x.owned_qty||1);
+      return '<div style="background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:11px 13px;display:flex;align-items:center;gap:12px">'+
+        '<div style="flex:1;min-width:0"><div style="font-weight:800;font-size:13.5px">'+esc(x.name||'')+(x.owned_qty>1?(' ×'+x.owned_qty):'')+'</div>'+
+        '<div class="dt" style="font-size:11px">'+(PROD_CAT_LABELS[x.category]||x.category)+' · scellé '+eur0(garder)+'</div></div>'+
+        '<span style="font-weight:800;font-size:12px;padding:3px 10px;border-radius:20px;background:rgba(5,150,105,.16);color:#059669;white-space:nowrap">🔒 Garder scellé</span></div>';
+    }).join('')+'</div>';
   }
   stage.innerHTML=h;
 }
@@ -1590,6 +1617,140 @@ function renderGap(){
   }
   stage.innerHTML=h;
   document.getElementById('countLine').textContent=clean.length+' écarts fiables';
+}
+// ---------- Offre gelée vs rééditée (risque de dilution) ----------
+let SUP=[], SUPLOADED=false, SUP_SHOWBULK=false;
+const SUP_META={
+  gelee:{t:'Offre gelée',ic:'🔒',c:'#059669',d:'Source unique, jamais rééditée (promo, exclusivité, SPC…). Offre figée → le plus sûr sur 5 ans. Le cœur de ta thèse.'},
+  standard:{t:'Standard',ic:'•',c:'#64748b',d:'Une seule édition connue, sans marqueur de réédition. Offre stable.'},
+  reeditee:{t:'Rééditée — offre diluée',ic:'♻️',c:'#b45309',d:'Carte rééditée (Premium Booster « The Best », ou présente dans plusieurs sets). L\'offre a été diluée → plus de risque sur la valeur long terme.'}
+};
+const SUP_ORDER=['gelee','standard','reeditee'];
+function supOpen(id){ const c=(DATALOADED?DATA:[]).find(x=>String(x.item_id)===String(id)); if(c) openDetail(c); }
+async function fetchSupply(){
+  const stage=document.getElementById('stage'); stage.className=''; stage.innerHTML='<div class="loading">Analyse de l\'offre (gelée / rééditée)…</div>';
+  try{
+    const r=await fetch(SB+'/rest/v1/app_supply?select=*&limit=5000',{headers:{apikey:ANON,Authorization:'Bearer '+ANON}});
+    let rows=await r.json(); SUP=Array.isArray(rows)?rows:[]; SUPLOADED=true;
+  }catch(e){ SUP=[]; }
+  if(state.mode!=='offre')return; renderSupply();
+}
+function supWhy(x){
+  if(x.supply_status==='reeditee') return x.has_prb?'Rééditée en Premium Booster « The Best »':('Présente dans '+x.n_sets+' sets');
+  if(x.supply_status==='gelee') return 'Source unique — offre figée';
+  return 'Édition stable';
+}
+function supCard(x){
+  const b=SUP_META[x.supply_status]||SUP_META.standard;
+  const vl=(x.variant_label&&String(x.variant_label).toLowerCase()!=='normal')?(' · '+esc(x.variant_label)):'';
+  const img=x.image_url?('<img loading="lazy" referrerpolicy="no-referrer" src="'+esc(x.image_url)+'" onerror="this.style.visibility=\'hidden\'" style="width:100%;height:100%;object-fit:cover">'):'';
+  return '<div onclick="supOpen('+JSON.stringify(String(x.item_id)).replace(/"/g,'&quot;')+')" style="display:flex;gap:10px;align-items:center;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:9px 11px;cursor:pointer">'+
+    '<div style="width:36px;height:50px;border-radius:6px;overflow:hidden;background:var(--bg);flex:none">'+img+'</div>'+
+    '<div style="flex:1;min-width:0"><div style="font-weight:800;font-size:13px">'+(FLAG[x.language]||'')+' '+esc(x.card_number||'')+vl+(x.quantity>1?(' <span style="color:var(--mut);font-weight:700">×'+x.quantity+'</span>'):'')+'</div>'+
+      '<div class="dt" style="font-size:11px">'+esc(supWhy(x))+'</div></div>'+
+    '<div style="text-align:right;flex:none"><div style="font-weight:900;font-size:13px">'+eur0(x.market_value_eur)+'</div>'+
+      '<div style="font-size:9.5px;font-weight:800;color:'+b.c+'">'+b.ic+' '+esc(b.t.split(' — ')[0])+'</div></div></div>';
+}
+function renderSupply(){
+  const stage=document.getElementById('stage'); stage.className='';
+  if(!SUP.length){ stage.innerHTML='<div class="empty">Aucune donnée d\'offre. Réessaie dans un instant.</div>'; return; }
+  const val5=SUP.filter(x=>(+x.market_value_eur||0)>=5), bulk=SUP.filter(x=>(+x.market_value_eur||0)<5);
+  const groups={gelee:[],standard:[],reeditee:[]};
+  val5.forEach(x=>{ (groups[x.supply_status]=groups[x.supply_status]||[]).push(x); });
+  Object.values(groups).forEach(a=>a.sort((p,q)=>(q.market_value_eur||0)-(p.market_value_eur||0)));
+  const totVal=SUP.reduce((s,x)=>s+(+x.market_value_eur||0)*(x.quantity||1),0)||1;
+  const sumv=st=>SUP.filter(x=>x.supply_status===st).reduce((s,x)=>s+(+x.market_value_eur||0)*(x.quantity||1),0);
+  let h='';
+  h+='<div style="background:linear-gradient(135deg,#065f46,#059669);color:#fff;border-radius:16px;padding:15px 18px;margin-bottom:12px;box-shadow:0 4px 14px rgba(15,23,42,.14)">'+
+     '<div style="font-size:11px;text-transform:uppercase;letter-spacing:.5px;opacity:.9;font-weight:800">Offre & réimpression</div>'+
+     '<div style="font-size:16px;font-weight:800;margin:4px 0 5px">Offre gelée vs offre diluée</div>'+
+     '<div style="font-size:12px;opacity:.95;line-height:1.5">Une réédition (Premium Booster « The Best », ou passage dans plusieurs sets) <b>dilue l\'offre</b> et pèse sur la valeur long terme — comme un <i>unlock</i> en crypto. Ta thèse privilégie l\'<b>offre gelée</b>. Ici, chaque carte est classée d\'après les données réelles de réédition.</div></div>';
+  // portfolio split
+  h+='<div style="display:flex;gap:7px;margin-bottom:14px">';
+  SUP_ORDER.forEach(st=>{ const b=SUP_META[st]; const v=sumv(st); const pct=Math.round(v/totVal*100);
+    h+='<div style="flex:1;background:var(--panel);border:1px solid var(--line);border-radius:11px;padding:10px 11px">'+
+       '<div style="font-size:10px;font-weight:800;color:'+b.c+';text-transform:uppercase;letter-spacing:.3px">'+b.ic+' '+esc(b.t.split(' — ')[0])+'</div>'+
+       '<div style="font-size:16px;font-weight:900;margin-top:3px">'+pct+'%</div>'+
+       '<div style="font-size:10.5px;color:var(--mut)">'+eur0(v)+'</div></div>'; });
+  h+='</div>';
+  h+='<div class="dt" style="font-size:11.5px;margin:0 2px 12px">Part de la valeur de ton portefeuille selon le statut d\'offre. Objectif de ta doctrine : maximiser la part <b>gelée</b>.</div>';
+  SUP_ORDER.forEach(st=>{
+    const list=groups[st]; if(!list||!list.length) return; const b=SUP_META[st];
+    h+='<div style="margin:16px 2px 4px;font-size:12.5px;font-weight:800;color:'+b.c+'">'+b.ic+' '+esc(b.t)+' <span style="color:var(--mut);font-weight:700">('+list.length+')</span></div>'+
+       '<div class="dt" style="font-size:11.5px;margin:0 2px 9px">'+esc(b.d)+'</div>'+
+       '<div style="display:flex;flex-direction:column;gap:8px">'+list.slice(0,120).map(supCard).join('')+'</div>'+
+       (list.length>120?'<div class="dt" style="font-size:11px;margin:8px 2px">… et '+(list.length-120)+' autres.</div>':'');
+  });
+  if(bulk.length){
+    h+='<div style="margin:16px 2px 8px"><button onclick="SUP_SHOWBULK=!SUP_SHOWBULK;renderSupply()" style="background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:9px 12px;color:var(--ink);font-weight:800;font-size:12px;cursor:pointer;width:100%;text-align:left">∅ Cartes < 5 € (bulk) — '+bulk.length+' '+(SUP_SHOWBULK?'▲':'▼')+'</button></div>';
+    if(SUP_SHOWBULK) h+='<div style="display:flex;flex-direction:column;gap:8px">'+bulk.slice(0,100).map(supCard).join('')+'</div>';
+  }
+  h+='<div style="background:var(--panel);border:1px dashed var(--line);border-radius:12px;padding:12px 14px;margin-top:18px;font-size:12px;color:var(--mut);line-height:1.55">'+
+     '<b style="color:var(--ink)">À venir</b> : le <b>calendrier des catalyseurs datés</b> (sorties de sets, arcs anime, ONE PIECE DAY, réimpressions annoncées) demande un flux d\'actualités qu\'on n\'a pas encore branché — je ne l\'invente pas. La partie <b>offre / réédition</b> ci-dessus, elle, est 100 % basée sur tes données.</div>';
+  stage.innerHTML=h;
+  document.getElementById('countLine').textContent=Math.round(sumv('gelee')/totVal*100)+'% en offre gelée';
+}
+// ---------- Agenda / calendrier de catalyseurs ----------
+let CAL=[], CALLOADED=false, CAL_SHOWPAST=false;
+const CAL_META={
+  set_release:{ic:'📦',c:'#2563eb',t:'Sortie de set'},
+  reprint:{ic:'♻️',c:'#b45309',t:'Réédition'},
+  anniversary:{ic:'🎂',c:'#7c3aed',t:'Anniversaire'},
+  event:{ic:'📅',c:'#0891b2',t:'Événement'}
+};
+function calMeta(t){ return CAL_META[t]||CAL_META.event; }
+function calToken(scope){ if(!scope)return''; const m=String(scope).toUpperCase().match(/([A-Z]{1,4})-?0*(\d+)/); return m?(m[1]+m[2].padStart(2,'0')):String(scope).toUpperCase().replace(/[^A-Z0-9]/g,''); }
+function calOwnedIn(scope){ if(!scope||!DATALOADED)return null; const tok=calToken(scope); if(!tok)return null;
+  let n=0,v=0; DATA.forEach(c=>{ if(calToken(c.set_code)===tok){ n+=(c.quantity||1); v+=(val(c)||0)*(c.quantity||1); } });
+  return n?{n,v}:null; }
+async function fetchCalendar(){
+  const stage=document.getElementById('stage'); stage.className=''; stage.innerHTML='<div class="loading">Chargement de l\'agenda…</div>';
+  try{
+    const r=await fetch(SB+'/rest/v1/app_calendar?select=*&order=event_date.asc&limit=2000',{headers:{apikey:ANON,Authorization:'Bearer '+ANON}});
+    let rows=await r.json(); CAL=Array.isArray(rows)?rows:[]; CALLOADED=true;
+  }catch(e){ CAL=[]; }
+  if(state.mode!=='agenda')return; renderCalendar();
+}
+function calRow(x){
+  const b=calMeta(x.etype);
+  const d=x.event_date?new Date(x.event_date+'T00:00:00'):null;
+  const dstr=d?d.toLocaleDateString('fr-FR',{day:'2-digit',month:'short',year:'numeric'}):'';
+  const approx=x.confidence==='approx';
+  const own=calOwnedIn(x.scope_code);
+  const reg=x.region==='JP'?' 🇯🇵':x.region==='EN'?' 🇬🇧':x.region==='WW'?' 🌐':'';
+  const srcHost=(()=>{ try{ if(x.source && /^https?:/.test(x.source)) return new URL(x.source).hostname.replace(/^www\./,''); }catch(e){} return null; })();
+  return '<div class="gaprow" style="border-left:3px solid '+b.c+'">'+
+    '<div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start">'+
+      '<div style="min-width:0"><div style="font-size:10.5px;font-weight:800;color:'+b.c+';text-transform:uppercase;letter-spacing:.3px">'+b.ic+' '+b.t+reg+(approx?' · <span style="color:#b45309">date à confirmer</span>':'')+'</div>'+
+        '<div style="font-weight:800;font-size:13px;margin-top:2px">'+esc(x.title||'')+'</div>'+
+        (x.impact?('<div class="dt" style="font-size:11px;margin-top:3px;line-height:1.45">'+esc(x.impact)+'</div>'):'')+
+        (own?('<div style="font-size:11px;margin-top:5px;font-weight:800;color:#4338ca">📌 Tu as '+own.n+' carte'+(own.n>1?'s':'')+' de ce set · '+eur0(own.v)+'</div>'):'')+
+        (srcHost?('<div class="dt" style="font-size:10px;margin-top:4px">source : '+esc(srcHost)+'</div>'):'')+
+      '</div>'+
+      '<div style="text-align:right;flex:none;font-weight:800;font-size:12px;color:var(--mut);white-space:nowrap">'+dstr+'</div>'+
+    '</div></div>';
+}
+function renderCalendar(){
+  const stage=document.getElementById('stage'); stage.className='';
+  if(!CAL.length){ stage.innerHTML='<div class="empty">Aucun événement pour l\'instant.</div>'; return; }
+  const today=new Date(); today.setHours(0,0,0,0);
+  const up=CAL.filter(x=>x.event_date && new Date(x.event_date+'T00:00:00')>=today);
+  const past=CAL.filter(x=>x.event_date && new Date(x.event_date+'T00:00:00')<today).sort((a,b)=>a.event_date<b.event_date?1:-1);
+  let h='';
+  h+='<div style="background:linear-gradient(135deg,#5b21b6,#7c3aed);color:#fff;border-radius:16px;padding:15px 18px;margin-bottom:12px;box-shadow:0 4px 14px rgba(15,23,42,.14)">'+
+     '<div style="font-size:11px;text-transform:uppercase;letter-spacing:.5px;opacity:.9;font-weight:800">Agenda des catalyseurs</div>'+
+     '<div style="font-size:16px;font-weight:800;margin:4px 0 5px">Ce qui va bouger les prix — et t\'impacter</div>'+
+     '<div style="font-size:12px;opacity:.95;line-height:1.5">Sorties de sets, rééditions, anniversaires. Les dates viennent de <b>ta base</b> (sorties officielles) et de <b>recherches web sourcées</b>, rafraîchies chaque semaine. Rien n\'est inventé : les dates incertaines sont marquées « à confirmer ». Les rééditions ♻️ renvoient à ta page Offre. Marché chinois : à venir.</div></div>';
+  if(up.length){
+    h+='<div style="margin:6px 2px 9px;font-size:12.5px;font-weight:800;color:var(--ink)">À venir ('+up.length+')</div>'+
+       '<div style="display:flex;flex-direction:column;gap:9px">'+up.map(calRow).join('')+'</div>';
+  } else h+='<div class="empty">Aucun événement à venir connu pour l\'instant — le rafraîchissement hebdo en ajoutera.</div>';
+  if(past.length){
+    h+='<div style="margin:18px 2px 8px"><button onclick="CAL_SHOWPAST=!CAL_SHOWPAST;renderCalendar()" style="background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:9px 12px;color:var(--ink);font-weight:800;font-size:12px;cursor:pointer;width:100%;text-align:left">Passé récent — '+past.length+' '+(CAL_SHOWPAST?'▲':'▼')+'</button></div>';
+    if(CAL_SHOWPAST) h+='<div style="display:flex;flex-direction:column;gap:9px">'+past.slice(0,60).map(calRow).join('')+'</div>';
+  }
+  stage.innerHTML=h;
+  document.getElementById('countLine').textContent=up.length+' à venir';
 }
 const SET_NAMES={OP01:"Romance Dawn",OP02:"Paramount War",OP03:"Pillars of Strength",OP04:"Kingdoms of Intrigue",OP05:"Awakening of the New Era",OP06:"Wings of the Captain",OP07:"500 Years in the Future",OP08:"Two Legends",OP09:"Emperors in the New World",OP10:"Royal Blood",OP11:"A Fist of Divine Speed",OP12:"Legacy of the Master",OP13:"Carrying On His Will",OP14:"The Azure Sea's Seven",OP15:"Adventure on KAMI's Island",OP16:"The Time of Battle",EB01:"Memorial Collection",EB02:"Anime 25th Collection",EB03:"Heroines Edition",EB04:"Egghead Crisis",PRB01:"Premium Booster -The Best-",PRB02:"One Piece The Best Vol.2",ST01:"Straw Hat Crew",ST02:"Worst Generation",ST03:"The Seven Warlords",ST04:"Animal Kingdom Pirates",ST32:"Green Roronoa Zoro",ST33:"Blue Kuzan",ST34:"Purple Charlotte Katakuri",ST35:"Red/Black Sabo",ST36:"Yellow Eustass Kid",PROMO:"Promos (toutes)",DON:"DON!! Cards"};
 const SET_GRP_LABELS={BOOSTER:"Booster / Extra / Premium",STARTER:"Starter Decks",PROMO:"Promo",DON:"DON!!",AUTRES:"Autres"};
@@ -1954,22 +2115,35 @@ function renderGrading(){
 const PROD_CAT_LABELS={BOOSTER_BOX:"Booster Box",CASE:"Booster Box Case",BOOSTER_PACK:"Booster Pack",STARTER_DECK:"Starter Deck",PREMIUM_BOOSTER:"Premium Booster",CARD_COLLECTION_SET:"Premium Collection",GIFT_COLLECTION:"Collections & Coffrets",PROMO_PACK:"Promo / Tournoi",ULTRA_DECK:"Ultra Deck",DOUBLE_PACK_SET:"Double Pack",OTHER:"Autres"};
 const PROD_CAT_ORDER=["BOOSTER_BOX","CASE","BOOSTER_PACK","STARTER_DECK","PREMIUM_BOOSTER","CARD_COLLECTION_SET","GIFT_COLLECTION","PROMO_PACK","ULTRA_DECK","DOUBLE_PACK_SET","OTHER"];
 let PRODROWS=[];
+let PRODARB={};
 async function fetchProducts(){
   const stage=document.getElementById('stage'); stage.className=""; stage.innerHTML='<div class="loading">Chargement des produits…</div>';
   const lang=state.prodLang||'JP';
   try{
-    const r=await fetch(SB+'/rest/v1/app_products?language=eq.'+lang+'&select=product_id,name,category,image_url,price_eur,owned_qty,set_code,sort_key&order=sort_key.asc.nullslast,name.asc',{headers:{apikey:ANON,Authorization:"Bearer "+ANON}});
+    const [r,ra]=await Promise.all([
+      fetch(SB+'/rest/v1/app_products?language=eq.'+lang+'&select=product_id,name,category,image_url,price_eur,owned_qty,set_code,sort_key,count_mode,prod_item_id&order=sort_key.asc.nullslast,name.asc',{headers:{apikey:ANON,Authorization:"Bearer "+ANON}}),
+      fetch(SB+'/rest/v1/app_product_arb?select=product_id,prod_item_id,box_value,cards_value,resolved_mode,count_mode,n_mapped,n_content',{headers:{apikey:ANON,Authorization:"Bearer "+ANON}})
+    ]);
     let rows=await r.json(); if(!Array.isArray(rows))rows=[];
+    let arb=await ra.json(); PRODARB={}; if(Array.isArray(arb)) arb.forEach(x=>{ PRODARB[String(x.product_id)]=x; });
     if(state.mode!=='products') return;
     PRODROWS=rows; renderProducts(rows,lang);
   }catch(e){ stage.innerHTML='<div class="empty">Erreur de chargement des produits.</div>'; }
 }
 function renderProducts(rows,lang){
   const stage=document.getElementById('stage'); stage.className="";
-  let ownVal=0, ownN=0; rows.forEach(r=>{ if(r.owned_qty>0){ ownVal+=(r.price_eur||0)*r.owned_qty; ownN+=r.owned_qty; }});
+  let valProd=0, valCards=0, ownN=0;
+  rows.forEach(r=>{ if(r.owned_qty>0){ ownN+=r.owned_qty; const a=PRODARB[String(r.product_id)];
+    const rm=a?a.resolved_mode:'product';
+    if(rm==='product') valProd+=(a?+a.box_value:(r.price_eur||0)*r.owned_qty); else valCards+=(a?+a.cards_value:0); }});
   const langChips=SET_LANGS.map(([c,l])=>'<div class="chip'+(c===lang?' on':'')+'" onclick="setProdLang(\''+c+'\')">'+(FLAG[c]||'')+' '+l+'</div>').join('');
   let h='<div class="setlangrow">'+langChips+'</div>';
-  h+='<div class="sethead"><span>Mes produits scellés</span><span class="pct">'+ownN+' produit'+(ownN>1?'s':'')+' · '+eur0(ownVal)+'</span></div>';
+  h+='<div class="sethead"><span>Mes produits scellés</span><span class="pct">'+ownN+' produit'+(ownN>1?'s':'')+' · '+eur0(valProd)+' en scellé</span></div>';
+  if(lang==='JP'){
+    h+='<div style="background:var(--panel);border:1px solid var(--line);border-radius:11px;padding:10px 12px;margin:2px 0 12px;font-size:11.5px;line-height:1.5;color:var(--mut)">'+
+       '<b style="color:var(--ink)">Arbitrage anti-doublon (meilleure valo).</b> Pour chaque produit, on compare le <b>prix de la boîte scellée</b> et la valeur de <b>ses cartes</b> (retrouvées dans ta collection par n° de carte) et on garde <b>le plus élevé</b>, jamais les deux — fini le doublon. En <b>📦 Produit</b>, ses cartes sont retirées du total collection ; en <b>🃏 Cartes</b>, la boîte n\'est pas comptée. <b>Auto</b> choisit le max. '+
+       'Total scellé compté : <b>'+eur0(valProd)+'</b>'+(valCards>0?(' · <b>'+eur0(valCards)+'</b> déjà dans tes cartes'):'')+'.</div>';
+  }
   const byCat={}; rows.forEach(r=>{ (byCat[r.category]=byCat[r.category]||[]).push(r); });
   PROD_CAT_ORDER.forEach(cat=>{
     const list=byCat[cat]; if(!list||!list.length) return;
@@ -1979,12 +2153,28 @@ function renderProducts(rows,lang){
       const px=(r.price_eur!=null)?('<span class="pprice">'+eur(r.price_eur)+'</span>'):'<span class="pprice" style="color:var(--muted);font-weight:600">—</span>';
       const q=r.owned_qty||0;
       const minus=q>0?'<button class="pqbtn" onclick="prodRemove('+idx+')">−</button><span class="pqn">'+q+'</span>':'';
-      return '<div class="prow"><div class="pthumb">'+img+'</div><div class="pmid"><div class="ptitle">'+esc(r.name)+'</div><div class="psub">'+(FLAG[lang]||'')+' '+(PROD_CAT_LABELS[cat]||cat)+'</div></div>'+
+      let toggle='', arbLine='';
+      if(q>0){ const a=PRODARB[String(r.product_id)]; const m=(a?a.count_mode:r.count_mode)||'auto'; const rm=a?a.resolved_mode:'product';
+        if(a && a.n_content>0){
+          const cardsWin=(rm==='cards');
+          arbLine='<div class="parb"><span'+(!cardsWin?' class="win"':'')+'>📦 '+eur0(a.box_value)+'</span><span'+(cardsWin?' class="win"':'')+'>🃏 '+eur0(a.cards_value)+'</span>'+
+            '<span class="pmap">'+a.n_mapped+'/'+a.n_content+' cartes'+(a.n_mapped<a.n_content?' trouvées':'')+'</span></div>';
+        } else if(a){ arbLine='<div class="parb"><span class="pmap">contenu non mappé — compté comme boîte</span></div>'; }
+        toggle='<div class="pmode">'+
+          '<button class="pmodebtn'+(m==='auto'?' on':'')+'" onclick="setProdMode('+idx+',\'auto\')">Auto (max)</button>'+
+          '<button class="pmodebtn'+(m==='product'?' on':'')+'" onclick="setProdMode('+idx+',\'product\')">📦 Produit</button>'+
+          '<button class="pmodebtn'+(m==='cards'?' on':'')+'" onclick="setProdMode('+idx+',\'cards\')">🃏 Cartes</button></div>'; }
+      return '<div class="prow"><div class="pthumb">'+img+'</div><div class="pmid"><div class="ptitle">'+esc(r.name)+'</div><div class="psub">'+(FLAG[lang]||'')+' '+(PROD_CAT_LABELS[cat]||cat)+'</div>'+arbLine+toggle+'</div>'+
         '<div class="pright">'+px+'<div class="pqtyrow">'+minus+'<button class="pqbtn add" onclick="prodAdd('+idx+')">+</button></div></div></div>';
     }).join('');
   });
   stage.innerHTML=h;
   document.getElementById('countLine').textContent=rows.length+' produits';
+}
+async function setProdMode(idx,mode){ const r=PRODROWS[idx]; const a=PRODARB[String(r&&r.product_id)]; const item=(a&&a.prod_item_id)||(r&&r.prod_item_id); if(!item) return;
+  if(a){ a.count_mode=mode; } r.count_mode=mode;
+  try{ await fetch(SB+'/rest/v1/rpc/set_product_count_mode',{method:'POST',headers:{apikey:ANON,Authorization:"Bearer "+ANON,"Content-Type":"application/json"},body:JSON.stringify({p_item:item,p_mode:mode})}); }catch(e){}
+  await fetchProducts(); loadProductValue();
 }
 function setProdLang(l){ state.prodLang=l; fetchProducts(); }
 function prodAdd(idx){ const r=PRODROWS[idx]; if(!r) return;
@@ -1997,10 +2187,16 @@ async function prodRemove(idx){ const r=PRODROWS[idx]; if(!r) return;
   try{ const res=await fetch(SB+'/rest/v1/rpc/remove_product_from_collection',{method:'POST',headers:{apikey:ANON,Authorization:"Bearer "+ANON,"Content-Type":"application/json"},body:JSON.stringify({p_product:r.product_id,p_qty:1})}); const j=await res.json(); r.owned_qty=(Array.isArray(j)&&j[0])?j[0].res_quantity:Math.max(0,(r.owned_qty||0)-1); renderProducts(PRODROWS,state.prodLang||'JP'); loadProductValue(); }
   catch(e){ alert("Erreur lors du retrait."); }
 }
+let PROD_EXCL=new Set(); // item_ids de cartes déjà représentées par un produit compté « scellé » → exclues du total collection (anti-doublon)
 async function loadProductValue(){
-  try{ const r=await fetch(SB+'/rest/v1/app_products?owned_qty=gt.0&select=price_eur,owned_qty',{headers:{apikey:ANON,Authorization:"Bearer "+ANON}}); const j=await r.json(); PROD_VALUE=Array.isArray(j)?j.reduce((s,x)=>s+(x.price_eur||0)*(x.owned_qty||0),0):0; }catch(e){ PROD_VALUE=0; }
+  try{ const r=await fetch(SB+'/rest/v1/app_product_arb?select=box_value,cards_value,resolved_mode,mapped_item_ids',{headers:{apikey:ANON,Authorization:"Bearer "+ANON}}); const j=await r.json();
+    // Arbitrage : chaque produit compte soit comme boîte scellée (on exclut alors ses cartes de la collection), soit via ses cartes (on ne compte pas la boîte). Voir app_product_arb.
+    PROD_VALUE=0; PROD_EXCL=new Set();
+    if(Array.isArray(j)) j.forEach(x=>{ if(x.resolved_mode==='product'){ PROD_VALUE+=(+x.box_value||0); (x.mapped_item_ids||[]).forEach(id=>PROD_EXCL.add(String(id))); } });
+  }catch(e){ PROD_VALUE=0; PROD_EXCL=new Set(); }
   if(Array.isArray(DATA)){ if(state.mode==='accueil') renderHome(); else if(state.mode==='collection') render(); }
 }
+function collValue(){ return DATA.reduce((s,c)=>s+(PROD_EXCL.has(String(c.item_id))?0:val(c)*(c.quantity||1)),0); }
 // ---------- Accueil : tableau de bord ----------
 let HOMESNAPS=null;
 async function loadSnaps(){ try{ const r=await fetch(SB+'/rest/v1/app_value_snapshot?select=day,total_eur,cards,cards_eur,products_eur&order=day.asc&limit=400',{headers:{apikey:ANON,Authorization:"Bearer "+ANON}}); const j=await r.json(); HOMESNAPS=Array.isArray(j)?j:[]; }catch(e){ HOMESNAPS=[]; } }
@@ -2047,9 +2243,9 @@ async function renderHome(){
   stage.className='';
   if(!DATALOADED){ stage.innerHTML='<div class="loading">Chargement du tableau de bord&hellip;</div>'; return; }
   if(HOMESNAPS===null){ stage.innerHTML='<div class="loading">Chargement du tableau de bord&hellip;</div>'; await loadSnaps(); if(state.mode!=='accueil') return; }
-  const cardsVal=DATA.reduce((s,c)=>s+val(c)*(c.quantity||1),0);
+  const cardsVal=collValue();
   let cardsStrict=0, covQty=0, totQty=0;
-  DATA.forEach(c=>{ const q=c.quantity||1; totQty+=q; const sv=mkStrict(c); if(sv!=null){ cardsStrict+=sv*q; covQty+=q; } });
+  DATA.forEach(c=>{ const q=c.quantity||1; totQty+=q; const sv=mkStrict(c); if(sv!=null && !PROD_EXCL.has(String(c.item_id))){ cardsStrict+=sv*q; covQty+=q; } });
   const prodVal=PROD_VALUE||0, global=cardsVal+prodVal;
   const prodStrict=(MKT==='JP')?prodVal:0;
   const globalStrict=cardsStrict+prodStrict;
