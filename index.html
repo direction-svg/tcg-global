@@ -320,6 +320,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Ar
 .chip{white-space:nowrap;border:1px solid var(--line);background:var(--chip);color:var(--ink);padding:8px 12px;border-radius:999px;font-size:13px;font-weight:600;cursor:pointer;display:flex;gap:6px;align-items:center}
 .chip .n{opacity:.55;font-weight:700;font-size:11px}
 .chip.on{background:var(--chipOn);color:var(--chipOnInk);border-color:transparent}
+#valFilterRow{gap:5px;overflow-x:auto;flex-wrap:nowrap;scrollbar-width:none;-webkit-overflow-scrolling:touch;padding:5px 0 3px;align-items:center;mask-image:linear-gradient(to right,#000 96%,transparent)}
+#valFilterRow::-webkit-scrollbar{display:none}
+#valFilterRow .chip{flex:none;padding:5px 11px;font-size:12px;font-weight:600}
+#valFilterRow .dt{flex:none;white-space:nowrap;font-size:10px;text-transform:uppercase;letter-spacing:.3px;color:var(--muted);font-weight:800;margin:0 2px 0 8px}
+#valFilterRow .dt:first-child{margin-left:0}
+#valFilterRow .fsep{flex:none;width:1px;align-self:stretch;background:var(--line);margin:3px 4px}
 .gaprow{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px 12px}
 .pmode{display:flex;gap:5px;margin-top:6px;flex-wrap:wrap}
 .pmodebtn{font-size:10.5px;font-weight:700;padding:4px 9px;border-radius:20px;border:1px solid var(--line);background:var(--bg);color:var(--mut);cursor:pointer}
@@ -2874,7 +2880,7 @@ async function homeBriefing(){
   }catch(e){ box.innerHTML='<div class="txt" style="color:var(--muted);font-size:13px">Erreur, réessaie.</div><button class="hbriefbtn" onclick="homeBriefing()">Réessayer</button>'; }
 }
 document.getElementById('modeSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMode(b.dataset.m);});
-const APP_VERSION='Version b8 · 24/08';
+const APP_VERSION='Version b9 · 24/08';
 { const nv=document.getElementById('navVersion'); if(nv) nv.textContent=APP_VERSION; }
 document.getElementById('mktSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMarket(b.dataset.k);});
 const CATARRS=["catColors","catCats","catRarities","catTypes"];
