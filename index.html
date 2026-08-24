@@ -1211,7 +1211,7 @@ function render(){
       const g=c.is_graded?'<span class="grade">'+(c.grading_company||"")+' '+(c.grade!=null?String(c.grade).replace(/\.0$/,''):'')+'</span>':'<span></span>';
       const q=(c.quantity>1)?'<span class="qty">x'+c.quantity+'</span>':'';
       return '<div class="card" data-id="'+c.item_id+'"'+confFrame(c)+'><div class="imgwrap">'+imgTag(c)+'<div class="badges"><span class="flag">'+(FLAG[c.language]||"")+'</span>'+g+'</div>'+q+photoBadge(c)+(c.reverify?'<span class="rvdot" title="À revérifier (authenticité)"></span>':'')+'</div>'+
-      '<div class="meta"><p class="nm">'+esc(c.card_name||"")+'</p><div class="sub"><span>'+esc(c.card_number||"")+'</span>'+descTags(c)+'</div><div class="val">'+confDot(c)+eur(val(c))+'</div></div></div>';
+      '<div class="meta"><p class="nm">'+esc(c.card_name||"")+'</p><div class="sub"><span>'+esc(c.card_number||"")+'</span>'+descTags(c)+'</div><div class="val">'+eur(val(c))+'</div></div></div>';
     }).join("")+'</div>';
   } else {
     stage.className="list"; stage.innerHTML=a.map(c=>{
