@@ -309,6 +309,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Ar
 .chip{white-space:nowrap;border:1px solid var(--line);background:var(--chip);color:var(--ink);padding:8px 12px;border-radius:999px;font-size:13px;font-weight:600;cursor:pointer;display:flex;gap:6px;align-items:center}
 .chip .n{opacity:.55;font-weight:700;font-size:11px}
 .chip.on{background:var(--chipOn);color:var(--chipOnInk);border-color:transparent}
+.gaprow{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px 12px}
 .chip.on .n{opacity:.8}
 .fsec select{width:100%;border:1px solid var(--line);background:var(--panel);color:var(--ink);border-radius:12px;padding:11px 12px;font-size:15px;font-weight:600}
 .ffoot{position:sticky;bottom:0;display:flex;gap:10px;padding:12px 16px calc(14px + env(safe-area-inset-bottom));background:var(--bg);border-top:1px solid var(--line)}
@@ -688,8 +689,13 @@ body{-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
     <button data-m="sets">Sets</button>
     <button data-m="products">Produits</button>
     <button data-m="achats">Achats</button>
+    <button data-m="ventes">Ventes</button>
+    <button data-m="mouv">Mouvements</button>
     <button data-m="gradation">Gradation</button>
+    <button data-m="ouvrir">Ouvrir&nbsp;?</button>
     <button data-m="sante">Santé</button>
+    <button data-m="conviction">Conviction</button>
+    <button data-m="ecarts">Écarts JP/EN</button>
     <button data-m="live">Live</button>
   </nav>
 
@@ -846,7 +852,7 @@ const COLOR_HEX={Red:"#d64545",Green:"#2f9e57",Blue:"#2f6fed",Purple:"#8b57d6",B
 const TYPE_ORDER=["normal","alternate_art","sp","manga","full_art","textured_foil","jolly_roger_foil","promo","tournament"];
 const CAT_ORDER=["LEADER","CHARACTER","EVENT","STAGE","DON"];
 const SORTS=[["val_desc","Valeur ↓ (décroissant)"],["val_asc","Valeur ↑ (croissant)"],["name","Nom (A→Z)"],["num","Numéro"],["qty","Quantité"]];
-const DEF={q:"",lang:"all",color:"all",type:"all",cat:"all",rarity:"all",character:"all",grade:"all",minVal:0,imgf:"all",authf:"all",achatPeriod:"all",sort:"val_desc",view:"grid",mode:"accueil",catLang:"all",catQuery:"",catLangs:[],catColors:[],catCats:[],catRarities:[],catTypes:[],catSort:"price_desc",setLang:"JP",prodLang:"JP"};
+const DEF={q:"",lang:"all",color:"all",type:"all",cat:"all",rarity:"all",character:"all",grade:"all",minVal:0,imgf:"all",authf:"all",achatPeriod:"all",openRatio:null,openLiquid:false,gapView:"mine",sort:"val_desc",view:"grid",mode:"accueil",catLang:"all",catQuery:"",catLangs:[],catColors:[],catCats:[],catRarities:[],catTypes:[],catSort:"price_desc",setLang:"JP",prodLang:"JP"};
 let PROD_VALUE=0;
 // Barre du haut : portefeuille détaillé (total = cartes + scellés), même valeur live que l'accueil
 function portfolioMini(){
@@ -1167,14 +1173,14 @@ document.getElementById("q").addEventListener("input",e=>{
 function setMode(m){
   state.mode=m;
   document.querySelectorAll('#modeSeg button').forEach(b=>b.classList.toggle('on',b.dataset.m===m));
-  const home=m==="accueil", cat=m==="catalog", ops=m==="ops", sets=m==="sets", prods=m==="products", live=m==="live", ia=m==="ia", achats=m==="achats", grad=m==="gradation", sante=m==="sante";
+  const home=m==="accueil", cat=m==="catalog", ops=m==="ops", sets=m==="sets", prods=m==="products", live=m==="live", ia=m==="ia", achats=m==="achats", grad=m==="gradation", sante=m==="sante", ouvrir=m==="ouvrir", ventes=m==="ventes", mouv=m==="mouv", conv=m==="conviction", ecarts=m==="ecarts";
   if(!live) stopLive();
   document.getElementById('catLangRow').classList.toggle('hidden',!cat);
   document.getElementById('catFilters').classList.add('hidden');
-  document.getElementById('viewBtn').classList.toggle('hidden',home||cat||ops||sets||prods||live||ia||achats||grad||sante);
-  document.getElementById('filterBtn').classList.toggle('hidden',home||ops||sets||prods||live||ia||achats||grad||sante);
-  document.getElementById('sortBtn').classList.toggle('hidden',home||ops||sets||prods||live||ia||achats||grad||sante);
-  document.querySelector('.search').classList.toggle('hidden',home||ops||sets||prods||live||ia||achats||grad||sante);
+  document.getElementById('viewBtn').classList.toggle('hidden',home||cat||ops||sets||prods||live||ia||achats||grad||sante||ouvrir||ventes||mouv||conv||ecarts);
+  document.getElementById('filterBtn').classList.toggle('hidden',home||ops||sets||prods||live||ia||achats||grad||sante||ouvrir||ventes||mouv||conv||ecarts);
+  document.getElementById('sortBtn').classList.toggle('hidden',home||ops||sets||prods||live||ia||achats||grad||sante||ouvrir||ventes||mouv||conv||ecarts);
+  document.querySelector('.search').classList.toggle('hidden',home||ops||sets||prods||live||ia||achats||grad||sante||ouvrir||ventes||mouv||conv||ecarts);
   document.getElementById('scanFab').classList.toggle('hidden',!(m==='collection'||m==='catalog'));
   const vfr=document.getElementById('valFilterRow'); if(vfr){ if(m==='collection'){ vfr.style.display='flex'; buildValRow(); } else { vfr.style.display='none'; } }
   document.getElementById('q').placeholder=cat?"Chercher une carte (nom ou numéro), toutes langues…":"Rechercher (nom ou numéro)…";
@@ -1192,21 +1198,40 @@ function setMode(m){
   else if(achats){ document.getElementById('countLine').textContent=''; fetchAchats(); }
   else if(grad){ document.getElementById('countLine').textContent=''; fetchGrading(); }
   else if(sante){ document.getElementById('countLine').textContent=''; fetchSante(); }
+  else if(ouvrir){ document.getElementById('countLine').textContent=''; fetchOuvrir(); }
+  else if(ventes){ document.getElementById('countLine').textContent=''; fetchVentes(); }
+  else if(mouv){ document.getElementById('countLine').textContent=''; fetchMouv(); }
+  else if(conv){ document.getElementById('countLine').textContent=''; fetchConviction(); }
+  else if(ecarts){ document.getElementById('countLine').textContent=''; fetchGap(); }
   else { syncBadge(); document.getElementById('countLine').textContent=''; render(); loadBriefing(); }
 }
 // ---------- Santé des données ----------
 let SANTE=null;
 const SANTE_META={
   a_reverifier:{t:'À revérifier (authenticité)',ic:'🔴',c:'#ef4444',d:'Cartes à contrôler physiquement (test tranche / lumière / comparaison).'},
-  valeur_incoherente:{t:'Valeur incohérente',ic:'⚠️',c:'#f59e0b',d:"Cote de marché suspecte (ex. prix gradé < prix brut, ou saut anormal). À vérifier avant de s'y fier."},
+  valeur_incoherente:{t:'Donnée de prix à vérifier',ic:'⚠️',c:'#f59e0b',d:"Un point de prix d'une source est incohérent (ex. brut PriceCharting gonflé au-dessus du PSA 10). N'affecte pas forcément la valeur affichée de ta carte — c'est la donnée de marché qui a un grain de sable."},
   sans_valeur:{t:'Sans valeur de marché',ic:'∅',c:'#64748b',d:'Aucune cote trouvée pour cette carte — à sourcer.'},
   prix_perime:{t:'Prix périmé',ic:'🕗',c:'#64748b',d:'Dernière cote de plus de 21 jours.'}
 };
 const SANTE_ORDER=['a_reverifier','valeur_incoherente','sans_valeur','prix_perime'];
+const HEALTH_CODE={
+  psa_below_raw:"Prix brut d'une source (souvent PriceCharting) au-dessus du PSA 10 — impossible logiquement. N'affecte pas ta valeur (calculée sur boutique/médiane).",
+  raw_match_suspect:"Prix brut anormalement haut face au PSA 10 — donnée source à surveiller.",
+  graded_extreme_low:"Une cote gradée est anormalement basse par rapport au brut — donnée source douteuse.",
+  non_monotonic:"Cotes gradées incohérentes (ex. PSA 9 > PSA 10) — donnée source."
+};
+async function healthAck(itemId,cat){
+  try{
+    const r=await fetch(SB+'/rest/v1/rpc/health_ack_set',{method:'POST',headers:{apikey:ANON,Authorization:'Bearer '+ANON,'Content-Type':'application/json'},body:JSON.stringify({p_item:itemId,p_cat:cat,p_on:true})});
+    if(!r.ok)throw 0;
+    if(Array.isArray(SANTE)) SANTE=SANTE.filter(x=>!(String(x.item_id)===String(itemId)&&x.categorie===cat));
+    renderSante();
+  }catch(e){ alert('Impossible de mettre à jour.'); }
+}
 async function fetchSante(){
   const stage=document.getElementById('stage'); stage.className=''; stage.innerHTML='<div class="loading">Analyse de la santé des données…</div>';
   try{
-    const r=await fetch(SB+'/rest/v1/app_health_owned?select=categorie,severite,item_id,card_number,card_name,variant_label,detail,valeur&order=severite.desc&limit=2000',{headers:{apikey:ANON,Authorization:'Bearer '+ANON}});
+    const r=await fetch(SB+'/rest/v1/app_health_owned?select=categorie,code,severite,item_id,card_number,card_name,variant_label,detail,valeur&order=severite.desc&limit=2000',{headers:{apikey:ANON,Authorization:'Bearer '+ANON}});
     let rows=await r.json(); SANTE=Array.isArray(rows)?rows:[];
     if(state.mode!=='sante')return; renderSante();
   }catch(e){ stage.innerHTML='<div class="empty">Erreur de chargement de la santé.</div>'; }
@@ -1230,14 +1255,341 @@ function renderSante(){
     const sumv=g.reduce((s,x)=>s+(+x.valeur||0),0);
     h+='<details class="pxdet" style="margin-bottom:10px"><summary><span style="font-weight:800">'+m.ic+' '+m.t+'</span><span style="margin-left:auto;margin-right:10px;font-weight:800;color:'+m.c+'">'+g.length+(sumv?(' · '+eur0(sumv)):'')+'</span></summary>'+
       '<div class="pxbody" style="padding-top:10px"><div class="dt" style="margin-bottom:8px">'+m.d+'</div>'+
-      g.map(x=>'<div onclick="grOpenCard(\''+esc(x.item_id)+'\')" style="display:flex;gap:10px;align-items:center;padding:8px 0;border-top:1px solid var(--line);cursor:pointer">'+
-        '<div style="flex:1;min-width:0"><div style="font-weight:700;font-size:13px">'+esc(x.card_name||'')+' <span class="dt">'+esc(x.card_number||'')+(x.variant_label?(' · '+esc(x.variant_label)):'')+'</span></div>'+
-        '<div class="dt" style="font-size:11px;margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(x.detail||'')+'</div></div>'+
-        '<div style="text-align:right;white-space:nowrap;font-weight:800;font-size:12.5px">'+(x.valeur!=null?eur0(x.valeur):'—')+'</div></div>').join('')+
+      g.map(x=>{
+        const reason=x.detail||'';
+        const ackBtn=(cat!=='a_reverifier')?'<button onclick="event.stopPropagation();healthAck(\''+esc(x.item_id)+'\',\''+cat+'\')" style="flex:none;border:1px solid var(--line);background:var(--panel);color:var(--muted);font-weight:800;font-size:11px;padding:4px 9px;border-radius:8px;cursor:pointer">✓ Vérifié</button>':'';
+        return '<div style="display:flex;gap:9px;align-items:center;padding:9px 0;border-top:1px solid var(--line)">'+
+          '<div onclick="grOpenCard(\''+esc(x.item_id)+'\')" style="flex:1;min-width:0;cursor:pointer">'+
+            '<div style="font-weight:700;font-size:13px">'+esc(x.card_name||'')+' <span class="dt">'+esc(x.card_number||'')+(x.variant_label?(' · '+esc(x.variant_label)):'')+'</span> <span class="dt">'+(x.valeur!=null?('· '+eur0(x.valeur)):'')+'</span></div>'+
+            '<div class="dt" style="font-size:11px;margin-top:2px;line-height:1.35">'+esc(reason)+'</div></div>'+
+          ackBtn+'</div>';
+      }).join('')+
       '</div></details>';
   });
   if(!total) h='<div class="empty">✓ Aucune alerte — tout est propre.</div>';
   stage.innerHTML=h;
+}
+// ---------- Ouvrir ou garder scellé ? ----------
+let SEALEDBILAN=null, SEALEDBOXES=[];
+async function fetchOuvrir(){
+  const stage=document.getElementById('stage'); stage.className=''; stage.innerHTML='<div class="loading">Analyse du scellé…</div>';
+  try{
+    const [rb,rp]=await Promise.all([
+      fetch(SB+'/rest/v1/app_sealed_bilan?select=*',{headers:{apikey:ANON,Authorization:'Bearer '+ANON}}),
+      fetch(SB+'/rest/v1/app_products?owned_qty=gt.0&category=in.(BOOSTER_BOX,PREMIUM_BOOSTER)&select=name,set_code,category,price_eur,owned_qty&order=price_eur.desc.nullslast',{headers:{apikey:ANON,Authorization:'Bearer '+ANON}})
+    ]);
+    let b=await rb.json(); SEALEDBILAN=(Array.isArray(b)&&b[0])?b[0]:null;
+    let p=await rp.json(); SEALEDBOXES=Array.isArray(p)?p:[];
+    if(state.mode!=='ouvrir')return; renderOuvrir();
+  }catch(e){ stage.innerHTML='<div class="empty">Erreur de chargement du scellé.</div>'; }
+}
+function ouvrirPulls(){ const b=SEALEDBILAN||{}; return state.openLiquid?(+b.valeur_pulls_vendable||0):(+b.valeur_pulls||0); }
+function ouvrirRatio(){
+  if(state.openRatio!=null) return state.openRatio;
+  const b=SEALEDBILAN; if(!b||!(+b.cout_caisses)) return 0.64;
+  return Math.max(0,((ouvrirPulls()+(+b.valeur_boxes_gardees||0))/(+b.cout_caisses||1)));
+}
+function setOpenRatio(v){ const n=parseFloat(String(v).replace(',','.')); state.openRatio=(n>0&&n<5)?n:null; renderOuvrir(); }
+function setOpenLiquid(v){ state.openLiquid=!!v; renderOuvrir(); }
+function renderOuvrir(){
+  const stage=document.getElementById('stage'); stage.className='';
+  const b=SEALEDBILAN||{};
+  const cout=+b.cout_caisses||0, pulls=ouvrirPulls(), boxes=+b.valeur_boxes_gardees||0;
+  const recup=pulls+boxes, ratio=ouvrirRatio(), pctReal=cout?Math.round(recup/cout*100):0, pnl=recup-cout;
+  let h='';
+  h+='<div style="background:'+(pnl>=0?'linear-gradient(135deg,#047857,#10b981)':'linear-gradient(135deg,#b45309,#f59e0b)')+';color:#fff;border-radius:16px;padding:15px 18px;margin-bottom:12px;box-shadow:0 4px 14px rgba(15,23,42,.12)">'+
+     '<div style="font-size:11px;text-transform:uppercase;letter-spacing:.5px;opacity:.9;font-weight:800">Ton bilan réel d\'ouverture de caisses</div>'+
+     '<div style="font-size:26px;font-weight:900;letter-spacing:-.5px;margin:3px 0">'+pctReal+'&nbsp;% récupéré <span style="font-size:15px;opacity:.92">('+(pnl>=0?'+':'')+eur0(pnl)+')</span></div>'+
+     '<div style="font-size:12.5px;opacity:.95">Caisses investies <b>'+eur0(cout)+'</b> &middot; cartes sorties <b>'+eur0(pulls)+'</b> + boxes gardées <b>'+eur0(boxes)+'</b></div></div>';
+  h+='<div style="font-size:12.5px;color:var(--muted);margin:0 2px 10px;line-height:1.4">Sur ton historique, ouvrir tes caisses t\'a rendu <b>'+pctReal+'&nbsp;%</b> de leur valeur. On utilise <b>ton propre taux</b> comme estimation honnête pour décider — pas des probabilités de pull inventées. Tu peux l\'ajuster :</div>';
+  h+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap"><span class="dt">Taux « ouvrir » estimé :</span> <input inputmode="decimal" value="'+Math.round(ratio*100)+'" onchange="setOpenRatio(this.value/100)" style="width:66px;padding:6px 8px;border:1px solid var(--line);border-radius:8px;background:var(--panel);color:var(--ink);font-weight:800;text-align:center"> %'+(state.openRatio!=null?' <span class="chip" onclick="setOpenRatio(0)">↺ Auto</span>':'')+'</div>';
+  h+='<div style="margin-bottom:16px"><span class="chip'+(state.openLiquid?' on':'')+'" onclick="setOpenLiquid('+(state.openLiquid?'false':'true')+')">'+(state.openLiquid?'✓ ':'')+'Valeur vendable seulement (ignore le bulk &lt; 1 €)</span></div>';
+  h+='<div style="font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);font-weight:800;margin:0 2px 8px">Garder scellé vs ouvrir — par box possédée</div>';
+  if(!SEALEDBOXES.length){ h+='<div class="empty">Aucune box scellée enregistrée.</div>'; }
+  else {
+    h+='<div style="display:flex;flex-direction:column;gap:7px">'+SEALEDBOXES.map(x=>{
+      const garder=(+x.price_eur||0)*(x.owned_qty||1); const ouvrir=Math.round(garder*ratio); const keep=ouvrir<=garder;
+      return '<div style="background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:11px 13px">'+
+        '<div style="font-weight:800;font-size:13.5px">'+esc(x.name||'')+(x.owned_qty>1?(' ×'+x.owned_qty):'')+'</div>'+
+        '<div style="display:flex;gap:14px;margin-top:6px;align-items:center;flex-wrap:wrap">'+
+          '<span class="dt">Garder scellé&nbsp;: <b style="color:var(--ink)">'+eur0(garder)+'</b></span>'+
+          '<span class="dt">Ouvrir (est.)&nbsp;: <b style="color:var(--ink)">≈ '+eur0(ouvrir)+'</b></span>'+
+          '<span style="margin-left:auto;font-weight:800;font-size:12px;padding:3px 10px;border-radius:20px;background:'+(keep?'rgba(5,150,105,.16)':'rgba(180,83,9,.16)')+';color:'+(keep?'#059669':'#b45309')+'">'+(keep?'✋ Garder':'📦 Ouvrir')+'</span>'+
+        '</div></div>';
+    }).join('')+'</div>';
+    h+='<div style="font-size:11.5px;color:var(--muted);margin:12px 2px 0;line-height:1.4">« Ouvrir (est.) » = prix de la box × ton taux de rendement. Tant que ce taux est &lt; 100&nbsp;%, garder scellé est statistiquement gagnant sur ton historique. Le scellé a aussi tendance à prendre de la valeur avec le temps.</div>';
+  }
+  stage.innerHTML=h;
+}
+// ---------- Ventes / plus-value réalisée ----------
+let SALES=[], SALESUM=null;
+async function fetchVentes(){
+  const stage=document.getElementById('stage'); stage.className=''; stage.innerHTML='<div class="loading">Chargement des ventes…</div>';
+  try{
+    const [rs,ru]=await Promise.all([
+      fetch(SB+'/rest/v1/app_sales?select=*&order=sold_date.desc&limit=1000',{headers:{apikey:ANON,Authorization:'Bearer '+ANON}}),
+      fetch(SB+'/rest/v1/app_sales_summary?select=*',{headers:{apikey:ANON,Authorization:'Bearer '+ANON}})
+    ]);
+    let s=await rs.json(); SALES=Array.isArray(s)?s:[];
+    let u=await ru.json(); SALESUM=(Array.isArray(u)&&u[0])?u[0]:null;
+    if(state.mode!=='ventes')return; renderVentes();
+  }catch(e){ stage.innerHTML='<div class="empty">Erreur de chargement des ventes.</div>'; }
+}
+function renderVentes(){
+  const stage=document.getElementById('stage'); stage.className='';
+  const u=SALESUM||{}; const pnl=+u.pnl_realise||0, net=+u.net_ventes||0, cout=+u.cout_total||0, nb=+u.nb_ventes||0; const pos=pnl>=0;
+  let h='';
+  if(nb>0){
+    h+='<div style="background:'+(pos?'linear-gradient(135deg,#047857,#10b981)':'linear-gradient(135deg,#b91c1c,#ef4444)')+';color:#fff;border-radius:16px;padding:15px 18px;margin-bottom:12px;box-shadow:0 4px 14px rgba(15,23,42,.12)">'+
+      '<div style="font-size:11px;text-transform:uppercase;letter-spacing:.5px;opacity:.9;font-weight:800">Plus-value réalisée</div>'+
+      '<div style="font-size:29px;font-weight:900;letter-spacing:-.6px;margin:3px 0">'+(pos?'+':'')+eur0(pnl)+'</div>'+
+      '<div style="font-size:12.5px;opacity:.95">'+nb+' vente'+(nb>1?'s':'')+' &middot; encaissé net <b>'+eur0(net)+'</b> &middot; coût des cartes <b>'+eur0(cout)+'</b></div></div>';
+  } else {
+    h+='<div style="background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:18px;margin-bottom:12px;text-align:center"><div style="font-size:15px;font-weight:800;margin-bottom:4px">Aucune vente enregistrée</div><div class="dt" style="font-size:12.5px">Pour vendre : ouvre une carte dans ta collection → « 💶 Vendre ». Ta plus-value réalisée apparaîtra ici.</div></div>';
+  }
+  if(SALES.length){
+    h+='<div style="display:flex;flex-direction:column;gap:7px">'+SALES.map(x=>{
+      const p=+x.realized_pnl_eur||0; const pp=p>=0;
+      return '<div style="background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px 12px;display:flex;gap:10px;align-items:center">'+
+        '<div style="flex:1;min-width:0"><div style="font-weight:800;font-size:13px">'+esc(x.card_name||'')+(x.quantity>1?(' ×'+x.quantity):'')+' <span class="dt">'+esc(x.card_number||'')+(x.variant_label?(' · '+esc(x.variant_label)):'')+'</span></div>'+
+        '<div class="dt" style="font-size:11px;margin-top:2px">'+achatDate(x.sold_date)+' · vendu '+eur0(x.sold_price_eur)+((+x.fee_eur)?(' · frais '+eur0(x.fee_eur)):'')+' · coût '+eur0(x.cost_basis_eur)+'</div></div>'+
+        '<div style="text-align:right;white-space:nowrap;font-weight:900;font-size:14px;color:'+(pp?'#059669':'#dc2626')+'">'+(pp?'+':'')+eur0(p)+'</div></div>';
+    }).join('')+'</div>';
+  }
+  stage.innerHTML=h;
+}
+async function sellCard(itemId){
+  const gv=id=>{const el=document.getElementById(id);return el?el.value:'';};
+  const price=parseFloat(String(gv('sellPrice')).replace(',','.'));
+  if(!(price>0)){ alert('Entre un prix de vente valide.'); return; }
+  const fee=parseFloat(String(gv('sellFee')||'0').replace(',','.'))||0;
+  const date=gv('sellDate')||null;
+  const qty=parseInt(gv('sellQty')||'1',10)||1;
+  try{
+    const r=await fetch(SB+'/rest/v1/rpc/record_sale',{method:'POST',headers:{apikey:ANON,Authorization:'Bearer '+ANON,'Content-Type':'application/json'},body:JSON.stringify({p_item:itemId,p_qty:qty,p_price:price,p_fee:fee,p_date:date,p_note:null})});
+    if(!r.ok)throw 0;
+    closeDetail(); await load(); setMode('ventes');
+  }catch(e){ alert('Impossible d\'enregistrer la vente.'); }
+}
+// ---------- Mouvements de prix (alertes) ----------
+let MOVERS=[], NOTIFSET={notif_min_eur:5,notif_min_pct:10};
+async function fetchMouv(){
+  const stage=document.getElementById('stage'); stage.className=''; stage.innerHTML='<div class="loading">Chargement des mouvements…</div>';
+  try{
+    const [r,rs]=await Promise.all([
+      fetch(SB+'/rest/v1/app_movers?select=card_number,variant_label,language,image_url,qty,jp_now,jp_delta,jp_pct,eu_now,eu_delta,eu_pct,us_now,us_delta,us_pct&limit=2000',{headers:{apikey:ANON,Authorization:'Bearer '+ANON}}),
+      fetch(SB+'/rest/v1/app_settings?select=*',{headers:{apikey:ANON,Authorization:'Bearer '+ANON}})
+    ]);
+    let rows=await r.json(); MOVERS=Array.isArray(rows)?rows:[];
+    let st=await rs.json(); if(Array.isArray(st)&&st[0]) NOTIFSET=st[0];
+    if(state.mode!=='mouv')return; renderMouv();
+  }catch(e){ stage.innerHTML='<div class="empty">Erreur de chargement des mouvements.</div>'; }
+}
+async function setNotifThreshold(){
+  const e=parseFloat(String((document.getElementById('nmE')||{}).value).replace(',','.'))||0;
+  const p=parseFloat(String((document.getElementById('nmP')||{}).value).replace(',','.'))||0;
+  NOTIFSET={notif_min_eur:e,notif_min_pct:p};
+  try{ await fetch(SB+'/rest/v1/rpc/set_notif_threshold',{method:'POST',headers:{apikey:ANON,Authorization:'Bearer '+ANON,'Content-Type':'application/json'},body:JSON.stringify({p_min_eur:e,p_min_pct:p})}); }catch(err){}
+  renderMouv();
+}
+function mouvOpen(num,vl){ const c=(DATALOADED?DATA:[]).find(x=>x.card_number===num && (String(x.variant_label||'')===String(vl||''))); if(c) openDetail(c); }
+function renderMouv(){
+  const stage=document.getElementById('stage'); stage.className='';
+  const f=MKT_FIELD[MKT].slice(1); const dK=f+'_delta', nK=f+'_now', pK=f+'_pct';
+  const minE=+NOTIFSET.notif_min_eur||0, minP=+NOTIFSET.notif_min_pct||0;
+  const moved=MOVERS.filter(x=>{ if(x[dK]==null) return false; const ad=Math.abs(+x[dK]||0), ap=Math.abs(+x[pK]||0); return ad>=minE || ap>=minP; });
+  const totalDelta=moved.reduce((s,x)=>s+(+x[dK]||0)*(x.qty||1),0);
+  let h='';
+  h+='<div style="background:'+(totalDelta>=0?'linear-gradient(135deg,#047857,#10b981)':'linear-gradient(135deg,#b91c1c,#ef4444)')+';color:#fff;border-radius:16px;padding:14px 18px;margin-bottom:12px;box-shadow:0 4px 14px rgba(15,23,42,.12)">'+
+     '<div style="font-size:11px;text-transform:uppercase;letter-spacing:.5px;opacity:.9;font-weight:800">Mouvements récents &middot; marché '+MKT_LABEL[MKT]+'</div>'+
+     '<div style="font-size:24px;font-weight:900;letter-spacing:-.5px;margin:3px 0">'+(totalDelta>=0?'+':'')+eur0(totalDelta)+' <span style="font-size:13px;opacity:.9">sur '+moved.length+' carte'+(moved.length>1?'s':'')+' bougée'+(moved.length>1?'s':'')+'</span></div></div>';
+  h+='<div style="background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:11px 13px;margin-bottom:12px">'+
+     '<div style="font-size:12px;font-weight:800;margin-bottom:2px">Seuil de notification</div>'+
+     '<div class="dt" style="font-size:11.5px;margin-bottom:9px">Une carte est signalée (ici et dans la notification quotidienne de midi) si elle bouge d\'au moins l\'un des deux seuils.</div>'+
+     '<div style="display:flex;gap:14px;flex-wrap:wrap;align-items:flex-end">'+
+       '<label style="display:flex;flex-direction:column;gap:3px;font-size:11px;font-weight:700;color:var(--mut)">Variation min (€)'+
+         '<input id="nmE" type="number" min="0" step="1" value="'+minE+'" onchange="setNotifThreshold()" style="width:92px;padding:7px 9px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);font-size:14px;font-weight:700"></label>'+
+       '<label style="display:flex;flex-direction:column;gap:3px;font-size:11px;font-weight:700;color:var(--mut)">Variation min (%)'+
+         '<input id="nmP" type="number" min="0" step="1" value="'+minP+'" onchange="setNotifThreshold()" style="width:92px;padding:7px 9px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);font-size:14px;font-weight:700"></label>'+
+     '</div></div>';
+  if(!moved.length){ h+='<div class="empty">Aucun mouvement au-dessus de ton seuil (≥ '+eur0(minE)+' ou ≥ '+minP+'%). L\'historique par carte s\'enrichit chaque jour.</div>'; stage.innerHTML=h; return; }
+  const up=moved.filter(x=>+x[dK]>0).sort((a,b)=>b[dK]-a[dK]);
+  const down=moved.filter(x=>+x[dK]<0).sort((a,b)=>a[dK]-b[dK]);
+  const row=x=>{ const d=+x[dK], p=x[pK], pos=d>0; const vl=(x.variant_label&&String(x.variant_label).toLowerCase()!=='normal')?(' · '+esc(x.variant_label)):'';
+    const img=x.image_url?('<img loading="lazy" referrerpolicy="no-referrer" src="'+esc(x.image_url)+'" onerror="this.style.visibility=\'hidden\'" style="width:100%;height:100%;object-fit:cover">'):'';
+    return '<div onclick="mouvOpen('+JSON.stringify(x.card_number||'').replace(/"/g,'&quot;')+','+JSON.stringify(x.variant_label||'').replace(/"/g,'&quot;')+')" style="display:flex;gap:10px;align-items:center;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:8px 11px;cursor:pointer">'+
+      '<div style="width:34px;height:47px;border-radius:6px;overflow:hidden;background:var(--bg);flex:none">'+img+'</div>'+
+      '<div style="flex:1;min-width:0"><div style="font-weight:800;font-size:13px">'+(FLAG[x.language]||'')+' '+esc(x.card_number||'')+vl+'</div><div class="dt" style="font-size:11.5px">valeur '+eur0(x[nK])+(x.qty>1?(' · ×'+x.qty):'')+'</div></div>'+
+      '<div style="text-align:right;white-space:nowrap;font-weight:900;font-size:13.5px;color:'+(pos?'#059669':'#dc2626')+'">'+(pos?'▲ +':'▼ ')+eur0(Math.abs(d))+(p!=null?'<div style="font-size:11px;font-weight:800">'+(pos?'+':'')+p+'%</div>':'')+'</div></div>'; };
+  if(up.length) h+='<div style="font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:#059669;font-weight:800;margin:6px 2px 8px">▲ Hausses ('+up.length+')</div><div style="display:flex;flex-direction:column;gap:7px">'+up.map(row).join('')+'</div>';
+  if(down.length) h+='<div style="font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:#dc2626;font-weight:800;margin:14px 2px 8px">▼ Baisses ('+down.length+')</div><div style="display:flex;flex-direction:column;gap:7px">'+down.map(row).join('')+'</div>';
+  stage.innerHTML=h;
+}
+// ---------- Conviction (le cerveau) ----------
+let CONV=[], CONVMAP={}, CONVLOADED=false, CONV_SHOWBULK=false;
+const CONV_BUCKETS={
+  coeur:{t:'Cœur — à garder / renforcer',ic:'★',c:'#059669',d:'Conviction forte : rareté et/ou valeur élevées, marché qui te laisse sortir.'},
+  garder:{t:'Garder',ic:'✓',c:'#0891b2',d:'Bonne conviction — piliers solides de la collection.'},
+  surveiller:{t:'À surveiller',ic:'•',c:'#b45309',d:'Conviction moyenne — à suivre, sans priorité.'},
+  alleger:{t:'Candidats à alléger (sell-to-fund)',ic:'↓',c:'#dc2626',d:'Cartes qui valent quelque chose mais dont la conviction est faible : à revendre en priorité pour financer une cible du cœur.'},
+  bulk:{t:'Hors radar (bulk)',ic:'∅',c:'#64748b',d:'Cartes de faible valeur (< 5 €) — tes petites cartes en caisses. Aucune action à prévoir.'}
+};
+const CONV_ORDER=['coeur','garder','surveiller','alleger','bulk'];
+function convOpen(id){ const c=(DATALOADED?DATA:[]).find(x=>String(x.item_id)===String(id)); if(c) openDetail(c); }
+function convMomBar(p){ if(p==null) return 50; return 50+Math.max(-30,Math.min(30,+p)); }
+function convRarWord(s){ return s>=95?'rareté au sommet':s>=85?'grande rareté':s>=70?'rare':s>=55?'promo / peu commune':s>=40?'peu rare':'commune'; }
+async function loadConvMap(force){
+  if(CONVLOADED && !force) return;
+  try{
+    const r=await fetch(SB+'/rest/v1/app_conviction_scored?select=item_id,card_number,card_name,language,variant_label,image_url,rarity,quantity,market_value_eur,eu_offres,mom_pct,rar_score,liq_score,val_score,conviction,bucket&limit=5000',{headers:{apikey:ANON,Authorization:'Bearer '+ANON}});
+    let rows=await r.json(); CONV=Array.isArray(rows)?rows:[];
+    CONVMAP={}; CONV.forEach(x=>{ CONVMAP[String(x.item_id)]=x; });
+    CONVLOADED=true;
+  }catch(e){ CONV=[]; }
+}
+async function fetchConviction(){
+  const stage=document.getElementById('stage'); stage.className=''; stage.innerHTML='<div class="loading">Calcul des scores de conviction…</div>';
+  await loadConvMap(true);
+  if(state.mode!=='conviction') return;
+  renderConviction();
+}
+function convFactorBars(x){
+  const mb=convMomBar(x.mom_pct);
+  const facs=[
+    ['Rareté',+x.rar_score, x.rarity?esc(x.rarity):'—'],
+    ['Liquidité',+x.liq_score, (x.eu_offres!=null?(x.eu_offres+' offre'+(x.eu_offres>1?'s':'')):'marché mince')],
+    ['Momentum',mb, (x.mom_pct!=null?((x.mom_pct>0?'+':'')+x.mom_pct+'% · jeune'):'stable')],
+    ['Valeur',+x.val_score, eur0(x.market_value_eur)]
+  ];
+  const bar=(lbl,v,cap)=>{ const col=v>=70?'#059669':v>=45?'#b45309':'#94a3b8';
+    return '<div style="display:flex;align-items:center;gap:7px;margin:2px 0"><div style="width:64px;font-size:10px;color:var(--mut);font-weight:700">'+lbl+'</div>'+
+      '<div style="flex:1;height:6px;background:var(--bg);border-radius:4px;overflow:hidden"><div style="width:'+Math.max(3,Math.min(100,v))+'%;height:100%;background:'+col+'"></div></div>'+
+      '<div style="width:96px;font-size:10px;color:var(--mut);text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+cap+'</div></div>'; };
+  return facs.map(f=>bar(f[0],f[1],f[2])).join('');
+}
+function convCard(x){
+  const b=CONV_BUCKETS[x.bucket]||CONV_BUCKETS.surveiller;
+  const vl=(x.variant_label&&String(x.variant_label).toLowerCase()!=='normal')?(' · '+esc(x.variant_label)):'';
+  const img=x.image_url?('<img loading="lazy" referrerpolicy="no-referrer" src="'+esc(x.image_url)+'" onerror="this.style.visibility=\'hidden\'" style="width:100%;height:100%;object-fit:cover">'):'';
+  return '<div onclick="convOpen('+JSON.stringify(String(x.item_id)).replace(/"/g,'&quot;')+')" style="background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px 12px;cursor:pointer">'+
+    '<div style="display:flex;gap:10px;align-items:center">'+
+      '<div style="width:38px;height:53px;border-radius:6px;overflow:hidden;background:var(--bg);flex:none">'+img+'</div>'+
+      '<div style="flex:1;min-width:0"><div style="font-weight:800;font-size:13px">'+(FLAG[x.language]||'')+' '+esc(x.card_number||'')+vl+(x.quantity>1?(' <span style="color:var(--mut);font-weight:700">×'+x.quantity+'</span>'):'')+'</div>'+
+        '<div class="dt" style="font-size:11.5px">'+esc(x.card_name||'')+'</div></div>'+
+      '<div style="text-align:center;flex:none"><div style="font-size:22px;font-weight:900;letter-spacing:-.5px;color:'+b.c+'">'+x.conviction+'</div><div style="font-size:9px;color:var(--mut);font-weight:800;text-transform:uppercase;letter-spacing:.3px">/100</div></div>'+
+    '</div>'+
+    '<div style="margin-top:8px">'+convFactorBars(x)+'</div></div>';
+}
+function renderConviction(){
+  const stage=document.getElementById('stage'); stage.className='';
+  if(!CONV.length){ stage.innerHTML='<div class="empty">Aucune donnée de conviction. Réessaie dans un instant.</div>'; return; }
+  const groups={}; CONV_ORDER.forEach(k=>groups[k]=[]);
+  CONV.forEach(x=>{ (groups[x.bucket]=groups[x.bucket]||[]).push(x); });
+  Object.values(groups).forEach(a=>a.sort((p,q)=>q.conviction-p.conviction || (q.market_value_eur||0)-(p.market_value_eur||0)));
+  let h='';
+  // intro
+  h+='<div style="background:linear-gradient(135deg,#4338ca,#6366f1);color:#fff;border-radius:16px;padding:15px 18px;margin-bottom:12px;box-shadow:0 4px 14px rgba(15,23,42,.14)">'+
+     '<div style="font-size:11px;text-transform:uppercase;letter-spacing:.5px;opacity:.9;font-weight:800">Le cerveau · score de conviction</div>'+
+     '<div style="font-size:16px;font-weight:800;margin:4px 0 5px">Chaque carte notée /100, avec le pourquoi</div>'+
+     '<div style="font-size:12.5px;opacity:.95;line-height:1.5">Score bâti sur <b>4 facteurs réels</b> : rareté (35 %), valeur / importance (30 %), liquidité — de combien tu peux ressortir (25 %) — et un momentum court terme (10 %, capé car l\'historique est jeune). Aucun chiffre inventé.</div></div>';
+  // buckets summary
+  const sum=k=>groups[k].reduce((s,x)=>s+(+x.market_value_eur||0)*(x.quantity||1),0);
+  h+='<div style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:14px">';
+  CONV_ORDER.forEach(k=>{ if(!groups[k].length) return; const b=CONV_BUCKETS[k];
+    h+='<div style="flex:1;min-width:88px;background:var(--panel);border:1px solid var(--line);border-radius:11px;padding:9px 10px">'+
+       '<div style="font-size:10px;font-weight:800;color:'+b.c+';text-transform:uppercase;letter-spacing:.3px">'+b.ic+' '+esc(b.t.split(' — ')[0].split(' (')[0])+'</div>'+
+       '<div style="font-size:17px;font-weight:900;margin-top:2px">'+groups[k].length+'</div>'+
+       '<div style="font-size:10.5px;color:var(--mut)">'+eur0(sum(k))+'</div></div>'; });
+  h+='</div>';
+  // sections
+  CONV_ORDER.forEach(k=>{
+    const list=groups[k]; if(!list.length) return; const b=CONV_BUCKETS[k];
+    if(k==='bulk'){
+      h+='<div style="margin:16px 2px 8px"><button onclick="CONV_SHOWBULK=!CONV_SHOWBULK;renderConviction()" style="background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:9px 12px;color:var(--ink);font-weight:800;font-size:12px;cursor:pointer;width:100%;text-align:left">'+
+        b.ic+' '+esc(b.t)+' — '+list.length+' carte'+(list.length>1?'s':'')+' '+(CONV_SHOWBULK?'▲':'▼')+'</button></div>';
+      if(CONV_SHOWBULK) h+='<div style="display:flex;flex-direction:column;gap:8px">'+list.slice(0,120).map(convCard).join('')+'</div>'+
+        (list.length>120?'<div class="dt" style="font-size:11px;margin:8px 2px">… et '+(list.length-120)+' autres cartes de faible valeur.</div>':'');
+      return;
+    }
+    h+='<div style="margin:16px 2px 4px;font-size:12.5px;font-weight:800;color:'+b.c+'">'+b.ic+' '+esc(b.t)+' <span style="color:var(--mut);font-weight:700">('+list.length+')</span></div>'+
+       '<div class="dt" style="font-size:11.5px;margin:0 2px 9px">'+esc(b.d)+'</div>'+
+       '<div style="display:flex;flex-direction:column;gap:8px">'+list.map(convCard).join('')+'</div>';
+  });
+  // footer: what comes next
+  h+='<div style="background:var(--panel);border:1px dashed var(--line);border-radius:12px;padding:12px 14px;margin-top:18px;font-size:12px;color:var(--mut);line-height:1.55">'+
+     '<b style="color:var(--ink)">Facteurs à venir</b> (pas encore honnêtement calculables) : spread inter-marché JP↔EN↔CN (tes cartes ne sont cotées que sur leur marché natif), retour à la moyenne et vrai momentum (l\'historique n\'a que ~9 jours, il s\'enrichit chaque jour), risque de réimpression et population PSA (données à brancher). Le score se renforcera tout seul à mesure que la donnée s\'accumule.</div>';
+  stage.innerHTML=h;
+  document.getElementById('countLine').textContent=CONV.length+' cartes notées';
+}
+// ---------- Écarts JP / EN (comparateur inter-marché) ----------
+let GAP=[], GAPLOADED=false, GAP_SHOWSUS=false;
+const GAP_VCLASS={base:'',manga:'Manga',alt:'Alt Art',parallel:'Parallel',fullart:'Full Art',boxtopper:'Box Topper',wanted:'Wanted',sp:'SP'};
+const GAP_VIEWS=[['mine','Mes cartes'],['buy','Acheter au Japon'],['en','Moins cher en EN']];
+function setGapView(v){ state.gapView=v; renderGap(); }
+async function fetchGap(){
+  const stage=document.getElementById('stage'); stage.className=''; stage.innerHTML='<div class="loading">Comparaison des marchés JP / EN…</div>';
+  try{
+    const r=await fetch(SB+'/rest/v1/app_market_gap?select=*&limit=5000',{headers:{apikey:ANON,Authorization:'Bearer '+ANON}});
+    let rows=await r.json(); GAP=Array.isArray(rows)?rows:[]; GAPLOADED=true;
+  }catch(e){ GAP=[]; }
+  if(state.mode!=='ecarts')return; renderGap();
+}
+function gapRow(x){
+  const cl=GAP_VCLASS[x.vclass]!==undefined?GAP_VCLASS[x.vclass]:x.vclass; const cls=cl?(' · '+cl):'';
+  const jpCheap=x.cheaper==='JP'; // JP is the cheaper side (EN price higher)
+  const col=(isCheap)=> isCheap?'#059669':'var(--ink)';
+  const wt=(isCheap)=> isCheap?'900':'700';
+  const prime = jpCheap ? ('Prime EN +'+eur0(x.gap_eur)+' ('+(x.gap_pct>0?'+':'')+x.gap_pct+'%)')
+                        : ('EN moins cher de '+eur0(Math.abs(x.gap_eur))+' ('+x.gap_pct+'%)');
+  const ownBadge = x.owned?('<span style="font-size:9.5px;font-weight:800;color:#4338ca;background:rgba(99,102,241,.13);border-radius:20px;padding:1px 7px;margin-left:5px">TU L\'AS'+(x.owned_qty>1?(' ×'+x.owned_qty):'')+'</span>'):'';
+  const clickable=x.owned;
+  return '<div '+(clickable?('onclick="gapOpen('+JSON.stringify(String(x.card_number)).replace(/"/g,'&quot;')+','+JSON.stringify(String(x.vclass)).replace(/"/g,'&quot;')+')" style="cursor:pointer;"'):'style=""')+
+    ' class="gaprow" >'+
+    '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">'+
+      '<div style="min-width:0"><div style="font-weight:800;font-size:13px">'+esc(x.card_number||'')+cls+ownBadge+'</div>'+
+        '<div class="dt" style="font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:190px">'+esc(x.card_name||'')+'</div></div>'+
+      '<div style="text-align:right;flex:none"><div style="font-size:12.5px;font-weight:800;color:'+(jpCheap?'#059669':'#b45309')+'">'+prime+'</div>'+
+        '<div class="dt" style="font-size:10px">'+(x.en_offres!=null?(x.en_offres+' offres EN'):'')+'</div></div>'+
+    '</div>'+
+    '<div style="display:flex;gap:8px;margin-top:7px">'+
+      '<div style="flex:1;background:var(--bg);border-radius:8px;padding:6px 9px;border:1px solid '+(jpCheap?'#05966955':'var(--line)')+'"><div style="font-size:9.5px;color:var(--mut);font-weight:800">🇯🇵 JAPON</div><div style="font-weight:'+wt(jpCheap)+';font-size:14px;color:'+col(jpCheap)+'">'+eur0(x.jp_eur)+'</div></div>'+
+      '<div style="flex:1;background:var(--bg);border-radius:8px;padding:6px 9px;border:1px solid '+(!jpCheap?'#05966955':'var(--line)')+'"><div style="font-size:9.5px;color:var(--mut);font-weight:800">🇬🇧 ANGLAIS</div><div style="font-weight:'+wt(!jpCheap)+';font-size:14px;color:'+col(!jpCheap)+'">'+eur0(x.en_eur)+'</div></div>'+
+    '</div></div>';
+}
+function gapOpen(num,vcl){ const c=(DATALOADED?DATA:[]).find(x=>String(x.card_number)===String(num)); if(c) openDetail(c); }
+function renderGap(){
+  const stage=document.getElementById('stage'); stage.className='';
+  if(!GAP.length){ stage.innerHTML='<div class="empty">Aucune donnée de comparaison. Réessaie dans un instant.</div>'; return; }
+  const clean=GAP.filter(x=>!x.suspect), sus=GAP.filter(x=>x.suspect);
+  const v=state.gapView||'mine';
+  let list;
+  if(v==='mine') list=clean.filter(x=>x.owned && x.cheaper==='JP').sort((a,b)=>b.gap_pct-a.gap_pct);
+  else if(v==='buy') list=clean.filter(x=>!x.owned && x.cheaper==='JP').sort((a,b)=>b.gap_eur-a.gap_eur);
+  else list=clean.filter(x=>x.cheaper==='EN').sort((a,b)=>a.gap_pct-b.gap_pct);
+  let h='';
+  h+='<div style="background:linear-gradient(135deg,#0e7490,#06b6d4);color:#fff;border-radius:16px;padding:15px 18px;margin-bottom:12px;box-shadow:0 4px 14px rgba(15,23,42,.14)">'+
+     '<div style="font-size:11px;text-transform:uppercase;letter-spacing:.5px;opacity:.9;font-weight:800">Comparateur inter-marché · JP ⇄ EN</div>'+
+     '<div style="font-size:16px;font-weight:800;margin:4px 0 5px">Où acheter au meilleur prix, où l\'Ouest paie une prime</div>'+
+     '<div style="font-size:12px;opacity:.95;line-height:1.5">Une carte JP et une carte EN sont des <b>produits différents</b> : ce n\'est pas de l\'arbitrage sans risque, mais un signal de <b>demande</b> et de <b>meilleur point d\'entrée</b>. Seuls les écarts <b>fiables</b> (≥ 10 offres EN, ratio ≤ 8×) sont montrés. Marché chinois : pas encore de cotes — mis de côté.</div></div>';
+  h+='<div style="display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap">'+GAP_VIEWS.map(([k,l])=>{
+      const n=(k==='mine'?clean.filter(x=>x.owned&&x.cheaper==='JP').length:k==='buy'?clean.filter(x=>!x.owned&&x.cheaper==='JP').length:clean.filter(x=>x.cheaper==='EN').length);
+      return '<button onclick="setGapView(\''+k+'\')" class="chip'+(v===k?' on':'')+'" style="cursor:pointer">'+l+' <span style="opacity:.7">('+n+')</span></button>';
+    }).join('')+'</div>';
+  const explmain={mine:'Tes cartes JP sur lesquelles l\'Ouest paie une <b>prime</b> — potentiel latent / demande occidentale forte.',
+    buy:'Cartes <b>bien moins chères au Japon</b> qu\'en anglais, avec un marché EN liquide qui valide la demande — ton meilleur point d\'entrée.',
+    en:'Cas plus rares où la version <b>anglaise est moins chère</b> que la japonaise.'};
+  h+='<div class="dt" style="font-size:11.5px;margin:0 2px 10px">'+explmain[v]+'</div>';
+  if(!list.length) h+='<div class="empty">Aucune carte dans cette vue.</div>';
+  else h+='<div style="display:flex;flex-direction:column;gap:9px">'+list.slice(0,150).map(gapRow).join('')+'</div>'+
+    (list.length>150?'<div class="dt" style="font-size:11px;margin:8px 2px">… et '+(list.length-150)+' autres.</div>':'');
+  if(sus.length){
+    h+='<div style="margin:16px 2px 8px"><button onclick="GAP_SHOWSUS=!GAP_SHOWSUS;renderGap()" style="background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:9px 12px;color:var(--ink);font-weight:800;font-size:12px;cursor:pointer;width:100%;text-align:left">⚠️ Signaux à confirmer — '+sus.length+' (marché EN mince ou écart extrême) '+(GAP_SHOWSUS?'▲':'▼')+'</button></div>';
+    if(GAP_SHOWSUS){ const sl=sus.slice().sort((a,b)=>Math.abs(b.gap_eur)-Math.abs(a.gap_eur)).slice(0,60);
+      h+='<div class="dt" style="font-size:11px;margin:0 2px 8px">Écarts non fiables : trop peu d\'offres en anglais, ou ratio aberrant (souvent une donnée à vérifier). À ne pas prendre au pied de la lettre.</div>'+
+        '<div style="display:flex;flex-direction:column;gap:9px">'+sl.map(gapRow).join('')+'</div>'; }
+  }
+  stage.innerHTML=h;
+  document.getElementById('countLine').textContent=clean.length+' écarts fiables';
 }
 const SET_NAMES={OP01:"Romance Dawn",OP02:"Paramount War",OP03:"Pillars of Strength",OP04:"Kingdoms of Intrigue",OP05:"Awakening of the New Era",OP06:"Wings of the Captain",OP07:"500 Years in the Future",OP08:"Two Legends",OP09:"Emperors in the New World",OP10:"Royal Blood",OP11:"A Fist of Divine Speed",OP12:"Legacy of the Master",OP13:"Carrying On His Will",OP14:"The Azure Sea's Seven",OP15:"Adventure on KAMI's Island",OP16:"The Time of Battle",EB01:"Memorial Collection",EB02:"Anime 25th Collection",EB03:"Heroines Edition",EB04:"Egghead Crisis",PRB01:"Premium Booster -The Best-",PRB02:"One Piece The Best Vol.2",ST01:"Straw Hat Crew",ST02:"Worst Generation",ST03:"The Seven Warlords",ST04:"Animal Kingdom Pirates",ST32:"Green Roronoa Zoro",ST33:"Blue Kuzan",ST34:"Purple Charlotte Katakuri",ST35:"Red/Black Sabo",ST36:"Yellow Eustass Kid",PROMO:"Promos (toutes)",DON:"DON!! Cards"};
 const SET_GRP_LABELS={BOOSTER:"Booster / Extra / Premium",STARTER:"Starter Decks",PROMO:"Promo",DON:"DON!!",AUTRES:"Autres"};
@@ -2730,6 +3082,15 @@ function variantNice(c){
   if(!v||v==='normal'||v==='') return 'Normale (standard)';
   return VARIANT_FR[v]||esc(c.variant);
 }
+function convDetailChip(c){
+  const x=CONVMAP[String(c.item_id)];
+  if(!x){ if(!CONVLOADED){ loadConvMap().then(()=>{ if(detailCard&&String(detailCard.item_id)===String(c.item_id)&&detailTab==="col") renderDetail(); }); } return ''; }
+  const b=CONV_BUCKETS[x.bucket]||CONV_BUCKETS.surveiller;
+  return '<div style="margin:8px 0;padding:11px 13px;border:1px solid var(--line);border-radius:11px;background:var(--panel);display:flex;align-items:center;gap:12px">'+
+    '<div style="text-align:center;flex:none"><div style="font-size:24px;font-weight:900;color:'+b.c+';letter-spacing:-.5px">'+x.conviction+'</div><div style="font-size:9px;color:var(--mut);font-weight:800">/100</div></div>'+
+    '<div style="flex:1;min-width:0"><div style="font-weight:800;font-size:12.5px;color:'+b.c+'">'+b.ic+' Conviction — '+esc(b.t.split(' — ')[0].split(' (')[0])+'</div>'+
+    '<div class="dt" style="font-size:11px;margin-top:2px">Rareté '+x.rar_score+' · Liquidité '+x.liq_score+' · Valeur '+x.val_score+' · Momentum '+Math.round(convMomBar(x.mom_pct))+'</div></div></div>';
+}
 function renderDetail(){ const c=detailCard; if(!c)return; const body=document.getElementById("dbody");
   if(detailTab==="col"){
     const g=c.is_graded?('<span class="pill gold">'+(c.grading_company||"")+' '+(c.grade!=null?String(c.grade).replace(/\.0$/,''):'')+(c.cert_number?(' · '+c.cert_number):'')+'</span>'):'Brute';
@@ -2747,11 +3108,25 @@ function renderDetail(){ const c=detailCard; if(!c)return; const body=document.g
     }
     body.innerHTML='<div class="dval"><div class="b">'+eur(val(c))+'</div><div class="s">valeur marchande'+((c.quantity||1)>1?(' · total '+eur(val(c)*(c.quantity||1))):'')+'</div>'+srcline+cmp+'</div>'+
       mktBlock(c)+
+      convDetailChip(c)+
       (VERIFY.has(c.item_id)?'<div style="margin:8px 0;padding:10px 12px;border:1px solid #fdba74;background:#fff7ed;border-radius:10px;font-size:13px;color:#9a3412">🔍 <b>Photo à vérifier.</b> Tape la bonne illustration ci-dessous pour la valider, ou <button onclick=\'validateCurrent()\' style="border:0;background:#f97316;color:#fff;font-weight:800;padding:4px 10px;border-radius:8px;cursor:pointer">✓ Valider cette photo</button></div>':'')+
       (c.reverify?'<div style="margin:8px 0;padding:10px 12px;border:1px solid #fecaca;background:#fef2f2;border-radius:10px;font-size:13px;color:#991b1b">🔴 <b>À revérifier — authenticité.</b> Carte à contrôler (test de la tranche / lumière / comparaison avec une vraie). <button onclick=\'clearReverify()\' style="border:0;background:#ef4444;color:#fff;font-weight:800;padding:4px 10px;border-radius:8px;cursor:pointer;margin-left:4px">✓ Vérifiée (authentique)</button></div>':'')+
       '<div class="qtybox"><span class="s">Possédé :</span> <span class="b">'+(c.quantity||1)+'</span></div>'+
       drow("Acheté chez", achFrom)+drow("Date d’achat", achDate)+drow("Prix payé", achPrice)+
-      drow("Variante", '<b>'+variantNice(c)+'</b>')+drow("Provenance", c.origin?(ORIGIN_LABELS[c.origin]||c.origin):"")+drow("Rareté", RAR_LABELS[c.rarity]||c.rarity||"—")+drow("État", g)+drow("Langue", (FLAG[c.language]||"")+' '+(LANG_LABELS[c.language]||c.language))+drow("Nom", esc(c.card_name))+drow("Numéro", esc(c.card_number))+drow("Set", esc((c.set_code||"")+(c.set_name?(" — "+c.set_name):"")));
+      drow("Variante", '<b>'+variantNice(c)+'</b>')+drow("Provenance", c.origin?(ORIGIN_LABELS[c.origin]||c.origin):"")+drow("Rareté", RAR_LABELS[c.rarity]||c.rarity||"—")+drow("État", g)+drow("Langue", (FLAG[c.language]||"")+' '+(LANG_LABELS[c.language]||c.language))+drow("Nom", esc(c.card_name))+drow("Numéro", esc(c.card_number))+drow("Set", esc((c.set_code||"")+(c.set_name?(" — "+c.set_name):"")))+
+      '<details class="pxdet" style="margin-top:10px"><summary><span style="font-weight:800">💶 Vendre cette carte</span></summary>'+
+        '<div class="pxbody" style="padding-top:12px;display:flex;flex-direction:column;gap:8px">'+
+          '<div style="display:flex;gap:8px;flex-wrap:wrap">'+
+            '<label class="dt" style="flex:1 1 90px">Prix de vente (€)<input id="sellPrice" inputmode="decimal" placeholder="'+Math.round(val(c))+'" style="display:block;width:100%;margin-top:3px;padding:7px 9px;border:1px solid var(--line);border-radius:8px;background:var(--panel);color:var(--ink);font-weight:800"></label>'+
+            '<label class="dt" style="flex:1 1 70px">Frais (€)<input id="sellFee" inputmode="decimal" value="0" style="display:block;width:100%;margin-top:3px;padding:7px 9px;border:1px solid var(--line);border-radius:8px;background:var(--panel);color:var(--ink)"></label>'+
+          '</div>'+
+          '<div style="display:flex;gap:8px;flex-wrap:wrap">'+
+            '<label class="dt" style="flex:1 1 130px">Date<input id="sellDate" type="date" value="'+new Date().toISOString().slice(0,10)+'" style="display:block;width:100%;margin-top:3px;padding:7px 9px;border:1px solid var(--line);border-radius:8px;background:var(--panel);color:var(--ink)"></label>'+
+            ((c.quantity||1)>1?('<label class="dt" style="flex:1 1 70px">Quantité<input id="sellQty" type="number" min="1" max="'+(c.quantity)+'" value="1" style="display:block;width:100%;margin-top:3px;padding:7px 9px;border:1px solid var(--line);border-radius:8px;background:var(--panel);color:var(--ink)"></label>'):'')+
+          '</div>'+
+          '<button onclick="sellCard(\''+esc(c.item_id)+'\')" style="border:0;background:#059669;color:#fff;font-weight:800;padding:10px;border-radius:9px;cursor:pointer">✓ Enregistrer la vente</button>'+
+          '<div class="dt" style="font-size:11px;line-height:1.4">La carte quittera ta collection et sa plus-value réalisée (prix − frais − coût payé) ira dans « Ventes ». Coût pris en compte : '+(c.acquired_price!=null?eur0(c.acquired_price):'0 € (tirage de caisse)')+'.</div>'+
+        '</div></details>';
   } else {
     body.innerHTML=drow("Nom", esc(c.card_name))+drow("Numéro", esc(c.card_number))+drow("Variante", '<b>'+variantNice(c)+'</b>')+drow("Provenance", c.origin?(ORIGIN_LABELS[c.origin]||c.origin):"")+drow("Rareté", RAR_LABELS[c.rarity]||c.rarity)+drow("Set / Édition", esc((c.set_code||"")+(c.set_name?(" — "+c.set_name):"")))+drow("Catégorie", CAT_LABELS[c.category]||c.category)+drow("Type d’illustration", TYPE_LABELS[c.card_type]||c.card_type)+drow("Couleur", (c.color||"").split(";").join(" / "))+drow("Langue", LANG_LABELS[c.language]||c.language);
   }
