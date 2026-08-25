@@ -2890,7 +2890,7 @@ async function homeBriefing(){
   }catch(e){ box.innerHTML='<div class="txt" style="color:var(--muted);font-size:13px">Erreur, réessaie.</div><button class="hbriefbtn" onclick="homeBriefing()">Réessayer</button>'; }
 }
 document.getElementById('modeSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMode(b.dataset.m);});
-const APP_VERSION='Version b11 · 25/08';
+const APP_VERSION='Version b12 · 25/08';
 { const nv=document.getElementById('navVersion'); if(nv) nv.textContent=APP_VERSION; }
 document.getElementById('mktSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMarket(b.dataset.k);});
 const CATARRS=["catColors","catCats","catRarities","catTypes"];
@@ -3438,7 +3438,9 @@ async function loadLadder(c){
     return '<div class="lrow'+on+'"><span>'+esc(lbl)+'</span><b>'+eur(p.price_eur)+'</b></div>';
   }).join("");
   const cert=c.cert_number||"";
-  const verify=(c.grading_company==="PSA"&&cert)?(' <a href="https://www.psacard.com/cert/'+encodeURIComponent(cert)+'" target="_blank" rel="noreferrer" style="color:var(--accent);font-size:12px">vérifier ↗</a>'):'';
+  const verify=(c.grading_company==="PSA"&&cert)?(' <a href="https://www.psacard.com/cert/'+encodeURIComponent(cert)+'" target="_blank" rel="noreferrer" style="color:var(--accent);font-size:12px">vérifier ↗</a>')
+    :(c.grading_company==="NOVA"&&cert)?(' <a href="https://novagrading.com/verification-carte?serial_number='+encodeURIComponent(cert)+'" target="_blank" rel="noreferrer" style="color:var(--accent);font-size:12px">vérifier ↗</a>')
+    :'';
   const popline=(c.population!=null)?('<div class="poprow"><span>Population '+(c.grading_company||"PSA")+' '+(c.grade!=null?String(c.grade).replace(/\.0$/,''):"")+'</span><b>'+Number(c.population).toLocaleString("fr-FR")+(c.pop_higher!=null?(' · '+Number(c.pop_higher).toLocaleString("fr-FR")+' au-dessus'):'')+'</b></div>'):'';
   const mine=rows.find(p=>p.grading_company===c.grading_company && String(p.grade)===String(c.grade));
   const salesEur=mine?mine.price_eur:null;
