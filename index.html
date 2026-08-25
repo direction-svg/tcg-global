@@ -1026,7 +1026,7 @@ async function refreshItemMarket(item){
 async function load(){
   let all=[],from=0,step=1000;
   while(true){
-    const r=await fetch(SB+"/rest/v1/app_collection?select=item_id,printing_id,card_number,card_name,card_type,category,color,rarity,language,is_graded,grading_company,grade,cert_number,quantity,market_value_eur,seed_value_eur,live_value_eur,psa_estimate_eur,population,pop_higher,price_source,price_asof,image_url,set_code,set_name,variant,variant_label,origin,art_suffix,reverify,acquired_from,acquired_date,acquired_price&order=market_value_eur.desc.nullslast&limit="+step+"&offset="+from,{headers:{apikey:ANON,Authorization:"Bearer "+ANON}});
+    const r=await fetch(SB+"/rest/v1/app_collection?select=item_id,printing_id,card_number,card_name,card_type,category,color,rarity,language,is_graded,grading_company,grade,cert_number,quantity,market_value_eur,seed_value_eur,live_value_eur,psa_estimate_eur,population,pop_higher,price_source,price_asof,image_url,set_code,set_name,variant,variant_label,origin,art_suffix,reverify,img_locked,acquired_from,acquired_date,acquired_price&order=market_value_eur.desc.nullslast&limit="+step+"&offset="+from,{headers:{apikey:ANON,Authorization:"Bearer "+ANON}});
     if(!r.ok){document.getElementById("stage").innerHTML='<div class="empty">Erreur de chargement ('+r.status+').</div>';return;}
     const b=await r.json(); all=all.concat(b); if(b.length<step)break; from+=step;
   }
@@ -1191,7 +1191,7 @@ async function loadPcImages(){
       if(!r.ok)break; const b=await r.json(); if(!Array.isArray(b))break;
       b.forEach(x=>{ PCIMG[x.printing_id]=x.pc_image_url; }); if(b.length<step)break; from+=step;
     }
-    DATA.forEach(c=>{ const u=PCIMG[c.printing_id]; if(u && !c.is_graded){ c.image_url=u; VERIFY.delete(c.item_id); NEWPHOTO.delete(c.item_id); } });
+    DATA.forEach(c=>{ const u=PCIMG[c.printing_id]; if(u && !c.is_graded && !c.img_locked){ c.image_url=u; VERIFY.delete(c.item_id); NEWPHOTO.delete(c.item_id); } });
   }catch(e){}
 }
 async function loadVerify(){
@@ -2234,14 +2234,14 @@ async function grOpenCard(itemId){
   let c=(Array.isArray(DATA)?DATA.find(x=>String(x.item_id)===String(itemId)):null);
   if(!c){
     try{
-      const sel='item_id,printing_id,card_number,card_name,card_type,category,color,rarity,language,is_graded,grading_company,grade,cert_number,quantity,market_value_eur,seed_value_eur,live_value_eur,psa_estimate_eur,population,pop_higher,price_source,price_asof,image_url,set_code,set_name,variant,variant_label,origin,art_suffix';
+      const sel='item_id,printing_id,card_number,card_name,card_type,category,color,rarity,language,is_graded,grading_company,grade,cert_number,quantity,market_value_eur,seed_value_eur,live_value_eur,psa_estimate_eur,population,pop_higher,price_source,price_asof,image_url,set_code,set_name,variant,variant_label,origin,art_suffix,img_locked';
       const [rc,rm]=await Promise.all([
         fetch(SB+'/rest/v1/app_collection?item_id=eq.'+encodeURIComponent(itemId)+'&select='+sel+'&limit=1',{headers:{apikey:ANON,Authorization:'Bearer '+ANON}}).then(r=>r.json()),
         fetch(SB+'/rest/v1/app_collection_market?item_id=eq.'+encodeURIComponent(itemId)+'&select=item_id,jp_eur,eu_eur,us_eur,eu_offres,jp_live,eu_live,us_live',{headers:{apikey:ANON,Authorization:'Bearer '+ANON}}).then(r=>r.json())
       ]);
       c=(Array.isArray(rc)&&rc[0])?rc[0]:null; const m=(Array.isArray(rm)&&rm[0])?rm[0]:null;
       if(c&&m){ c._jp=m.jp_eur; c._eu=m.eu_eur; c._us=m.us_eur; c._euof=m.eu_offres; c._jplive=m.jp_live; c._eulive=m.eu_live; c._uslive=m.us_live; }
-      if(c){ const u=PCIMG[c.printing_id]; if(u && !c.is_graded) c.image_url=u; }
+      if(c){ const u=PCIMG[c.printing_id]; if(u && !c.is_graded && !c.img_locked) c.image_url=u; }
     }catch(e){}
   }
   if(c) openDetail(c); else { const s=document.getElementById('countLine'); if(s) s.textContent='Fiche indisponible pour cette carte.'; }
@@ -2880,7 +2880,7 @@ async function homeBriefing(){
   }catch(e){ box.innerHTML='<div class="txt" style="color:var(--muted);font-size:13px">Erreur, réessaie.</div><button class="hbriefbtn" onclick="homeBriefing()">Réessayer</button>'; }
 }
 document.getElementById('modeSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMode(b.dataset.m);});
-const APP_VERSION='Version b9 · 24/08';
+const APP_VERSION='Version b10 · 24/08';
 { const nv=document.getElementById('navVersion'); if(nv) nv.textContent=APP_VERSION; }
 document.getElementById('mktSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMarket(b.dataset.k);});
 const CATARRS=["catColors","catCats","catRarities","catTypes"];
@@ -3083,7 +3083,7 @@ document.getElementById('omodal').addEventListener('click',e=>{ if(e.target.id==
 document.getElementById('osave').addEventListener('click',saveOrient);
 async function openCatDetail(c){
   if(!c) return;
-  { const pcu=c.is_graded?null:PCIMG[c.printing_id]; const eff=pcu||c.image_url; const vfy=c.img_verify&&!pcu&&!c.is_graded; const cv=document.getElementById("cdvfy"); if(cv) cv.style.display=vfy?"grid":"none"; document.getElementById("cdimg").src=vfy?"":(eff||""); document.getElementById("cdimg").style.visibility=(!vfy&&eff)?"visible":"hidden"; }
+  { const pcu=(c.is_graded||c.img_locked)?null:PCIMG[c.printing_id]; const eff=pcu||c.image_url; const vfy=c.img_verify&&!pcu&&!c.is_graded&&!c.img_locked; const cv=document.getElementById("cdvfy"); if(cv) cv.style.display=vfy?"grid":"none"; document.getElementById("cdimg").src=vfy?"":(eff||""); document.getElementById("cdimg").style.visibility=(!vfy&&eff)?"visible":"hidden"; }
   const vl=c.variant_label||c.variant;
   document.getElementById("cdbody").innerHTML=
     '<div class="dval"><div class="b">'+esc(c.name||"")+'</div><div class="s">'+(FLAG[c.language]||"")+' '+(LANG_LABELS[c.language]||c.language)+' · '+esc(c.card_number||"")+'</div><div class="collact" id="cdcollact"></div></div>'+
@@ -3500,7 +3500,7 @@ async function chooseVariant(pid){
     const rows=await r.json();
     if(!detailCard || detailCard.item_id!==item) return;
     if(Array.isArray(rows)&&rows[0]){ Object.assign(detailCard,rows[0]); const d=findCard(item); if(d) Object.assign(d,rows[0]);
-      const eff=(!detailCard.is_graded&&PCIMG[detailCard.printing_id])||detailCard.image_url; detailCard.image_url=eff; if(d) d.image_url=eff;
+      const eff=((!detailCard.is_graded&&!detailCard.img_locked)&&PCIMG[detailCard.printing_id])||detailCard.image_url; detailCard.image_url=eff; if(d) d.image_url=eff;
       const di=document.getElementById("dimg"); if(eff){ di.src=eff; di.style.visibility="visible"; } else { di.style.visibility="hidden"; } }
     await refreshItemMarket(item);
     renderDetail(); loadLadder(detailCard); loadPrints(detailCard.card_number); render();
