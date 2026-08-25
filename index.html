@@ -320,12 +320,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Ar
 .chip{white-space:nowrap;border:1px solid var(--line);background:var(--chip);color:var(--ink);padding:8px 12px;border-radius:999px;font-size:13px;font-weight:600;cursor:pointer;display:flex;gap:6px;align-items:center}
 .chip .n{opacity:.55;font-weight:700;font-size:11px}
 .chip.on{background:var(--chipOn);color:var(--chipOnInk);border-color:transparent}
-#valFilterRow{gap:5px;overflow-x:auto;flex-wrap:nowrap;scrollbar-width:none;-webkit-overflow-scrolling:touch;padding:5px 0 3px;align-items:center;mask-image:linear-gradient(to right,#000 96%,transparent)}
-#valFilterRow::-webkit-scrollbar{display:none}
-#valFilterRow .chip{flex:none;padding:5px 11px;font-size:12px;font-weight:600}
-#valFilterRow .dt{flex:none;white-space:nowrap;font-size:10px;text-transform:uppercase;letter-spacing:.3px;color:var(--muted);font-weight:800;margin:0 2px 0 8px}
-#valFilterRow .dt:first-child{margin-left:0}
-#valFilterRow .fsep{flex:none;width:1px;align-self:stretch;background:var(--line);margin:3px 4px}
+#valFilterRow{display:block;padding:4px 0 0}
+#valFilterRow .valdet{margin-top:0}
+#valFilterRow .vlbl{font-size:10px;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);font-weight:800;margin:13px 2px 6px}
+#valFilterRow .vlbl:first-child{margin-top:2px}
+#valFilterRow .chiprow{display:flex;flex-wrap:wrap;gap:6px}
+#valFilterRow .chip{padding:5px 11px;font-size:12px;font-weight:600}
+.valsum{text-transform:none;letter-spacing:0;font-weight:600;color:var(--muted);font-size:11px;margin-left:7px}
 .gaprow{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px 12px}
 .pmode{display:flex;gap:5px;margin-top:6px;flex-wrap:wrap}
 .pmodebtn{font-size:10.5px;font-weight:700;padding:4px 9px;border-radius:20px;border:1px solid var(--line);background:var(--bg);color:var(--mut);cursor:pointer}
@@ -1130,26 +1131,35 @@ function activeCount(){ let n=0; ["lang","color","type","cat","rarity","characte
 function afterFilter(){ buildFilterModal(); syncBadge(); render(); }
 function syncBadge(){ const n=activeCount(); const b=document.getElementById("fbadge"); b.textContent=n; b.style.display=n?"grid":"none"; document.getElementById("filterBtn").classList.toggle("act",!!n); }
 const VALSTEPS=[[0,'Tout'],[1,'≥ 1 €'],[5,'≥ 5 €'],[20,'≥ 20 €'],[50,'≥ 50 €'],[100,'≥ 100 €']];
+function valSummary(){
+  const bits=[];
+  const vs=VALSTEPS.find(s=>s[0]===state.minVal); if(state.minVal>0&&vs) bits.push(vs[1]);
+  if(state.pricef==='doubt') bits.push('Prix douteux'); else if(state.pricef==='noprice') bits.push('Sans prix');
+  if(state.imgf==='new') bits.push('Nouvelles photos'); else if(state.imgf==='verify') bits.push('À vérifier'); else if(state.imgf==='noimg') bits.push('Sans image');
+  if(state.authf==='reverify') bits.push('À revérifier');
+  return bits.length?bits.join(' · '):'Tout affiché';
+}
 function buildValRow(){ const row=document.getElementById('valFilterRow'); if(!row)return;
   const nNew=DATA.filter(c=>NEWPHOTO.has(c.item_id)).length;
   const nV=DATA.filter(c=>VERIFY.has(c.item_id)&&!NEWPHOTO.has(c.item_id)).length;
-  const nN=DATA.filter(c=>!c.image_url && !VERIFY.has(c.item_id)).length;
-  const imgChips='<span class="dt" style="align-self:center;margin:0 4px 0 10px">Photo :</span>'+
-    '<div class="chip'+(state.imgf==="all"?' on':'')+'" onclick="setImgf(\'all\')">Toutes</div>'+
-    (nNew>0?'<div class="chip'+(state.imgf==="new"?' on':'')+'" style="'+(state.imgf==="new"?'':'border-color:#2563eb;color:#2563eb')+'" onclick="setImgf(\'new\')">Nouvelles photos ('+nNew+')</div>':'')+
-    '<div class="chip'+(state.imgf==="verify"?' on':'')+'" style="'+(state.imgf==="verify"?'':'border-color:#f59e0b;color:#b45309')+'" onclick="setImgf(\'verify\')">À vérifier ('+nV+')</div>'+
-    (nN>0?'<div class="chip'+(state.imgf==="noimg"?' on':'')+'" onclick="setImgf(\'noimg\')">Sans image ('+nN+')</div>':'');
+  const nN=DATA.filter(c=>!c.image_url&&!VERIFY.has(c.item_id)).length;
   const nRv=DATA.filter(c=>c.reverify).length;
-  const authChips=nRv>0?('<span class="dt" style="align-self:center;margin:0 4px 0 10px">Authenticité :</span>'+
-    '<div class="chip'+(state.authf==="all"?' on':'')+'" onclick="setAuthf(\'all\')">Toutes</div>'+
-    '<div class="chip'+(state.authf==="reverify"?' on':'')+'" style="'+(state.authf==="reverify"?'':'border-color:#ef4444;color:#dc2626')+'" onclick="setAuthf(\'reverify\')">À revérifier ('+nRv+')</div>'):'';
   const nNo=DATA.filter(c=>{const k=priceConf(c);return k&&k.lvl==='none';}).length;
   const nDoubt=DATA.filter(c=>{const k=priceConf(c);return k&&(k.lvl==='warn'||k.lvl==='bad');}).length;
-  const priceChips='<span class="dt" style="align-self:center;margin:0 4px 0 10px">Fiabilité prix :</span>'+
-    '<div class="chip'+(state.pricef==="all"?' on':'')+'" onclick="setPricef(\'all\')">Tous</div>'+
-    '<div class="chip'+(state.pricef==="doubt"?' on':'')+'" style="'+(state.pricef==="doubt"?'':'border-color:#f59e0b;color:#b45309')+'" onclick="setPricef(\'doubt\')">Prix douteux ('+nDoubt+')</div>'+
-    '<div class="chip'+(state.pricef==="noprice"?' on':'')+'" style="'+(state.pricef==="noprice"?'':'border-color:#94a3b8;color:#64748b')+'" onclick="setPricef(\'noprice\')">Sans prix ('+nNo+')</div>';
-  row.innerHTML='<span class="dt" style="align-self:center;margin-right:4px">Valeur min :</span>'+VALSTEPS.map(s=>'<div class="chip'+(state.minVal===s[0]?' on':'')+'" onclick="setMinVal('+s[0]+')">'+s[1]+'</div>').join('')+priceChips+imgChips+authChips; }
+  const chip=(on,color,onclick,txt)=>'<div class="chip'+(on?' on':'')+'"'+((!on&&color)?(' style="border-color:'+color+';color:'+color+'"'):'')+' onclick="'+onclick+'">'+txt+'</div>';
+  const lbl=t=>'<div class="vlbl">'+t+'</div>';
+  let b='';
+  b+=lbl('Valeur minimale')+'<div class="chiprow">'+VALSTEPS.map(s=>chip(state.minVal===s[0],'','setMinVal('+s[0]+')',s[1])).join('')+'</div>';
+  b+=lbl('Fiabilité du prix')+'<div class="chiprow">'+chip(state.pricef==='all','',"setPricef('all')",'Tous')+chip(state.pricef==='doubt','#f59e0b',"setPricef('doubt')",'Prix douteux ('+nDoubt+')')+chip(state.pricef==='noprice','#94a3b8',"setPricef('noprice')",'Sans prix ('+nNo+')')+'</div>';
+  let ph=chip(state.imgf==='all','',"setImgf('all')",'Toutes');
+  if(nNew>0) ph+=chip(state.imgf==='new','#2563eb',"setImgf('new')",'Nouvelles ('+nNew+')');
+  ph+=chip(state.imgf==='verify','#f59e0b',"setImgf('verify')",'À vérifier ('+nV+')');
+  if(nN>0) ph+=chip(state.imgf==='noimg','',"setImgf('noimg')",'Sans image ('+nN+')');
+  b+=lbl('Photos')+'<div class="chiprow">'+ph+'</div>';
+  if(nRv>0) b+=lbl('Authenticité')+'<div class="chiprow">'+chip(state.authf==='all','',"setAuthf('all')",'Toutes')+chip(state.authf==='reverify','#ef4444',"setAuthf('reverify')",'À revérifier ('+nRv+')')+'</div>';
+  row.innerHTML='<details class="pxdet valdet"'+(state.valPanelOpen?' open':'')+' ontoggle="state.valPanelOpen=this.open">'+
+    '<summary><span>Affichage &amp; fiabilité<span class="valsum">· '+esc(valSummary())+'</span></span></summary>'+
+    '<div class="pxbody" style="padding-top:4px">'+b+'</div></details>'; }
 function setMinVal(v){ state.minVal=v; buildValRow(); render(); }
 function setImgf(v){ state.imgf=v; buildValRow(); render(); }
 function setAuthf(v){ state.authf=v; buildValRow(); render(); }
@@ -1278,7 +1288,7 @@ function setMode(m){
   document.getElementById('sortBtn').classList.toggle('hidden',home||ops||sets||prods||live||ia||achats||grad||sante||ouvrir||ventes||mouv||conv||ecarts||offre||agenda||risque||cibler||track);
   document.querySelector('.search').classList.toggle('hidden',home||ops||sets||prods||live||ia||achats||grad||sante||ouvrir||ventes||mouv||conv||ecarts||offre||agenda||risque||cibler||track);
   document.getElementById('scanFab').classList.toggle('hidden',!(m==='collection'||m==='catalog'));
-  const vfr=document.getElementById('valFilterRow'); if(vfr){ if(m==='collection'){ vfr.style.display='flex'; buildValRow(); } else { vfr.style.display='none'; } }
+  const vfr=document.getElementById('valFilterRow'); if(vfr){ if(m==='collection'){ vfr.style.display='block'; buildValRow(); } else { vfr.style.display='none'; } }
   document.getElementById('q').placeholder=cat?"Chercher une carte (nom ou numéro), toutes langues…":"Rechercher (nom ou numéro)…";
   const brief=document.getElementById('briefing'); if(brief){ brief.innerHTML=''; }
   // mini portfolio line: shown everywhere except the Accueil dashboard
@@ -2180,7 +2190,7 @@ function renderAchats(){
     const gr=x.grade?'<span style="font-size:10px;font-weight:800;background:#fef9c3;color:#854d0e;padding:1px 6px;border-radius:6px;margin-left:5px">'+esc(x.grade)+'</span>':'';
     const qty=(x.quantity>1)?'<span style="font-size:10px;font-weight:800;background:#eef2ff;color:#3730a3;padding:1px 6px;border-radius:6px;margin-left:5px">×'+x.quantity+'</span>':'';
     const recu=isRecu(x.received);
-    const rec='<label onclick="event.stopPropagation();toggleReceived(\''+esc(x.id)+'\')" style="display:inline-flex;align-items:center;gap:5px;cursor:pointer;font-weight:800;color:'+(recu?'#059669':'#d97706')+'"><input type="checkbox" '+(recu?'checked':'')+' readonly style="width:15px;height:15px;accent-color:#059669;pointer-events:none;margin:0">'+(recu?'Réceptionné':'À réceptionner')+'</label>';
+    const rec='<span onclick="event.preventDefault();event.stopPropagation();toggleReceived(\''+esc(x.id)+'\')" style="display:inline-flex;align-items:center;gap:5px;cursor:pointer;font-weight:800;color:'+(recu?'#059669':'#d97706')+'"><input type="checkbox" '+(recu?'checked':'')+' readonly tabindex="-1" style="width:15px;height:15px;accent-color:#059669;pointer-events:none;margin:0">'+(recu?'Réceptionné':'À réceptionner')+'</span>';
     const typ=x.ptype?esc(x.ptype):'';
     return '<div style="display:flex;gap:10px;align-items:flex-start;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px 12px">'+
       '<div style="flex:1;min-width:0">'+
@@ -2880,7 +2890,7 @@ async function homeBriefing(){
   }catch(e){ box.innerHTML='<div class="txt" style="color:var(--muted);font-size:13px">Erreur, réessaie.</div><button class="hbriefbtn" onclick="homeBriefing()">Réessayer</button>'; }
 }
 document.getElementById('modeSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMode(b.dataset.m);});
-const APP_VERSION='Version b10 · 24/08';
+const APP_VERSION='Version b11 · 25/08';
 { const nv=document.getElementById('navVersion'); if(nv) nv.textContent=APP_VERSION; }
 document.getElementById('mktSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMarket(b.dataset.k);});
 const CATARRS=["catColors","catCats","catRarities","catTypes"];
@@ -3511,7 +3521,7 @@ async function chooseArt(suf, imgurl){
   try{
     await fetch(SB+'/rest/v1/rpc/set_owned_art',{method:"POST",headers:{apikey:ANON,Authorization:"Bearer "+ANON,"Content-Type":"application/json"},body:JSON.stringify({p_item:detailCard.item_id,p_suffix:suf})});
     detailCard.art_suffix=suf;
-    if(imgurl){ detailCard.image_url=imgurl; VERIFY.delete(detailCard.item_id); const dv=document.getElementById("dvfy"); if(dv) dv.style.display="none"; const di=document.getElementById("dimg"); di.src=imgurl; di.style.visibility="visible"; const d=findCard(detailCard.item_id); if(d) d.image_url=imgurl; }
+    if(imgurl){ detailCard.image_url=imgurl; VERIFY.delete(detailCard.item_id); NEWPHOTO.delete(detailCard.item_id); const dv=document.getElementById("dvfy"); if(dv) dv.style.display="none"; const di=document.getElementById("dimg"); di.src=imgurl; di.style.visibility="visible"; const d=findCard(detailCard.item_id); if(d) d.image_url=imgurl; }
     document.querySelectorAll('#dprints .pcard').forEach(x=>x.classList.toggle('sel', x.getAttribute('data-suf')===suf));
     render();
   }catch(e){}
@@ -3520,7 +3530,8 @@ async function validateCurrent(){
   if(!detailCard) return; const item=detailCard.item_id;
   try{
     await fetch(SB+'/rest/v1/rpc/validate_owned_image',{method:"POST",headers:{apikey:ANON,Authorization:"Bearer "+ANON,"Content-Type":"application/json"},body:JSON.stringify({p_item:item})});
-    VERIFY.delete(item);
+    VERIFY.delete(item); NEWPHOTO.delete(item);
+    const d0=findCard(item); if(d0) d0.img_locked=true;
     const dv=document.getElementById("dvfy"); if(dv) dv.style.display="none";
     renderDetail(); if(typeof buildValRow==='function') buildValRow(); render();
   }catch(e){}
