@@ -874,6 +874,26 @@ body{-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
   </div>
 </div>
 
+<div id="idModal" class="overlay hidden">
+  <div class="sheet ssheet">
+    <div class="fbar"><b>Identifier la carte reçue</b><button class="x" onclick="closeIdentify()">&times;</button></div>
+    <div style="padding:2px 16px 6px">
+      <div id="idPurchaseInfo" style="font-size:12.5px;color:var(--muted);margin-bottom:9px;line-height:1.5"></div>
+      <input id="idSearch" class="buyinput" placeholder="Nom ou num&eacute;ro (ex : OP17-079, Luffy)&hellip;" oninput="idSearchDebounced()" autocomplete="off">
+      <div id="idResults" style="margin-top:10px;max-height:40vh;overflow-y:auto"></div>
+      <div id="idSelected" style="margin-top:8px"></div>
+      <label style="display:flex;align-items:center;gap:8px;margin-top:13px;font-size:13px;font-weight:700;cursor:pointer"><input type="checkbox" id="idGraded" onchange="idRenderGrade()" style="width:16px;height:16px"> Carte grad&eacute;e (slab PSA / NOVA&hellip;)</label>
+      <div id="idGradeBox" style="display:none;margin-top:9px">
+        <select id="idCompany" class="buyinput" style="margin-bottom:8px"><option value="PSA">PSA</option><option value="NOVA">NOVA</option><option value="BGS">BGS</option><option value="CGC">CGC</option><option value="SGC">SGC</option><option value="OTHER">Autre</option></select>
+        <input id="idCert" class="buyinput" placeholder="N&deg; de certification (optionnel)">
+      </div>
+    </div>
+    <div style="padding:12px 16px calc(20px + env(safe-area-inset-bottom))">
+      <button id="idConfirmBtn" class="pxadd" style="border-style:solid;background:var(--accent);color:#fff;opacity:.5" disabled onclick="confirmLiveCard()">Confirmer &amp; r&eacute;ceptionner</button>
+    </div>
+  </div>
+</div>
+
 <div id="buySheet" class="overlay hidden">
   <div class="sheet ssheet">
     <div class="fbar"><b id="buyTitle">Ajouter à ma collection</b><button class="x" onclick="closeBuySheet()">&times;</button></div>
@@ -2217,7 +2237,7 @@ async function fetchAchats(){
   const stage=document.getElementById('stage'); stage.className=""; stage.innerHTML='<div class="loading">Chargement des achats…</div>';
   try{
     const [ra,rp,rc]=await Promise.all([
-      fetch(SB+'/rest/v1/app_purchases?select=id,purchase_date,seller,item_name,reference,quantity,ptype,grade,cert_number,ordered,received,currency,amount_origin,amount_eur,category,note&order=purchase_date.desc&limit=1000',{headers:{apikey:ANON,Authorization:"Bearer "+ANON}}),
+      fetch(SB+'/rest/v1/app_purchases?select=id,purchase_date,seller,item_name,reference,quantity,ptype,grade,cert_number,ordered,received,currency,amount_origin,amount_eur,category,note,needs_id,printing_id&order=purchase_date.desc&limit=1000',{headers:{apikey:ANON,Authorization:"Bearer "+ANON}}),
       fetch(SB+'/rest/v1/app_portfolio_value?select=*',{headers:{apikey:ANON,Authorization:"Bearer "+ANON}}),
       fetch(SB+'/rest/v1/app_collection?select=acquired_date,acquired_price,market_value_eur&acquired_price=not.is.null&acquired_date=not.is.null&limit=3000',{headers:{apikey:ANON,Authorization:"Bearer "+ANON}})
     ]);
@@ -2322,16 +2342,23 @@ function renderAchats(){
         sellers.map(s=>'<div class="chip'+(selSeller===s?' on':'')+'" onclick="setAchatSeller('+JSON.stringify(s).replace(/"/g,'&quot;')+')">'+esc(s)+' <span style="opacity:.7">'+sc[s]+' · '+eur0(stot[s])+'</span></div>').join('')+'</div>'+
     '</div>'+
   '</details>';
+  // bandeau : cartes live à identifier à réception
+  { const nPending=(ACHATS||[]).filter(x=>x.needs_id).length;
+    if(nPending>0) h+='<div style="background:rgba(245,158,11,.12);border:1px solid rgba(245,158,11,.55);border-radius:12px;padding:10px 13px;margin-bottom:12px;font-size:12.5px;line-height:1.5;color:var(--ink)"><b>🔎 '+nPending+' carte'+(nPending>1?'s':'')+' à identifier</b> — achetée'+(nPending>1?'s':'')+' en live sans numéro. À réception, touche « Identifier &amp; réceptionner » : choisis la vraie carte, confirme l\'état, et elle entre en collection avec ton prix d\'achat comme coût.</div>'; }
   // liste
   h+='<div style="display:flex;flex-direction:column;gap:7px">'+rows.map(x=>{
     const gr=x.grade?'<span style="font-size:10px;font-weight:800;background:#fef9c3;color:#854d0e;padding:1px 6px;border-radius:6px;margin-left:5px">'+esc(x.grade)+'</span>':'';
     const qty=(x.quantity>1)?'<span style="font-size:10px;font-weight:800;background:#eef2ff;color:#3730a3;padding:1px 6px;border-radius:6px;margin-left:5px">×'+x.quantity+'</span>':'';
     const recu=isRecu(x.received);
-    const rec='<span onclick="event.preventDefault();event.stopPropagation();toggleReceived(\''+esc(x.id)+'\')" style="display:inline-flex;align-items:center;gap:5px;cursor:pointer;font-weight:800;color:'+(recu?'#059669':'#d97706')+'"><input type="checkbox" '+(recu?'checked':'')+' readonly tabindex="-1" style="width:15px;height:15px;accent-color:#059669;pointer-events:none;margin:0">'+(recu?'Réceptionné':'À réceptionner')+'</span>';
+    const needsId=x.needs_id===true;
+    const idBadge=needsId?'<span style="font-size:10px;font-weight:800;background:rgba(245,158,11,.16);color:#b45309;padding:1px 7px;border-radius:6px;margin-left:5px">À IDENTIFIER</span>':'';
+    const rec=needsId
+      ? '<button onclick="openIdentify(\''+esc(x.id)+'\')" style="border:1px solid var(--accent);background:var(--accent);color:#fff;font-weight:800;font-size:11px;padding:4px 10px;border-radius:8px;cursor:pointer">🔎 Identifier &amp; réceptionner</button>'
+      : '<span onclick="event.preventDefault();event.stopPropagation();toggleReceived(\''+esc(x.id)+'\')" style="display:inline-flex;align-items:center;gap:5px;cursor:pointer;font-weight:800;color:'+(recu?'#059669':'#d97706')+'"><input type="checkbox" '+(recu?'checked':'')+' readonly tabindex="-1" style="width:15px;height:15px;accent-color:#059669;pointer-events:none;margin:0">'+(recu?'Réceptionné':'À réceptionner')+'</span>';
     const typ=x.ptype?esc(x.ptype):'';
     return '<div style="display:flex;gap:10px;align-items:flex-start;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px 12px">'+
       '<div style="flex:1;min-width:0">'+
-        '<div style="font-weight:800;font-size:13.5px">'+esc(x.item_name||'')+gr+qty+'</div>'+
+        '<div style="font-weight:800;font-size:13.5px">'+esc(x.item_name||'')+gr+qty+idBadge+'</div>'+
         '<div style="font-size:11px;color:var(--muted);margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(x.reference||'')+'</div>'+
         '<div style="font-size:10.5px;color:var(--muted);margin-top:4px;display:flex;gap:8px;flex-wrap:wrap;align-items:center"><span>'+achatDate(x.purchase_date)+'</span><span>·</span><span>'+esc(x.seller||'')+'</span>'+(typ?'<span>·</span><span>'+typ+'</span>':'')+'<span>·</span>'+rec+'</div>'+
       '</div>'+
@@ -2341,6 +2368,59 @@ function renderAchats(){
   stage.innerHTML=h;
   document.getElementById('countLine').textContent=rows.length+' achat'+(rows.length>1?'s':'')+' · '+eur0(shown)+(selSeller!=='all'?(' ('+selSeller+')'):'');
 }
+// ---------- Identification d'une carte achetée en live (à réception) ----------
+let idState={};
+let idTimer=null;
+function openIdentify(pid){
+  const p=(ACHATS||[]).find(x=>String(x.id)===String(pid)); if(!p) return;
+  idState={purchase:p, printing:null, rows:[]};
+  document.getElementById('idPurchaseInfo').innerHTML='Achat : <b>'+eur0(p.amount_eur)+'</b> · '+esc(p.seller||'')+' · '+esc(p.reference||p.item_name||'')+'<br>Ce prix devient le <b>coût d\'acquisition</b> de la carte en collection.';
+  document.getElementById('idSearch').value=''; document.getElementById('idResults').innerHTML=''; document.getElementById('idSelected').innerHTML='';
+  document.getElementById('idGraded').checked=false; document.getElementById('idGradeBox').style.display='none';
+  const btn=document.getElementById('idConfirmBtn'); btn.disabled=true; btn.style.opacity='.5'; btn.textContent='Confirmer & réceptionner';
+  document.getElementById('idModal').classList.remove('hidden');
+  setTimeout(()=>{ const s=document.getElementById('idSearch'); if(s) s.focus(); },60);
+}
+function closeIdentify(){ document.getElementById('idModal').classList.add('hidden'); }
+function idRenderGrade(){ document.getElementById('idGradeBox').style.display=document.getElementById('idGraded').checked?'block':'none'; }
+function idSearchDebounced(){ clearTimeout(idTimer); idTimer=setTimeout(idDoSearch,300); }
+async function idDoSearch(){
+  const q=(document.getElementById('idSearch').value||'').trim();
+  const box=document.getElementById('idResults'); if(q.length<2){ box.innerHTML=''; return; }
+  const isNum=/^[A-Za-z]{1,4}\d?\d?-?\d{2,3}/.test(q.replace(/\s/g,''));
+  const filt=isNum?('card_number=ilike.*'+encodeURIComponent(q.replace(/\s/g,''))+'*'):('name=ilike.*'+encodeURIComponent(q)+'*');
+  box.innerHTML='<div class="dt" style="padding:8px">Recherche…</div>';
+  let rows=[];
+  try{ const r=await fetch(SB+'/rest/v1/app_catalog_priced?'+filt+'&select=card_number,language,name,image_url,variant,variant_label,rarity,set_code,printing_id&limit=40',{headers:{apikey:ANON,Authorization:'Bearer '+ANON}}); rows=await r.json(); if(!Array.isArray(rows))rows=[]; }catch(e){ box.innerHTML='<div class="dt" style="padding:8px">Erreur de recherche.</div>'; return; }
+  idState.rows=rows;
+  if(!rows.length){ box.innerHTML='<div class="dt" style="padding:8px">Aucune carte trouvée.</div>'; return; }
+  box.innerHTML=rows.slice(0,40).map((c,i)=>{
+    const vl=(c.variant_label&&String(c.variant_label).toLowerCase()!=='normal')?(' · '+esc(c.variant_label)):'';
+    const img=c.image_url?('<img loading="lazy" referrerpolicy="no-referrer" src="'+esc(c.image_url)+'" style="width:30px;height:42px;object-fit:cover;border-radius:4px;flex:none" onerror="this.style.visibility=\'hidden\'">'):'<span style="width:30px;height:42px;flex:none;display:inline-block"></span>';
+    return '<div onclick="idPick('+i+')" data-idr="'+i+'" style="display:flex;gap:9px;align-items:center;padding:7px;border-radius:9px;cursor:pointer;border:1px solid var(--line);margin-bottom:6px">'+img+'<div style="min-width:0"><div style="font-weight:800;font-size:12.5px">'+(FLAG[c.language]||'')+' '+esc(c.card_number||'')+vl+'</div><div class="dt" style="font-size:11px">'+esc(c.name||'')+'</div></div></div>';
+  }).join('');
+}
+function idPick(i){
+  const c=(idState.rows||[])[i]; if(!c) return;
+  idState.printing=c.printing_id;
+  document.querySelectorAll('#idResults [data-idr]').forEach(el=>el.style.borderColor='var(--line)');
+  const el=document.querySelector('#idResults [data-idr="'+i+'"]'); if(el) el.style.borderColor='var(--accent)';
+  document.getElementById('idSelected').innerHTML='<div style="background:rgba(108,139,255,.12);border:1px solid var(--accent);border-radius:9px;padding:8px 11px;font-size:12.5px;font-weight:700">Sélectionné : '+(FLAG[c.language]||'')+' '+esc(c.card_number||'')+' — '+esc(c.name||'')+'</div>';
+  const btn=document.getElementById('idConfirmBtn'); btn.disabled=false; btn.style.opacity='1';
+}
+async function confirmLiveCard(){
+  if(!idState.purchase||!idState.printing) return;
+  const btn=document.getElementById('idConfirmBtn'); btn.disabled=true; btn.textContent='Enregistrement…';
+  const graded=document.getElementById('idGraded').checked;
+  const company=graded?document.getElementById('idCompany').value:null;
+  const cert=graded?((document.getElementById('idCert').value||'').trim()||null):null;
+  try{
+    const r=await fetch(SB+'/rest/v1/rpc/confirm_live_card',{method:'POST',headers:{apikey:ANON,Authorization:'Bearer '+ANON,'Content-Type':'application/json'},body:JSON.stringify({p_purchase:idState.purchase.id,p_printing:idState.printing,p_qty:1,p_graded:graded,p_company:company,p_cert:cert})});
+    if(!r.ok) throw 0;
+    closeIdentify(); await load(); if(state.mode==='achats') fetchAchats();
+  }catch(e){ btn.disabled=false; btn.textContent='Confirmer & réceptionner'; alert('Impossible de confirmer la carte. Réessaie.'); }
+}
+document.getElementById('idModal').addEventListener('click',e=>{ if(e.target.id==='idModal') closeIdentify(); });
 // ---------- Gradation ----------
 let GRADING=null; const GR_IMGS={}, GR_PG={};
 const GR_STLBL={to_submit:'À envoyer',submitted:'En cours',returned:'Revenue'};
@@ -2402,24 +2482,61 @@ function grPgHTML(r,id){
   h+='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><b style="font-size:13px">Verdict IA</b><span style="font-size:12px;color:var(--muted)">estimation PSA <b style="color:var(--ink)">'+(r.psa_estimate!=null?r.psa_estimate:'?')+'</b> · conf. '+Math.round((+r.confidence||0)*100)+'%</span></div>';
   h+='<div style="font-size:12px;margin-bottom:8px">'+esc(r.verdict||'')+'</div>';
   h+='<div style="display:flex;gap:6px;margin-bottom:8px"><span style="flex:1;text-align:center;background:'+pc+';color:#fff;font-weight:800;border-radius:8px;padding:5px;font-size:12px">PSA 10 : '+p10+'%</span><span style="flex:1;text-align:center;background:var(--chip);color:var(--ink);font-weight:800;border-radius:8px;padding:5px;font-size:12px">BGS ≈ '+((r.bgs&&r.bgs.estimate!=null)?r.bgs.estimate:'?')+' · BL '+Math.round((+r.black_label_probability||0)*100)+'%</span></div>';
-  h+=grBar('Centrage',(c.grade))+grBar('Coins',(r.corners||{}).grade)+grBar('Bords',(r.edges||{}).grade)+grBar('Surface',(r.surface||{}).grade);
-  if(c.front_lr) h+='<div style="font-size:11px;color:var(--muted);margin-top:4px">Centrage recto '+esc(c.front_lr)+' / '+esc(c.front_tb||'')+(c.back_lr?(' · verso '+esc(c.back_lr)+' / '+esc(c.back_tb||'')):'')+'</div>';
+  h+=grBar('Centrage'+(c.measured?' ✓':''),(c.grade))+grBar('Coins',(r.corners||{}).grade)+grBar('Bords',(r.edges||{}).grade)+grBar('Surface',(r.surface||{}).grade);
+  if(c.front_lr) h+='<div style="font-size:11px;color:var(--muted);margin-top:4px">'+(c.measured?'<b style="color:#059669">Centrage mesuré</b> (pixels) ':'Centrage ')+'recto '+esc(c.front_lr)+' / '+esc(c.front_tb||'')+(c.back_lr?(' · verso '+esc(c.back_lr)+' / '+esc(c.back_tb||'')):'')+'</div>';
   if(Array.isArray(r.red_flags)&&r.red_flags.length) h+='<div style="font-size:11px;color:#b45309;margin-top:4px">⚠️ '+r.red_flags.map(esc).join(' · ')+'</div>';
   if(r.image_quality&&r.image_quality!=='good') h+='<div style="font-size:11px;color:#dc2626;margin-top:4px">Qualité photo : '+esc(r.image_quality)+' — refais une photo bien à plat pour un verdict fiable.</div>';
   h+='<button onclick="grSavePg(\''+id+'\')" style="margin-top:8px;width:100%;border:0;background:var(--accent);color:#fff;font-weight:800;padding:9px;border-radius:10px;cursor:pointer">Valider ce pré-grade &amp; mettre en file</button>';
   h+='</div>';
   return h;
 }
-function grStore(id,side,inp){ const f=inp.files&&inp.files[0]; if(!f)return; const rd=new FileReader(); rd.onload=()=>{ GR_IMGS[id]=GR_IMGS[id]||{}; GR_IMGS[id][side]=rd.result; const el=document.getElementById('lbl_'+side+'_'+id); if(el){ el.textContent=(side==='front'?'Recto ✓':'Verso ✓'); el.style.color='#059669'; } }; rd.readAsDataURL(f); }
+const GR_SIDE_LBL={front:'Recto ✓',back:'Verso ✓',surface:'Surface ✓'};
+function grStore(id,side,inp){ const f=inp.files&&inp.files[0]; if(!f)return; const rd=new FileReader(); rd.onload=()=>{ GR_IMGS[id]=GR_IMGS[id]||{}; GR_IMGS[id][side]=rd.result; const el=document.getElementById('lbl_'+side+'_'+id); if(el){ el.textContent=GR_SIDE_LBL[side]||(side+' ✓'); el.style.color='#059669'; } }; rd.readAsDataURL(f); }
+// ---- Mesure objective du centrage (pixels, pas IA) ----
+function grBorderWidth(getPx,samples,len){ let ws=[]; const maxScan=Math.floor(len*0.30);
+  for(const s of samples){ let prev=getPx(s,0),best=-1,bestg=0; for(let i=1;i<maxScan;i++){ const cur=getPx(s,i),g=Math.abs(cur-prev); if(g>bestg){bestg=g;best=i;} prev=cur; } if(best>0&&bestg>18) ws.push(best); }
+  if(!ws.length) return null; ws.sort((a,b)=>a-b); return ws[Math.floor(ws.length/2)]; }
+function grCenteringGray(g,w,h){ const px=(y,x)=>g[y*w+x];
+  const rows=[],cols=[]; for(let f=0.35;f<=0.65;f+=0.05){ rows.push(Math.floor(h*f)); cols.push(Math.floor(w*f)); }
+  const L=grBorderWidth((y,i)=>px(y,i),rows,w),R=grBorderWidth((y,i)=>px(y,w-1-i),rows,w),T=grBorderWidth((x,i)=>px(i,x),cols,h),B=grBorderWidth((x,i)=>px(h-1-i,x),cols,h);
+  if(!L||!R||!T||!B) return null;
+  const lr=Math.round(L/(L+R)*100), tb=Math.round(T/(T+B)*100), dev=Math.max(Math.abs(lr-50),Math.abs(tb-50));
+  const grade=dev<=5?10:dev<=8?9.5:dev<=10?9:dev<=13?8.5:dev<=17?8:dev<=22?7:dev<=30?6:5;
+  return {front_lr:lr+'/'+(100-lr),front_tb:tb+'/'+(100-tb),grade,measured:true}; }
+function grCropCard(g,w,h){ const corner=(g[0]+g[w-1]+g[(h-1)*w]+g[h*w-1])/4; const isBg=v=>Math.abs(v-corner)<24;
+  const rowBg=y=>{ let n=0,t=0; for(let x=0;x<w;x+=3){t++; if(isBg(g[y*w+x]))n++;} return n/t>0.85; };
+  const colBg=x=>{ let n=0,t=0; for(let y=0;y<h;y+=3){t++; if(isBg(g[y*w+x]))n++;} return n/t>0.85; };
+  let y0=0,y1=h-1,x0=0,x1=w-1; while(y0<y1&&rowBg(y0))y0++; while(y1>y0&&rowBg(y1))y1--; while(x0<x1&&colBg(x0))x0++; while(x1>x0&&colBg(x1))x1--;
+  const cw=x1-x0+1,ch=y1-y0+1; if(cw<w*0.4||ch<h*0.4) return {x0:0,y0:0,cw:w,ch:h}; return {x0,y0,cw,ch}; }
+function grMeasureCentering(dataURL){ return new Promise(res=>{ try{ const img=new Image();
+  img.onload=()=>{ try{ const MAXW=320,sc=Math.min(1,MAXW/img.width),w=Math.max(40,Math.round(img.width*sc)),h=Math.round(img.height*sc);
+    const cv=document.createElement('canvas'); cv.width=w; cv.height=h; const ctx=cv.getContext('2d'); ctx.drawImage(img,0,0,w,h);
+    const d=ctx.getImageData(0,0,w,h).data, gray=new Uint8Array(w*h);
+    for(let i=0;i<w*h;i++) gray[i]=(d[i*4]*0.299+d[i*4+1]*0.587+d[i*4+2]*0.114)|0;
+    const b=grCropCard(gray,w,h), sub=new Uint8Array(b.cw*b.ch);
+    for(let y=0;y<b.ch;y++)for(let x=0;x<b.cw;x++) sub[y*b.cw+x]=gray[(b.y0+y)*w+(b.x0+x)];
+    res(grCenteringGray(sub,b.cw,b.ch)); }catch(e){ res(null); } };
+  img.onerror=()=>res(null); img.src=dataURL; }catch(e){ res(null); } }); }
+function grImgQuality(dataURL){ return new Promise(res=>{ try{ const img=new Image();
+  img.onload=()=>{ try{ const w=160,h=Math.max(40,Math.round(160*img.height/img.width)); const cv=document.createElement('canvas'); cv.width=w; cv.height=h; const ctx=cv.getContext('2d'); ctx.drawImage(img,0,0,w,h);
+    const d=ctx.getImageData(0,0,w,h).data,n=w*h,gray=new Float64Array(n); let white=0;
+    for(let i=0;i<n;i++){ gray[i]=d[i*4]*0.299+d[i*4+1]*0.587+d[i*4+2]*0.114; if(d[i*4]>245&&d[i*4+1]>245&&d[i*4+2]>245) white++; }
+    let sum=0,sum2=0,c=0; for(let y=1;y<h-1;y++)for(let x=1;x<w-1;x++){ const i=y*w+x,lap=4*gray[i]-gray[i-1]-gray[i+1]-gray[i-w]-gray[i+w]; sum+=lap; sum2+=lap*lap; c++; }
+    const v=sum2/c-(sum/c)*(sum/c), glare=white/n; res({blurry:v<60,glary:glare>0.06,ok:v>=60&&glare<=0.06}); }catch(e){ res({ok:true}); } };
+  img.onerror=()=>res({ok:true}); img.src=dataURL; }catch(e){ res({ok:true}); } }); }
 async function grAnalyze(id){
   const imgs=GR_IMGS[id]||{}; const box=document.getElementById('pgres_'+id); if(!box)return;
   if(!imgs.front){ box.innerHTML='<span style="color:#dc2626;font-size:12px">Ajoute au moins la photo recto.</span>'; return; }
-  box.innerHTML='<div style="font-size:12px;color:var(--muted);padding:8px 0">🔍 Analyse IA en cours…</div>';
+  box.innerHTML='<div style="font-size:12px;color:var(--muted);padding:8px 0">🔍 Mesure du centrage + analyse IA…</div>';
+  const q=await grImgQuality(imgs.front); const cen=await grMeasureCentering(imgs.front);
   try{
-    const r=await fetch(SB+'/functions/v1/card-pregrade',{method:'POST',headers:{'Content-Type':'application/json',apikey:ANON,Authorization:'Bearer '+ANON},body:JSON.stringify({front_b64:imgs.front,back_b64:imgs.back||null})});
+    const r=await fetch(SB+'/functions/v1/card-pregrade',{method:'POST',headers:{'Content-Type':'application/json',apikey:ANON,Authorization:'Bearer '+ANON},body:JSON.stringify({front_b64:imgs.front,back_b64:imgs.back||null,surface_b64:imgs.surface||null,centering_measured:cen?cen.front_lr:null})});
     const j=await r.json(); const res=j&&j.result;
     if(!res){ box.innerHTML='<span style="color:#dc2626;font-size:12px">Analyse indisponible — réessaie avec une photo plus nette, bien à plat.</span>'; return; }
-    GR_PG[id]=res; box.innerHTML=grPgHTML(res,id);
+    if(cen){ res.centering=Object.assign({},res.centering||{},cen); if(!imgs.surface){} }
+    GR_PG[id]=res;
+    const warn=(!q.ok)?('<div style="background:rgba(245,158,11,.14);border:1px solid #f59e0b;border-radius:9px;padding:7px 9px;font-size:11.5px;margin-bottom:7px">⚠️ Photo '+[q.blurry?'floue':null,q.glary?'avec reflet':null].filter(Boolean).join(' + ')+' — refais-la bien à plat, lumière diffuse, pour un verdict fiable.</div>'):'';
+    box.innerHTML=warn+grPgHTML(res,id);
   }catch(e){ box.innerHTML='<span style="color:#dc2626;font-size:12px">Erreur d\'analyse.</span>'; }
 }
 async function grSavePg(id){ const res=GR_PG[id]; if(res){ try{ await fetch(SB+'/rest/v1/rpc/gr_save_pregrade',{method:'POST',headers:{apikey:ANON,Authorization:'Bearer '+ANON,'Content-Type':'application/json'},body:JSON.stringify({p_id:id,p_json:res})}); }catch(e){} } await grQueue(id,(res&&res.psa10_probability>=0.5)?'PSA':'PSA',true); }
@@ -2473,10 +2590,14 @@ function grCandCard(x){
      '<button onclick="grQueue(\''+id+'\',\'PSA\')" style="border:0;background:var(--accent);color:#fff;font-weight:800;padding:7px 11px;border-radius:9px;cursor:pointer;font-size:12px">Mettre à grader</button>'+
      '</div>';
   h+='<div id="pg_'+id+'" class="hidden" style="margin-top:9px;padding:10px;border:1px dashed var(--line);border-radius:10px">'+
-     '<div style="font-size:12px;color:var(--muted);margin-bottom:7px">Photographie la carte <b>bien à plat, sans reflet</b> — recto obligatoire, verso recommandé.</div>'+
-     '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">'+
-       '<label style="border:1px solid var(--line);border-radius:9px;padding:8px 11px;cursor:pointer;font-size:12px;font-weight:700"><span id="lbl_front_'+id+'">Recto…</span><input type="file" accept="image/*" capture="environment" onchange="grStore(\''+id+'\',\'front\',this)" style="display:none"></label>'+
-       '<label style="border:1px solid var(--line);border-radius:9px;padding:8px 11px;cursor:pointer;font-size:12px;font-weight:700"><span id="lbl_back_'+id+'">Verso…</span><input type="file" accept="image/*" capture="environment" onchange="grStore(\''+id+'\',\'back\',this)" style="display:none"></label>'+
+     '<div style="font-size:11.5px;color:var(--muted);margin-bottom:8px;line-height:1.5">Protocole photo (plus c\'est net, plus le verdict est fiable) :<br>'+
+       '① <b>Recto à plat</b> — carte qui remplit le cadre, perpendiculaire, lumière diffuse sans reflet. Sert au <b>centrage mesuré</b> + à la note globale.<br>'+
+       '② <b>Verso à plat</b> — souvent le point faible (centrage/bords).<br>'+
+       '③ <b>Surface en lumière rasante</b> — incline la carte / la lumière : c\'est le <b>seul moyen</b> de faire ressortir rayures et lignes de foil.</div>'+
+     '<div style="display:flex;gap:7px;flex-wrap:wrap;align-items:center">'+
+       '<label style="border:1px solid var(--line);border-radius:9px;padding:8px 11px;cursor:pointer;font-size:12px;font-weight:700"><span id="lbl_front_'+id+'">① Recto…</span><input type="file" accept="image/*" capture="environment" onchange="grStore(\''+id+'\',\'front\',this)" style="display:none"></label>'+
+       '<label style="border:1px solid var(--line);border-radius:9px;padding:8px 11px;cursor:pointer;font-size:12px;font-weight:700"><span id="lbl_back_'+id+'">② Verso…</span><input type="file" accept="image/*" capture="environment" onchange="grStore(\''+id+'\',\'back\',this)" style="display:none"></label>'+
+       '<label style="border:1px solid var(--line);border-radius:9px;padding:8px 11px;cursor:pointer;font-size:12px;font-weight:700"><span id="lbl_surface_'+id+'">③ Surface…</span><input type="file" accept="image/*" capture="environment" onchange="grStore(\''+id+'\',\'surface\',this)" style="display:none"></label>'+
        '<button onclick="grAnalyze(\''+id+'\')" style="border:0;background:#0ea5e9;color:#fff;font-weight:800;padding:8px 13px;border-radius:9px;cursor:pointer;font-size:12px">Analyser</button>'+
      '</div>'+
      '<div id="pgres_'+id+'"></div>'+
@@ -3072,7 +3193,7 @@ async function homeBriefing(){
   }catch(e){ box.innerHTML='<div class="txt" style="color:var(--muted);font-size:13px">Erreur, réessaie.</div><button class="hbriefbtn" onclick="homeBriefing()">Réessayer</button>'; }
 }
 document.getElementById('modeSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMode(b.dataset.m);});
-const APP_VERSION='Version b18 · 26/08';
+const APP_VERSION='Version b20 · 26/08';
 { const nv=document.getElementById('navVersion'); if(nv) nv.textContent=APP_VERSION; }
 document.getElementById('mktSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMarket(b.dataset.k);});
 const CATARRS=["catColors","catCats","catRarities","catTypes"];
