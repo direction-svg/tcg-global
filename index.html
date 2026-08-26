@@ -770,6 +770,7 @@ body{-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
     <button data-m="cibler">À cibler (achats)</button>
     <button data-m="conviction">Portefeuille</button>
     <button data-m="ops">Gradation</button>
+    <button data-m="gradeia">Gradation IA</button>
     <button data-m="ecarts">Écarts JP/EN</button>
     <button data-m="offre">Catalyseurs</button>
     <button data-m="track">Track record</button>
@@ -1363,7 +1364,7 @@ function secNav(items){ items=(items||[]).filter(it=>it && (it.always || it.n==n
 function jumpSec(id){ const el=document.getElementById('sec-'+id); if(el) el.scrollIntoView({behavior:'smooth',block:'start'}); }
 function pgSection(id,label,inner,color){ return '<div class="pgsec" id="sec-'+id+'">'+(label?('<div class="pgsec-h"'+(color?(' style="color:'+color+'"'):'')+'>'+esc(label)+'</div>'):'')+inner+'</div>'; }
 function pgSortSel(sorts,cur,onchange){ return '<select class="pgsort" onchange="'+onchange+'">'+sorts.map(s=>'<option value="'+s[0]+'"'+(cur===s[0]?' selected':'')+'>'+esc(s[1])+'</option>').join('')+'</select>'; }
-const NAV_TITLES={accueil:'Accueil',collection:'Collection',catalog:'Catalogue',sets:'Sets',products:'Produits scellés',cibler:'À cibler',conviction:'Conviction',ops:'Opportunités',ecarts:'Écarts JP/EN',offre:'Offre & reprint',risque:'Risque',track:'Track record',agenda:'Agenda',achats:'Achats',ventes:'Ventes',mouv:'Mouvements',gradation:'Gradation',ouvrir:'Ouvrir ?',sante:'Santé des données',live:'Live'};
+const NAV_TITLES={accueil:'Accueil',collection:'Collection',catalog:'Catalogue',sets:'Sets',products:'Produits scellés',cibler:'À cibler',conviction:'Conviction',ops:'Opportunités',ecarts:'Écarts JP/EN',offre:'Offre & reprint',risque:'Risque',track:'Track record',agenda:'Agenda',achats:'Achats',ventes:'Ventes',mouv:'Mouvements',gradation:'Gradation',gradeia:'Gradation IA',ouvrir:'Ouvrir ?',sante:'Santé des données',live:'Live'};
 // ---- Pages regroupées : un onglet de menu, plusieurs sous-pages ----
 const PARENTS={
   portefeuille:{label:'Portefeuille',tabs:[['conviction','Conviction'],['risque','Risque']]},
@@ -1389,14 +1390,14 @@ function setMode(m){
   { const pt=document.getElementById('pageTitle'); if(pt) pt.textContent=(m==='accueil'?'':(parentKey?PARENTS[parentKey].label:(NAV_TITLES[m]||''))); }
   { const st=document.getElementById('stage'); if(st) st.scrollTop=0; }
   closeNav();
-  const home=m==="accueil", cat=m==="catalog", ops=m==="ops", sets=m==="sets", prods=m==="products", live=m==="live", ia=m==="ia", achats=m==="achats", grad=m==="gradation", sante=m==="sante", ouvrir=m==="ouvrir", ventes=m==="ventes", mouv=m==="mouv", conv=m==="conviction", ecarts=m==="ecarts", offre=m==="offre", agenda=m==="agenda", risque=m==="risque", cibler=m==="cibler", track=m==="track";
+  const home=m==="accueil", cat=m==="catalog", ops=m==="ops", sets=m==="sets", prods=m==="products", live=m==="live", ia=m==="ia", achats=m==="achats", grad=m==="gradation", gradeia=m==="gradeia", sante=m==="sante", ouvrir=m==="ouvrir", ventes=m==="ventes", mouv=m==="mouv", conv=m==="conviction", ecarts=m==="ecarts", offre=m==="offre", agenda=m==="agenda", risque=m==="risque", cibler=m==="cibler", track=m==="track";
   if(!live) stopLive();
   document.getElementById('catLangRow').classList.toggle('hidden',!cat);
   document.getElementById('catFilters').classList.add('hidden');
-  document.getElementById('viewBtn').classList.toggle('hidden',home||cat||ops||sets||prods||live||ia||achats||grad||sante||ouvrir||ventes||mouv||conv||ecarts||offre||agenda||risque||cibler||track);
-  document.getElementById('filterBtn').classList.toggle('hidden',home||ops||sets||prods||live||ia||achats||grad||sante||ouvrir||ventes||mouv||conv||ecarts||offre||agenda||risque||cibler||track);
-  document.getElementById('sortBtn').classList.toggle('hidden',home||ops||sets||prods||live||ia||achats||grad||sante||ouvrir||ventes||mouv||conv||ecarts||offre||agenda||risque||cibler||track);
-  document.querySelector('.search').classList.toggle('hidden',home||sets||prods||live||ia||achats||grad||sante||ouvrir||risque);
+  document.getElementById('viewBtn').classList.toggle('hidden',home||cat||ops||sets||prods||live||ia||achats||grad||gradeia||sante||ouvrir||ventes||mouv||conv||ecarts||offre||agenda||risque||cibler||track);
+  document.getElementById('filterBtn').classList.toggle('hidden',home||ops||sets||prods||live||ia||achats||grad||gradeia||sante||ouvrir||ventes||mouv||conv||ecarts||offre||agenda||risque||cibler||track);
+  document.getElementById('sortBtn').classList.toggle('hidden',home||ops||sets||prods||live||ia||achats||grad||gradeia||sante||ouvrir||ventes||mouv||conv||ecarts||offre||agenda||risque||cibler||track);
+  document.querySelector('.search').classList.toggle('hidden',home||sets||prods||live||ia||achats||grad||gradeia||sante||ouvrir||risque);
   document.getElementById('scanFab').classList.toggle('hidden',!(m==='collection'||m==='catalog'));
   const vfr=document.getElementById('valFilterRow'); if(vfr){ if(m==='collection'){ vfr.style.display='block'; buildValRow(); } else { vfr.style.display='none'; } }
   // recherche : réinitialisée à chaque changement de page ; placeholder adapté
@@ -1415,6 +1416,7 @@ function setMode(m){
   else if(prods){ document.getElementById('countLine').textContent=''; fetchProducts(); }
   else if(achats){ document.getElementById('countLine').textContent=''; fetchAchats(); }
   else if(grad){ document.getElementById('countLine').textContent=''; fetchGrading(); }
+  else if(gradeia){ renderGradeIA(); }
   else if(sante){ document.getElementById('countLine').textContent=''; fetchSante(); }
   else if(ouvrir){ document.getElementById('countLine').textContent=''; fetchOuvrir(); }
   else if(ventes){ document.getElementById('countLine').textContent=''; fetchVentes(); }
@@ -2434,6 +2436,7 @@ let GR_SHIP=0;       // frais additionnels port/assurance par carte (EUR) — PS
 let GR_FEECO='PSA';  // certificateur de référence pour le calcul du gain
 const GR_MINRAW=8;   // valeur brute minimale (€) pour proposer la gradation — ancre fiable
 const GR_MAXRATIO=15;// premium max cote/brut accepté — au-delà = donnée gradée polluée, on écarte
+const GR_CONV_MIN=40;// brut minimal (€) pour montrer une carte SANS cote gradée (à grader sur conviction)
 let GR_SORT='net_desc', GR_LANG='all', GR_MINGAIN=0, GR_FILTOPEN=false;
 const GR_SORTS=[['net_desc','Gain ↓'],['prem_desc','Premium ↓'],['cote_desc','Cote ↓'],['brut_desc','Valeur ↓'],['net_asc','Gain ↑']];
 function grSetSort(v){ GR_SORT=v; renderGrading(); }
@@ -2486,7 +2489,7 @@ function grPgHTML(r,id){
   if(c.front_lr) h+='<div style="font-size:11px;color:var(--muted);margin-top:4px">'+(c.measured?'<b style="color:#059669">Centrage mesuré</b> (pixels) ':'Centrage ')+'recto '+esc(c.front_lr)+' / '+esc(c.front_tb||'')+(c.back_lr?(' · verso '+esc(c.back_lr)+' / '+esc(c.back_tb||'')):'')+'</div>';
   if(Array.isArray(r.red_flags)&&r.red_flags.length) h+='<div style="font-size:11px;color:#b45309;margin-top:4px">⚠️ '+r.red_flags.map(esc).join(' · ')+'</div>';
   if(r.image_quality&&r.image_quality!=='good') h+='<div style="font-size:11px;color:#dc2626;margin-top:4px">Qualité photo : '+esc(r.image_quality)+' — refais une photo bien à plat pour un verdict fiable.</div>';
-  h+='<button onclick="grSavePg(\''+id+'\')" style="margin-top:8px;width:100%;border:0;background:var(--accent);color:#fff;font-weight:800;padding:9px;border-radius:10px;cursor:pointer">Valider ce pré-grade &amp; mettre en file</button>';
+  if(id!=='scratch') h+='<button onclick="grSavePg(\''+id+'\')" style="margin-top:8px;width:100%;border:0;background:var(--accent);color:#fff;font-weight:800;padding:9px;border-radius:10px;cursor:pointer">Valider ce pré-grade &amp; mettre en file</button>';
   h+='</div>';
   return h;
 }
@@ -2579,18 +2582,8 @@ function grPipeCard(x){
   h+='</div>';
   return h;
 }
-function grCandCard(x){
-  const raw=x._raw, gr=x._gr, net=x._net, id=x.item_id;
-  let h='<div style="background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin-bottom:8px">';
-  h+='<div onclick="grOpenCard(\''+id+'\')" style="display:flex;gap:10px;align-items:flex-start;cursor:pointer">'+grThumb(x)+'<div style="flex:1;min-width:0">'+grNameHTML(x)+
-     '<div style="margin-top:6px;display:flex;gap:12px;flex-wrap:wrap;font-size:12px"><span>Brut <b>'+eur0(raw)+'</b></span><span>Cote '+esc(grCoteLbl(x))+' <b>'+eur0(gr)+'</b></span><span style="color:var(--muted)">frais '+GR_FEECO+' '+esc(x._feeLabel)+' <b>'+eur0(x._fee)+'</b></span></div>'+
-     '</div><div style="text-align:right;white-space:nowrap"><div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.3px">Gain net est.</div><div style="font-weight:900;font-size:16px;color:#059669">+'+eur0(net)+'</div></div></div>';
-  h+='<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:9px">'+
-     '<button onclick="grPgToggle(\''+id+'\')" style="border:1px solid var(--accent);background:transparent;color:var(--accent);font-weight:800;padding:7px 11px;border-radius:9px;cursor:pointer;font-size:12px">📷 Pré-grade IA</button>'+
-     '<button onclick="grQueue(\''+id+'\',\'PSA\')" style="border:0;background:var(--accent);color:#fff;font-weight:800;padding:7px 11px;border-radius:9px;cursor:pointer;font-size:12px">Mettre à grader</button>'+
-     '</div>';
-  h+='<div id="pg_'+id+'" class="hidden" style="margin-top:9px;padding:10px;border:1px dashed var(--line);border-radius:10px">'+
-     '<div style="font-size:11.5px;color:var(--muted);margin-bottom:8px;line-height:1.5">Protocole photo (plus c\'est net, plus le verdict est fiable) :<br>'+
+function grPgInner(id){
+  return '<div style="font-size:11.5px;color:var(--muted);margin-bottom:8px;line-height:1.5">Protocole photo (plus c\'est net, plus le verdict est fiable) :<br>'+
        '① <b>Recto à plat</b> — carte qui remplit le cadre, perpendiculaire, lumière diffuse sans reflet. Sert au <b>centrage mesuré</b> + à la note globale.<br>'+
        '② <b>Verso à plat</b> — souvent le point faible (centrage/bords).<br>'+
        '③ <b>Surface en lumière rasante</b> — incline la carte / la lumière : c\'est le <b>seul moyen</b> de faire ressortir rayures et lignes de foil.</div>'+
@@ -2600,8 +2593,47 @@ function grCandCard(x){
        '<label style="border:1px solid var(--line);border-radius:9px;padding:8px 11px;cursor:pointer;font-size:12px;font-weight:700"><span id="lbl_surface_'+id+'">③ Surface…</span><input type="file" accept="image/*" capture="environment" onchange="grStore(\''+id+'\',\'surface\',this)" style="display:none"></label>'+
        '<button onclick="grAnalyze(\''+id+'\')" style="border:0;background:#0ea5e9;color:#fff;font-weight:800;padding:8px 13px;border-radius:9px;cursor:pointer;font-size:12px">Analyser</button>'+
      '</div>'+
-     '<div id="pgres_'+id+'"></div>'+
+     '<div id="pgres_'+id+'"></div>';
+}
+function grPgBlock(id){
+  return '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:9px">'+
+     '<button onclick="grPgToggle(\''+id+'\')" style="border:1px solid var(--accent);background:transparent;color:var(--accent);font-weight:800;padding:7px 11px;border-radius:9px;cursor:pointer;font-size:12px">📷 Pré-grade IA</button>'+
+     '<button onclick="grQueue(\''+id+'\',\'PSA\')" style="border:0;background:var(--accent);color:#fff;font-weight:800;padding:7px 11px;border-radius:9px;cursor:pointer;font-size:12px">Mettre à grader</button>'+
+     '</div>'+
+     '<div id="pg_'+id+'" class="hidden" style="margin-top:9px;padding:10px;border:1px dashed var(--line);border-radius:10px">'+
+     grPgInner(id)+
   '</div>';
+}
+// Onglet autonome "Gradation IA" — banc de test du pré-grade, sans carte ni enregistrement.
+function renderGradeIA(){
+  const stage=document.getElementById('stage'); stage.className=''; GR_IMGS['scratch']={}; GR_PG['scratch']=null;
+  let h='<div style="max-width:640px;margin:0 auto">';
+  h+='<div style="font-size:12.5px;color:var(--muted);margin:2px 2px 14px;line-height:1.55">Banc de test du pré-grade IA — photographie une carte (recto / verso / surface) et obtiens le <b>centrage mesuré</b> en pixels + l\'estimation PSA&nbsp;10 / BGS, <b>sans rien enregistrer</b>. Pour envoyer une carte de ta collection en file de gradation, passe par <b>Gradation → Suivi &amp; envois</b>.</div>';
+  h+='<div style="background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px 16px">'+grPgInner('scratch')+'</div>';
+  h+='</div>';
+  stage.innerHTML=h;
+  document.getElementById('countLine').textContent='Banc de test — pré-grade IA';
+}
+function grCandCard(x){
+  const raw=x._raw, gr=x._gr, net=x._net, id=x.item_id;
+  let h='<div style="background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin-bottom:8px">';
+  h+='<div onclick="grOpenCard(\''+id+'\')" style="display:flex;gap:10px;align-items:flex-start;cursor:pointer">'+grThumb(x)+'<div style="flex:1;min-width:0">'+grNameHTML(x)+
+     '<div style="margin-top:6px;display:flex;gap:12px;flex-wrap:wrap;font-size:12px"><span>Brut <b>'+eur0(raw)+'</b></span><span>Cote '+esc(grCoteLbl(x))+' <b>'+eur0(gr)+'</b></span><span style="color:var(--muted)">frais '+GR_FEECO+' '+esc(x._feeLabel)+' <b>'+eur0(x._fee)+'</b></span></div>'+
+     '</div><div style="text-align:right;white-space:nowrap"><div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.3px">Gain net est.</div><div style="font-weight:900;font-size:16px;color:#059669">+'+eur0(net)+'</div></div></div>';
+  h+=grPgBlock(id);
+  h+='</div>';
+  return h;
+}
+// Carte de forte valeur, non gradée, mais dont la cote PSA/BGS de marché n'existe pas encore
+// (set trop récent → pas de comparables gradés). On la montre quand même, à grader sur conviction.
+function grConvCard(x){
+  const raw=x._raw, id=x.item_id;
+  let h='<div style="background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin-bottom:8px">';
+  h+='<div onclick="grOpenCard(\''+id+'\')" style="display:flex;gap:10px;align-items:flex-start;cursor:pointer">'+grThumb(x)+'<div style="flex:1;min-width:0">'+grNameHTML(x)+
+     '<div style="margin-top:6px;display:flex;gap:10px;flex-wrap:wrap;font-size:12px;align-items:center"><span>Brut <b>'+eur0(raw)+'</b></span>'+
+     '<span style="background:rgba(245,158,11,.14);color:#b45309;border:1px solid rgba(245,158,11,.4);border-radius:20px;padding:1px 8px;font-size:10.5px;font-weight:800">Cote gradée pas encore dispo</span></div>'+
+     '</div><div style="text-align:right;white-space:nowrap"><div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.3px">Gain net</div><div style="font-weight:800;font-size:14px;color:var(--muted)">—</div></div></div>';
+  h+=grPgBlock(id);
   h+='</div>';
   return h;
 }
@@ -2637,8 +2669,20 @@ function renderGrading(){
   const CAND_MAX=60; const shownC=cand.slice(0,CAND_MAX);
   h+='<h3 style="margin:14px 2px 8px;font-size:15px">Candidates à grader ('+cand.length+(cand.length!==totalRentable?(' / '+totalRentable):'')+')</h3>';
   h+= cand.length? (shownC.map(grCandCard).join('')+(cand.length>CAND_MAX?'<div style="font-size:12px;color:var(--muted);text-align:center;padding:8px">+ '+(cand.length-CAND_MAX)+' autres — affine avec les filtres ou le gain minimum</div>':'')) : '<div class="empty">Aucune candidate pour ces filtres.</div>';
+  // Section conviction : cartes de forte valeur, non gradées, dont la cote gradée n'existe pas encore (set récent).
+  // Elles seraient invisibles dans la liste chiffrée faute de gain calculable — on les montre à part.
+  let convCand=rows.filter(x=>!x.is_graded && !x.grading_status)
+    .map(x=>Object.assign({},x,{_raw:grRaw(x)}))
+    .filter(x=>grCote(x)==null && x._raw>=GR_CONV_MIN && (GR_LANG==='all'||x.language===GR_LANG))
+    .sort((a,b)=>b._raw-a._raw);
+  const CONV_MAX=40; const shownV=convCand.slice(0,CONV_MAX);
+  if(convCand.length){
+    h+='<h3 style="margin:18px 2px 6px;font-size:15px">À grader sur conviction ('+convCand.length+')</h3>';
+    h+='<div style="font-size:11.5px;color:var(--muted);margin:0 2px 10px">Cartes de valeur (brut ≥ '+eur0(GR_CONV_MIN)+') <b>non gradées</b> dont la <b>cote PSA/BGS n\'existe pas encore</b> sur le marché (set trop récent, pas de comparables gradés). Impossible de chiffrer le gain — mais ce sont souvent tes meilleures candidates. Fais tourner le pré-grade photo, et elles rejoindront la liste chiffrée dès que des ventes gradées apparaîtront.</div>';
+    h+=shownV.map(grConvCard).join('')+(convCand.length>CONV_MAX?'<div style="font-size:12px;color:var(--muted);text-align:center;padding:8px">+ '+(convCand.length-CONV_MAX)+' autres</div>':'');
+  }
   stage.innerHTML=h;
-  document.getElementById('countLine').textContent=cand.length+' candidate'+(cand.length>1?'s':'')+' · '+pipeline.length+' en cours';
+  document.getElementById('countLine').textContent=cand.length+' candidate'+(cand.length>1?'s':'')+(convCand.length?(' · '+convCand.length+' conviction'):'')+' · '+pipeline.length+' en cours';
 }
 const PROD_CAT_LABELS={BOOSTER_BOX:"Booster Box",CASE:"Booster Box Case",BOOSTER_PACK:"Booster Pack",STARTER_DECK:"Starter Deck",PREMIUM_BOOSTER:"Premium Booster",CARD_COLLECTION_SET:"Premium Collection",GIFT_COLLECTION:"Collections & Coffrets",PROMO_PACK:"Promo / Tournoi",ULTRA_DECK:"Ultra Deck",DOUBLE_PACK_SET:"Double Pack",OTHER:"Autres"};
 const PROD_CAT_ORDER=["BOOSTER_BOX","CASE","BOOSTER_PACK","STARTER_DECK","PREMIUM_BOOSTER","CARD_COLLECTION_SET","GIFT_COLLECTION","PROMO_PACK","ULTRA_DECK","DOUBLE_PACK_SET","OTHER"];
@@ -3193,7 +3237,7 @@ async function homeBriefing(){
   }catch(e){ box.innerHTML='<div class="txt" style="color:var(--muted);font-size:13px">Erreur, réessaie.</div><button class="hbriefbtn" onclick="homeBriefing()">Réessayer</button>'; }
 }
 document.getElementById('modeSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMode(b.dataset.m);});
-const APP_VERSION='Version b20 · 26/08';
+const APP_VERSION='Version b22 · 26/08';
 { const nv=document.getElementById('navVersion'); if(nv) nv.textContent=APP_VERSION; }
 document.getElementById('mktSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMarket(b.dataset.k);});
 const CATARRS=["catColors","catCats","catRarities","catTypes"];
