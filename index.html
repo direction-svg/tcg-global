@@ -628,9 +628,9 @@ body{-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
 /* ===================== Accueil v2 — moderne ===================== */
 .nh{display:flex;flex-direction:column;gap:15px}
 .dotc{width:9px;height:9px;border-radius:50%;display:inline-block}
-.nh-hero{position:relative;overflow:hidden;border-radius:26px;padding:20px 20px 18px;color:#fff;background:linear-gradient(135deg,#2f4ff0 0%,#5b8cff 52%,#8a63ff 100%);box-shadow:0 24px 50px -20px rgba(52,87,232,.85),0 2px 6px rgba(16,24,40,.12)}
-.nh-hero::before{content:"";position:absolute;top:-45%;right:-18%;width:70%;height:190%;background:radial-gradient(circle at center,rgba(255,255,255,.4),transparent 60%);pointer-events:none}
-.nh-hero::after{content:"";position:absolute;bottom:-70%;left:-12%;width:65%;height:170%;background:radial-gradient(circle at center,rgba(150,110,255,.55),transparent 62%);pointer-events:none}
+.nh-hero{position:relative;overflow:hidden;border-radius:26px;padding:20px 20px 18px;color:#fff;background:linear-gradient(135deg,#0d1330 0%,#1e2a6e 38%,#4536b8 70%,#7b3fd4 100%);box-shadow:0 24px 50px -22px rgba(70,45,170,.75),0 2px 6px rgba(16,24,40,.14)}
+.nh-hero::before{content:"";position:absolute;top:-45%;right:-16%;width:66%;height:190%;background:radial-gradient(circle at center,rgba(120,150,255,.42),transparent 62%);pointer-events:none}
+.nh-hero::after{content:"";position:absolute;bottom:-72%;left:-14%;width:64%;height:172%;background:radial-gradient(circle at center,rgba(190,110,255,.5),transparent 64%);pointer-events:none}
 .nh-hero>*{position:relative}
 .nh-htop{display:flex;justify-content:space-between;align-items:center}
 .nh-hlbl{font-size:11px;text-transform:uppercase;letter-spacing:.8px;font-weight:800;opacity:.88}
@@ -678,7 +678,55 @@ body{-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
 .nh-novacard .ialog2{max-height:min(46vh,360px);flex:0 1 auto}
 .ibtn{width:auto;min-width:52px;height:50px;padding:0 15px;font-size:14px;font-weight:800}
 .ivo{width:auto;min-width:40px;padding:0 13px;font-size:13px;font-weight:800}
-@media(min-width:720px){ .nh-hero .nh-big{font-size:54px} .nh{display:grid;grid-template-columns:1fr 1fr;align-items:start} .nh-hero,.nh-novacard,.nh-stats{grid-column:1 / -1} }
+@media(min-width:720px){ .nh-hero .nh-big{font-size:54px} .nh{display:grid;grid-template-columns:1fr 1fr;align-items:start} .nh-hero,.nh-novacard,.nh-stats,.nh-insights{grid-column:1 / -1} }
+/* --- vignettes croisées du tableau de bord --- */
+.nh-insights{display:grid;grid-template-columns:1fr;gap:15px}
+@media(min-width:720px){ .nh-insights{grid-template-columns:1fr 1fr} }
+.hi-card .nh-ct{margin-bottom:8px}
+.hi-card .nh-ct h3{font-size:14px}
+.hi-all{border:0;background:transparent;color:var(--accent);font-weight:800;font-size:12px;cursor:pointer;padding:3px 4px;white-space:nowrap}
+.hi-all:hover{text-decoration:underline}
+.hi-row{display:flex;align-items:center;gap:10px;padding:8px 6px;border-radius:10px;cursor:pointer}
+.hi-row:hover{background:var(--bg)}
+.hi-row+.hi-row{border-top:1px solid var(--line)}
+.hi-th{width:32px;height:45px;border-radius:5px;overflow:hidden;background:var(--bg);flex:none}
+.hi-th img{width:100%;height:100%;object-fit:cover;display:block}
+.hi-meta{flex:1;min-width:0}
+.hi-meta .nm{margin:0;font-weight:800;font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hi-meta .sub{margin:1px 0 0;font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hi-val{text-align:right;flex:none;min-width:52px}
+.hi-val b{font-size:16px;font-weight:900;display:block;line-height:1}
+.hi-val span{font-size:9px;color:var(--muted);font-weight:800;text-transform:uppercase;letter-spacing:.3px}
+.hi-empty{font-size:12px;color:var(--muted);padding:12px 4px;line-height:1.5}
+.hi-risk{display:flex;align-items:center;gap:15px}
+.hi-ring{--p:0;--rc:#10b981;flex:none;width:74px;height:74px;border-radius:50%;background:radial-gradient(closest-side,var(--panel) 70%,transparent 71% 100%),conic-gradient(var(--rc) calc(var(--p)*1%),var(--line) 0);display:grid;place-items:center;text-align:center}
+.hi-ring b{font-size:20px;font-weight:900;line-height:1}
+.hi-ring span{font-size:8px;color:var(--muted);font-weight:800;text-transform:uppercase;letter-spacing:.3px}
+.hi-rk-lbl{font-size:15px;font-weight:900;letter-spacing:-.01em}
+.hi-rk-sub{font-size:12px;color:var(--muted);margin-top:3px;line-height:1.45}
+.hi-warn{margin-top:10px;background:rgba(245,158,11,.12);border:1px solid rgba(245,158,11,.55);border-radius:10px;padding:8px 10px;font-size:11.5px;line-height:1.45;color:var(--ink)}
+.hi-ok{margin-top:10px;background:rgba(16,185,129,.1);border:1px solid rgba(16,185,129,.5);border-radius:10px;padding:8px 10px;font-size:11.5px;color:var(--ink)}
+/* --- barre de navigation par sections (harmonisée, collante) --- */
+.pgnav{position:sticky;top:0;z-index:6;display:flex;gap:6px;overflow-x:auto;-webkit-overflow-scrolling:touch;padding:8px 2px;margin:0 -2px 4px;background:var(--bg);scrollbar-width:none}
+.pgnav::-webkit-scrollbar{display:none}
+.pgchip{flex:none;border:1px solid var(--line);background:var(--panel);color:var(--ink);font-weight:800;font-size:12px;padding:6px 12px;border-radius:20px;cursor:pointer;white-space:nowrap;transition:border-color .12s,background .12s}
+.pgchip:hover{border-color:var(--accent)}
+.pgchip.on{background:var(--chipOn);color:var(--chipOnInk);border-color:var(--chipOn)}
+.pgchip b{font-weight:800;opacity:.7;margin-left:3px}
+.pgchip.on b{opacity:.85}
+.pgsec{scroll-margin-top:52px}
+/* --- sous-onglets des pages regroupées (Portefeuille, Gradation, Catalyseurs, Bilan) --- */
+.subtabs{display:flex;gap:7px;padding:6px 12px 2px;overflow-x:auto;scrollbar-width:none}
+.subtabs::-webkit-scrollbar{display:none}
+.subtab{flex:none;border:1px solid var(--line);background:var(--panel);color:var(--muted);font-weight:800;font-size:13px;padding:7px 15px;border-radius:11px;cursor:pointer;white-space:nowrap;transition:background .12s,color .12s,border-color .12s}
+.subtab.on{background:var(--accent);color:#fff;border-color:var(--accent)}
+.pgsec-h{font-size:13px;font-weight:900;letter-spacing:-.01em;margin:18px 2px 9px;display:flex;align-items:center;gap:7px}
+.pgsec:first-of-type .pgsec-h{margin-top:8px}
+/* --- barre outil : tri (+ compteur) --- */
+.pgtool{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:0 2px 12px}
+.pgtool .lbl{font-size:11px;color:var(--muted);font-weight:800}
+.pgsort{padding:7px 10px;border:1px solid var(--line);border-radius:9px;background:var(--panel);color:var(--ink);font-size:12.5px;font-weight:700;cursor:pointer;outline:none}
+.pgtool .cnt{margin-left:auto;font-size:11.5px;color:var(--muted);font-weight:800}
 /* comparatif 3 marchés sur la fiche carte */
 .mkc{margin:2px 0 10px;border:1px solid var(--line);border-radius:12px;overflow:hidden}
 .mkc .mkchd{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.3px;color:var(--muted);padding:8px 11px;background:var(--chip)}
@@ -690,6 +738,7 @@ body{-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
 .mkc .none{color:var(--muted);font-weight:600}
 .mkflag{font-weight:800}
 </style>
+<script>/* thème : nuit par défaut, choix mémorisé — posé avant le rendu pour éviter le flash */try{var _tcgTheme=localStorage.getItem('tcg-theme');if(_tcgTheme!=='light')document.documentElement.classList.add('dark');}catch(e){document.documentElement.classList.add('dark');}</script>
 </head>
 <body>
 <div class="wrap">
@@ -719,18 +768,14 @@ body{-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
     <button data-m="products">Produits scellés</button>
     <div class="navgrp">Décisions d'investisseur</div>
     <button data-m="cibler">À cibler (achats)</button>
-    <button data-m="conviction">Conviction</button>
-    <button data-m="ops">Opportunités</button>
+    <button data-m="conviction">Portefeuille</button>
+    <button data-m="ops">Gradation</button>
     <button data-m="ecarts">Écarts JP/EN</button>
-    <button data-m="offre">Offre &amp; reprint</button>
-    <button data-m="risque">Risque</button>
+    <button data-m="offre">Catalyseurs</button>
     <button data-m="track">Track record</button>
-    <button data-m="agenda">Agenda</button>
     <div class="navgrp">Suivi</div>
-    <button data-m="achats">Achats</button>
-    <button data-m="ventes">Ventes</button>
+    <button data-m="achats">Bilan</button>
     <button data-m="mouv">Mouvements</button>
-    <button data-m="gradation">Gradation</button>
     <button data-m="ouvrir">Ouvrir&nbsp;?</button>
     <button data-m="sante">Santé des données</button>
     <div class="navgrp">Direct</div>
@@ -738,6 +783,7 @@ body{-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
     <div id="navVersion" style="margin-top:auto;padding:14px 12px 4px;font-size:11px;color:var(--muted);opacity:.8"></div>
   </nav>
 
+  <div class="subtabs" id="subTabs" style="display:none"></div>
   <div class="toolbar">
     <div class="search">
       <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="color:var(--muted);flex:none"><circle cx="11" cy="11" r="7"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
@@ -1271,15 +1317,56 @@ function resetFilters(){ ["lang","color","type","cat","rarity","character","vari
 let catTimer=null;
 document.getElementById("q").addEventListener("input",e=>{
   if(state.mode==="catalog"){ state.catQuery=e.target.value; clearTimeout(catTimer); catTimer=setTimeout(fetchCatalog,320); }
+  else if(PAGE_Q_MODES.has(state.mode)){ state.pageQ=e.target.value; pageRerender(); }
   else { state.q=e.target.value; render(); }
 });
+// ============ Primitives d'harmonisation des pages (nav sections, recherche, tri) ============
+const PAGE_Q_MODES=new Set(['conviction','cibler','ecarts','ops','offre','agenda','track','mouv','ventes']);
+const PAGE_Q_PH={conviction:'Filtrer une carte (nom ou numéro)…',cibler:'Filtrer une cible…',ecarts:'Filtrer une carte…',ops:'Filtrer une carte…',offre:'Filtrer une carte…',agenda:'Filtrer un événement…',track:'Filtrer une reco…',mouv:'Filtrer une carte…',ventes:'Filtrer une vente…'};
+function pageRerender(){ switch(state.mode){
+  case 'conviction': return renderConviction();
+  case 'cibler': return renderTargets();
+  case 'ecarts': return renderGap();
+  case 'ops': return renderOps();
+  case 'offre': return renderSupply();
+  case 'agenda': return renderCalendar();
+  case 'track': return renderTrack();
+  case 'mouv': return renderMouv();
+  case 'ventes': return renderVentes();
+} }
+function pageQstr(){ return (state.pageQ||'').trim().toLowerCase(); }
+// renvoie un prédicat de filtre sur les champs texte usuels d'un objet carte/ligne
+function pageQMatch(){ const q=pageQstr(); if(!q) return function(){return true;}; const terms=q.split(/\s+/);
+  return function(o){ if(!o) return false; const hay=[o.card_number,o.card_name,o.name,o.variant_label,o.title,o.language,o.lang].filter(Boolean).join(' ').toLowerCase(); return terms.every(t=>hay.indexOf(t)>=0); }; }
+function secNav(items){ items=(items||[]).filter(it=>it && (it.always || it.n==null || it.n>0)); if(items.length<2) return '';
+  return '<div class="pgnav">'+items.map(it=>'<button class="pgchip" onclick="jumpSec(\''+it.id+'\')">'+esc(it.label)+(it.n!=null?' <b>'+it.n+'</b>':'')+'</button>').join('')+'</div>'; }
+function jumpSec(id){ const el=document.getElementById('sec-'+id); if(el) el.scrollIntoView({behavior:'smooth',block:'start'}); }
+function pgSection(id,label,inner,color){ return '<div class="pgsec" id="sec-'+id+'">'+(label?('<div class="pgsec-h"'+(color?(' style="color:'+color+'"'):'')+'>'+esc(label)+'</div>'):'')+inner+'</div>'; }
+function pgSortSel(sorts,cur,onchange){ return '<select class="pgsort" onchange="'+onchange+'">'+sorts.map(s=>'<option value="'+s[0]+'"'+(cur===s[0]?' selected':'')+'>'+esc(s[1])+'</option>').join('')+'</select>'; }
 const NAV_TITLES={accueil:'Accueil',collection:'Collection',catalog:'Catalogue',sets:'Sets',products:'Produits scellés',cibler:'À cibler',conviction:'Conviction',ops:'Opportunités',ecarts:'Écarts JP/EN',offre:'Offre & reprint',risque:'Risque',track:'Track record',agenda:'Agenda',achats:'Achats',ventes:'Ventes',mouv:'Mouvements',gradation:'Gradation',ouvrir:'Ouvrir ?',sante:'Santé des données',live:'Live'};
+// ---- Pages regroupées : un onglet de menu, plusieurs sous-pages ----
+const PARENTS={
+  portefeuille:{label:'Portefeuille',tabs:[['conviction','Conviction'],['risque','Risque']]},
+  grading:{label:'Gradation',tabs:[['ops','Opportunités'],['gradation','Suivi & envois']]},
+  catalyseurs:{label:'Catalyseurs',tabs:[['offre','Offre & reprint'],['agenda','Agenda']]},
+  bilan:{label:'Bilan',tabs:[['achats','Achats'],['ventes','Ventes']]}
+};
+const SUBTABS={}; Object.keys(PARENTS).forEach(pk=>PARENTS[pk].tabs.forEach(([sm])=>SUBTABS[sm]=pk));
+function renderSubTabs(m){
+  const bar=document.getElementById('subTabs'); if(!bar) return;
+  const pk=SUBTABS[m];
+  if(!pk){ bar.style.display='none'; bar.innerHTML=''; return; }
+  bar.style.display='flex';
+  bar.innerHTML=PARENTS[pk].tabs.map(([sm,lbl])=>'<button class="subtab'+(sm===m?' on':'')+'" onclick="setMode(\''+sm+'\')">'+esc(lbl)+'</button>').join('');
+}
 function toggleNav(){ const d=document.getElementById('modeSeg'), s=document.getElementById('navScrim'); const open=!d.classList.contains('open'); d.classList.toggle('open',open); s.classList.toggle('open',open); }
 function closeNav(){ document.getElementById('modeSeg').classList.remove('open'); document.getElementById('navScrim').classList.remove('open'); }
 function setMode(m){
   state.mode=m;
-  document.querySelectorAll('#modeSeg button').forEach(b=>b.classList.toggle('on',b.dataset.m===m));
-  { const pt=document.getElementById('pageTitle'); if(pt) pt.textContent=(m==='accueil'?'':(NAV_TITLES[m]||'')); }
+  const parentKey=SUBTABS[m]||null;
+  document.querySelectorAll('#modeSeg button').forEach(b=>b.classList.toggle('on', b.dataset.m===m || (parentKey && SUBTABS[b.dataset.m]===parentKey)));
+  renderSubTabs(m);
+  { const pt=document.getElementById('pageTitle'); if(pt) pt.textContent=(m==='accueil'?'':(parentKey?PARENTS[parentKey].label:(NAV_TITLES[m]||''))); }
   { const st=document.getElementById('stage'); if(st) st.scrollTop=0; }
   closeNav();
   const home=m==="accueil", cat=m==="catalog", ops=m==="ops", sets=m==="sets", prods=m==="products", live=m==="live", ia=m==="ia", achats=m==="achats", grad=m==="gradation", sante=m==="sante", ouvrir=m==="ouvrir", ventes=m==="ventes", mouv=m==="mouv", conv=m==="conviction", ecarts=m==="ecarts", offre=m==="offre", agenda=m==="agenda", risque=m==="risque", cibler=m==="cibler", track=m==="track";
@@ -1289,10 +1376,12 @@ function setMode(m){
   document.getElementById('viewBtn').classList.toggle('hidden',home||cat||ops||sets||prods||live||ia||achats||grad||sante||ouvrir||ventes||mouv||conv||ecarts||offre||agenda||risque||cibler||track);
   document.getElementById('filterBtn').classList.toggle('hidden',home||ops||sets||prods||live||ia||achats||grad||sante||ouvrir||ventes||mouv||conv||ecarts||offre||agenda||risque||cibler||track);
   document.getElementById('sortBtn').classList.toggle('hidden',home||ops||sets||prods||live||ia||achats||grad||sante||ouvrir||ventes||mouv||conv||ecarts||offre||agenda||risque||cibler||track);
-  document.querySelector('.search').classList.toggle('hidden',home||ops||sets||prods||live||ia||achats||grad||sante||ouvrir||ventes||mouv||conv||ecarts||offre||agenda||risque||cibler||track);
+  document.querySelector('.search').classList.toggle('hidden',home||sets||prods||live||ia||achats||grad||sante||ouvrir||risque);
   document.getElementById('scanFab').classList.toggle('hidden',!(m==='collection'||m==='catalog'));
   const vfr=document.getElementById('valFilterRow'); if(vfr){ if(m==='collection'){ vfr.style.display='block'; buildValRow(); } else { vfr.style.display='none'; } }
-  document.getElementById('q').placeholder=cat?"Chercher une carte (nom ou numéro), toutes langues…":"Rechercher (nom ou numéro)…";
+  // recherche : réinitialisée à chaque changement de page ; placeholder adapté
+  state.pageQ=''; { const qi=document.getElementById('q'); if(qi && m!=='catalog' && m!=='collection') qi.value=''; }
+  document.getElementById('q').placeholder=cat?"Chercher une carte (nom ou numéro), toutes langues…":(PAGE_Q_PH[m]||"Rechercher (nom ou numéro)…");
   const brief=document.getElementById('briefing'); if(brief){ brief.innerHTML=''; }
   // mini portfolio line: shown everywhere except the Accueil dashboard
   const mb=document.getElementById('miniBar');
@@ -1465,6 +1554,7 @@ async function fetchVentes(){
     if(state.mode!=='ventes')return; renderVentes();
   }catch(e){ stage.innerHTML='<div class="empty">Erreur de chargement des ventes.</div>'; }
 }
+function setVentSort(v){ state.ventSort=v; renderVentes(); }
 function renderVentes(){
   const stage=document.getElementById('stage'); stage.className='';
   const u=SALESUM||{}; const pnl=+u.pnl_realise||0, net=+u.net_ventes||0, cout=+u.cout_total||0, nb=+u.nb_ventes||0; const pos=pnl>=0;
@@ -1478,7 +1568,13 @@ function renderVentes(){
     h+='<div style="background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:18px;margin-bottom:12px;text-align:center"><div style="font-size:15px;font-weight:800;margin-bottom:4px">Aucune vente enregistrée</div><div class="dt" style="font-size:12.5px">Pour vendre : ouvre une carte dans ta collection → « 💶 Vendre ». Ta plus-value réalisée apparaîtra ici.</div></div>';
   }
   if(SALES.length){
-    h+='<div style="display:flex;flex-direction:column;gap:7px">'+SALES.map(x=>{
+    const flt=pageQMatch(); const searching=!!pageQstr();
+    const vsort=state.ventSort||'date_desc';
+    const vcmp={date_desc:(a,b)=>String(b.sold_date||'').localeCompare(String(a.sold_date||'')),pnl_desc:(a,b)=>(+b.realized_pnl_eur||0)-(+a.realized_pnl_eur||0),pnl_asc:(a,b)=>(+a.realized_pnl_eur||0)-(+b.realized_pnl_eur||0),price_desc:(a,b)=>(+b.sold_price_eur||0)-(+a.sold_price_eur||0)};
+    const vlist=SALES.filter(flt).slice().sort(vcmp[vsort]||vcmp.date_desc);
+    h+='<div class="pgtool"><span class="lbl">Trier</span>'+pgSortSel([['date_desc','Date ↓'],['pnl_desc','Plus-value ↓'],['pnl_asc','Plus-value ↑'],['price_desc','Prix vente ↓']],vsort,'setVentSort(this.value)')+'<span class="cnt">'+vlist.length+' vente'+(vlist.length>1?'s':'')+(searching?' filtrées':'')+'</span></div>';
+    if(!vlist.length){ h+='<div class="empty">Aucune vente ne correspond à « '+esc(state.pageQ||'')+' ».</div>'; }
+    else h+='<div style="display:flex;flex-direction:column;gap:7px">'+vlist.map(x=>{
       const p=+x.realized_pnl_eur||0; const pp=p>=0;
       return '<div style="background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px 12px;display:flex;gap:10px;align-items:center">'+
         '<div style="flex:1;min-width:0"><div style="font-weight:800;font-size:13px">'+esc(x.card_name||'')+(x.quantity>1?(' ×'+x.quantity):'')+' <span class="dt">'+esc(x.card_number||'')+(x.variant_label?(' · '+esc(x.variant_label)):'')+'</span></div>'+
@@ -1527,7 +1623,8 @@ function renderMouv(){
   const stage=document.getElementById('stage'); stage.className='';
   const f=MKT_FIELD[MKT].slice(1); const dK=f+'_delta', nK=f+'_now', pK=f+'_pct';
   const minE=+NOTIFSET.notif_min_eur||0, minP=+NOTIFSET.notif_min_pct||0;
-  const moved=MOVERS.filter(x=>{ if(x[dK]==null) return false; const ad=Math.abs(+x[dK]||0), ap=Math.abs(+x[pK]||0); return ad>=minE || ap>=minP; });
+  const flt=pageQMatch(); const searching=!!pageQstr();
+  const moved=MOVERS.filter(flt).filter(x=>{ if(x[dK]==null) return false; const ad=Math.abs(+x[dK]||0), ap=Math.abs(+x[pK]||0); return ad>=minE || ap>=minP; });
   const totalDelta=moved.reduce((s,x)=>s+(+x[dK]||0)*(x.qty||1),0);
   let h='';
   h+='<div style="background:'+(totalDelta>=0?'linear-gradient(135deg,#047857,#10b981)':'linear-gradient(135deg,#b91c1c,#ef4444)')+';color:#fff;border-radius:16px;padding:14px 18px;margin-bottom:12px;box-shadow:0 4px 14px rgba(15,23,42,.12)">'+
@@ -1542,7 +1639,7 @@ function renderMouv(){
        '<label style="display:flex;flex-direction:column;gap:3px;font-size:11px;font-weight:700;color:var(--mut)">Variation min (%)'+
          '<input id="nmP" type="number" min="0" step="1" value="'+minP+'" onchange="setNotifThreshold()" style="width:92px;padding:7px 9px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);font-size:14px;font-weight:700"></label>'+
      '</div></div>';
-  if(!moved.length){ h+='<div class="empty">Aucun mouvement au-dessus de ton seuil (≥ '+eur0(minE)+' ou ≥ '+minP+'%). L\'historique par carte s\'enrichit chaque jour.</div>'; stage.innerHTML=h; return; }
+  if(!moved.length){ h+='<div class="empty">'+(searching?'Aucune carte ne correspond à « '+esc(state.pageQ||'')+' » au-dessus de ton seuil.':'Aucun mouvement au-dessus de ton seuil (≥ '+eur0(minE)+' ou ≥ '+minP+'%). L\'historique par carte s\'enrichit chaque jour.')+'</div>'; stage.innerHTML=h; return; }
   const up=moved.filter(x=>+x[dK]>0).sort((a,b)=>b[dK]-a[dK]);
   const down=moved.filter(x=>+x[dK]<0).sort((a,b)=>a[dK]-b[dK]);
   const row=x=>{ const d=+x[dK], p=x[pK], pos=d>0; const vl=(x.variant_label&&String(x.variant_label).toLowerCase()!=='normal')?(' · '+esc(x.variant_label)):'';
@@ -1551,8 +1648,9 @@ function renderMouv(){
       '<div style="width:34px;height:47px;border-radius:6px;overflow:hidden;background:var(--bg);flex:none">'+img+'</div>'+
       '<div style="flex:1;min-width:0"><div style="font-weight:800;font-size:13px">'+(FLAG[x.language]||'')+' '+esc(x.card_number||'')+vl+'</div><div class="dt" style="font-size:11.5px">valeur '+eur0(x[nK])+(x.qty>1?(' · ×'+x.qty):'')+'</div></div>'+
       '<div style="text-align:right;white-space:nowrap;font-weight:900;font-size:13.5px;color:'+(pos?'#059669':'#dc2626')+'">'+(pos?'▲ +':'▼ ')+eur0(Math.abs(d))+(p!=null?'<div style="font-size:11px;font-weight:800">'+(pos?'+':'')+p+'%</div>':'')+'</div></div>'; };
-  if(up.length) h+='<div style="font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:#059669;font-weight:800;margin:6px 2px 8px">▲ Hausses ('+up.length+')</div><div style="display:flex;flex-direction:column;gap:7px">'+up.map(row).join('')+'</div>';
-  if(down.length) h+='<div style="font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:#dc2626;font-weight:800;margin:14px 2px 8px">▼ Baisses ('+down.length+')</div><div style="display:flex;flex-direction:column;gap:7px">'+down.map(row).join('')+'</div>';
+  h+=secNav([{id:'mv-up',label:'▲ Hausses',n:up.length},{id:'mv-down',label:'▼ Baisses',n:down.length}]);
+  if(up.length) h+='<div id="sec-mv-up" class="pgsec"><div style="font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:#059669;font-weight:800;margin:6px 2px 8px">▲ Hausses ('+up.length+')</div><div style="display:flex;flex-direction:column;gap:7px">'+up.map(row).join('')+'</div></div>';
+  if(down.length) h+='<div id="sec-mv-down" class="pgsec"><div style="font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:#dc2626;font-weight:800;margin:14px 2px 8px">▼ Baisses ('+down.length+')</div><div style="display:flex;flex-direction:column;gap:7px">'+down.map(row).join('')+'</div></div>';
   stage.innerHTML=h;
 }
 // ---------- Conviction (le cerveau) ----------
@@ -1610,18 +1708,28 @@ function convCard(x){
     '</div>'+
     '<div style="margin-top:8px">'+convFactorBars(x)+'</div></div>';
 }
+function setConvSort(v){ state.convSort=v; renderConviction(); }
 function renderConviction(){
   const stage=document.getElementById('stage'); stage.className='';
   if(!CONV.length){ stage.innerHTML='<div class="empty">Aucune donnée de conviction. Réessaie dans un instant.</div>'; return; }
+  const flt=pageQMatch(); const base=CONV.filter(flt); const searching=!!pageQstr();
+  const sortMode=state.convSort||'conv';
+  const cmp=(sortMode==='val')
+     ? (p,q)=>((+q.market_value_eur||0)*(q.quantity||1))-((+p.market_value_eur||0)*(p.quantity||1)) || q.conviction-p.conviction
+     : (p,q)=>q.conviction-p.conviction || (q.market_value_eur||0)-(p.market_value_eur||0);
   const groups={}; CONV_ORDER.forEach(k=>groups[k]=[]);
-  CONV.forEach(x=>{ (groups[x.bucket]=groups[x.bucket]||[]).push(x); });
-  Object.values(groups).forEach(a=>a.sort((p,q)=>q.conviction-p.conviction || (q.market_value_eur||0)-(p.market_value_eur||0)));
+  base.forEach(x=>{ (groups[x.bucket]=groups[x.bucket]||[]).push(x); });
+  Object.values(groups).forEach(a=>a.sort(cmp));
   let h='';
   // intro
   h+='<div style="background:linear-gradient(135deg,#4338ca,#6366f1);color:#fff;border-radius:16px;padding:15px 18px;margin-bottom:12px;box-shadow:0 4px 14px rgba(15,23,42,.14)">'+
      '<div style="font-size:11px;text-transform:uppercase;letter-spacing:.5px;opacity:.9;font-weight:800">Le cerveau · score de conviction</div>'+
      '<div style="font-size:16px;font-weight:800;margin:4px 0 5px">Chaque carte notée /100, avec le pourquoi</div>'+
      '<div style="font-size:12.5px;opacity:.95;line-height:1.5">Score bâti sur <b>4 facteurs réels</b> : rareté (35 %), valeur / importance (30 %), liquidité — de combien tu peux ressortir (25 %) — et un momentum court terme (10 %, capé car l\'historique est jeune). Aucun chiffre inventé.</div></div>';
+  // navigation par sections
+  h+=secNav(CONV_ORDER.map(k=>({id:'conv-'+k,label:CONV_BUCKETS[k].t.split(' — ')[0].split(' (')[0],n:groups[k].length})));
+  // tri + compteur
+  h+='<div class="pgtool"><span class="lbl">Trier</span>'+pgSortSel([['conv','Conviction ↓'],['val','Valeur ↓']],sortMode,'setConvSort(this.value)')+'<span class="cnt">'+base.length+' carte'+(base.length>1?'s':'')+(searching?' filtrées':'')+'</span></div>';
   // buckets summary
   const sum=k=>groups[k].reduce((s,x)=>s+(+x.market_value_eur||0)*(x.quantity||1),0);
   h+='<div style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:14px">';
@@ -1634,28 +1742,33 @@ function renderConviction(){
   // sections
   CONV_ORDER.forEach(k=>{
     const list=groups[k]; if(!list.length) return; const b=CONV_BUCKETS[k];
-    if(k==='bulk'){
-      h+='<div style="margin:16px 2px 8px"><button onclick="CONV_SHOWBULK=!CONV_SHOWBULK;renderConviction()" style="background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:9px 12px;color:var(--ink);font-weight:800;font-size:12px;cursor:pointer;width:100%;text-align:left">'+
-        b.ic+' '+esc(b.t)+' — '+list.length+' carte'+(list.length>1?'s':'')+' '+(CONV_SHOWBULK?'▲':'▼')+'</button></div>';
-      if(CONV_SHOWBULK) h+='<div style="display:flex;flex-direction:column;gap:8px">'+list.slice(0,120).map(convCard).join('')+'</div>'+
-        (list.length>120?'<div class="dt" style="font-size:11px;margin:8px 2px">… et '+(list.length-120)+' autres cartes de faible valeur.</div>':'');
+    if(k==='bulk' && !searching){
+      const inner='<div style="margin:0"><button onclick="CONV_SHOWBULK=!CONV_SHOWBULK;renderConviction()" style="background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:9px 12px;color:var(--ink);font-weight:800;font-size:12px;cursor:pointer;width:100%;text-align:left">'+
+        b.ic+' '+esc(b.t)+' — '+list.length+' carte'+(list.length>1?'s':'')+' '+(CONV_SHOWBULK?'▲':'▼')+'</button></div>'+
+        (CONV_SHOWBULK?('<div style="display:flex;flex-direction:column;gap:8px;margin-top:8px">'+list.slice(0,120).map(convCard).join('')+'</div>'+
+          (list.length>120?'<div class="dt" style="font-size:11px;margin:8px 2px">… et '+(list.length-120)+' autres cartes de faible valeur.</div>':'')):'');
+      h+=pgSection('conv-'+k,'',inner);
       return;
     }
-    h+='<div style="margin:16px 2px 4px;font-size:12.5px;font-weight:800;color:'+b.c+'">'+b.ic+' '+esc(b.t)+' <span style="color:var(--mut);font-weight:700">('+list.length+')</span></div>'+
-       '<div class="dt" style="font-size:11.5px;margin:0 2px 9px">'+esc(b.d)+'</div>'+
-       '<div style="display:flex;flex-direction:column;gap:8px">'+list.map(convCard).join('')+'</div>';
+    const cap=(k==='bulk')?200:list.length;
+    const inner='<div class="dt" style="font-size:11.5px;margin:0 2px 9px">'+esc(b.d)+'</div>'+
+       '<div style="display:flex;flex-direction:column;gap:8px">'+list.slice(0,cap).map(convCard).join('')+'</div>'+
+       (list.length>cap?'<div class="dt" style="font-size:11px;margin:8px 2px">… et '+(list.length-cap)+' autres.</div>':'');
+    h+=pgSection('conv-'+k, b.t+' ('+list.length+')', inner, b.c);
   });
+  if(!base.length){ h+='<div class="empty">Aucune carte ne correspond à « '+esc(state.pageQ||'')+' ».</div>'; }
   // footer: what comes next
   h+='<div style="background:var(--panel);border:1px dashed var(--line);border-radius:12px;padding:12px 14px;margin-top:18px;font-size:12px;color:var(--mut);line-height:1.55">'+
      '<b style="color:var(--ink)">Facteurs à venir</b> (pas encore honnêtement calculables) : spread inter-marché JP↔EN↔CN (tes cartes ne sont cotées que sur leur marché natif), retour à la moyenne et vrai momentum (l\'historique n\'a que ~9 jours, il s\'enrichit chaque jour), risque de réimpression et population PSA (données à brancher). Le score se renforcera tout seul à mesure que la donnée s\'accumule.</div>';
   stage.innerHTML=h;
-  document.getElementById('countLine').textContent=CONV.length+' cartes notées';
+  document.getElementById('countLine').textContent=base.length+' carte'+(base.length>1?'s':'')+' notée'+(base.length>1?'s':'')+(searching?' (filtre)':'');
 }
 // ---------- Écarts JP / EN (comparateur inter-marché) ----------
 let GAP=[], GAPLOADED=false, GAP_SHOWSUS=false;
 const GAP_VCLASS={base:'',manga:'Manga',alt:'Alt Art',parallel:'Parallel',fullart:'Full Art',boxtopper:'Box Topper',wanted:'Wanted',sp:'SP'};
 const GAP_VIEWS=[['mine','Mes cartes'],['buy','Acheter au Japon'],['en','Moins cher en EN']];
-function setGapView(v){ state.gapView=v; renderGap(); }
+function setGapView(v){ state.gapView=v; state.gapSort='auto'; renderGap(); }
+function setGapSort(v){ state.gapSort=v; renderGap(); }
 async function fetchGap(){
   const stage=document.getElementById('stage'); stage.className=''; stage.innerHTML='<div class="loading">Comparaison des marchés JP / EN…</div>';
   try{
@@ -1692,10 +1805,15 @@ function renderGap(){
   if(!GAP.length){ stage.innerHTML='<div class="empty">Aucune donnée de comparaison. Réessaie dans un instant.</div>'; return; }
   const clean=GAP.filter(x=>!x.suspect), sus=GAP.filter(x=>x.suspect);
   const v=state.gapView||'mine';
-  let list;
-  if(v==='mine') list=clean.filter(x=>x.owned && x.cheaper==='JP').sort((a,b)=>b.gap_pct-a.gap_pct);
-  else if(v==='buy') list=clean.filter(x=>!x.owned && x.cheaper==='JP').sort((a,b)=>b.gap_eur-a.gap_eur);
-  else list=clean.filter(x=>x.cheaper==='EN').sort((a,b)=>a.gap_pct-b.gap_pct);
+  const flt=pageQMatch(); const searching=!!pageQstr();
+  let base;
+  if(v==='mine') base=clean.filter(x=>x.owned && x.cheaper==='JP');
+  else if(v==='buy') base=clean.filter(x=>!x.owned && x.cheaper==='JP');
+  else base=clean.filter(x=>x.cheaper==='EN');
+  const gsort=state.gapSort||'auto';
+  const eff=(gsort==='auto')?((v==='buy')?'gapeur':(v==='en')?'encheap':'gappct'):gsort;
+  const gcmp={gappct:(a,b)=>b.gap_pct-a.gap_pct, gapeur:(a,b)=>Math.abs(b.gap_eur)-Math.abs(a.gap_eur), jp:(a,b)=>(+b.jp_eur||0)-(+a.jp_eur||0), encheap:(a,b)=>a.gap_pct-b.gap_pct};
+  let list=base.filter(flt).slice().sort(gcmp[eff]||gcmp.gappct);
   let h='';
   h+='<div style="background:linear-gradient(135deg,#0e7490,#06b6d4);color:#fff;border-radius:16px;padding:15px 18px;margin-bottom:12px;box-shadow:0 4px 14px rgba(15,23,42,.14)">'+
      '<div style="font-size:11px;text-transform:uppercase;letter-spacing:.5px;opacity:.9;font-weight:800">Comparateur inter-marché · JP ⇄ EN</div>'+
@@ -1709,12 +1827,13 @@ function renderGap(){
     buy:'Cartes <b>bien moins chères au Japon</b> qu\'en anglais, avec un marché EN liquide qui valide la demande — ton meilleur point d\'entrée.',
     en:'Cas plus rares où la version <b>anglaise est moins chère</b> que la japonaise.'};
   h+='<div class="dt" style="font-size:11.5px;margin:0 2px 10px">'+explmain[v]+'</div>';
-  if(!list.length) h+='<div class="empty">Aucune carte dans cette vue.</div>';
+  h+='<div class="pgtool"><span class="lbl">Trier</span>'+pgSortSel([['auto','Tri auto'],['gappct','Prime % ↓'],['gapeur','Écart € ↓'],['jp','Valeur JP ↓']],gsort,'setGapSort(this.value)')+'<span class="cnt">'+list.length+' carte'+(list.length>1?'s':'')+(searching?' filtrées':'')+'</span></div>';
+  if(!list.length) h+='<div class="empty">'+(searching?'Aucune carte ne correspond à « '+esc(state.pageQ||'')+' ».':'Aucune carte dans cette vue.')+'</div>';
   else h+='<div style="display:flex;flex-direction:column;gap:9px">'+list.slice(0,150).map(gapRow).join('')+'</div>'+
     (list.length>150?'<div class="dt" style="font-size:11px;margin:8px 2px">… et '+(list.length-150)+' autres.</div>':'');
   if(sus.length){
     h+='<div style="margin:16px 2px 8px"><button onclick="GAP_SHOWSUS=!GAP_SHOWSUS;renderGap()" style="background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:9px 12px;color:var(--ink);font-weight:800;font-size:12px;cursor:pointer;width:100%;text-align:left">⚠️ Signaux à confirmer — '+sus.length+' (marché EN mince ou écart extrême) '+(GAP_SHOWSUS?'▲':'▼')+'</button></div>';
-    if(GAP_SHOWSUS){ const sl=sus.slice().sort((a,b)=>Math.abs(b.gap_eur)-Math.abs(a.gap_eur)).slice(0,60);
+    if(GAP_SHOWSUS){ const sl=sus.filter(flt).slice().sort((a,b)=>Math.abs(b.gap_eur)-Math.abs(a.gap_eur)).slice(0,60);
       h+='<div class="dt" style="font-size:11px;margin:0 2px 8px">Écarts non fiables : trop peu d\'offres en anglais, ou ratio aberrant (souvent une donnée à vérifier). À ne pas prendre au pied de la lettre.</div>'+
         '<div style="display:flex;flex-direction:column;gap:9px">'+sl.map(gapRow).join('')+'</div>'; }
   }
@@ -1757,7 +1876,8 @@ function supCard(x){
 function renderSupply(){
   const stage=document.getElementById('stage'); stage.className='';
   if(!SUP.length){ stage.innerHTML='<div class="empty">Aucune donnée d\'offre. Réessaie dans un instant.</div>'; return; }
-  const val5=SUP.filter(x=>(+x.market_value_eur||0)>=5), bulk=SUP.filter(x=>(+x.market_value_eur||0)<5);
+  const flt=pageQMatch(); const searching=!!pageQstr();
+  const val5=SUP.filter(x=>(+x.market_value_eur||0)>=5).filter(flt), bulk=SUP.filter(x=>(+x.market_value_eur||0)<5).filter(flt);
   const groups={gelee:[],standard:[],reeditee:[]};
   val5.forEach(x=>{ (groups[x.supply_status]=groups[x.supply_status]||[]).push(x); });
   Object.values(groups).forEach(a=>a.sort((p,q)=>(q.market_value_eur||0)-(p.market_value_eur||0)));
@@ -1777,17 +1897,21 @@ function renderSupply(){
        '<div style="font-size:10.5px;color:var(--mut)">'+eur0(v)+'</div></div>'; });
   h+='</div>';
   h+='<div class="dt" style="font-size:11.5px;margin:0 2px 12px">Part de la valeur de ton portefeuille selon le statut d\'offre. Objectif de ta doctrine : maximiser la part <b>gelée</b>.</div>';
+  h+=secNav(SUP_ORDER.map(st=>({id:'sup-'+st,label:SUP_META[st].t.split(' — ')[0],n:groups[st].length})).concat([{id:'sup-bulk',label:'Bulk < 5 €',n:bulk.length}]));
+  if(searching) h+='<div class="pgtool"><span class="cnt" style="margin-left:0">'+(val5.length+bulk.length)+' carte'+((val5.length+bulk.length)>1?'s':'')+' filtrées</span></div>';
   SUP_ORDER.forEach(st=>{
     const list=groups[st]; if(!list||!list.length) return; const b=SUP_META[st];
-    h+='<div style="margin:16px 2px 4px;font-size:12.5px;font-weight:800;color:'+b.c+'">'+b.ic+' '+esc(b.t)+' <span style="color:var(--mut);font-weight:700">('+list.length+')</span></div>'+
-       '<div class="dt" style="font-size:11.5px;margin:0 2px 9px">'+esc(b.d)+'</div>'+
+    const inner='<div class="dt" style="font-size:11.5px;margin:0 2px 9px">'+esc(b.d)+'</div>'+
        '<div style="display:flex;flex-direction:column;gap:8px">'+list.slice(0,120).map(supCard).join('')+'</div>'+
        (list.length>120?'<div class="dt" style="font-size:11px;margin:8px 2px">… et '+(list.length-120)+' autres.</div>':'');
+    h+=pgSection('sup-'+st, b.t+' ('+list.length+')', inner, b.c);
   });
   if(bulk.length){
-    h+='<div style="margin:16px 2px 8px"><button onclick="SUP_SHOWBULK=!SUP_SHOWBULK;renderSupply()" style="background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:9px 12px;color:var(--ink);font-weight:800;font-size:12px;cursor:pointer;width:100%;text-align:left">∅ Cartes < 5 € (bulk) — '+bulk.length+' '+(SUP_SHOWBULK?'▲':'▼')+'</button></div>';
-    if(SUP_SHOWBULK) h+='<div style="display:flex;flex-direction:column;gap:8px">'+bulk.slice(0,100).map(supCard).join('')+'</div>';
+    const inner='<div style="margin:0"><button onclick="SUP_SHOWBULK=!SUP_SHOWBULK;renderSupply()" style="background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:9px 12px;color:var(--ink);font-weight:800;font-size:12px;cursor:pointer;width:100%;text-align:left">∅ Cartes < 5 € (bulk) — '+bulk.length+' '+(SUP_SHOWBULK?'▲':'▼')+'</button></div>'+
+      (SUP_SHOWBULK?('<div style="display:flex;flex-direction:column;gap:8px;margin-top:8px">'+bulk.slice(0,100).map(supCard).join('')+'</div>'):'');
+    h+=pgSection('sup-bulk','',inner);
   }
+  if(searching && !val5.length && !bulk.length) h+='<div class="empty">Aucune carte ne correspond à « '+esc(state.pageQ||'')+' ».</div>';
   h+='<div style="background:var(--panel);border:1px dashed var(--line);border-radius:12px;padding:12px 14px;margin-top:18px;font-size:12px;color:var(--mut);line-height:1.55">'+
      '<b style="color:var(--ink)">À venir</b> : le <b>calendrier des catalyseurs datés</b> (sorties de sets, arcs anime, ONE PIECE DAY, réimpressions annoncées) demande un flux d\'actualités qu\'on n\'a pas encore branché — je ne l\'invente pas. La partie <b>offre / réédition</b> ci-dessus, elle, est 100 % basée sur tes données.</div>';
   stage.innerHTML=h;
@@ -1837,19 +1961,20 @@ function renderCalendar(){
   const stage=document.getElementById('stage'); stage.className='';
   if(!CAL.length){ stage.innerHTML='<div class="empty">Aucun événement pour l\'instant.</div>'; return; }
   const today=new Date(); today.setHours(0,0,0,0);
-  const up=CAL.filter(x=>x.event_date && new Date(x.event_date+'T00:00:00')>=today);
-  const past=CAL.filter(x=>x.event_date && new Date(x.event_date+'T00:00:00')<today).sort((a,b)=>a.event_date<b.event_date?1:-1);
+  const flt=pageQMatch(); const searching=!!pageQstr();
+  const up=CAL.filter(x=>x.event_date && new Date(x.event_date+'T00:00:00')>=today).filter(flt);
+  const past=CAL.filter(x=>x.event_date && new Date(x.event_date+'T00:00:00')<today).filter(flt).sort((a,b)=>a.event_date<b.event_date?1:-1);
   let h='';
   h+='<div style="background:linear-gradient(135deg,#5b21b6,#7c3aed);color:#fff;border-radius:16px;padding:15px 18px;margin-bottom:12px;box-shadow:0 4px 14px rgba(15,23,42,.14)">'+
      '<div style="font-size:11px;text-transform:uppercase;letter-spacing:.5px;opacity:.9;font-weight:800">Agenda des catalyseurs</div>'+
      '<div style="font-size:16px;font-weight:800;margin:4px 0 5px">Ce qui va bouger les prix — et t\'impacter</div>'+
      '<div style="font-size:12px;opacity:.95;line-height:1.5">Sorties de sets, rééditions, anniversaires. Les dates viennent de <b>ta base</b> (sorties officielles) et de <b>recherches web sourcées</b>, rafraîchies chaque semaine. Rien n\'est inventé : les dates incertaines sont marquées « à confirmer ». Les rééditions ♻️ renvoient à ta page Offre. Marché chinois : à venir.</div></div>';
+  h+=secNav([{id:'cal-up',label:'À venir',n:up.length},{id:'cal-past',label:'Passé récent',n:past.length}]);
   if(up.length){
-    h+='<div style="margin:6px 2px 9px;font-size:12.5px;font-weight:800;color:var(--ink)">À venir ('+up.length+')</div>'+
-       '<div style="display:flex;flex-direction:column;gap:9px">'+up.map(calRow).join('')+'</div>';
-  } else h+='<div class="empty">Aucun événement à venir connu pour l\'instant — le rafraîchissement hebdo en ajoutera.</div>';
+    h+=pgSection('cal-up','À venir ('+up.length+')','<div style="display:flex;flex-direction:column;gap:9px">'+up.map(calRow).join('')+'</div>');
+  } else h+='<div class="empty">'+(searching?'Aucun événement ne correspond à « '+esc(state.pageQ||'')+' ».':'Aucun événement à venir connu pour l\'instant — le rafraîchissement hebdo en ajoutera.')+'</div>';
   if(past.length){
-    h+='<div style="margin:18px 2px 8px"><button onclick="CAL_SHOWPAST=!CAL_SHOWPAST;renderCalendar()" style="background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:9px 12px;color:var(--ink);font-weight:800;font-size:12px;cursor:pointer;width:100%;text-align:left">Passé récent — '+past.length+' '+(CAL_SHOWPAST?'▲':'▼')+'</button></div>';
+    h+='<div id="sec-cal-past" class="pgsec" style="margin:18px 2px 8px"><button onclick="CAL_SHOWPAST=!CAL_SHOWPAST;renderCalendar()" style="background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:9px 12px;color:var(--ink);font-weight:800;font-size:12px;cursor:pointer;width:100%;text-align:left">Passé récent — '+past.length+' '+(CAL_SHOWPAST?'▲':'▼')+'</button></div>';
     if(CAL_SHOWPAST) h+='<div style="display:flex;flex-direction:column;gap:9px">'+past.slice(0,60).map(calRow).join('')+'</div>';
   }
   stage.innerHTML=h;
@@ -1892,6 +2017,8 @@ function renderRisque(){
      '<div style="font-size:11px;text-transform:uppercase;letter-spacing:.5px;opacity:.9;font-weight:800">Risque &amp; concentration</div>'+
      '<div style="font-size:24px;font-weight:900;letter-spacing:-.5px;margin:3px 0">'+grade[0]+' <span style="font-size:14px;opacity:.9">· score '+divScore+'/100</span></div>'+
      '<div style="font-size:12px;opacity:.95;line-height:1.5">Ce qui sépare l\'investisseur du parieur : ne pas mettre trop de valeur sur un seul actif, personnage, couleur ou set. Diversifié = plus résistant à un retournement.</div></div>';
+  h+=secNav([{id:'rq-resume',label:'Résumé',always:true},{id:'rq-pos',label:'Positions',always:true},{id:'rq-char',label:'Personnage',always:true},{id:'rq-color',label:'Couleur',always:true},{id:'rq-set',label:'Set',always:true},{id:'rq-lang',label:'Langue',always:true}]);
+  h+='<div id="sec-rq-resume" class="pgsec"></div>';
   // key stats tiles
   const tile=(lbl,pct,warnAt)=>{ const w=pct>=warnAt; return '<div style="flex:1;min-width:80px;background:var(--panel);border:1px solid '+(w?'#f59e0b':'var(--line)')+';border-radius:11px;padding:9px 10px">'+
     '<div style="font-size:10px;color:var(--mut);font-weight:800;text-transform:uppercase;letter-spacing:.3px">'+lbl+'</div>'+
@@ -1907,17 +2034,17 @@ function renderRisque(){
   if(warns.length) h+='<div style="background:rgba(245,158,11,.12);border:1px solid #f59e0b;border-radius:11px;padding:10px 12px;margin:6px 0 4px;font-size:12px;line-height:1.5;color:var(--ink)"><b>⚠️ Points d\'attention</b><ul style="margin:5px 0 0;padding-left:18px">'+warns.map(w=>'<li style="margin:2px 0">'+esc(w)+'</li>').join('')+'</ul></div>';
   else h+='<div style="background:rgba(5,150,105,.1);border:1px solid #059669;border-radius:11px;padding:10px 12px;margin:6px 0 4px;font-size:12px;color:var(--ink)">✓ Aucune concentration excessive détectée. Ton portefeuille est sainement réparti.</div>';
   // top positions
-  h+='<div style="font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:var(--mut);font-weight:800;margin:16px 2px 8px">Plus grosses positions</div>';
+  h+='<div id="sec-rq-pos" class="pgsec"></div><div style="font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:var(--mut);font-weight:800;margin:16px 2px 8px">Plus grosses positions</div>';
   h+='<div style="display:flex;flex-direction:column;gap:6px">'+cards.slice(0,6).map(x=>{
     const c=x.c; const vl=(c.variant_label&&String(c.variant_label).toLowerCase()!=='normal')?(' · '+esc(c.variant_label)):'';
     return '<div onclick="convOpen('+JSON.stringify(String(c.item_id)).replace(/"/g,'&quot;')+')" style="display:flex;align-items:center;gap:9px;background:var(--panel);border:1px solid var(--line);border-radius:11px;padding:8px 11px;cursor:pointer">'+
       '<div style="flex:1;min-width:0;font-weight:800;font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+(FLAG[c.language]||'')+' '+esc(c.card_number||'')+vl+' <span style="color:var(--mut);font-weight:600">'+esc(c.card_name||'')+'</span></div>'+
       '<div style="text-align:right;font-weight:900;font-size:12.5px">'+eur0(x.v)+' <span style="color:var(--mut);font-weight:700;font-size:11px">'+(x.v/tot*100).toFixed(1)+'%</span></div></div>';
   }).join('')+'</div>';
-  h+=riskBars('Par personnage',byChar,tot,8,null);
-  h+=riskBars('Par couleur',byColor,tot,8,k=>RISK_COLORS[k]||'#6366f1');
-  h+=riskBars('Par set',bySet,tot,8,null);
-  h+=riskBars('Par langue',byLang,tot,6,k=>({JP:'#dc2626',EN:'#2563eb',CN:'#eab308',FR:'#6366f1'}[k]||'#6366f1'));
+  h+='<div id="sec-rq-char" class="pgsec"></div>'+riskBars('Par personnage',byChar,tot,8,null);
+  h+='<div id="sec-rq-color" class="pgsec"></div>'+riskBars('Par couleur',byColor,tot,8,k=>RISK_COLORS[k]||'#6366f1');
+  h+='<div id="sec-rq-set" class="pgsec"></div>'+riskBars('Par set',bySet,tot,8,null);
+  h+='<div id="sec-rq-lang" class="pgsec"></div>'+riskBars('Par langue',byLang,tot,6,k=>({JP:'#dc2626',EN:'#2563eb',CN:'#eab308',FR:'#6366f1'}[k]||'#6366f1'));
   h+='<div class="dt" style="font-size:11px;margin:16px 2px 0;line-height:1.5">Score de diversification basé sur la répartition de la valeur (indice de concentration). Une carte multicolore répartit sa valeur entre ses couleurs. Prochaine étape possible : part <b>liquide</b> (revendable vite) et scénarios de <b>drawdown</b>.</div>';
   stage.innerHTML=h;
   document.getElementById('countLine').textContent='diversification '+divScore+'/100';
@@ -1928,6 +2055,7 @@ const TGT_LANGS=[['JP','🇯🇵 Japon'],['CN','🇨🇳 Chine'],['EN','🇬🇧
 const TGT_BUDGETS=[[0,'Tous prix'],[30,'≤ 30 €'],[100,'≤ 100 €'],[300,'≤ 300 €']];
 function setTgtLang(l){ state.tgtLang=l; fetchTargets(); }
 function setTgtBudget(b){ state.tgtBudget=+b; renderTargets(); }
+function setTgtSort(v){ state.tgtSort=v; renderTargets(); }
 async function fetchTargets(){
   const stage=document.getElementById('stage'); stage.className=''; stage.innerHTML='<div class="loading">Analyse des cibles d\'achat…</div>';
   const lang=state.tgtLang||'JP';
@@ -1954,16 +2082,21 @@ function tgtOpenCatalog(num){ try{ setMode('catalog'); const q=document.getEleme
 function renderTargets(){
   const stage=document.getElementById('stage'); stage.className='';
   const lang=state.tgtLang||'JP', bud=+state.tgtBudget||0;
-  let list=TARGETS.slice();
+  const flt=pageQMatch(); const searching=!!pageQstr();
+  let list=TARGETS.slice().filter(flt);
   if(bud>0) list=list.filter(x=>(+x.price_eur||0)<=bud);
+  const tsort=state.tgtSort||'score';
+  const tcmp={score:(a,b)=>(+b.score||0)-(+a.score||0),price_desc:(a,b)=>(+b.price_eur||0)-(+a.price_eur||0),price_asc:(a,b)=>(+a.price_eur||0)-(+b.price_eur||0),name:(a,b)=>String(a.name||a.card_number||'').localeCompare(String(b.name||b.card_number||''))};
+  list.sort(tcmp[tsort]||tcmp.score);
   let h='';
   h+='<div style="background:linear-gradient(135deg,#7c2d12,#ea580c);color:#fff;border-radius:16px;padding:15px 18px;margin-bottom:12px;box-shadow:0 4px 14px rgba(15,23,42,.14)">'+
      '<div style="font-size:11px;text-transform:uppercase;letter-spacing:.5px;opacity:.9;font-weight:800">Assistant d\'achat · à cibler</div>'+
      '<div style="font-size:16px;font-weight:800;margin:4px 0 5px">Les cartes à plus fort potentiel long terme</div>'+
      '<div style="font-size:12px;opacity:.95;line-height:1.5">Classées selon <b>ta doctrine</b> : offre gelée / exclusivité (25 %), prestige & format — manga, alt-art, gros chase (25 %), marché asiatique JP/CN (20 %), <b>narratif / lore</b> — personnage porteur de l\'arc en cours (15 %), momentum & liquidité (8 %), catalyseur (7 %). Marché live, narratif basé sur l\'arc <b>Elbaf</b>. Cartes que tu possèdes déjà exclues.</div></div>';
   h+='<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">'+TGT_LANGS.map(([k,l])=>'<button class="chip'+(lang===k?' on':'')+'" onclick="setTgtLang(\''+k+'\')" style="cursor:pointer">'+l+'</button>').join('')+'</div>';
-  h+='<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px">'+TGT_BUDGETS.map(([k,l])=>'<button class="chip'+(bud===k?' on':'')+'" onclick="setTgtBudget('+k+')" style="cursor:pointer">'+l+'</button>').join('')+'</div>';
-  if(!list.length){ h+='<div class="empty">Aucune cible pour ces filtres.</div>'; stage.innerHTML=h; document.getElementById('countLine').textContent='0 cible'; return; }
+  h+='<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">'+TGT_BUDGETS.map(([k,l])=>'<button class="chip'+(bud===k?' on':'')+'" onclick="setTgtBudget('+k+')" style="cursor:pointer">'+l+'</button>').join('')+'</div>';
+  h+='<div class="pgtool"><span class="lbl">Trier</span>'+pgSortSel([['score','Score ↓'],['price_desc','Prix ↓'],['price_asc','Prix ↑'],['name','Nom A→Z']],tsort,'setTgtSort(this.value)')+'<span class="cnt">'+list.length+' cible'+(list.length>1?'s':'')+(searching?' filtrées':'')+'</span></div>';
+  if(!list.length){ h+='<div class="empty">'+(searching?'Aucune cible ne correspond à « '+esc(state.pageQ||'')+' ».':'Aucune cible pour ces filtres.')+'</div>'; stage.innerHTML=h; document.getElementById('countLine').textContent='0 cible'; return; }
   h+='<div style="display:flex;flex-direction:column;gap:8px">'+list.slice(0,80).map(x=>{
     const vl=(x.variant_label&&String(x.variant_label).toLowerCase()!=='normal')?(' · '+esc(x.variant_label)):'';
     const why=tgtWhy(x); const sc=+x.score;
@@ -2009,7 +2142,8 @@ function renderTrack(){
     h+='<div style="background:rgba(99,102,241,.1);border:1px solid #6366f1;border-radius:12px;padding:12px 14px;margin-bottom:12px;font-size:12.5px;line-height:1.55;color:var(--ink)">'+
        '⏳ <b>Le suivi vient de démarrer</b> ('+maxd+' j). Chaque jour, l\'agent enregistre ses recommandations d\'achat fortes avec leur prix, et mesure ensuite leur évolution. La performance devient significative après quelques semaines — c\'est ainsi que l\'outil se juge honnêtement sur ses résultats, comme un fonds qui publie son bilan.</div>';
   }
-  const withPerf=TRACK.filter(x=>x.perf_pct!=null);
+  const flt=pageQMatch();
+  const withPerf=TRACK.filter(x=>x.perf_pct!=null).filter(flt);
   const movers=withPerf.filter(x=>Math.abs(+x.perf_pct)>=0.5).slice(0,40);
   if(movers.length){
     h+='<div style="font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:var(--mut);font-weight:800;margin:14px 2px 8px">Depuis la recommandation</div>';
@@ -2540,6 +2674,36 @@ async function renderHome(){
     if(p){ const d=g-(+p.total_eur||0); const up=d>=0; c='<span class="rc '+(up?'up':'down')+'">'+(up?'+':'')+eur0(d)+'</span>'; }
     hist+='<div class="releverow"><span class="rd">'+fmtDay(s.day)+'</span><span><span class="rv">'+eur0(g)+'</span>'+c+'</span></div>';
   });
+  // --- risque : calcul local (même logique que la page Risque) ---
+  let riskHtml='';
+  { const rtot=DATA.reduce((s,c)=>s+val(c)*(c.quantity||1),0);
+    if(rtot>0){
+      const cr=DATA.map(c=>({c,v:val(c)*(c.quantity||1)})).filter(x=>x.v>0).sort((a,b)=>b.v-a.v);
+      const hhi=cr.reduce((s,x)=>s+Math.pow(x.v/rtot,2),0)*100;
+      const dS=Math.max(0,Math.min(100,Math.round(100-hhi*8)));
+      const g=dS>=75?['Bien diversifié','#10b981']:dS>=55?['Correct','#0891b2']:dS>=40?['Concentré','#f59e0b']:['Très concentré','#ef4444'];
+      const top1=cr[0]?cr[0].v/rtot*100:0;
+      const byCharR=riskAgg(c=>[String(c.card_name||'—').replace(/\s*\(.*$/,'').trim()]);
+      const tC=riskTop(byCharR,1)[0], tCP=tC?tC[1]/rtot*100:0;
+      const bySetR=riskAgg(c=>[c.set_code||'—']);
+      const tS=riskTop(bySetR,1)[0], tSP=tS?tS[1]/rtot*100:0;
+      const warns=[];
+      if(top1>=15) warns.push('Ta plus grosse carte pèse '+top1.toFixed(0)+' % du portefeuille.');
+      if(tC&&tCP>=25) warns.push(esc(tC[0])+' concentre '+tCP.toFixed(0)+' % de la valeur.');
+      if(tS&&tSP>=35) warns.push('Le set '+esc(tS[0])+' pèse '+tSP.toFixed(0)+' %.');
+      riskHtml='<div class="hi-risk"><div class="hi-ring" style="--p:'+dS+';--rc:'+g[1]+'"><div><b>'+dS+'</b><span>/100</span></div></div>'+
+        '<div style="flex:1;min-width:0"><div class="hi-rk-lbl" style="color:'+g[1]+'">'+g[0]+'</div>'+
+        '<div class="hi-rk-sub">Top carte '+top1.toFixed(0)+' %'+(tC?(' · '+esc(tC[0])+' '+tCP.toFixed(0)+' %'):'')+'</div></div></div>'+
+        (warns.length?('<div class="hi-warn"><b>⚠️ '+(warns.length>1?(warns.length+' points d\'attention'):'Point d\'attention')+'</b><br>'+warns.slice(0,2).join('<br>')+'</div>')
+                     :'<div class="hi-ok">✓ Répartition saine, aucune concentration excessive.</div>');
+    } else { riskHtml='<div class="hi-empty">Portefeuille vide.</div>'; }
+  }
+  const insights='<div class="nh-insights">'+
+    '<div class="nh-card2 hi-card"><div class="nh-ct"><h3>★ Top convictions</h3><button class="hi-all" onclick="setMode(\'conviction\')">Tout voir &rarr;</button></div><div id="homeConv"><div class="hi-empty">Chargement&hellip;</div></div></div>'+
+    '<div class="nh-card2 hi-card"><div class="nh-ct"><h3>🏅 Top opportunités</h3><button class="hi-all" onclick="setMode(\'ops\')">Tout voir &rarr;</button></div><div id="homeOps"><div class="hi-empty">Chargement&hellip;</div></div></div>'+
+    '<div class="nh-card2 hi-card"><div class="nh-ct"><h3>⇄ Écarts JP / EN</h3><button class="hi-all" onclick="setMode(\'ecarts\')">Tout voir &rarr;</button></div><div id="homeGap"><div class="hi-empty">Chargement&hellip;</div></div></div>'+
+    '<div class="nh-card2 hi-card"><div class="nh-ct"><h3>🛡️ Risque</h3><button class="hi-all" onclick="setMode(\'risque\')">Détail &rarr;</button></div>'+riskHtml+'</div>'+
+  '</div>';
   const html='<div class="nh">'+
     '<div class="nh-hero"><div class="nh-htop"><span class="nh-hlbl">Portefeuille · estimé</span>'+
       '<div class="nh-mktpill">'+['JP','EU','US'].map(function(k){return '<button class="'+(k===MKT?'on':'')+'" onclick="setMarket(\''+k+'\')">'+k+'</button>';}).join('')+'</div></div>'+
@@ -2556,6 +2720,7 @@ async function renderHome(){
       '<div class="nh-stat"><span class="bar" style="background:#8b5cf6"></span><div class="n">'+uniq.toLocaleString('fr-FR')+'</div><div class="k">Uniques</div></div>'+
       '<div class="nh-stat"><span class="bar" style="background:#c2892a"></span><div class="n">'+gradedN.toLocaleString('fr-FR')+'</div><div class="k">Gradées</div></div>'+
     '</div>'+
+    insights+
     (gradeChips?('<div class="nh-card2"><div class="nh-ct"><h3>Cartes gradées</h3></div><div class="graderow">'+gradeChips+'</div></div>'):'')+
     '<div class="nh-card2"><div class="nh-ct"><h3>Évolution du portefeuille</h3></div>'+homeChart(snaps)+'</div>'+
     '<div class="nh-card2"><div class="nh-ct"><h3>Top mouvements</h3><span class="mkt">'+esc(MKT_LABEL[MKT])+'</span></div><div id="homeMovers"><div class="chdates">Chargement…</div></div></div>'+
@@ -2564,6 +2729,20 @@ async function renderHome(){
   stage.innerHTML=html;
   initNovaHome();
   loadMovers();
+  loadHomeInsights();
+}
+function homeThumb(url){ return '<div class="hi-th">'+(url?('<img loading="lazy" referrerpolicy="no-referrer" src="'+esc(url)+'" onerror="this.style.visibility=\'hidden\'">'):'')+'</div>'; }
+function convMiniRow(x){ const vl=(x.variant_label&&String(x.variant_label).toLowerCase()!=='normal')?(' · '+esc(x.variant_label)):''; return '<div class="hi-row" onclick="convOpen('+JSON.stringify(String(x.item_id)).replace(/"/g,'&quot;')+')">'+homeThumb(x.image_url)+'<div class="hi-meta"><p class="nm">'+(FLAG[x.language]||'')+' '+esc(x.card_number||'')+vl+'</p><p class="sub">'+esc(x.card_name||'')+'</p></div><div class="hi-val"><b style="color:#10b981">'+x.conviction+'</b><span>/100</span></div></div>'; }
+function opMiniRow(x){ const vl=(x.variant_label&&String(x.variant_label).toLowerCase()!=='normal')?(' · '+esc(x.variant_label)):''; const up=+x.upside_if_10||0; return '<div class="hi-row" onclick="setMode(\'ops\')">'+homeThumb(x.image_url)+'<div class="hi-meta"><p class="nm">'+(FLAG[x.language]||'')+' '+esc(x.card_number||'')+vl+'</p><p class="sub">PSA 10 &asymp; '+eur0(x.g10)+'</p></div><div class="hi-val"><b style="color:#10b981">+'+eur0(up)+'</b><span>pot.</span></div></div>'; }
+function gapMiniRow(x){ const cl=GAP_VCLASS[x.vclass]!==undefined?GAP_VCLASS[x.vclass]:x.vclass; const cls=cl?(' · '+cl):''; return '<div class="hi-row" onclick="setMode(\'ecarts\')"><div class="hi-meta" style="padding-left:2px"><p class="nm">'+esc(x.card_number||'')+esc(cls)+'</p><p class="sub">JP '+eur0(x.jp_eur)+' &rarr; EN '+eur0(x.en_eur)+'</p></div><div class="hi-val"><b style="color:#38bdf8">+'+x.gap_pct+'%</b><span>prime EN</span></div></div>'; }
+async function loadHomeInsights(){
+  const cbox=document.getElementById('homeConv'), obox=document.getElementById('homeOps'), gbox=document.getElementById('homeGap');
+  // convictions (Cœur / Garder, meilleure conviction)
+  (async()=>{ try{ await loadConvMap(); if(!cbox||!document.getElementById('homeConv'))return; const top=CONV.filter(x=>x.bucket==='coeur'||x.bucket==='garder').sort((a,b)=>b.conviction-a.conviction||(+b.market_value_eur||0)-(+a.market_value_eur||0)).slice(0,5); cbox.innerHTML=top.length?top.map(convMiniRow).join(''):'<div class="hi-empty">Scores en préparation — reviens dans un instant.</div>'; }catch(e){ if(cbox)cbox.innerHTML='<div class="hi-empty">Indisponible pour le moment.</div>'; } })();
+  // opportunités de gradation possédées
+  (async()=>{ try{ const r=await fetch(SB+'/rest/v1/app_op_grading_owned?select=printing_id,card_number,language,name,image_url,variant_label,raw,g10,upside_if_10,qty,score&order=upside_if_10.desc&limit=6',{headers:{apikey:ANON,Authorization:'Bearer '+ANON}}); let rows=await r.json(); if(!Array.isArray(rows))rows=[]; if(!obox||!document.getElementById('homeOps'))return; const top=rows.slice(0,5); obox.innerHTML=top.length?top.map(opMiniRow).join(''):'<div class="hi-empty">Aucune carte à grader avec un gain net pour l’instant.</div>'; }catch(e){ if(obox)obox.innerHTML='<div class="hi-empty">Indisponible pour le moment.</div>'; } })();
+  // écarts JP/EN sur tes cartes
+  (async()=>{ try{ const r=await fetch(SB+'/rest/v1/app_market_gap?select=*&limit=5000',{headers:{apikey:ANON,Authorization:'Bearer '+ANON}}); let rows=await r.json(); GAP=Array.isArray(rows)?rows:[]; GAPLOADED=true; if(!gbox||!document.getElementById('homeGap'))return; const top=GAP.filter(x=>!x.suspect&&x.owned&&x.cheaper==='JP').sort((a,b)=>b.gap_pct-a.gap_pct).slice(0,5); gbox.innerHTML=top.length?top.map(gapMiniRow).join(''):'<div class="hi-empty">Aucun écart notable sur tes cartes.</div>'; }catch(e){ if(gbox)gbox.innerHTML='<div class="hi-empty">Indisponible pour le moment.</div>'; } })();
 }
 async function loadMovers(){
   const box=document.getElementById('homeMovers'); if(!box) return;
@@ -2893,7 +3072,7 @@ async function homeBriefing(){
   }catch(e){ box.innerHTML='<div class="txt" style="color:var(--muted);font-size:13px">Erreur, réessaie.</div><button class="hbriefbtn" onclick="homeBriefing()">Réessayer</button>'; }
 }
 document.getElementById('modeSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMode(b.dataset.m);});
-const APP_VERSION='Version b13 · 25/08';
+const APP_VERSION='Version b16 · 26/08';
 { const nv=document.getElementById('navVersion'); if(nv) nv.textContent=APP_VERSION; }
 document.getElementById('mktSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMarket(b.dataset.k);});
 const CATARRS=["catColors","catCats","catRarities","catTypes"];
@@ -3041,16 +3220,20 @@ function opTable(rows, kind){
   return '<div class="optblwrap"><table class="optbl"><thead>'+head+'</thead><tbody>'+body+'</tbody></table></div>';
 }
 function renderOps(){
-  const owned=opFiltered(OWNEDRAW), buy=opFiltered(BUYRAW);
+  const flt=pageQMatch(); const searching=!!pageQstr();
+  const owned=opFiltered(OWNEDRAW).filter(flt), buy=opFiltered(BUYRAW).filter(flt);
   const stage=document.getElementById('stage'); stage.className="";
-  document.getElementById('countLine').textContent=(owned.length+buy.length)+" opportunité"+((owned.length+buy.length)>1?"s":"")+" de gradation";
+  document.getElementById('countLine').textContent=(owned.length+buy.length)+" opportunité"+((owned.length+buy.length)>1?"s":"")+" de gradation"+(searching?' (filtre)':'');
   const totGain=owned.reduce((s,c)=>s+(opGain(c)||0),0);
   const LFILT=[['all','Toutes'],['JP','🇯🇵 JP'],['EN','🇬🇧 EN'],['FR','🇫🇷 FR'],['CN','🇨🇳 CN']];
-  let h='<div class="setlangrow" style="margin-bottom:10px;align-items:center"><span class="dt" style="margin-right:2px">Langue :</span>'+LFILT.map(x=>'<div class="chip'+(OPFILT.lang===x[0]?' on':'')+'" onclick="setOpFilt(\''+x[0]+'\')">'+x[1]+'</div>').join('')+'</div>';
-  h+='<div class="opsintro"><b>🏅 Mes cartes à grader</b> <span class="dt">— '+owned.length+' cartes · potentiel <b>'+eur(totGain)+'</b> <span class="dt">(en gradant 1 exemplaire de chaque)</span></span><div class="dt" style="margin-top:3px"><b>Gain net</b> = PSA 10 − valeur brute − frais (gradation PSA par palier + ~12 € transport/assurance). Touche une colonne pour trier, ou filtre par langue ci-dessus. <b>Score</b> = conviction basée sur le prix ; l\'agent IA y greffera bientôt la hype / l\'actu.</div></div>';
-  h+= owned.length? opTable(owned,'own') : '<div class="empty">Aucune carte à grader pour ce filtre.</div>';
-  h+='<div class="opsintro" style="margin-top:18px"><div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><b>🛒 Opportunités à acheter</b><button class="orbtn" onclick="openOrient()">Mon orientation</button></div><div class="dt" style="margin-top:3px">Cartes que tu ne possèdes pas, à acheter puis grader. Colonne <b>Langue</b> triable + filtre ci-dessus.</div></div>';
-  h+= buy.length? opTable(buy,'buy') : '<div class="empty">Aucune opportunité pour ce filtre.</div>';
+  let h=secNav([{id:'ops-own',label:'Mes cartes',n:owned.length},{id:'ops-buy',label:'À acheter',n:buy.length}]);
+  h+='<div class="setlangrow" style="margin-bottom:10px;align-items:center"><span class="dt" style="margin-right:2px">Langue :</span>'+LFILT.map(x=>'<div class="chip'+(OPFILT.lang===x[0]?' on':'')+'" onclick="setOpFilt(\''+x[0]+'\')">'+x[1]+'</div>').join('')+'</div>';
+  h+=pgSection('ops-own','',
+    '<div class="opsintro"><b>🏅 Mes cartes à grader</b> <span class="dt">— '+owned.length+' cartes · potentiel <b>'+eur(totGain)+'</b> <span class="dt">(en gradant 1 exemplaire de chaque)</span></span><div class="dt" style="margin-top:3px"><b>Gain net</b> = PSA 10 − valeur brute − frais (gradation PSA par palier + ~12 € transport/assurance). Touche une colonne pour trier, ou filtre par langue ci-dessus. <b>Score</b> = conviction basée sur le prix ; l\'agent IA y greffera bientôt la hype / l\'actu.</div></div>'+
+    (owned.length? opTable(owned,'own') : '<div class="empty">'+(searching?'Aucune carte ne correspond à « '+esc(state.pageQ||'')+' ».':'Aucune carte à grader pour ce filtre.')+'</div>'));
+  h+=pgSection('ops-buy','',
+    '<div class="opsintro" style="margin-top:18px"><div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><b>🛒 Opportunités à acheter</b><button class="orbtn" onclick="openOrient()">Mon orientation</button></div><div class="dt" style="margin-top:3px">Cartes que tu ne possèdes pas, à acheter puis grader. Colonne <b>Langue</b> triable + filtre ci-dessus.</div></div>'+
+    (buy.length? opTable(buy,'buy') : '<div class="empty">'+(searching?'Aucune opportunité ne correspond à « '+esc(state.pageQ||'')+' ».':'Aucune opportunité pour ce filtre.')+'</div>'));
   stage.innerHTML=h;
 }
 const ORIGIN_LABELS={STANDARD:"Standard",PROMO:"Promo",BATTLE_EVENT:"Battleship",PREMIUM_COLLECTION:"Premium Collection",TOURNAMENT:"Tournoi",PRODUCT_EXCLUSIVE:"Exclusivité produit",OTHER:"Autre source"};
@@ -3417,7 +3600,9 @@ document.getElementById("freset").addEventListener("click",resetFilters);
 document.getElementById("mChar").addEventListener("change",e=>{state.character=e.target.value;afterFilter()});
 document.getElementById("mVariant").addEventListener("change",e=>{state.variant=e.target.value;afterFilter()});
 document.getElementById("viewBtn").addEventListener("click",()=>{ state.view=state.view==="grid"?"list":"grid"; document.getElementById("viewBtn").innerHTML=state.view==="grid"?"▦":"☰"; render(); });
-document.getElementById("themeBtn").addEventListener("click",()=>{document.documentElement.classList.toggle("dark")});
+function applyThemeIcon(){ const d=document.documentElement.classList.contains("dark"); const b=document.getElementById("themeBtn"); if(b){ b.innerHTML=d?"&#9728;&#65038;":"&#9790;"; b.title=d?"Passer en mode jour":"Passer en mode nuit"; } }
+document.getElementById("themeBtn").addEventListener("click",()=>{ const d=document.documentElement.classList.toggle("dark"); try{ localStorage.setItem("tcg-theme",d?"dark":"light"); }catch(e){} applyThemeIcon(); });
+applyThemeIcon();
 [["smodal",closeSort],["fmodal",closeFilters]].forEach(([id,fn])=>document.getElementById(id).addEventListener("click",e=>{ if(e.target.id===id)fn(); }));
 
 // ---------- Fiche carte ----------
