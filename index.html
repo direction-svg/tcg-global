@@ -2740,7 +2740,7 @@ async function loadHomeInsights(){
   // convictions (Cœur / Garder, meilleure conviction)
   (async()=>{ try{ await loadConvMap(); if(!cbox||!document.getElementById('homeConv'))return; const top=CONV.filter(x=>x.bucket==='coeur'||x.bucket==='garder').sort((a,b)=>b.conviction-a.conviction||(+b.market_value_eur||0)-(+a.market_value_eur||0)).slice(0,5); cbox.innerHTML=top.length?top.map(convMiniRow).join(''):'<div class="hi-empty">Scores en préparation — reviens dans un instant.</div>'; }catch(e){ if(cbox)cbox.innerHTML='<div class="hi-empty">Indisponible pour le moment.</div>'; } })();
   // opportunités de gradation possédées
-  (async()=>{ try{ const r=await fetch(SB+'/rest/v1/app_op_grading_owned?select=printing_id,card_number,language,name,image_url,variant_label,raw,g10,upside_if_10,qty,score&order=upside_if_10.desc&limit=6',{headers:{apikey:ANON,Authorization:'Bearer '+ANON}}); let rows=await r.json(); if(!Array.isArray(rows))rows=[]; if(!obox||!document.getElementById('homeOps'))return; const top=rows.slice(0,5); obox.innerHTML=top.length?top.map(opMiniRow).join(''):'<div class="hi-empty">Aucune carte à grader avec un gain net pour l’instant.</div>'; }catch(e){ if(obox)obox.innerHTML='<div class="hi-empty">Indisponible pour le moment.</div>'; } })();
+  (async()=>{ try{ const r=await fetch(SB+'/rest/v1/app_op_grading_owned?select=printing_id,card_number,language,name,image_url,variant_label,raw,g10,upside_if_10,qty,score&order=upside_if_10.desc&limit=60',{headers:{apikey:ANON,Authorization:'Bearer '+ANON}}); let rows=await r.json(); if(!Array.isArray(rows))rows=[]; await attachOpConf(rows); rows=rows.filter(opReliable); if(!obox||!document.getElementById('homeOps'))return; const top=rows.slice(0,5); obox.innerHTML=top.length?top.map(opMiniRow).join(''):'<div class="hi-empty">Aucune carte à grader fiable pour l’instant.</div>'; }catch(e){ if(obox)obox.innerHTML='<div class="hi-empty">Indisponible pour le moment.</div>'; } })();
   // écarts JP/EN sur tes cartes
   (async()=>{ try{ const r=await fetch(SB+'/rest/v1/app_market_gap?select=*&limit=5000',{headers:{apikey:ANON,Authorization:'Bearer '+ANON}}); let rows=await r.json(); GAP=Array.isArray(rows)?rows:[]; GAPLOADED=true; if(!gbox||!document.getElementById('homeGap'))return; const top=GAP.filter(x=>!x.suspect&&x.owned&&x.cheaper==='JP').sort((a,b)=>b.gap_pct-a.gap_pct).slice(0,5); gbox.innerHTML=top.length?top.map(gapMiniRow).join(''):'<div class="hi-empty">Aucun écart notable sur tes cartes.</div>'; }catch(e){ if(gbox)gbox.innerHTML='<div class="hi-empty">Indisponible pour le moment.</div>'; } })();
 }
@@ -3072,7 +3072,7 @@ async function homeBriefing(){
   }catch(e){ box.innerHTML='<div class="txt" style="color:var(--muted);font-size:13px">Erreur, réessaie.</div><button class="hbriefbtn" onclick="homeBriefing()">Réessayer</button>'; }
 }
 document.getElementById('modeSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMode(b.dataset.m);});
-const APP_VERSION='Version b16 · 26/08';
+const APP_VERSION='Version b18 · 26/08';
 { const nv=document.getElementById('navVersion'); if(nv) nv.textContent=APP_VERSION; }
 document.getElementById('mktSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMarket(b.dataset.k);});
 const CATARRS=["catColors","catCats","catRarities","catTypes"];
@@ -3158,8 +3158,9 @@ function renderCatalog(rows, hasMore){
 }
 let OPROWS=[];
 let OWNEDROWS=[];
+let OWNEDROWS_F=[], OPROWS_F=[];
 let OWNEDRAW=[], BUYRAW=[];
-const OPSORT={own:{k:'gain',dir:-1},buy:{k:'gain',dir:-1}};
+const OPSORT={own:{k:'profile',dir:-1},buy:{k:'profile',dir:-1}};
 const OPFILT={lang:'all'};
 function setOpFilt(v){ OPFILT.lang=v; renderOps(); }
 function opFiltered(rows){ return OPFILT.lang==='all'?rows:rows.filter(c=>c.language===OPFILT.lang); }
@@ -3169,7 +3170,7 @@ function opMult(c){ const r=opRaw(c); return (r&&c.g10)?Math.round(c.g10/r*10)/1
 function opCost(c){ return Math.round(((c.fee||0)+GRADE_SHIP)*100)/100; }
 function opGainUnit(c){ return Math.round(((c.g10||0)-(opRaw(c)||0)-opCost(c))*100)/100; }
 function opGain(c){ return opGainUnit(c); } // gain PAR carte (grader 1 exemplaire), pas ×quantité
-function opVal(c,k){ if(k==='name')return (c.name||c.card_number||'').toLowerCase(); if(k==='language'){const LO={JP:0,FR:1,CN:2,EN:3};return LO[c.language]??9;} if(k==='raw')return opRaw(c)||0; if(k==='g10')return c.g10||0; if(k==='cost')return opCost(c); if(k==='mult')return opMult(c); if(k==='gain')return opGain(c)||0; if(k==='score')return c.score||0; return 0; }
+function opVal(c,k){ if(k==='name')return (c.name||c.card_number||'').toLowerCase(); if(k==='language'){const LO={JP:0,FR:1,CN:2,EN:3};return LO[c.language]??9;} if(k==='raw')return opRaw(c)||0; if(k==='g10')return c.g10||0; if(k==='cost')return opCost(c); if(k==='mult')return opMult(c); if(k==='gain')return opGain(c)||0; if(k==='score')return c.score||0; if(k==='profile')return opProfileScore(c); return 0; }
 function sortOp(kind,k){ const s=OPSORT[kind]; if(s.k===k)s.dir=-s.dir; else{s.k=k;s.dir=(k==='name')?1:-1;} renderOps(); }
 let ORIENT={markets:{JP:3,CN:3,EN:1,FR:0},types:["PROMO","PRODUCT_EXCLUSIVE"],note:""};
 let orientLoaded=false;
@@ -3188,6 +3189,7 @@ async function fetchOps(){
   try{ const r=await fetch(SB+'/rest/v1/app_op_grading_owned?select=printing_id,card_number,language,name,image_url,variant_label,rarity,origin,raw,g10,fee,breakeven_p10,upside_if_10,upside_total,qty,score&order=upside_if_10.desc&limit=80',{headers:{apikey:ANON,Authorization:"Bearer "+ANON}}); owned=await r.json(); if(!Array.isArray(owned))owned=[]; }catch(e){ owned=[]; }
   try{ const r=await fetch(SB+'/rest/v1/app_op_grading?select=printing_id,card_number,language,name,image_url,variant_label,rarity,origin,raw,g10,fee,breakeven_p10,upside_if_10,score&order=score.desc&limit=300',{headers:{apikey:ANON,Authorization:"Bearer "+ANON}}); buy=await r.json(); if(!Array.isArray(buy))buy=[]; }catch(e){ buy=[]; }
   await attachOpMarket(owned); await attachOpMarket(buy);
+  await attachOpConf(owned); await attachOpConf(buy);
   if(state.mode!=="ops") return;
   OWNEDRAW=owned; BUYRAW=buy;
   renderOps();
@@ -3202,38 +3204,67 @@ async function attachOpMarket(rows){
     }catch(e){}
   }
 }
+// Fiabilité : nb de sources derrière le prix d'achat (le PSA 10 vient toujours de PriceCharting seul).
+async function attachOpConf(rows){
+  const pids=[...new Set(rows.map(r=>r.printing_id).filter(Boolean))];
+  for(let i=0;i<pids.length;i+=200){
+    const chunk=pids.slice(i,i+200);
+    try{
+      const r=await fetch(SB+'/rest/v1/app_op_confidence?printing_id=in.('+chunk.join(',')+')&select=printing_id,raw_src,g10_src',{headers:{apikey:ANON,Authorization:'Bearer '+ANON}});
+      const b=await r.json(); if(Array.isArray(b)){ const map={}; b.forEach(x=>map[x.printing_id]=x); rows.forEach(rw=>{ const mm=map[rw.printing_id]; if(mm){ rw.raw_src=mm.raw_src; rw.g10_src=mm.g10_src; } }); }
+    }catch(e){}
+  }
+}
+// Une opportunité est fiable si le PRIX D'ACHAT est corroboré par ≥2 sources ET le PSA 10 ≤ 3× l'achat.
+function opReliable(c){ const raw=+c.raw||0, g10=+c.g10||0, rs=+c.raw_src||0; return rs>=2 && raw>0 && g10>0 && g10<=3*raw; }
+// Pertinence par rapport au profil (orientation) + désirabilité marché (score de la vue).
+function opProfileScore(c){ const k=capOf(c); const base=(+c.score||0); const mkt=(k.w>=3)?1.0:(k.w>=1)?0.6:0.15; const typ=k.typeMatch?1.12:1.0; return Math.round(base*mkt*typ*10)/10; }
 const OPCOLS=[{k:'name',l:'Carte',cls:'l'},{k:'language',l:'Langue',cls:'lg'},{k:'raw',l:'Achat'},{k:'g10',l:'PSA 10'},{k:'cost',l:'Frais'},{k:'mult',l:'Coef'},{k:'gain',l:'Gain net'},{k:'score',l:'Score'}];
 function opTable(rows, kind){
-  const s=OPSORT[kind];
+  const base=(kind==='ownf')?'own':(kind==='buyf')?'buy':kind;
+  const s=OPSORT[base];
   const sorted=rows.slice().sort((a,b)=>{ const va=opVal(a,s.k),vb=opVal(b,s.k); return (va<vb?-1:va>vb?1:0)*s.dir; });
-  if(kind==='own') OWNEDROWS=sorted; else OPROWS=sorted;
-  const attr=kind==='own'?'data-own':'data-op';
-  const head='<tr>'+OPCOLS.map(c=>'<th class="'+(c.cls||'')+(s.k===c.k?' on':'')+'" onclick="sortOp(\''+kind+'\',\''+c.k+'\')">'+c.l+(s.k===c.k?(s.dir<0?' ↓':' ↑'):'')+'</th>').join('')+'</tr>';
+  if(kind==='own') OWNEDROWS=sorted; else if(kind==='buy') OPROWS=sorted; else if(kind==='ownf') OWNEDROWS_F=sorted; else OPROWS_F=sorted;
+  const attr={own:'data-own',buy:'data-op',ownf:'data-ownf',buyf:'data-opf'}[kind];
+  const head='<tr>'+OPCOLS.map(c=>'<th class="'+(c.cls||'')+(s.k===c.k?' on':'')+'" onclick="sortOp(\''+base+'\',\''+c.k+'\')">'+c.l+(s.k===c.k?(s.dir<0?' ↓':' ↑'):'')+'</th>').join('')+'</tr>';
   const body=sorted.map((c,i)=>{
     const img=c.image_url?('<img loading="lazy" referrerpolicy="no-referrer" src="'+esc(c.image_url)+'" onerror="this.style.visibility=\'hidden\'">'):'<span style="width:32px;height:45px;display:inline-block"></span>';
     const vl=(c.variant_label&&String(c.variant_label).toLowerCase()!=='normal')?(' · '+esc(c.variant_label)):'';
     const qb=(c.qty>1)?'<span class="qbadge">×'+c.qty+'</span>':'';
-    return '<tr '+attr+'="'+i+'"><td class="l"><div class="cc">'+img+'<div><div class="cnm">'+esc(c.name||c.card_number)+qb+'</div><div class="cnb">'+esc(c.card_number)+vl+'</div></div></div></td>'+
+    return '<tr '+attr+'="'+i+'"><td class="l"><div class="cc">'+img+'<div><div class="cnm">'+esc(c.name||c.card_number)+qb+'</div><div class="cnb">'+esc(c.card_number)+vl+' '+capChip(c)+'</div></div></div></td>'+
       '<td class="lg">'+(FLAG[c.language]||'')+' <span class="lgc">'+(c.language||'')+'</span></td>'+
       '<td>'+eur(opRaw(c))+'</td><td>'+eur(c.g10)+'</td><td class="fee">−'+eur(opCost(c))+'</td><td class="cf"><b>×'+opMult(c)+'</b></td><td class="gv">+'+eur(opGain(c))+'</td><td class="scv"><span class="scpill '+scoreClass(c.score)+'">'+(c.score!=null?c.score:'–')+'</span></td></tr>';
   }).join('');
   return '<div class="optblwrap"><table class="optbl"><thead>'+head+'</thead><tbody>'+body+'</tbody></table></div>';
 }
+function opsFragBlock(fragile,kind){
+  if(!fragile.length) return '';
+  const isOwn=kind==='ownf';
+  const open=isOwn?state.opsFragOwn:state.opsFragBuy;
+  const toggle="state.opsFrag"+(isOwn?'Own':'Buy')+"=!state.opsFrag"+(isOwn?'Own':'Buy')+";renderOps()";
+  return '<div style="margin:10px 0 0"><button onclick="'+toggle+'" style="background:var(--panel);border:1px solid #f59e0b55;border-radius:10px;padding:9px 12px;color:var(--ink);font-weight:800;font-size:12px;cursor:pointer;width:100%;text-align:left">⚠️ À confirmer — '+fragile.length+' ligne'+(fragile.length>1?'s':'')+' à fiabilité faible '+(open?'▲':'▼')+'</button>'+
+    (open?('<div class="dt" style="font-size:11px;margin:8px 2px;line-height:1.5">Prix d\'achat sur <b>une seule source</b>, ou PSA 10 <b>&gt; 4× l\'achat</b> — cote PriceCharting isolée sur un marché très fin. Le « gain net » ici n\'est pas fiable : à vérifier (ventes réelles eBay / APR PSA) avant tout achat ou envoi.</div>'+opTable(fragile,kind)):'')+'</div>';
+}
 function renderOps(){
   const flt=pageQMatch(); const searching=!!pageQstr();
-  const owned=opFiltered(OWNEDRAW).filter(flt), buy=opFiltered(BUYRAW).filter(flt);
+  const ownedAll=opFiltered(OWNEDRAW).filter(flt), buyAll=opFiltered(BUYRAW).filter(flt);
+  const inProfile=c=>capOf(c).w>=1; // dans ton orientation (marché non « ignoré »)
+  const owned=ownedAll.filter(c=>opReliable(c)&&inProfile(c)), ownedF=ownedAll.filter(c=>!opReliable(c));
+  const buy=buyAll.filter(c=>opReliable(c)&&inProfile(c)), buyF=buyAll.filter(c=>!opReliable(c));
   const stage=document.getElementById('stage'); stage.className="";
-  document.getElementById('countLine').textContent=(owned.length+buy.length)+" opportunité"+((owned.length+buy.length)>1?"s":"")+" de gradation"+(searching?' (filtre)':'');
+  document.getElementById('countLine').textContent=(owned.length+buy.length)+" opportunité"+((owned.length+buy.length)>1?"s":"")+" fiable"+((owned.length+buy.length)>1?"s":"")+(searching?' (filtre)':'');
   const totGain=owned.reduce((s,c)=>s+(opGain(c)||0),0);
   const LFILT=[['all','Toutes'],['JP','🇯🇵 JP'],['EN','🇬🇧 EN'],['FR','🇫🇷 FR'],['CN','🇨🇳 CN']];
   let h=secNav([{id:'ops-own',label:'Mes cartes',n:owned.length},{id:'ops-buy',label:'À acheter',n:buy.length}]);
   h+='<div class="setlangrow" style="margin-bottom:10px;align-items:center"><span class="dt" style="margin-right:2px">Langue :</span>'+LFILT.map(x=>'<div class="chip'+(OPFILT.lang===x[0]?' on':'')+'" onclick="setOpFilt(\''+x[0]+'\')">'+x[1]+'</div>').join('')+'</div>';
   h+=pgSection('ops-own','',
-    '<div class="opsintro"><b>🏅 Mes cartes à grader</b> <span class="dt">— '+owned.length+' cartes · potentiel <b>'+eur(totGain)+'</b> <span class="dt">(en gradant 1 exemplaire de chaque)</span></span><div class="dt" style="margin-top:3px"><b>Gain net</b> = PSA 10 − valeur brute − frais (gradation PSA par palier + ~12 € transport/assurance). Touche une colonne pour trier, ou filtre par langue ci-dessus. <b>Score</b> = conviction basée sur le prix ; l\'agent IA y greffera bientôt la hype / l\'actu.</div></div>'+
-    (owned.length? opTable(owned,'own') : '<div class="empty">'+(searching?'Aucune carte ne correspond à « '+esc(state.pageQ||'')+' ».':'Aucune carte à grader pour ce filtre.')+'</div>'));
+    '<div class="opsintro"><b>🏅 Mes cartes à grader</b> <span class="dt">— '+owned.length+' cartes fiables · potentiel <b>'+eur(totGain)+'</b> <span class="dt">(en gradant 1 exemplaire de chaque)</span></span><div class="dt" style="margin-top:3px"><b>Gain net</b> = PSA 10 − valeur brute − frais (gradation PSA par palier + ~12 € transport/assurance). Uniquement les lignes <b>fiables</b> (achat corroboré par ≥ 2 sources, PSA 10 ≤ <b>3×</b> l\'achat) et <b>dans ton orientation</b>, <b>classées par pertinence</b> (marché prioritaire + désirabilité). Le reste est en « À confirmer ».</div></div>'+
+    (owned.length? opTable(owned,'own') : '<div class="empty">'+(searching?'Aucune carte fiable ne correspond à « '+esc(state.pageQ||'')+' ».':'Aucune carte fiable à grader pour ce filtre.')+'</div>')+
+    opsFragBlock(ownedF,'ownf'));
   h+=pgSection('ops-buy','',
-    '<div class="opsintro" style="margin-top:18px"><div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><b>🛒 Opportunités à acheter</b><button class="orbtn" onclick="openOrient()">Mon orientation</button></div><div class="dt" style="margin-top:3px">Cartes que tu ne possèdes pas, à acheter puis grader. Colonne <b>Langue</b> triable + filtre ci-dessus.</div></div>'+
-    (buy.length? opTable(buy,'buy') : '<div class="empty">'+(searching?'Aucune opportunité ne correspond à « '+esc(state.pageQ||'')+' ».':'Aucune opportunité pour ce filtre.')+'</div>'));
+    '<div class="opsintro" style="margin-top:18px"><div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><b>🛒 Opportunités à acheter</b><button class="orbtn" onclick="openOrient()">Mon orientation</button></div><div class="dt" style="margin-top:3px">Cartes que tu ne possèdes pas, à acheter puis grader. Lignes fiables uniquement ; les fragiles sont en « À confirmer » ci-dessous.</div></div>'+
+    (buy.length? opTable(buy,'buy') : '<div class="empty">'+(searching?'Aucune opportunité fiable ne correspond à « '+esc(state.pageQ||'')+' ».':'Aucune opportunité fiable pour ce filtre.')+'</div>')+
+    opsFragBlock(buyF,'buyf'));
   stage.innerHTML=h;
 }
 const ORIGIN_LABELS={STANDARD:"Standard",PROMO:"Promo",BATTLE_EVENT:"Battleship",PREMIUM_COLLECTION:"Premium Collection",TOURNAMENT:"Tournoi",PRODUCT_EXCLUSIVE:"Exclusivité produit",OTHER:"Autre source"};
@@ -3813,7 +3844,7 @@ async function clearReverify(){
 }
 function findCard(id){ return DATA.find(c=>String(c.item_id)===String(id)); }
 document.getElementById("stage").addEventListener("click",e=>{
-  if(state.mode==="ops"){ const eo=e.target.closest("[data-own]"); if(eo){ openCatDetail(OWNEDROWS[+eo.getAttribute("data-own")]); return; } const el=e.target.closest("[data-op]"); if(el) openCatDetail(OPROWS[+el.getAttribute("data-op")]); return; }
+  if(state.mode==="ops"){ const eo=e.target.closest("[data-own]"); if(eo){ openCatDetail(OWNEDROWS[+eo.getAttribute("data-own")]); return; } const el=e.target.closest("[data-op]"); if(el){ openCatDetail(OPROWS[+el.getAttribute("data-op")]); return; } const ef=e.target.closest("[data-ownf]"); if(ef){ openCatDetail(OWNEDROWS_F[+ef.getAttribute("data-ownf")]); return; } const eg=e.target.closest("[data-opf]"); if(eg){ openCatDetail(OPROWS_F[+eg.getAttribute("data-opf")]); return; } return; }
   if(state.mode==="catalog"){ const el=e.target.closest("[data-idx]"); if(el) openCatDetail(CATROWS[+el.getAttribute("data-idx")]); return; }
   const el=e.target.closest("[data-id]"); if(!el)return; const c=findCard(el.dataset.id); if(c)openDetail(c);
 });
