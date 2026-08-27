@@ -1493,8 +1493,28 @@ function renderSante(){
       }).join('')+
       '</div></details>';
   });
-  if(!total) h='<div class="empty">✓ Aucune alerte — tout est propre.</div>';
+  if(!total) h='<div class="empty" style="margin-bottom:12px">✓ Aucune alerte de collection — tout est propre.</div>';
+  h+='<div id="santeSuspect"></div>';
   stage.innerHTML=h;
+  loadSanteSuspect();
+}
+// Prix « à confirmer » : fiches dont le prix marché JP ne tient que sur une source (PriceCharting)
+// qui colle le même prix à plusieurs variantes du numéro. Universel, tout type de carte.
+async function loadSanteSuspect(){
+  const box=document.getElementById('santeSuspect'); if(!box) return;
+  let rows=[];
+  try{
+    const r=await fetch(SB+'/rest/v1/app_catalog_priced?jp_conf=is.false&language=eq.JP&select=card_number,name,variant_label,jp_eur,set_code&order=jp_eur.desc.nullslast&limit=300',{headers:{apikey:ANON,Authorization:'Bearer '+ANON}});
+    rows=await r.json(); if(!Array.isArray(rows))rows=[];
+  }catch(e){ return; }
+  if(!rows.length) return;
+  let h='<details class="pxdet" style="margin-bottom:10px"><summary><span style="font-weight:800">⚠️ Prix à confirmer</span><span style="margin-left:auto;margin-right:10px;font-weight:800;color:#f59e0b">'+rows.length+'</span></summary>'+
+    '<div class="pxbody" style="padding-top:10px"><div class="dt" style="margin-bottom:8px">Ces fiches n\'ont qu\'<b>une seule source de prix</b> (PriceCharting), et elle applique le même montant à plusieurs variantes distinctes du numéro. Le prix marché affiché est donc peu fiable — à vérifier sur CardRush / Mercari avant tout achat ou revente.</div>';
+  h+=rows.map(x=>'<div style="display:flex;gap:9px;align-items:center;padding:9px 0;border-top:1px solid var(--line)">'+
+      '<div style="flex:1;min-width:0"><div style="font-weight:700;font-size:13px">'+esc(x.name||'')+' <span class="dt">'+esc(x.card_number||'')+(x.variant_label?(' · '+esc(x.variant_label)):'')+'</span></div>'+
+      '<div class="dt" style="font-size:11px;margin-top:2px">'+(x.set_code?esc(x.set_code)+' · ':'')+'marché affiché '+(x.jp_eur!=null?eur0(x.jp_eur):'—')+' <b>à confirmer</b></div></div></div>').join('')+
+    '</div></details>';
+  box.innerHTML=h;
 }
 // ---------- Ouvrir ou garder scellé ? ----------
 let SEALEDBILAN=null, SEALEDBOXES=[];
@@ -2658,7 +2678,7 @@ async function paSearch(){
   let cards=[],prods=[];
   try{
     const [rc,rp]=await Promise.all([
-      fetch(SB+'/rest/v1/app_catalog_priced?'+filt+'&select=card_number,language,name,image_url,variant_label,rarity,set_code,printing_id,jp_eur,eu_eur,us_eur,price_eur&limit=30',{headers:{apikey:ANON,Authorization:'Bearer '+ANON}}),
+      fetch(SB+'/rest/v1/app_catalog_priced?'+filt+'&select=card_number,language,name,image_url,variant_label,rarity,set_code,printing_id,jp_eur,eu_eur,us_eur,price_eur,jp_conf&limit=30',{headers:{apikey:ANON,Authorization:'Bearer '+ANON}}),
       fetch(SB+'/rest/v1/app_products?name=ilike.*'+encodeURIComponent(q)+'*&select=product_id,name,category,language,image_url,price_eur,set_code&limit=15',{headers:{apikey:ANON,Authorization:'Bearer '+ANON}})
     ]);
     cards=await rc.json(); if(!Array.isArray(cards))cards=[];
@@ -2680,9 +2700,16 @@ async function paLoadSources(pid){
   const box=document.getElementById('paSources'); if(!box) return;
   let rows=[];
   try{ const r=await fetch(SB+'/rest/v1/app_price_source?printing_id=eq.'+encodeURIComponent(pid)+'&grade=is.null&select=source,market,price_eur',{headers:{apikey:ANON,Authorization:'Bearer '+ANON}}); rows=await r.json(); if(!Array.isArray(rows))rows=[]; }catch(e){ return; }
-  rows=rows.filter(x=>x.price_eur!=null).sort((a,b)=>Number(a.price_eur)-Number(b.price_eur));
+  rows=rows.filter(x=>x.price_eur!=null && Number(x.price_eur)>0).sort((a,b)=>Number(a.price_eur)-Number(b.price_eur));
   if(!rows.length){ box.innerHTML='<div style="color:var(--muted);font-size:11.5px;margin-top:6px">Une seule source de prix pour cette carte (chase card de niche — ne trade que sur CardRush).</div>'; return; }
-  let h='<div style="font-size:10.5px;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);font-weight:800;margin:12px 0 6px">Prix par plateforme</div>';
+  let h='';
+  // Divergence énorme entre sources = prix de marché incertain (variante ambiguë / donnée erronée)
+  const lo=Number(rows[0].price_eur), hi=Number(rows[rows.length-1].price_eur);
+  if(rows.length>=2 && hi>=lo*4){
+    PA_STATE.priceUncertain=true;
+    h+='<div style="background:rgba(245,158,11,.14);border:1px solid #f59e0b;border-radius:10px;padding:9px 11px;font-size:12px;margin:12px 0 8px;line-height:1.5">⚠️ <b>Prix de marché incertain</b> — les plateformes divergent énormément ('+eur0(lo)+' à '+eur0(hi)+'). C\'est souvent une <b>variante ambiguë</b> (plusieurs versions à des prix très différents) ou une donnée erronée. <b>Ne te fie pas au verdict ci-dessus</b> : vérifie le vrai prix via les liens live.</div>';
+  }
+  h+='<div style="font-size:10.5px;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);font-weight:800;margin:12px 0 6px">Prix par plateforme</div>';
   h+=rows.map((x,i)=>'<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 9px;border:1px solid var(--line);border-radius:8px;margin-bottom:5px;'+(i===0?'background:rgba(5,150,105,.10)':'')+'"><span style="font-size:12.5px">'+(FLAG[x.market]||'')+' <b>'+esc(PA_SRC[x.source]||x.source)+'</b>'+(i===0?' <span style="color:#059669;font-size:10.5px;font-weight:800">← moins cher</span>':'')+'</span><b style="font-family:inherit;font-size:13px">'+eur0(x.price_eur)+'</b></div>').join('');
   box.innerHTML=h;
 }
@@ -2697,7 +2724,8 @@ function paPick(i){
   let h='<div style="background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px 16px">';
   h+='<div style="font-weight:800;font-size:14px;margin-bottom:2px">'+title+'</div>';
   h+='<div style="color:var(--muted);font-size:12px;margin-bottom:10px">'+(sealed?(PROD_CAT_LABELS[c.category]||'Produit scellé'):esc(c.name||''))+'</div>';
-  h+='<div style="display:flex;gap:14px;flex-wrap:wrap;font-size:12.5px;margin-bottom:12px"><span>'+(sealed?'Prix marché':'Marché JP posé')+' <b>'+jpv+'</b></span>'+(euv?('<span>Marché UE <b>'+euv+'</b></span>'):'')+'</div>';
+  const confTag=(!sealed && c.jp_conf===false)?' <span style="background:rgba(245,158,11,.16);color:#b45309;border:1px solid rgba(245,158,11,.45);border-radius:20px;padding:1px 7px;font-size:9.5px;font-weight:800;vertical-align:middle">à confirmer</span>':'';
+  h+='<div style="display:flex;gap:14px;flex-wrap:wrap;font-size:12.5px;margin-bottom:12px"><span>'+(sealed?'Prix marché':'Marché JP posé')+' <b>'+jpv+'</b>'+confTag+'</span>'+(euv?('<span>Marché UE <b>'+euv+'</b></span>'):'')+'</div>';
   h+='<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end">'+
      '<label style="font-size:11px;color:var(--muted)">Prix proposé (total €)<br><input id="paPrice" type="number" min="0" step="1" oninput="paEval()" style="width:130px;margin-top:3px;padding:9px;border:1px solid var(--line);border-radius:9px;background:var(--bg);color:var(--ink);font-size:14px"></label>'+
      '<label style="font-size:11px;color:var(--muted)">Quantité<br><input id="paQty" type="number" min="1" step="1" value="1" oninput="paEval()" style="width:74px;margin-top:3px;padding:9px;border:1px solid var(--line);border-radius:9px;background:var(--bg);color:var(--ink);font-size:14px"></label>'+
@@ -2739,6 +2767,12 @@ function paEval(){
   let h='';
   if(jp==null){
     h+='<div style="background:rgba(245,158,11,.14);border:1px solid #f59e0b;border-radius:10px;padding:10px 12px;font-size:12.5px">⚠️ Pas de prix marché JP pour cette carte (set récent ?). Impossible de trancher automatiquement — compare toi-même via les liens ci-dessous avant d\'acheter.</div>';
+    box.innerHTML=h+paLinks(c); return;
+  }
+  // Prix de référence non fiable : une seule source (PriceCharting) qui colle le MÊME prix à
+  // plusieurs variantes distinctes du numéro. On refuse de trancher — « pas sûr = pas de prix ».
+  if(!sealed && c.jp_conf===false){
+    h+='<div style="background:rgba(245,158,11,.14);border:1px solid #f59e0b;border-radius:11px;padding:11px 13px;font-size:12.5px;line-height:1.6">⚠️ <b>Prix de référence à confirmer</b> — pour cette carte on n\'a qu\'<b>une seule source</b> (PriceCharting), et elle applique le même prix à plusieurs variantes différentes de ce numéro. Le « marché » de '+eur0(jp)+' est donc <b>peu fiable</b> et je ne peux pas trancher automatiquement. <b>Vérifie le vrai prix</b> via les liens ci-dessous (CardRush / Mercari / Yahoo) avant d\'acheter.</div>';
     box.innerHTML=h+paLinks(c); return;
   }
   const ceil=jp*PA_IMPORT;
@@ -3381,7 +3415,7 @@ async function homeBriefing(){
   }catch(e){ box.innerHTML='<div class="txt" style="color:var(--muted);font-size:13px">Erreur, réessaie.</div><button class="hbriefbtn" onclick="homeBriefing()">Réessayer</button>'; }
 }
 document.getElementById('modeSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMode(b.dataset.m);});
-const APP_VERSION='Version b26 · 26/08';
+const APP_VERSION='Version b28 · 27/08';
 { const nv=document.getElementById('navVersion'); if(nv) nv.textContent=APP_VERSION; }
 document.getElementById('mktSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMarket(b.dataset.k);});
 const CATARRS=["catColors","catCats","catRarities","catTypes"];
