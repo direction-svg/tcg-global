@@ -76,14 +76,22 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Ar
 .vfy .vt{display:block;font-size:15px;margin-bottom:2px}
 .lthumb .vfy{font-size:7px}.lthumb .vfy .vt{font-size:11px;margin-bottom:0}
 .vfybadge{position:absolute;top:6px;right:6px;background:#f97316;color:#fff;font-size:9px;font-weight:800;padding:2px 6px;border-radius:8px;z-index:4}
-.badges{position:absolute;top:6px;left:6px;right:6px;display:flex;justify-content:space-between;pointer-events:none}
-.flag{font-size:15px;filter:drop-shadow(0 1px 1px rgba(0,0,0,.25))}
+.badges{position:absolute;top:6px;left:6px;right:6px;display:flex;justify-content:flex-end;pointer-events:none}
+.flag{position:absolute;bottom:6px;right:6px;z-index:5;font-size:14px;line-height:1;background:var(--panel);border:1px solid var(--line);border-radius:7px;padding:2px 4px;box-shadow:0 1px 4px rgba(0,0,0,.25);pointer-events:none}
 .grade{background:var(--gold);color:#3a2a06;font-weight:900;font-size:10px;padding:2px 6px;border-radius:7px}
 .meta{padding:7px 8px 9px}
 .nm{font-weight:800;font-size:12px;line-height:1.15;margin:0 0 2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .sub{color:var(--muted);font-size:10.5px;display:flex;gap:5px;flex-wrap:wrap;align-items:center}
 .tp{background:var(--chip);color:var(--muted);padding:1px 6px;border-radius:6px;font-weight:700;font-size:10px}
 .val{font-weight:900;font-size:15px;margin-top:6px}
+.cgauge{display:inline-flex;align-items:center;gap:4px;margin-top:4px;font-size:9.5px;font-weight:800;color:var(--muted);white-space:nowrap;letter-spacing:.01em}
+.cgbars{display:inline-flex;align-items:flex-end;gap:1.5px;height:11px}
+.cgbars i{width:3px;border-radius:1px;background:var(--line);display:block}
+.cgbars i:nth-child(1){height:4px}.cgbars i:nth-child(2){height:7px}.cgbars i:nth-child(3){height:10px}
+.conflegend{margin:6px 0 2px;padding:9px 11px;border:1px dashed var(--line);border-radius:10px;display:flex;flex-direction:column;gap:6px}
+.clrow{display:flex;align-items:center;gap:9px;font-size:11px}
+.clrow .cgauge{min-width:98px;margin-top:0}
+.cldesc{color:var(--muted)}
 .qty{position:absolute;top:6px;right:6px;background:rgba(15,30,52,.82);color:#fff;font-size:10px;font-weight:800;padding:2px 6px;border-radius:7px}
 .rvdot{position:absolute;bottom:7px;left:7px;width:14px;height:14px;border-radius:50%;background:#ef4444;border:2px solid #fff;box-shadow:0 0 0 1px rgba(0,0,0,.15),0 0 8px rgba(239,68,68,.7);z-index:4}
 .rvdot.rvinline{position:static;display:inline-block;width:9px;height:9px;margin-right:6px;border-width:1px;vertical-align:middle;box-shadow:0 0 5px rgba(239,68,68,.6)}
@@ -190,7 +198,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Ar
 .lrow.on{border-color:var(--accent);background:rgba(47,111,237,.08);font-weight:800}
 .lrow.on::before{content:"● ";color:var(--accent)}
 .poprow{display:flex;justify-content:space-between;align-items:center;margin-top:8px;padding:9px 12px;border-radius:10px;background:var(--chip);font-size:13px;color:var(--muted)}
-.pxcorner{position:absolute;bottom:6px;right:6px;pointer-events:none}
+.pxcorner{position:absolute;bottom:6px;left:6px;pointer-events:none}
 .pxg{background:rgba(12,18,32,.72);color:#fff;font-weight:800;font-size:11px;padding:2px 7px;border-radius:8px}
 .dprices{margin:0 14px;padding:12px 2px;border-bottom:1px solid var(--line)}
 .pxhdr{color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.4px;margin-bottom:8px}
@@ -1052,6 +1060,22 @@ function priceConf(c){
   return Object.assign({t:'Fiable'},mk.ok);
 }
 function confFrame(c){ const k=priceConf(c); return k&&k.f? (' style="'+k.f+'"') : ''; }
+// Jauge de fiabilité du prix : barres de signal (remplissage = niveau) + mot. Ne dépend pas
+// de la couleur (accessible daltonien) — le nombre de barres pleines et le libellé suffisent.
+const CONF_N={ok:3,warn:2,bad:1,none:0};
+const CONF_WORD={ok:'Fiable',warn:'Indicatif',bad:'Peu fiable',none:'Estimé'};
+function confGauge(c){
+  const k=priceConf(c); if(!k) return '';
+  const n=CONF_N[k.lvl]||0, word=CONF_WORD[k.lvl]||'';
+  let bars=''; for(let i=0;i<3;i++) bars+='<i'+(i<n?' style="background:'+k.c+'"':'')+'></i>';
+  return '<span class="cgauge" title="Fiabilité du prix : '+esc(k.t)+'"><span class="cgbars">'+bars+'</span><span>'+esc(word)+'</span></span>';
+}
+const CONF_COL={ok:'#059669',warn:'#f59e0b',bad:'#ef4444',none:'#94a3b8'};
+function confLegend(){
+  const rows=[['ok','prix marché live et solide'],['warn','repli d’un autre marché'],['bad','une seule offre — à confirmer'],['none','pas de cote live — estimation figée']];
+  return '<div class="conflegend">'+rows.map(function(r){ const lv=r[0], n=CONF_N[lv], col=CONF_COL[lv]; let bars=''; for(var i=0;i<3;i++) bars+='<i'+(i<n?' style="background:'+col+'"':'')+'></i>';
+    return '<div class="clrow"><span class="cgauge"><span class="cgbars">'+bars+'</span><span>'+CONF_WORD[lv]+'</span></span><span class="cldesc">'+r[1]+'</span></div>'; }).join('')+'</div>';
+}
 function catMkPrice(c){ const d=c['disp_'+MKT.toLowerCase()]; if(d!=null) return Number(d); const v=c['mk_'+MKT.toLowerCase()]; if(v!=null) return Number(v); const f=c[MKT.toLowerCase()+'_eur']; if(f!=null) return Number(f); return c.price_eur!=null?Number(c.price_eur):null; }  // catalogue : prix du marché sélectionné (disp_* = brut sinon repli gradé ; même valeur que le tri)
 // Quand le prix affiché vient d'une cote GRADÉE (aucune vente brute), renvoie le libellé (ex "PSA 10") pour l'étiqueter clairement.
 function catGradedTag(c){ if(MKT==='JP') return (c.mk_jp==null && c.jp_g!=null)?(c.jp_gl||'gradé'):null; if(MKT==='US') return (c.mk_us==null && c.us_g!=null)?(c.us_gl||'gradé'):null; return null; }
@@ -1221,6 +1245,7 @@ function buildValRow(){ const row=document.getElementById('valFilterRow'); if(!r
   let b='';
   b+=lbl('Valeur minimale')+'<div class="chiprow">'+VALSTEPS.map(s=>chip(state.minVal===s[0],'','setMinVal('+s[0]+')',s[1])).join('')+'</div>';
   b+=lbl('Fiabilité du prix')+'<div class="chiprow">'+chip(state.pricef==='all','',"setPricef('all')",'Tous')+chip(state.pricef==='doubt','#f59e0b',"setPricef('doubt')",'Prix douteux ('+nDoubt+')')+chip(state.pricef==='noprice','#94a3b8',"setPricef('noprice')",'Sans prix ('+nNo+')')+'</div>';
+  b+=confLegend();
   let ph=chip(state.imgf==='all','',"setImgf('all')",'Toutes');
   if(nNew>0) ph+=chip(state.imgf==='new','#2563eb',"setImgf('new')",'Nouvelles ('+nNew+')');
   ph+=chip(state.imgf==='verify','#f59e0b',"setImgf('verify')",'À vérifier ('+nV+')');
@@ -1311,13 +1336,13 @@ function render(){
     stage.className=""; stage.innerHTML='<div class="grid">'+a.map(c=>{
       const g=c.is_graded?'<span class="grade">'+(c.grading_company||"")+' '+(c.grade!=null?String(c.grade).replace(/\.0$/,''):'')+'</span>':'<span></span>';
       const q=(c.quantity>1)?'<span class="qty">x'+c.quantity+'</span>':'';
-      return '<div class="card" data-id="'+c.item_id+'"'+confFrame(c)+'><div class="imgwrap">'+imgTag(c)+'<div class="badges"><span class="flag">'+(FLAG[c.language]||"")+'</span>'+g+'</div>'+q+photoBadge(c)+(c.reverify?'<span class="rvdot" title="À revérifier (authenticité)"></span>':'')+'</div>'+
-      '<div class="meta"><p class="nm">'+esc(c.card_name||"")+'</p><div class="sub"><span>'+esc(c.card_number||"")+'</span>'+descTags(c)+'</div><div class="val">'+eur(val(c))+'</div></div></div>';
+      return '<div class="card" data-id="'+c.item_id+'"'+confFrame(c)+'><div class="imgwrap">'+imgTag(c)+'<div class="badges">'+g+'</div><span class="flag">'+(FLAG[c.language]||"")+'</span>'+q+photoBadge(c)+(c.reverify?'<span class="rvdot" title="À revérifier (authenticité)"></span>':'')+'</div>'+
+      '<div class="meta"><p class="nm">'+esc(c.card_name||"")+'</p><div class="sub"><span>'+esc(c.card_number||"")+'</span>'+descTags(c)+'</div><div class="val">'+eur(val(c))+'</div>'+confGauge(c)+'</div></div>';
     }).join("")+'</div>';
   } else {
     stage.className="list"; stage.innerHTML=a.map(c=>{
       const g=c.is_graded?'<span class="grade">'+(c.grading_company||"")+' '+(c.grade!=null?String(c.grade).replace(/\.0$/,''):'')+'</span>':'';
-      return '<div class="row" data-id="'+c.item_id+'"><div class="lthumb"'+confFrame(c)+'>'+imgTag(c)+photoBadge(c)+'</div><div><p class="nm">'+(c.reverify?'<span class="rvdot rvinline" title="À revérifier (authenticité)"></span>':'')+esc(c.card_name||"")+'</p><div class="sub"><span>'+(FLAG[c.language]||"")+'</span><span>'+esc(c.card_number||"")+'</span>'+descTags(c)+' '+g+'</div></div><div class="r"><div class="val">'+eur(val(c))+'</div>'+(c.quantity>1?'<div class="sub">x'+c.quantity+'</div>':'')+'</div></div>';
+      return '<div class="row" data-id="'+c.item_id+'"><div class="lthumb"'+confFrame(c)+'>'+imgTag(c)+photoBadge(c)+'</div><div><p class="nm">'+(c.reverify?'<span class="rvdot rvinline" title="À revérifier (authenticité)"></span>':'')+esc(c.card_name||"")+'</p><div class="sub"><span>'+(FLAG[c.language]||"")+'</span><span>'+esc(c.card_number||"")+'</span>'+descTags(c)+' '+g+'</div></div><div class="r"><div class="val">'+eur(val(c))+'</div>'+confGauge(c)+(c.quantity>1?'<div class="sub">x'+c.quantity+'</div>':'')+'</div></div>';
     }).join("");
   }
 }
@@ -3415,7 +3440,7 @@ async function homeBriefing(){
   }catch(e){ box.innerHTML='<div class="txt" style="color:var(--muted);font-size:13px">Erreur, réessaie.</div><button class="hbriefbtn" onclick="homeBriefing()">Réessayer</button>'; }
 }
 document.getElementById('modeSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMode(b.dataset.m);});
-const APP_VERSION='Version b28 · 27/08';
+const APP_VERSION='Version b30 · 27/08';
 { const nv=document.getElementById('navVersion'); if(nv) nv.textContent=APP_VERSION; }
 document.getElementById('mktSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMarket(b.dataset.k);});
 const CATARRS=["catColors","catCats","catRarities","catTypes"];
@@ -3495,7 +3520,7 @@ function renderCatalog(rows, hasMore){
     const img=vfy?('<div class="vfy"><span class="vt">🔍</span>Photo à vérifier</div>'):(eff?('<img loading="lazy" referrerpolicy="no-referrer" src="'+esc(eff)+'" onerror="this.remove()">'):('<div class="vfy vfywait"><span class="vt">⏳</span>En attente d\'image<br><span style="font-weight:700;font-size:10px;opacity:.85">'+esc(c.card_number||"")+'</span></div>'));
     const badge=c.owned?'<span class="owntag own">✓ Possédée</span>':'<span class="owntag no">Non possédée</span>';
     const cpx=catMkPrice(c); const gtag=catGradedTag(c); const px=(cpx!=null)?('<span class="pxg">'+eur(cpx)+(gtag?(' <span style="font-size:9px;background:#7c3aed;color:#fff;padding:1px 4px;border-radius:5px;font-weight:800;vertical-align:middle">'+esc(gtag)+'</span>'):'')+'</span>'):'';
-    return '<div class="card" data-idx="'+i+'"><div class="imgwrap">'+img+'<div class="badges"><span class="flag">'+(FLAG[c.language]||"")+'</span></div>'+(px?'<div class="pxcorner">'+px+'</div>':'')+'</div><div class="meta"><p class="nm">'+esc(c.name||"")+'</p><div class="sub"><span>'+esc(c.card_number||"")+'</span>'+descTags(c)+'</div>'+badge+'</div></div>';
+    return '<div class="card" data-idx="'+i+'"><div class="imgwrap">'+img+'<span class="flag">'+(FLAG[c.language]||"")+'</span>'+(px?'<div class="pxcorner">'+px+'</div>':'')+'</div><div class="meta"><p class="nm">'+esc(c.name||"")+'</p><div class="sub"><span>'+esc(c.card_number||"")+'</span>'+descTags(c)+'</div>'+badge+'</div></div>';
   }).join("")+'</div>';
   stage.innerHTML=grid+(hasMore?'<div class="loadmore"><button onclick="fetchCatalog(true)">Charger plus</button></div>':'');
 }
