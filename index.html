@@ -818,7 +818,8 @@ body{-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
     <div class="fsec"><h5>Langue</h5><div class="chipwrap" id="mLang"></div></div>
     <div class="fsec"><h5>Couleur</h5><div class="chipwrap" id="mColor"></div></div>
     <div class="fsec"><h5>Cat&eacute;gorie</h5><div class="chipwrap" id="mCat"></div></div>
-    <div class="fsec"><h5>Artwork / Variante</h5><div class="chipwrap" id="mType"></div></div>
+    <div class="fsec"><h5>Traitement (artwork)</h5><div class="chipwrap" id="mType"></div></div>
+    <div class="fsec"><h5>Collection / Provenance</h5><div class="chipwrap" id="mProv"></div></div>
     <div class="fsec"><h5>Raret&eacute;</h5><div class="chipwrap" id="mRarity"></div></div>
     <div class="fsec"><h5>&Eacute;tat</h5><div class="chipwrap" id="mGrade"></div></div>
     <div class="fsec"><h5>Variante pr&eacute;cise</h5><select id="mVariant"><option value="all">Toutes variantes</option></select></div>
@@ -961,27 +962,43 @@ function vNice(v){ if(!v) return "Normale"; v=String(v).toLowerCase(); if(VMAP[v
   if(v.includes('manga')) return "Manga"; if(v.includes('serial')) return "Serial"; if(v.startsWith('sp')) return "SP";
   return v.replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase()); }
 function isArtVariant(v){ v=String(v||'').toLowerCase(); return v!=='normal' && v!==''; }
-// Familles d'artwork/variante — regroupe la taxonomie brute (variant + variant_label + card_type),
-// souvent suffixée par set (prb01, prb_02…), en familles filtrables cohérentes.
-const FAMILY_LABELS={normal:"Normale",alt_art:"Alt-Art",manga:"Manga",parallel:"Parallèle",jolly_roger:"Jolly Roger",full_art:"Full Art",textured:"Textured",sp:"SP",foil:"Foil",serial:"Serial / Anniv.",promo:"Promo / Événement",other:"Autre"};
-const FAMILY_ORDER=["normal","alt_art","manga","parallel","jolly_roger","full_art","textured","sp","foil","serial","promo","other"];
-function variantFamily(c){
+// DEUX axes distincts : le TRAITEMENT (fini/style d'illustration) et la PROVENANCE (produit/collection d'origine).
+// La taxonomie brute (variant + variant_label) mélange les deux (ex. "jolly_roger_prb01" = traitement Jolly Roger, provenance Premium Booster).
+const TREAT_LABELS={normal:"Normale",foil:"Foil",parallel:"Parallèle",alt_art:"Alt-Art",manga:"Manga",full_art:"Full Art",jolly_roger:"Jolly Roger",textured:"Textured",sp:"SP",other:"Autre"};
+const TREAT_ORDER=["normal","foil","parallel","alt_art","manga","full_art","jolly_roger","textured","sp","other"];
+function treatmentFamily(c){
   const v=String(c&&c.variant||'').toLowerCase();
   const lab=String(c&&c.variant_label||'').toLowerCase();
   const s=v+' '+lab+' '+String(c&&c.card_type||'').toLowerCase();
-  if(s.includes('manga')) return 'manga';                         // manga prioritaire (peut être aussi alt/parallel)
-  if(!v || v==='normal'){ if(s.includes('alternate art')||s.includes('alt art')) return 'alt_art'; return 'normal'; }
+  if(s.includes('manga')) return 'manga';
   if(v.includes('jolly_roger')||s.includes('jolly roger')) return 'jolly_roger';
   if(v.includes('textured')||s.includes('textured')) return 'textured';
   if(v.includes('full_art')||s.includes('full art')) return 'full_art';
-  if(v.includes('alternate_art')||v.includes('alt_art')) return 'alt_art';
-  if(v.includes('serial')||v.includes('anniversary')) return 'serial';
+  if(v.includes('alternate_art')||v.includes('alt_art')||s.includes('alternate art')||s.includes('alt art')) return 'alt_art';
   if(/(^|_)sp(_|$)/.test(v)||v.includes('spc')||v.includes('sp_gold')||v.includes('sp_silver')||v.includes('sp_foil')||v.includes('sp_asia')) return 'sp';
+  if(v.includes('parallel')||/(^|_)p\d+(_|$)/.test(v)||/^sr_p_/.test(v)) return 'parallel';
   if(v==='foil'||v.includes('_foil')||v.includes('foil_')) return 'foil';
-  if(v.includes('parallel')||/(^|_)p\d+(_|$)/.test(v)||v.includes('prb')) return 'parallel';
-  if(/promo|promotion|jump|campaign|battle|cup|tournament|flagship|championship|wanted|magazine|best_selection|gift|collection|live_action|asia|tin|event|let_s_get_started|daz_bonez|winner|3_on_3/.test(v)) return 'promo';
-  return 'other';
+  if(!v||v==='normal') return 'normal';
+  return 'normal';               // provenance-only variants (prb, promo, jump…) = fini normal côté traitement
 }
+// PROVENANCE / collection d'origine (indépendant du traitement)
+const PROV_LABELS={base:"Set principal",premium_booster:"Premium Booster",promo:"Promo",tournament:"Tournoi / Event",special_product:"Produit spécial",jump:"Jump / Magazine",anniversary:"Anniversaire",ope_day:"One Piece Day",serial:"Serial",other:"Autre"};
+const PROV_ORDER=["base","premium_booster","promo","tournament","special_product","jump","anniversary","ope_day","serial","other"];
+function provenanceFamily(c){
+  const v=String(c&&c.variant||'').toLowerCase();
+  const lab=String(c&&c.variant_label||'').toLowerCase();
+  const s=v+' '+lab;
+  if(s.includes('one piece day')||/ope?_?day/.test(v)) return 'ope_day';
+  if(/jump|magazine/.test(s)) return 'jump';
+  if(s.includes('anniversary')||s.includes('anniv')) return 'anniversary';
+  if(/championship|tournament|flagship|battle|cup|winner|3[_-]on[_-]3/.test(s)) return 'tournament';
+  if(/leader collection|storage box|best[_ ]selection|gift|mini[_-]?tin|base shop|let'?s get started|get_campaign/.test(s)) return 'special_product';
+  if(v.includes('prb')||/prb-?0?\d/.test(s)) return 'premium_booster';
+  if(v.includes('serial')||/#\d/.test(lab)) return 'serial';
+  if(/promo|promotion|playmat|wanted|live[_ ]action|asia|daz|standard battle|reprint/.test(s)) return 'promo';
+  return 'base';                 // set principal (normale + alt-art de série, etc.)
+}
+function variantFamily(c){ return treatmentFamily(c); }   // compat
 function rarNice(r){ if(!r) return ""; const m=String(r).match(/([A-Za-z]{1,4})/); const code=m?m[1].toUpperCase():String(r); return RAR_LABELS[code]||code; }
 const RAR_ORDER=["L","C","UC","R","SR","SEC","TR","PR","SP"];
 const COLORS=["Red","Green","Blue","Purple","Black","Yellow"];
@@ -989,7 +1006,7 @@ const COLOR_HEX={Red:"#d64545",Green:"#2f9e57",Blue:"#2f6fed",Purple:"#8b57d6",B
 const TYPE_ORDER=["normal","alternate_art","sp","manga","full_art","textured_foil","jolly_roger_foil","promo","tournament"];
 const CAT_ORDER=["LEADER","CHARACTER","EVENT","STAGE","DON"];
 const SORTS=[["val_desc","Valeur ↓ (décroissant)"],["val_asc","Valeur ↑ (croissant)"],["name","Nom (A→Z)"],["num","Numéro"],["qty","Quantité"]];
-const DEF={q:"",lang:"all",color:"all",type:"all",cat:"all",rarity:"all",character:"all",grade:"all",minVal:0,imgf:"all",authf:"all",pricef:"all",variant:"all",achatPeriod:"all",openRatio:null,openLiquid:false,gapView:"mine",tgtLang:"JP",tgtBudget:0,sort:"val_desc",view:"grid",mode:"accueil",catLang:"all",catQuery:"",catLangs:[],catColors:[],catCats:[],catRarities:[],catTypes:[],catSort:"price_desc",setLang:"JP",prodLang:"JP"};
+const DEF={q:"",lang:"all",color:"all",type:"all",prov:"all",cat:"all",rarity:"all",character:"all",grade:"all",minVal:0,imgf:"all",authf:"all",pricef:"all",variant:"all",achatPeriod:"all",openRatio:null,openLiquid:false,gapView:"mine",tgtLang:"JP",tgtBudget:0,sort:"val_desc",view:"grid",mode:"accueil",catLang:"all",catQuery:"",catLangs:[],catColors:[],catCats:[],catRarities:[],catTypes:[],catSort:"price_desc",setLang:"JP",prodLang:"JP"};
 let PROD_VALUE=0;
 // Barre du haut : portefeuille détaillé (total = cartes + scellés), même valeur live que l'accueil
 function portfolioMini(){
@@ -1221,10 +1238,17 @@ function buildFilterModal(){
   mCat.appendChild(makeChip("Toutes",DATA.length,state.cat==="all",()=>{state.cat="all";afterFilter()}));
   CAT_ORDER.forEach(k=>{ if(!cc[k])return; mCat.appendChild(makeChip(CAT_LABELS[k]||k,cc[k],state.cat===k,()=>{state.cat=k;afterFilter()})); });
 
-  const tc={}; DATA.forEach(c=>{ const f=variantFamily(c); tc[f]=(tc[f]||0)+1; });
+  const tc={}; DATA.forEach(c=>{ const f=treatmentFamily(c); tc[f]=(tc[f]||0)+1; });
   const mT=document.getElementById("mType"); mT.innerHTML="";
   mT.appendChild(makeChip("Tous",DATA.length,state.type==="all",()=>{state.type="all";afterFilter()}));
-  FAMILY_ORDER.forEach(t=>{ if(!tc[t])return; mT.appendChild(makeChip(FAMILY_LABELS[t]||t,tc[t],state.type===t,()=>{state.type=t;afterFilter()})); });
+  TREAT_ORDER.forEach(t=>{ if(!tc[t])return; mT.appendChild(makeChip(TREAT_LABELS[t]||t,tc[t],state.type===t,()=>{state.type=t;afterFilter()})); });
+
+  const pvc={}; DATA.forEach(c=>{ const f=provenanceFamily(c); pvc[f]=(pvc[f]||0)+1; });
+  const mP=document.getElementById("mProv");
+  if(mP){ mP.innerHTML="";
+    mP.appendChild(makeChip("Toutes",DATA.length,state.prov==="all",()=>{state.prov="all";afterFilter()}));
+    PROV_ORDER.forEach(t=>{ if(!pvc[t])return; mP.appendChild(makeChip(PROV_LABELS[t]||t,pvc[t],state.prov===t,()=>{state.prov=t;afterFilter()})); });
+  }
 
   const rc={}; DATA.forEach(c=>{if(c.rarity)rc[c.rarity]=(rc[c.rarity]||0)+1});
   const mR=document.getElementById("mRarity"); mR.innerHTML="";
@@ -1266,7 +1290,7 @@ function varKey(c){
   const nice=vNice(c&&c.variant);
   return (nice && nice!=='Normale')?nice:'(normale)';               // sinon code variante normalisé
 }
-function activeCount(){ let n=0; ["lang","color","type","cat","rarity","character","variant","grade"].forEach(k=>{ if(state[k]!=="all")n++; }); return n; }
+function activeCount(){ let n=0; ["lang","color","type","prov","cat","rarity","character","variant","grade"].forEach(k=>{ if(state[k]!=="all")n++; }); return n; }
 function afterFilter(){ buildFilterModal(); syncBadge(); render(); }
 function syncBadge(){ const n=activeCount(); const b=document.getElementById("fbadge"); b.textContent=n; b.style.display=n?"grid":"none"; document.getElementById("filterBtn").classList.toggle("act",!!n); }
 const VALSTEPS=[[0,'Tout'],[1,'≥ 1 €'],[5,'≥ 5 €'],[20,'≥ 20 €'],[50,'≥ 50 €'],[100,'≥ 100 €']];
@@ -1309,7 +1333,8 @@ function apply(){
   let a=DATA.slice();
   if(state.lang==="autre") a=a.filter(c=>c.language!=="JP"&&c.language!=="EN");
   else if(state.lang!=="all") a=a.filter(c=>c.language===state.lang);
-  if(state.type!=="all") a=a.filter(c=>variantFamily(c)===state.type);
+  if(state.type!=="all") a=a.filter(c=>treatmentFamily(c)===state.type);
+  if(state.prov&&state.prov!=="all") a=a.filter(c=>provenanceFamily(c)===state.prov);
   if(state.cat!=="all") a=a.filter(c=>c.category===state.cat);
   if(state.color!=="all") a=a.filter(c=>(c.color||"").split(";").includes(state.color));
   if(state.rarity!=="all") a=a.filter(c=>c.rarity===state.rarity);
@@ -1403,7 +1428,7 @@ function closeSort(){ document.getElementById("smodal").classList.add("hidden");
 // ---------- Filtres open/close ----------
 function openFilters(){ buildFilterModal(); document.getElementById("fmodal").classList.remove("hidden"); }
 function closeFilters(){ document.getElementById("fmodal").classList.add("hidden"); }
-function resetFilters(){ ["lang","color","type","cat","rarity","character","variant","grade"].forEach(k=>{ state[k]="all"; }); state.pricef="all"; afterFilter(); }
+function resetFilters(){ ["lang","color","type","prov","cat","rarity","character","variant","grade"].forEach(k=>{ state[k]="all"; }); state.pricef="all"; afterFilter(); }
 
 // ---------- Events ----------
 let catTimer=null;
@@ -3485,7 +3510,7 @@ async function homeBriefing(){
   }catch(e){ box.innerHTML='<div class="txt" style="color:var(--muted);font-size:13px">Erreur, réessaie.</div><button class="hbriefbtn" onclick="homeBriefing()">Réessayer</button>'; }
 }
 document.getElementById('modeSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMode(b.dataset.m);});
-const APP_VERSION='Version b33 · 27/08';
+const APP_VERSION='Version b34 · 27/08';
 { const nv=document.getElementById('navVersion'); if(nv) nv.textContent=APP_VERSION; }
 document.getElementById('mktSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMarket(b.dataset.k);});
 const CATARRS=["catColors","catCats","catRarities","catTypes"];
