@@ -1079,6 +1079,23 @@ function confLegend(){
 function catMkPrice(c){ const d=c['disp_'+MKT.toLowerCase()]; if(d!=null) return Number(d); const v=c['mk_'+MKT.toLowerCase()]; if(v!=null) return Number(v); const f=c[MKT.toLowerCase()+'_eur']; if(f!=null) return Number(f); return c.price_eur!=null?Number(c.price_eur):null; }  // catalogue : prix du marché sélectionné (disp_* = brut sinon repli gradé ; même valeur que le tri)
 // Quand le prix affiché vient d'une cote GRADÉE (aucune vente brute), renvoie le libellé (ex "PSA 10") pour l'étiqueter clairement.
 function catGradedTag(c){ if(MKT==='JP') return (c.mk_jp==null && c.jp_g!=null)?(c.jp_gl||'gradé'):null; if(MKT==='US') return (c.mk_us==null && c.us_g!=null)?(c.us_gl||'gradé'):null; return null; }
+// Bloc prix de la fiche : montre TOUJOURS le prix marché brut ET la cote gradée (PSA/BGS) côte à côte,
+// sur toutes les cartes qui ont l'un ou l'autre (généralisé, plus seulement en repli).
+function cdPriceBlock(c){
+  var raw=(MKT==='EU')?(c.mk_eu!=null?c.mk_eu:c.eu_eur):c['mk_'+MKT.toLowerCase()];
+  var gv=(MKT==='JP')?c.jp_g:(MKT==='US'?c.us_g:null);
+  var gl=(MKT==='JP')?c.jp_gl:(MKT==='US'?c.us_gl:null);
+  var lbl=function(t){return '<span class="dt" style="display:block;font-size:10px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);margin-bottom:1px">'+t+'</span>';};
+  var h='<div class="pxhdr">Prix marché — '+esc(MKT_LABEL[MKT])+'</div>';
+  h+='<div class="pxquick" style="font-size:20px;font-weight:800;margin:2px 0">'+lbl('Marché brut')+(raw!=null?('&asymp; '+eur0(raw)+' <span class="dt" style="font-size:11px;font-weight:600">'+esc(MKSRC[MKT])+'</span>'):'<span class="dt" style="font-size:13px;font-weight:600">pas de vente brute</span>')+'</div>';
+  if(gv!=null){
+    h+='<div class="pxquick" style="font-size:19px;font-weight:800;margin:8px 0 2px;color:#7c3aed">'+lbl('Cote gradée '+esc(gl||'PSA'))+'&asymp; '+eur0(gv)+'</div>';
+  }else if(MKT!=='EU'){
+    h+='<div class="dt" style="font-size:11.5px;margin:6px 0 2px">Cote gradée : <b>—</b> (pas encore de vente gradée)</div>';
+  }
+  h+='<div class="dt" style="font-size:11px;margin:6px 0 4px">'+['JP','EU','US'].map(function(k){var lk=k.toLowerCase();var v=(k==='EU')?(c.mk_eu!=null?c.mk_eu:c.eu_eur):c['disp_'+lk];var grd=(k==='JP')?(c.mk_jp==null&&c.jp_g!=null):((k==='US')?(c.mk_us==null&&c.us_g!=null):false);var on=k===MKT;return (on?'<b style="color:#1e3a8a">':'<span>')+k+' '+(v!=null?eur0(v):'—')+(grd&&v!=null?'*':'')+(on?'</b>':'</span>');}).join(' · ')+(((c.mk_jp==null&&c.jp_g!=null)||(c.mk_us==null&&c.us_g!=null))?' <span style="opacity:.7">(* cote gradée)</span>':'')+'</div><div class="pxloading">…</div>';
+  return h;
+}
 function esc(s){ return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
 function setMarket(k){
   if(!MKT_FIELD[k]||k===MKT) { if(k) MKT=k; }
@@ -3440,7 +3457,7 @@ async function homeBriefing(){
   }catch(e){ box.innerHTML='<div class="txt" style="color:var(--muted);font-size:13px">Erreur, réessaie.</div><button class="hbriefbtn" onclick="homeBriefing()">Réessayer</button>'; }
 }
 document.getElementById('modeSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMode(b.dataset.m);});
-const APP_VERSION='Version b30 · 27/08';
+const APP_VERSION='Version b32 · 27/08';
 { const nv=document.getElementById('navVersion'); if(nv) nv.textContent=APP_VERSION; }
 document.getElementById('mktSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMarket(b.dataset.k);});
 const CATARRS=["catColors","catCats","catRarities","catTypes"];
@@ -3486,8 +3503,10 @@ async function fetchCatalog(append){
   const mkcol=(MKT==='EU'?'mk_eu':'disp_'+(MKT_FIELD[MKT]?MKT.toLowerCase():'jp'));
   const ord=state.catSort==="name"?"name.asc":(state.catSort==="lang"?"language.asc,card_number.asc":(state.catSort==="price_desc"?(mkcol+".desc.nullslast"):(state.catSort==="price_asc"?(mkcol+".asc.nullslast"):"card_number.asc")));
   let url=SB+"/rest/v1/app_catalog_priced?select=card_number,language,name,image_url,img_verify,owned,variant,variant_label,rarity,set_code,set_name,category,origin,printing_id,price_eur,price_source,jp_eur,eu_eur,us_eur,mk_jp,mk_eu,mk_us,jp_g,jp_gl,us_g,us_gl,disp_jp,disp_us&limit="+CATPAGE+"&offset="+(state.catOffset||0)+"&order="+ord;
-  // Par défaut (aucun filtre / aucune recherche) on masque les DON, sinon ils monopolisent la 1re page (tri alphabétique). Ils restent accessibles via l'onglet Sets ou une recherche « DON ».
-  if(noFilters) url+="&category=neq.DON";
+  // Par défaut on masque les DON SANS VALEUR (bulk), sinon ils monopolisent la 1re page. Mais on
+  // laisse remonter les DON à valeur (gold/promo ≥ 20 € sur le marché affiché) : ils apparaissent
+  // dans le catalogue et en tête quand on trie par prix. Tous restent accessibles via le filtre « DON!! ».
+  if(noFilters) url+="&or=(category.neq.DON,"+mkcol+".gte.20)";
   // Catalogue = Japonais + Anglais uniquement. FR/CN n'existent que dans la collection (volet « Autre »), ajoutés au scan.
   let cls=state.catLangs.filter(x=>x==="JP"||x==="EN");
   if(!cls.length) cls=["JP","EN"];
@@ -3683,7 +3702,7 @@ async function openCatDetail(c){
   document.getElementById("cdbody").innerHTML=
     '<div class="dval"><div class="b">'+esc(c.name||"")+'</div><div class="s">'+(FLAG[c.language]||"")+' '+(LANG_LABELS[c.language]||c.language)+' · '+esc(c.card_number||"")+'</div><div class="collact" id="cdcollact"></div></div>'+
     drow("Rareté", RAR_LABELS[c.rarity]||c.rarity)+drow("Variante", (vl&&String(vl).toLowerCase()!=='normal')?esc(vl):"Normale")+drow("Type", c.origin?(ORIGIN_LABELS[c.origin]||c.origin):"")+drow("Catégorie", CAT_LABELS[c.category]||c.category)+drow("Set", esc((c.set_code||"")+(c.set_name?(" — "+c.set_name):"")))+
-    '<div id="cdprice" class="dprices"><div class="pxhdr">Prix marché — '+esc(MKT_LABEL[MKT])+'</div>'+((catMkPrice(c)!=null)?('<div class="pxquick" style="font-size:20px;font-weight:800;margin:2px 0 2px">&asymp; '+eur0(catMkPrice(c))+(catGradedTag(c)?(' <span style="font-size:11px;background:#7c3aed;color:#fff;padding:1px 6px;border-radius:6px;font-weight:800;vertical-align:middle">'+esc(catGradedTag(c))+'</span>'):'')+' <span class="dt" style="font-size:11px;font-weight:600">'+esc(catGradedTag(c)?('Cote gradée · '+MKSRC[MKT]):MKSRC[MKT])+'</span></div>'):'')+'<div class="dt" style="font-size:11px;margin-bottom:4px">'+['JP','EU','US'].map(function(k){var lk=k.toLowerCase();var v=(k==='EU')?(c.mk_eu!=null?c.mk_eu:c.eu_eur):c['disp_'+lk];var grd=(k==='JP')?(c.mk_jp==null&&c.jp_g!=null):((k==='US')?(c.mk_us==null&&c.us_g!=null):false);var on=k===MKT;return (on?'<b style="color:#1e3a8a">':'<span>')+k+' '+(v!=null?eur0(v):'—')+(grd&&v!=null?'*':'')+(on?'</b>':'</span>');}).join(' · ')+(((c.mk_jp==null&&c.jp_g!=null)||(c.mk_us==null&&c.us_g!=null))?' <span style="opacity:.7">(* cote gradée)</span>':'')+'</div><div class="pxloading">…</div></div>';
+    '<div id="cdprice" class="dprices">'+cdPriceBlock(c)+'</div>';
   document.getElementById("cdprints").innerHTML='<div class="dprints"><h4>Toutes les versions</h4><div class="pxloading">…</div></div>';
   document.getElementById("catOverlay").classList.remove("hidden");
   detailCatPid=c.printing_id||null;
