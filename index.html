@@ -768,6 +768,7 @@ body{-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
     <button data-m="products">Produits scellés</button>
     <div class="navgrp">Décisions d'investisseur</div>
     <button data-m="cibler">À cibler (achats)</button>
+    <button data-m="preachat">Avant d'acheter</button>
     <button data-m="conviction">Portefeuille</button>
     <button data-m="ops">Gradation</button>
     <button data-m="gradeia">Gradation IA</button>
@@ -1364,7 +1365,7 @@ function secNav(items){ items=(items||[]).filter(it=>it && (it.always || it.n==n
 function jumpSec(id){ const el=document.getElementById('sec-'+id); if(el) el.scrollIntoView({behavior:'smooth',block:'start'}); }
 function pgSection(id,label,inner,color){ return '<div class="pgsec" id="sec-'+id+'">'+(label?('<div class="pgsec-h"'+(color?(' style="color:'+color+'"'):'')+'>'+esc(label)+'</div>'):'')+inner+'</div>'; }
 function pgSortSel(sorts,cur,onchange){ return '<select class="pgsort" onchange="'+onchange+'">'+sorts.map(s=>'<option value="'+s[0]+'"'+(cur===s[0]?' selected':'')+'>'+esc(s[1])+'</option>').join('')+'</select>'; }
-const NAV_TITLES={accueil:'Accueil',collection:'Collection',catalog:'Catalogue',sets:'Sets',products:'Produits scellés',cibler:'À cibler',conviction:'Conviction',ops:'Opportunités',ecarts:'Écarts JP/EN',offre:'Offre & reprint',risque:'Risque',track:'Track record',agenda:'Agenda',achats:'Achats',ventes:'Ventes',mouv:'Mouvements',gradation:'Gradation',gradeia:'Gradation IA',ouvrir:'Ouvrir ?',sante:'Santé des données',live:'Live'};
+const NAV_TITLES={accueil:'Accueil',collection:'Collection',catalog:'Catalogue',sets:'Sets',products:'Produits scellés',cibler:'À cibler',conviction:'Conviction',ops:'Opportunités',ecarts:'Écarts JP/EN',offre:'Offre & reprint',risque:'Risque',track:'Track record',agenda:'Agenda',achats:'Achats',ventes:'Ventes',mouv:'Mouvements',gradation:'Gradation',gradeia:'Gradation IA',preachat:'Avant d\'acheter',ouvrir:'Ouvrir ?',sante:'Santé des données',live:'Live'};
 // ---- Pages regroupées : un onglet de menu, plusieurs sous-pages ----
 const PARENTS={
   portefeuille:{label:'Portefeuille',tabs:[['conviction','Conviction'],['risque','Risque']]},
@@ -1390,14 +1391,14 @@ function setMode(m){
   { const pt=document.getElementById('pageTitle'); if(pt) pt.textContent=(m==='accueil'?'':(parentKey?PARENTS[parentKey].label:(NAV_TITLES[m]||''))); }
   { const st=document.getElementById('stage'); if(st) st.scrollTop=0; }
   closeNav();
-  const home=m==="accueil", cat=m==="catalog", ops=m==="ops", sets=m==="sets", prods=m==="products", live=m==="live", ia=m==="ia", achats=m==="achats", grad=m==="gradation", gradeia=m==="gradeia", sante=m==="sante", ouvrir=m==="ouvrir", ventes=m==="ventes", mouv=m==="mouv", conv=m==="conviction", ecarts=m==="ecarts", offre=m==="offre", agenda=m==="agenda", risque=m==="risque", cibler=m==="cibler", track=m==="track";
+  const home=m==="accueil", cat=m==="catalog", ops=m==="ops", sets=m==="sets", prods=m==="products", live=m==="live", ia=m==="ia", achats=m==="achats", grad=m==="gradation", gradeia=m==="gradeia", preachat=m==="preachat", sante=m==="sante", ouvrir=m==="ouvrir", ventes=m==="ventes", mouv=m==="mouv", conv=m==="conviction", ecarts=m==="ecarts", offre=m==="offre", agenda=m==="agenda", risque=m==="risque", cibler=m==="cibler", track=m==="track";
   if(!live) stopLive();
   document.getElementById('catLangRow').classList.toggle('hidden',!cat);
   document.getElementById('catFilters').classList.add('hidden');
-  document.getElementById('viewBtn').classList.toggle('hidden',home||cat||ops||sets||prods||live||ia||achats||grad||gradeia||sante||ouvrir||ventes||mouv||conv||ecarts||offre||agenda||risque||cibler||track);
-  document.getElementById('filterBtn').classList.toggle('hidden',home||ops||sets||prods||live||ia||achats||grad||gradeia||sante||ouvrir||ventes||mouv||conv||ecarts||offre||agenda||risque||cibler||track);
-  document.getElementById('sortBtn').classList.toggle('hidden',home||ops||sets||prods||live||ia||achats||grad||gradeia||sante||ouvrir||ventes||mouv||conv||ecarts||offre||agenda||risque||cibler||track);
-  document.querySelector('.search').classList.toggle('hidden',home||sets||prods||live||ia||achats||grad||gradeia||sante||ouvrir||risque);
+  document.getElementById('viewBtn').classList.toggle('hidden',home||cat||ops||sets||prods||live||ia||achats||grad||gradeia||preachat||sante||ouvrir||ventes||mouv||conv||ecarts||offre||agenda||risque||cibler||track);
+  document.getElementById('filterBtn').classList.toggle('hidden',home||ops||sets||prods||live||ia||achats||grad||gradeia||preachat||sante||ouvrir||ventes||mouv||conv||ecarts||offre||agenda||risque||cibler||track);
+  document.getElementById('sortBtn').classList.toggle('hidden',home||ops||sets||prods||live||ia||achats||grad||gradeia||preachat||sante||ouvrir||ventes||mouv||conv||ecarts||offre||agenda||risque||cibler||track);
+  document.querySelector('.search').classList.toggle('hidden',home||sets||prods||live||ia||achats||grad||gradeia||preachat||sante||ouvrir||risque);
   document.getElementById('scanFab').classList.toggle('hidden',!(m==='collection'||m==='catalog'));
   const vfr=document.getElementById('valFilterRow'); if(vfr){ if(m==='collection'){ vfr.style.display='block'; buildValRow(); } else { vfr.style.display='none'; } }
   // recherche : réinitialisée à chaque changement de page ; placeholder adapté
@@ -1417,6 +1418,7 @@ function setMode(m){
   else if(achats){ document.getElementById('countLine').textContent=''; fetchAchats(); }
   else if(grad){ document.getElementById('countLine').textContent=''; fetchGrading(); }
   else if(gradeia){ renderGradeIA(); }
+  else if(preachat){ document.getElementById('countLine').textContent=''; renderPreAchat(); }
   else if(sante){ document.getElementById('countLine').textContent=''; fetchSante(); }
   else if(ouvrir){ document.getElementById('countLine').textContent=''; fetchOuvrir(); }
   else if(ventes){ document.getElementById('countLine').textContent=''; fetchVentes(); }
@@ -2477,16 +2479,18 @@ async function grOpenCard(itemId){
   if(c) openDetail(c); else { const s=document.getElementById('countLine'); if(s) s.textContent='Fiche indisponible pour cette carte.'; }
 }
 function grBar(lbl,g){ const v=g==null?0:Number(g); const c=v>=9.5?'#059669':v>=9?'#65a30d':v>=8?'#d97706':'#dc2626'; const pct=Math.max(0,Math.min(100,v*10)); return '<div style="display:flex;align-items:center;gap:8px;margin:3px 0"><span style="width:70px;font-size:11px;color:var(--muted)">'+lbl+'</span><div style="flex:1;height:7px;background:var(--chip);border-radius:4px;overflow:hidden"><i style="display:block;height:100%;width:'+pct+'%;background:'+c+'"></i></div><b style="width:30px;text-align:right;font-size:12px">'+(g==null?'—':g)+'</b></div>'; }
+function grProb(v){ let x=+v||0; if(x>1) x=x/100; return Math.max(0,Math.min(1,x)); }
 function grPgHTML(r,id){
-  const p10=Math.round((+r.psa10_probability||0)*100);
+  const p10=Math.round(grProb(r.psa10_probability)*100);
   const pc=p10>=70?'#059669':p10>=40?'#d97706':'#dc2626';
   const c=r.centering||{};
   let h='<div style="margin-top:8px;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:var(--panel)">';
   h+='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><b style="font-size:13px">Verdict IA</b><span style="font-size:12px;color:var(--muted)">estimation PSA <b style="color:var(--ink)">'+(r.psa_estimate!=null?r.psa_estimate:'?')+'</b> · conf. '+Math.round((+r.confidence||0)*100)+'%</span></div>';
   h+='<div style="font-size:12px;margin-bottom:8px">'+esc(r.verdict||'')+'</div>';
-  h+='<div style="display:flex;gap:6px;margin-bottom:8px"><span style="flex:1;text-align:center;background:'+pc+';color:#fff;font-weight:800;border-radius:8px;padding:5px;font-size:12px">PSA 10 : '+p10+'%</span><span style="flex:1;text-align:center;background:var(--chip);color:var(--ink);font-weight:800;border-radius:8px;padding:5px;font-size:12px">BGS ≈ '+((r.bgs&&r.bgs.estimate!=null)?r.bgs.estimate:'?')+' · BL '+Math.round((+r.black_label_probability||0)*100)+'%</span></div>';
-  h+=grBar('Centrage'+(c.measured?' ✓':''),(c.grade))+grBar('Coins',(r.corners||{}).grade)+grBar('Bords',(r.edges||{}).grade)+grBar('Surface',(r.surface||{}).grade);
+  h+='<div style="display:flex;gap:6px;margin-bottom:8px"><span style="flex:1;text-align:center;background:'+pc+';color:#fff;font-weight:800;border-radius:8px;padding:5px;font-size:12px">PSA 10 : '+p10+'%</span><span style="flex:1;text-align:center;background:var(--chip);color:var(--ink);font-weight:800;border-radius:8px;padding:5px;font-size:12px">BGS ≈ '+((r.bgs&&r.bgs.estimate!=null)?r.bgs.estimate:'?')+' · BL '+Math.round(grProb(r.black_label_probability)*100)+'%</span></div>';
+  h+=grBar('Centrage'+(c.measured&&!c.suspect?' ✓':''),(c.suspect?null:c.grade))+grBar('Coins',(r.corners||{}).grade)+grBar('Bords',(r.edges||{}).grade)+grBar('Surface',(r.surface||{}).grade);
   if(c.front_lr) h+='<div style="font-size:11px;color:var(--muted);margin-top:4px">'+(c.measured?'<b style="color:#059669">Centrage mesuré</b> (pixels) ':'Centrage ')+'recto '+esc(c.front_lr)+' / '+esc(c.front_tb||'')+(c.back_lr?(' · verso '+esc(c.back_lr)+' / '+esc(c.back_tb||'')):'')+'</div>';
+  if(c.suspect) h+='<div style="font-size:11px;color:#b45309;margin-top:4px">⚠️ Centrage mesuré peu fiable — un axe très décalé indique une <b>photo prise de biais</b> (perspective). Reprends la carte <b>bien à plat, appareil pile au-dessus, face à la carte</b>, puis relance : le centrage est très sensible à l\'angle.</div>';
   if(Array.isArray(r.red_flags)&&r.red_flags.length) h+='<div style="font-size:11px;color:#b45309;margin-top:4px">⚠️ '+r.red_flags.map(esc).join(' · ')+'</div>';
   if(r.image_quality&&r.image_quality!=='good') h+='<div style="font-size:11px;color:#dc2626;margin-top:4px">Qualité photo : '+esc(r.image_quality)+' — refais une photo bien à plat pour un verdict fiable.</div>';
   if(id!=='scratch') h+='<button onclick="grSavePg(\''+id+'\')" style="margin-top:8px;width:100%;border:0;background:var(--accent);color:#fff;font-weight:800;padding:9px;border-radius:10px;cursor:pointer">Valider ce pré-grade &amp; mettre en file</button>';
@@ -2505,7 +2509,11 @@ function grCenteringGray(g,w,h){ const px=(y,x)=>g[y*w+x];
   if(!L||!R||!T||!B) return null;
   const lr=Math.round(L/(L+R)*100), tb=Math.round(T/(T+B)*100), dev=Math.max(Math.abs(lr-50),Math.abs(tb-50));
   const grade=dev<=5?10:dev<=8?9.5:dev<=10?9:dev<=13?8.5:dev<=17?8:dev<=22?7:dev<=30?6:5;
-  return {front_lr:lr+'/'+(100-lr),front_tb:tb+'/'+(100-tb),grade,measured:true}; }
+  // Un axe très décalé (>72/28) alors que l'autre est modéré = quasi toujours une photo DE BIAIS (perspective),
+  // pas un vrai décentrage. On marque la mesure comme peu fiable pour ne pas plomber la note à tort.
+  const worst=Math.max(Math.abs(lr-50),Math.abs(tb-50)), other=Math.min(Math.abs(lr-50),Math.abs(tb-50));
+  const suspect = worst>=22 && (other<15 || worst>=30);
+  return {front_lr:lr+'/'+(100-lr),front_tb:tb+'/'+(100-tb),grade,measured:true,suspect:suspect}; }
 function grCropCard(g,w,h){ const corner=(g[0]+g[w-1]+g[(h-1)*w]+g[h*w-1])/4; const isBg=v=>Math.abs(v-corner)<24;
   const rowBg=y=>{ let n=0,t=0; for(let x=0;x<w;x+=3){t++; if(isBg(g[y*w+x]))n++;} return n/t>0.85; };
   const colBg=x=>{ let n=0,t=0; for(let y=0;y<h;y+=3){t++; if(isBg(g[y*w+x]))n++;} return n/t>0.85; };
@@ -2584,7 +2592,7 @@ function grPipeCard(x){
 }
 function grPgInner(id){
   return '<div style="font-size:11.5px;color:var(--muted);margin-bottom:8px;line-height:1.5">Protocole photo (plus c\'est net, plus le verdict est fiable) :<br>'+
-       '① <b>Recto à plat</b> — carte qui remplit le cadre, perpendiculaire, lumière diffuse sans reflet. Sert au <b>centrage mesuré</b> + à la note globale.<br>'+
+       '① <b>Recto à plat</b> — carte qui remplit le cadre, <b>appareil pile au-dessus et bien d\'aplomb</b> (le centrage mesuré est très sensible à l\'angle : une photo de biais fausse tout), lumière diffuse sans reflet. Sert au <b>centrage mesuré</b> + à la note globale.<br>'+
        '② <b>Verso à plat</b> — souvent le point faible (centrage/bords).<br>'+
        '③ <b>Surface en lumière rasante</b> — incline la carte / la lumière : c\'est le <b>seul moyen</b> de faire ressortir rayures et lignes de foil.</div>'+
      '<div style="display:flex;gap:7px;flex-wrap:wrap;align-items:center">'+
@@ -2613,6 +2621,142 @@ function renderGradeIA(){
   h+='</div>';
   stage.innerHTML=h;
   document.getElementById('countLine').textContent='Banc de test — pré-grade IA';
+}
+// ---- Onglet "Avant d'acheter" : garde-fou de prix ----
+const PA_IMPORT=1.28;   // TVA + douane + port JP -> FR
+const PA_FEE_EU=0.13;   // frais de revente UE (eBay ~13 %)
+let PA_STATE={rows:[],pick:null}; let PA_TIMER=null;
+function renderPreAchat(){
+  const stage=document.getElementById('stage'); stage.className=''; PA_STATE={rows:[],pick:null};
+  let h='<div style="max-width:640px;margin:0 auto">';
+  h+='<div style="font-size:12.5px;color:var(--muted);margin:2px 2px 14px;line-height:1.55">Avant de payer, vérifie. Cherche la carte, saisis le prix qu\'on te propose (et la quantité si c\'est un lot) — l\'app te dit si tu es au bon prix, <b>où c\'est le moins cher</b> (Japon + import vs Europe), et ta <b>marge de revente UE</b> estimée. Le plafond raisonnable = marché JP posé × 1,28 (TVA + douane + port).</div>';
+  h+='<div style="background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:12px 14px">';
+  h+='<input id="paSearch" oninput="paSearchDebounced()" placeholder="Nom ou numéro de carte (ex. OP17-112, Big Mom)…" style="width:100%;padding:11px 13px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--ink);font-size:14px">';
+  h+='<div id="paResults" style="margin-top:10px"></div>';
+  h+='</div>';
+  h+='<div id="paCard" style="margin-top:12px"></div>';
+  h+='<details style="margin-top:14px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:2px 14px">'+
+     '<summary style="cursor:pointer;font-size:12.5px;font-weight:700;padding:10px 0">Garanties de condition par plateforme</summary>'+
+     '<div style="font-size:12px;color:var(--muted);line-height:1.7;padding:2px 0 12px">'+
+       '<div><b>🇯🇵 CardRush</b> — état noté par la boutique (神/A/B/C). Le plus fiable au Japon. Via proxy.</div>'+
+       '<div><b>🇯🇵 Snkrdunk</b> — <b>authentification systématique</b> avant expédition. Idéal pour du raw de valeur sans risque de faux.</div>'+
+       '<div><b>🇺🇸 eBay</b> — <b>Authenticity Guarantee</b> au-dessus d\'un seuil : carte authentifiée par un tiers avant livraison. Le meilleur pour les gradées / gros montants.</div>'+
+       '<div><b>🇺🇸 TCGplayer / 🇫🇷 Cardmarket</b> — état déclaré par le vendeur + protection acheteur en cas de litige. Vérifie la note d\'état et le volume du vendeur.</div>'+
+       '<div><b>🇯🇵 Mercari / Yahoo Auctions</b> — entre particuliers, état déclaré, le plus variable. Le proxy sert de filet. À réserver aux bonnes affaires, pas au très haut de gamme.</div>'+
+     '</div></details>';
+  h+='</div>';
+  stage.innerHTML=h;
+  document.getElementById('countLine').textContent='Garde-fou d\'achat';
+}
+function paSearchDebounced(){ clearTimeout(PA_TIMER); PA_TIMER=setTimeout(paSearch,300); }
+async function paSearch(){
+  const q=(document.getElementById('paSearch').value||'').trim();
+  const box=document.getElementById('paResults'); if(q.length<2){ box.innerHTML=''; return; }
+  const isNum=/^[A-Za-z]{1,4}\d?\d?-?\d{2,3}/.test(q.replace(/\s/g,''));
+  const filt=isNum?('card_number=ilike.*'+encodeURIComponent(q.replace(/\s/g,''))+'*'):('name=ilike.*'+encodeURIComponent(q)+'*');
+  box.innerHTML='<div style="color:var(--muted);font-size:12px;padding:6px">Recherche…</div>';
+  let cards=[],prods=[];
+  try{
+    const [rc,rp]=await Promise.all([
+      fetch(SB+'/rest/v1/app_catalog_priced?'+filt+'&select=card_number,language,name,image_url,variant_label,rarity,set_code,printing_id,jp_eur,eu_eur,us_eur,price_eur&limit=30',{headers:{apikey:ANON,Authorization:'Bearer '+ANON}}),
+      fetch(SB+'/rest/v1/app_products?name=ilike.*'+encodeURIComponent(q)+'*&select=product_id,name,category,language,image_url,price_eur,set_code&limit=15',{headers:{apikey:ANON,Authorization:'Bearer '+ANON}})
+    ]);
+    cards=await rc.json(); if(!Array.isArray(cards))cards=[];
+    prods=await rp.json(); if(!Array.isArray(prods))prods=[];
+  }catch(e){ box.innerHTML='<div style="color:#dc2626;font-size:12px;padding:6px">Erreur de recherche.</div>'; return; }
+  const rows=cards.map(c=>Object.assign({_type:'carte'},c)).concat(prods.map(p=>Object.assign({_type:'scelle'},p)));
+  PA_STATE.rows=rows;
+  if(!rows.length){ box.innerHTML='<div style="color:var(--muted);font-size:12px;padding:6px">Rien trouvé (carte ou produit scellé).</div>'; return; }
+  box.innerHTML=rows.slice(0,45).map((c,i)=>{
+    const img=c.image_url?('<img loading="lazy" referrerpolicy="no-referrer" src="'+esc(c.image_url)+'" style="width:30px;height:42px;object-fit:cover;border-radius:4px;flex:none" onerror="this.style.visibility=\'hidden\'">'):'<span style="width:30px;height:42px;flex:none;display:inline-block"></span>';
+    let head,sub;
+    if(c._type==='scelle'){ head='📦 '+(FLAG[c.language]||'')+' '+esc(c.name||''); sub=(PROD_CAT_LABELS[c.category]||'Scellé')+(c.set_code?(' · '+esc(c.set_code)):''); }
+    else{ const vl=(c.variant_label&&String(c.variant_label).toLowerCase()!=='normal')?(' · '+esc(c.variant_label)):''; head=(FLAG[c.language]||'')+' '+esc(c.card_number||'')+vl; sub=esc(c.name||''); }
+    return '<div onclick="paPick('+i+')" data-par="'+i+'" style="display:flex;gap:9px;align-items:center;padding:7px;border-radius:9px;cursor:pointer;border:1px solid var(--line);margin-bottom:6px">'+img+'<div style="min-width:0"><div style="font-weight:800;font-size:12.5px">'+head+'</div><div style="color:var(--muted);font-size:11px">'+sub+'</div></div></div>';
+  }).join('');
+}
+const PA_SRC={CARDRUSH:'CardRush',PRICECHARTING:'PriceCharting',TCGPLAYER:'TCGplayer',CARDMARKET:'Cardmarket',MANUAL:'Référence'};
+async function paLoadSources(pid){
+  const box=document.getElementById('paSources'); if(!box) return;
+  let rows=[];
+  try{ const r=await fetch(SB+'/rest/v1/app_price_source?printing_id=eq.'+encodeURIComponent(pid)+'&grade=is.null&select=source,market,price_eur',{headers:{apikey:ANON,Authorization:'Bearer '+ANON}}); rows=await r.json(); if(!Array.isArray(rows))rows=[]; }catch(e){ return; }
+  rows=rows.filter(x=>x.price_eur!=null).sort((a,b)=>Number(a.price_eur)-Number(b.price_eur));
+  if(!rows.length){ box.innerHTML='<div style="color:var(--muted);font-size:11.5px;margin-top:6px">Une seule source de prix pour cette carte (chase card de niche — ne trade que sur CardRush).</div>'; return; }
+  let h='<div style="font-size:10.5px;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);font-weight:800;margin:12px 0 6px">Prix par plateforme</div>';
+  h+=rows.map((x,i)=>'<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 9px;border:1px solid var(--line);border-radius:8px;margin-bottom:5px;'+(i===0?'background:rgba(5,150,105,.10)':'')+'"><span style="font-size:12.5px">'+(FLAG[x.market]||'')+' <b>'+esc(PA_SRC[x.source]||x.source)+'</b>'+(i===0?' <span style="color:#059669;font-size:10.5px;font-weight:800">← moins cher</span>':'')+'</span><b style="font-family:inherit;font-size:13px">'+eur0(x.price_eur)+'</b></div>').join('');
+  box.innerHTML=h;
+}
+function paPick(i){
+  const c=(PA_STATE.rows||[])[i]; if(!c) return; PA_STATE.pick=c;
+  document.querySelectorAll('#paResults [data-par]').forEach(el=>el.style.borderColor='var(--line)');
+  const el=document.querySelector('#paResults [data-par="'+i+'"]'); if(el) el.style.borderColor='var(--accent)';
+  const sealed=c._type==='scelle';
+  let title,jpv,euv;
+  if(sealed){ title='📦 '+(FLAG[c.language]||'')+' '+esc(c.name||''); jpv=c.price_eur!=null?eur0(c.price_eur):'—'; euv=null; }
+  else{ const vl=(c.variant_label&&String(c.variant_label).toLowerCase()!=='normal')?(' · '+esc(c.variant_label)):''; title=(FLAG[c.language]||'')+' '+esc(c.card_number||'')+vl; jpv=c.jp_eur!=null?eur0(c.jp_eur):'—'; euv=c.eu_eur!=null?eur0(c.eu_eur):'—'; }
+  let h='<div style="background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px 16px">';
+  h+='<div style="font-weight:800;font-size:14px;margin-bottom:2px">'+title+'</div>';
+  h+='<div style="color:var(--muted);font-size:12px;margin-bottom:10px">'+(sealed?(PROD_CAT_LABELS[c.category]||'Produit scellé'):esc(c.name||''))+'</div>';
+  h+='<div style="display:flex;gap:14px;flex-wrap:wrap;font-size:12.5px;margin-bottom:12px"><span>'+(sealed?'Prix marché':'Marché JP posé')+' <b>'+jpv+'</b></span>'+(euv?('<span>Marché UE <b>'+euv+'</b></span>'):'')+'</div>';
+  h+='<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end">'+
+     '<label style="font-size:11px;color:var(--muted)">Prix proposé (total €)<br><input id="paPrice" type="number" min="0" step="1" oninput="paEval()" style="width:130px;margin-top:3px;padding:9px;border:1px solid var(--line);border-radius:9px;background:var(--bg);color:var(--ink);font-size:14px"></label>'+
+     '<label style="font-size:11px;color:var(--muted)">Quantité<br><input id="paQty" type="number" min="1" step="1" value="1" oninput="paEval()" style="width:74px;margin-top:3px;padding:9px;border:1px solid var(--line);border-radius:9px;background:var(--bg);color:var(--ink);font-size:14px"></label>'+
+     '</div>';
+  h+='<div id="paVerdict" style="margin-top:12px"></div>';
+  h+='<div id="paSources"></div>';
+  h+='</div>';
+  document.getElementById('paCard').innerHTML=h;
+  const pe=document.getElementById('paPrice'); if(pe) pe.focus();
+  if(!sealed && c.printing_id) paLoadSources(c.printing_id);
+}
+function paLinks(c){
+  const ref=((c.card_number||'')+' '+(c.name||'')).trim();
+  const q=encodeURIComponent(ref);
+  const mercari='https://jp.mercari.com/search?keyword='+q;
+  const yahoo='https://auctions.yahoo.co.jp/search/search?p='+q;
+  const buyee='https://buyee.jp/item/search/query/'+q;
+  const snkr='https://www.google.com/search?q='+encodeURIComponent('site:snkrdunk.com '+ref);
+  const cm='https://www.cardmarket.com/en/OnePiece/Products/Search?searchString='+encodeURIComponent(c.card_number||c.name||'');
+  const eb='https://www.ebay.fr/sch/i.html?_nkw='+q+'&LH_Sold=1&LH_Complete=1';
+  const cr='https://www.google.com/search?q='+encodeURIComponent(ref+' cardrush');
+  const lk=(u,t)=>'<a href="'+u+'" target="_blank" rel="noopener" style="font-size:11.5px;color:var(--accent);border:1px solid var(--line);border-radius:8px;padding:5px 9px;text-decoration:none">'+t+' ↗</a>';
+  let h='<div style="font-size:10.5px;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);font-weight:800;margin:14px 0 6px">Chercher en live — sourcing JP (meilleurs prix)</div>';
+  h+='<div style="display:flex;gap:7px;flex-wrap:wrap">'+lk(mercari,'Mercari 🇯🇵')+lk(yahoo,'Yahoo Auctions 🇯🇵')+lk(buyee,'Buyee proxy')+lk(snkr,'Snkrdunk')+'</div>';
+  h+='<div style="font-size:10.5px;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);font-weight:800;margin:12px 0 6px">Vérif marché / revente UE</div>';
+  h+='<div style="display:flex;gap:7px;flex-wrap:wrap">'+lk(cm,'Cardmarket UE')+lk(eb,'eBay vendus')+lk(cr,'CardRush 🇯🇵')+'</div>';
+  return h;
+}
+function paEval(){
+  const c=PA_STATE.pick; if(!c) return;
+  const box=document.getElementById('paVerdict'); if(!box) return;
+  const total=parseFloat(document.getElementById('paPrice').value);
+  let qty=parseInt(document.getElementById('paQty').value,10); if(!qty||qty<1)qty=1;
+  if(isNaN(total)||total<=0){ box.innerHTML=''; return; }
+  const unit=total/qty;
+  const sealed=c._type==='scelle';
+  const jp=sealed?(c.price_eur!=null?Number(c.price_eur):null):(c.jp_eur!=null?Number(c.jp_eur):null);
+  const eu=sealed?null:(c.eu_eur!=null?Number(c.eu_eur):null);
+  let h='';
+  if(jp==null){
+    h+='<div style="background:rgba(245,158,11,.14);border:1px solid #f59e0b;border-radius:10px;padding:10px 12px;font-size:12.5px">⚠️ Pas de prix marché JP pour cette carte (set récent ?). Impossible de trancher automatiquement — compare toi-même via les liens ci-dessous avant d\'acheter.</div>';
+    box.innerHTML=h+paLinks(c); return;
+  }
+  const ceil=jp*PA_IMPORT;
+  const diff=(unit-ceil)/ceil*100;
+  const good=unit<=ceil*1.05;
+  const col=good?'#059669':(unit<=ceil*1.25?'#d97706':'#dc2626');
+  const verdict=good?'Bon prix ✓':(unit<=ceil*1.25?('Un peu cher · +'+Math.round(diff)+'%'):('Tu surpaies · +'+Math.round(diff)+'%'));
+  h+='<div style="background:'+col+';color:#fff;border-radius:11px;padding:12px 14px;font-weight:800;font-size:15px;display:flex;justify-content:space-between;align-items:center;gap:10px"><span>'+verdict+'</span><span style="font-size:12px;font-weight:700;opacity:.92">'+(qty>1?('unité '+eur0(unit)):'')+'</span></div>';
+  h+='<div style="margin-top:10px;font-size:12.5px;line-height:1.7">';
+  h+='<div>Plafond raisonnable (marché × 1,28, import compris) : <b>'+eur0(ceil)+'</b>'+(sealed?'':' / carte')+'</div>';
+  if(eu!=null){
+    const cheaper=ceil<=eu?'Japon (import compris)':'Europe';
+    h+='<div>Le moins cher aujourd\'hui : <b>'+esc(cheaper)+'</b> (~'+eur0(Math.min(ceil,eu))+'/carte) · Europe posée '+eur0(eu)+'</div>';
+    const net=eu*(1-PA_FEE_EU), marge=net-unit, mcol=marge>=0?'#059669':'#dc2626';
+    h+='<div>Revente UE estimée : '+eur0(eu)+' − '+Math.round(PA_FEE_EU*100)+'% frais = <b>'+eur0(net)+'</b> net → marge <b style="color:'+mcol+'">'+(marge>=0?'+':'')+eur0(marge)+'</b>/carte'+(qty>1?(' · '+(marge>=0?'+':'')+eur0(marge*qty)+' sur '+qty):'')+'</div>';
+  }
+  h+='</div>';
+  box.innerHTML=h+paLinks(c);
 }
 function grCandCard(x){
   const raw=x._raw, gr=x._gr, net=x._net, id=x.item_id;
@@ -3237,7 +3381,7 @@ async function homeBriefing(){
   }catch(e){ box.innerHTML='<div class="txt" style="color:var(--muted);font-size:13px">Erreur, réessaie.</div><button class="hbriefbtn" onclick="homeBriefing()">Réessayer</button>'; }
 }
 document.getElementById('modeSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMode(b.dataset.m);});
-const APP_VERSION='Version b22 · 26/08';
+const APP_VERSION='Version b26 · 26/08';
 { const nv=document.getElementById('navVersion'); if(nv) nv.textContent=APP_VERSION; }
 document.getElementById('mktSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMarket(b.dataset.k);});
 const CATARRS=["catColors","catCats","catRarities","catTypes"];
