@@ -24,6 +24,7 @@ html,body{margin:0}
 html{height:100%}
 body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--ink);-webkit-text-size-adjust:100%;height:100%;overflow:hidden}
 .wrap{max-width:1100px;margin:0 auto;padding:0 12px;overflow-x:clip;height:100vh;height:100dvh;display:flex;flex-direction:column}
+.wrap>*{flex:none}
 #stage{flex:1 1 auto;min-height:0;overflow-y:auto;overflow-x:clip;-webkit-overflow-scrolling:touch;padding-bottom:96px}
 /* hero — défile avec la page */
 .hero{padding:12px 0 2px}
@@ -863,7 +864,8 @@ body{-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
     <div class="fsec"><h5>Couleur</h5><div class="chipwrap" id="cmColor"></div></div>
     <div class="fsec"><h5>Cat&eacute;gorie</h5><div class="chipwrap" id="cmCat"></div></div>
     <div class="fsec"><h5>Raret&eacute;</h5><div class="chipwrap" id="cmRarity"></div></div>
-    <div class="fsec"><h5>Type</h5><div class="chipwrap" id="cmType"></div></div>
+    <div class="fsec"><h5>Traitement (artwork)</h5><div class="chipwrap" id="cmTreat"></div></div>
+    <div class="fsec"><h5>Collection / Provenance</h5><div class="chipwrap" id="cmProv"></div></div>
     <div class="ffoot"><button class="reset" id="cfreset">R&eacute;initialiser</button><button class="apply" id="cfapply">Voir les cartes</button></div>
   </div>
 </div>
@@ -1010,7 +1012,7 @@ const COLOR_HEX={Red:"#d64545",Green:"#2f9e57",Blue:"#2f6fed",Purple:"#8b57d6",B
 const TYPE_ORDER=["normal","alternate_art","sp","manga","full_art","textured_foil","jolly_roger_foil","promo","tournament"];
 const CAT_ORDER=["LEADER","CHARACTER","EVENT","STAGE","DON"];
 const SORTS=[["val_desc","Valeur ↓ (décroissant)"],["val_asc","Valeur ↑ (croissant)"],["name","Nom (A→Z)"],["num","Numéro"],["qty","Quantité"]];
-const DEF={q:"",lang:"all",color:"all",type:"all",prov:"all",cat:"all",rarity:"all",character:"all",grade:"all",minVal:0,imgf:"all",authf:"all",pricef:"all",variant:"all",achatPeriod:"all",openRatio:null,openLiquid:false,gapView:"mine",tgtLang:"JP",tgtBudget:0,sort:"val_desc",view:"grid",mode:"accueil",catLang:"all",catQuery:"",catLangs:[],catColors:[],catCats:[],catRarities:[],catTypes:[],catSort:"price_desc",setLang:"JP",prodLang:"JP"};
+const DEF={q:"",lang:"all",color:"all",type:"all",prov:"all",cat:"all",rarity:"all",character:"all",grade:"all",minVal:0,imgf:"all",authf:"all",pricef:"all",variant:"all",achatPeriod:"all",openRatio:null,openLiquid:false,gapView:"mine",tgtLang:"JP",tgtBudget:0,sort:"val_desc",view:"grid",mode:"accueil",catLang:"all",catQuery:"",catLangs:[],catColors:[],catCats:[],catRarities:[],catTypes:[],catTreats:[],catProvs:[],catSort:"price_desc",setLang:"JP",prodLang:"JP"};
 let PROD_VALUE=0;
 // Barre du haut : portefeuille détaillé (total = cartes + scellés), même valeur live que l'accueil
 function portfolioMini(){
@@ -1511,7 +1513,7 @@ function setMode(m){
   else if(ia){ document.getElementById('countLine').textContent=''; renderIA(); }
   else if(live){ document.getElementById('countLine').textContent=''; renderLive(); }
   else if(ops){ document.getElementById('countLine').textContent=''; fetchOps(); }
-  else if(cat){ buildCatLangRow(); syncCatBadge(); fetchCatalog(); }
+  else if(cat){ buildCatLangRow(); syncCatBadge(); loadCatFacets(); fetchCatalog(); }
   else if(sets){ document.getElementById('countLine').textContent=''; fetchSets(); }
   else if(prods){ document.getElementById('countLine').textContent=''; fetchProducts(); }
   else if(achats){ document.getElementById('countLine').textContent=''; fetchAchats(); }
@@ -3514,12 +3516,24 @@ async function homeBriefing(){
   }catch(e){ box.innerHTML='<div class="txt" style="color:var(--muted);font-size:13px">Erreur, réessaie.</div><button class="hbriefbtn" onclick="homeBriefing()">Réessayer</button>'; }
 }
 document.getElementById('modeSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMode(b.dataset.m);});
-const APP_VERSION='Version b35 · 27/08';
+const APP_VERSION='Version b36 · 27/08';
 { const nv=document.getElementById('navVersion'); if(nv) nv.textContent=APP_VERSION; }
 document.getElementById('mktSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMarket(b.dataset.k);});
-const CATARRS=["catColors","catCats","catRarities","catTypes"];
+const CATARRS=["catColors","catCats","catRarities","catTreats","catProvs"];
 function toggleCat(key,code){ if(code==="all"){ state[key]=[]; } else { const a=state[key]; state[key]=a.includes(code)?a.filter(x=>x!==code):a.concat([code]); } }
-function catActiveCount(){ return state.catColors.length+state.catCats.length+state.catRarities.length+state.catTypes.length; }
+function catActiveCount(){ return state.catColors.length+state.catCats.length+state.catRarities.length+state.catTreats.length+state.catProvs.length; }
+// Facettes variantes (traitement + provenance) : familles réellement présentes, avec compteurs.
+// Se remplit tout seul quand une nouvelle variante entre au catalogue.
+let CATFACETS={treat:{},prov:{}};
+async function loadCatFacets(){
+  try{
+    const r=await fetch(SB+"/rest/v1/app_catalog_facets?select=kind,fam,n",{headers:{apikey:ANON,Authorization:"Bearer "+ANON}});
+    const rows=await r.json(); if(!Array.isArray(rows)) return;
+    const t={},p={}; rows.forEach(x=>{ if(x.kind==='treat')t[x.fam]=x.n; else if(x.kind==='prov')p[x.fam]=x.n; });
+    CATFACETS={treat:t,prov:p};
+    if(!document.getElementById('cfmodal').classList.contains('hidden')) buildCatFilterModal();
+  }catch(e){}
+}
 function syncCatBadge(){ const n=catActiveCount(); const b=document.getElementById("fbadge"); b.textContent=n; b.style.display=n?"grid":"none"; document.getElementById("filterBtn").classList.toggle("act",!!n); }
 function buildCatLangRow(){
   const row=document.getElementById('catLangRow'); row.innerHTML="";
@@ -3533,10 +3547,19 @@ function buildCatLangRow(){
 }
 function buildCatFilterModal(){
   const colorOpts=[["all","Toutes"]].concat(COLORS.map(c=>[c,'<span style="width:11px;height:11px;border-radius:50%;background:'+(COLOR_HEX[c]||"#888")+';display:inline-block"></span> '+c]));
-  const conf=[["cmColor","catColors",colorOpts],["cmCat","catCats",CATCATS],["cmRarity","catRarities",CATRARS],["cmType","catTypes",CATTYPES]];
+  const conf=[["cmColor","catColors",colorOpts],["cmCat","catCats",CATCATS],["cmRarity","catRarities",CATRARS]];
   conf.forEach(([boxId,key,opts])=>{
     const box=document.getElementById(boxId); if(!box)return; box.innerHTML="";
     opts.forEach(([code,label])=>{ const active = code==="all" ? state[key].length===0 : state[key].includes(code); box.appendChild(makeChip(label,null,active,()=>{ toggleCat(key,code); buildCatFilterModal(); syncCatBadge(); fetchCatalog(); })); });
+  });
+  // Axes variantes dynamiques : traitement (artwork) + collection/provenance, mêmes familles que la collection
+  const axes=[["cmTreat","catTreats",TREAT_ORDER,TREAT_LABELS,CATFACETS.treat],["cmProv","catProvs",PROV_ORDER,PROV_LABELS,CATFACETS.prov]];
+  axes.forEach(([boxId,key,order,labels,counts])=>{
+    const box=document.getElementById(boxId); if(!box)return; box.innerHTML="";
+    box.appendChild(makeChip("Toutes",null,state[key].length===0,()=>{ toggleCat(key,"all"); buildCatFilterModal(); syncCatBadge(); fetchCatalog(); }));
+    order.forEach(fam=>{ const n=counts&&counts[fam]; if(!n) return; box.appendChild(makeChip(labels[fam]||fam,n,state[key].includes(fam),()=>{ toggleCat(key,fam); buildCatFilterModal(); syncCatBadge(); fetchCatalog(); })); });
+    // familles présentes hors ordre connu (nouvelles variantes) : on les sort quand même
+    Object.keys(counts||{}).forEach(fam=>{ if(order.includes(fam)||!counts[fam]) return; box.appendChild(makeChip((labels[fam]||fam),counts[fam],state[key].includes(fam),()=>{ toggleCat(key,fam); buildCatFilterModal(); syncCatBadge(); fetchCatalog(); })); });
   });
 }
 function openCatFilters(){ buildCatFilterModal(); document.getElementById("cfmodal").classList.remove("hidden"); }
@@ -3554,7 +3577,7 @@ let CATACC=[]; const CATPAGE=120;
 async function fetchCatalog(append){
   const stage=document.getElementById('stage');
   const term=(state.catQuery||"").replace(/[%*(),]/g," ").trim();
-  const noFilters=!term && !state.catLangs.length && !state.catCats.length && !state.catRarities.length && !state.catTypes.length && !state.catColors.length;
+  const noFilters=!term && !state.catLangs.length && !state.catCats.length && !state.catRarities.length && !state.catTreats.length && !state.catProvs.length && !state.catColors.length;
   if(!append){ state.catOffset=0; CATACC=[]; stage.className=""; stage.innerHTML='<div class="loading">Recherche…</div>'; }
   // Le tri prix suit le marché sélectionné (JP/EU/US) — même colonne que le prix affiché, sinon l'ordre paraît aléatoire.
   const mkcol=(MKT==='EU'?'mk_eu':'disp_'+(MKT_FIELD[MKT]?MKT.toLowerCase():'jp'));
@@ -3570,7 +3593,8 @@ async function fetchCatalog(append){
   url+="&language=in.("+cls.join(",")+")";
   if(state.catCats.length) url+="&category=in.("+state.catCats.join(",")+")";
   if(state.catRarities.length) url+="&rarity=in.("+state.catRarities.join(",")+")";
-  if(state.catTypes.length) url+="&origin=in.("+state.catTypes.join(",")+")";
+  if(state.catTreats.length) url+="&treatment_family=in.("+state.catTreats.join(",")+")";
+  if(state.catProvs.length) url+="&provenance_family=in.("+state.catProvs.join(",")+")";
   const groups=[];
   if(state.catColors.length) groups.push("or("+state.catColors.map(c=>"color.ilike.*"+c+"*").join(",")+")");
   if(term){ const pat="*"+encodeURIComponent(term)+"*"; groups.push("or(card_number.ilike."+pat+",name.ilike."+pat+")"); }
