@@ -964,12 +964,16 @@ function vNice(v){ if(!v) return "Normale"; v=String(v).toLowerCase(); if(VMAP[v
 function isArtVariant(v){ v=String(v||'').toLowerCase(); return v!=='normal' && v!==''; }
 // DEUX axes distincts : le TRAITEMENT (fini/style d'illustration) et la PROVENANCE (produit/collection d'origine).
 // La taxonomie brute (variant + variant_label) mélange les deux (ex. "jolly_roger_prb01" = traitement Jolly Roger, provenance Premium Booster).
-const TREAT_LABELS={normal:"Normale",foil:"Foil",parallel:"Parallèle",alt_art:"Alt-Art",manga:"Manga",full_art:"Full Art",jolly_roger:"Jolly Roger",textured:"Textured",sp:"SP",other:"Autre"};
-const TREAT_ORDER=["normal","foil","parallel","alt_art","manga","full_art","jolly_roger","textured","sp","other"];
+const TREAT_LABELS={normal:"Normale",gold:"Gold",foil:"Foil",parallel:"Parallèle",alt_art:"Alt-Art",manga:"Manga",full_art:"Full Art",jolly_roger:"Jolly Roger",textured:"Textured",sp:"SP",other:"Autre"};
+const TREAT_ORDER=["normal","gold","foil","parallel","alt_art","manga","full_art","jolly_roger","textured","sp","other"];
 function treatmentFamily(c){
   const v=String(c&&c.variant||'').toLowerCase();
   const lab=String(c&&c.variant_label||'').toLowerCase();
+  const nm=String((c&&(c.card_name||c.name))||'').toLowerCase();
   const s=v+' '+lab+' '+String(c&&c.card_type||'').toLowerCase();
+  // gold = finition. Dans variant/label, ou en parenthèse dans le nom (DON : "… (Gold)").
+  if(/\bgold\b/.test(s) || /\([^)]*\bgold\b[^)]*\)/.test(nm)) return 'gold';
+  if(lab==='foil') return 'foil';                                  // label de finition autoritaire (DON)
   if(s.includes('manga')) return 'manga';
   if(v.includes('jolly_roger')||s.includes('jolly roger')) return 'jolly_roger';
   if(v.includes('textured')||s.includes('textured')) return 'textured';
@@ -3510,7 +3514,7 @@ async function homeBriefing(){
   }catch(e){ box.innerHTML='<div class="txt" style="color:var(--muted);font-size:13px">Erreur, réessaie.</div><button class="hbriefbtn" onclick="homeBriefing()">Réessayer</button>'; }
 }
 document.getElementById('modeSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMode(b.dataset.m);});
-const APP_VERSION='Version b34 · 27/08';
+const APP_VERSION='Version b35 · 27/08';
 { const nv=document.getElementById('navVersion'); if(nv) nv.textContent=APP_VERSION; }
 document.getElementById('mktSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMarket(b.dataset.k);});
 const CATARRS=["catColors","catCats","catRarities","catTypes"];
@@ -3754,7 +3758,7 @@ async function openCatDetail(c){
   const vl=c.variant_label||c.variant;
   document.getElementById("cdbody").innerHTML=
     '<div class="dval"><div class="b">'+esc(c.name||"")+'</div><div class="s">'+(FLAG[c.language]||"")+' '+(LANG_LABELS[c.language]||c.language)+' · '+esc(c.card_number||"")+'</div><div class="collact" id="cdcollact"></div></div>'+
-    drow("Rareté", RAR_LABELS[c.rarity]||c.rarity)+drow("Variante", (vl&&String(vl).toLowerCase()!=='normal')?esc(vl):"Normale")+drow("Type", c.origin?(ORIGIN_LABELS[c.origin]||c.origin):"")+drow("Catégorie", CAT_LABELS[c.category]||c.category)+drow("Set", esc((c.set_code||"")+(c.set_name?(" — "+c.set_name):"")))+
+    drow("Rareté", RAR_LABELS[c.rarity]||c.rarity)+drow("Variante", variantNice(c))+drow("Type", c.origin?(ORIGIN_LABELS[c.origin]||c.origin):"")+drow("Catégorie", CAT_LABELS[c.category]||c.category)+drow("Set", esc((c.set_code||"")+(c.set_name?(" — "+c.set_name):"")))+
     '<div id="cdprice" class="dprices">'+cdPriceBlock(c)+'</div>';
   document.getElementById("cdprints").innerHTML='<div class="dprints"><h4>Toutes les versions</h4><div class="pxloading">…</div></div>';
   document.getElementById("catOverlay").classList.remove("hidden");
@@ -4220,6 +4224,8 @@ function mktBlock(c){
 }
 function variantNice(c){
   if(c.variant_label && String(c.variant_label).trim() && String(c.variant_label).toLowerCase()!=='normal') return esc(c.variant_label);
+  const tf=treatmentFamily(c);                                     // détecte gold (nom/label), foil, alt-art…
+  if(tf && tf!=='normal') return TREAT_LABELS[tf]||tf;
   const v=(c.variant||'').toLowerCase();
   if(!v||v==='normal'||v==='') return 'Normale (standard)';
   return VARIANT_FR[v]||esc(c.variant);
