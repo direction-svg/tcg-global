@@ -897,7 +897,7 @@ body{-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
 <!-- Fiche carte -->
 <div id="overlay" class="overlay hidden">
   <div class="sheet">
-    <div class="dhead"><button class="dclose" id="dclose">&times;</button><img id="dimg" referrerpolicy="no-referrer"><div id="dvfy" style="display:none;position:absolute;top:8px;left:8px;background:#f97316;color:#fff;font-weight:800;font-size:11px;padding:3px 9px;border-radius:9px;z-index:4">🔍 à vérifier</div></div>
+    <div class="dhead"><button class="dclose" id="dclose">&times;</button><button id="dprev" title="Carte précédente" style="position:absolute;left:6px;top:50%;transform:translateY(-50%);z-index:5;width:38px;height:38px;border-radius:50%;border:none;background:rgba(0,0,0,.45);color:#fff;font-size:22px;font-weight:800;cursor:pointer;line-height:1">&lsaquo;</button><button id="dnext" title="Carte suivante" style="position:absolute;right:6px;top:50%;transform:translateY(-50%);z-index:5;width:38px;height:38px;border-radius:50%;border:none;background:rgba(0,0,0,.45);color:#fff;font-size:22px;font-weight:800;cursor:pointer;line-height:1">&rsaquo;</button><img id="dimg" referrerpolicy="no-referrer"><div id="dvfy" style="display:none;position:absolute;top:8px;left:8px;background:#f97316;color:#fff;font-weight:800;font-size:11px;padding:3px 9px;border-radius:9px;z-index:4">🔍 à vérifier</div></div>
     <div class="dtabs"><button data-t="col" class="on">Collection</button><button data-t="det">D&eacute;tails</button></div>
     <div id="dbody"></div>
     <div id="dsrc" class="dprices"></div>
@@ -1067,7 +1067,8 @@ const COLORS=["Red","Green","Blue","Purple","Black","Yellow"];
 const COLOR_HEX={Red:"#d64545",Green:"#2f9e57",Blue:"#2f6fed",Purple:"#8b57d6",Black:"#33384a",Yellow:"#e0a53b"};
 const TYPE_ORDER=["normal","alternate_art","sp","manga","full_art","textured_foil","jolly_roger_foil","promo","tournament"];
 const CAT_ORDER=["LEADER","CHARACTER","EVENT","STAGE","DON"];
-const SORTS=[["val_desc","Valeur ↓ (décroissant)"],["val_asc","Valeur ↑ (croissant)"],["name","Nom (A→Z)"],["num","Numéro"],["qty","Quantité"]];
+const SORTS=[["val_desc","Valeur ↓ (décroissant)"],["val_asc","Valeur ↑ (croissant)"],["achat","Date d'achat (récent)"],["set","Par set"],["name","Nom (A→Z)"],["num","Numéro"],["qty","Quantité"]];
+function setKeyC(code){ const m=String(code||'').toUpperCase().match(/([A-Z]+)[-\s]?0*(\d+)?/); if(!m) return 'ZZZZ9999'; return (m[1]||'ZZ')+String(m[2]||'0').padStart(4,'0'); }
 const DEF={q:"",lang:"all",color:"all",type:"all",prov:"all",cat:"all",rarity:"all",character:"all",grade:"all",minVal:0,imgf:"all",authf:"all",recvf:"all",pricef:"all",variant:"all",achatPeriod:"all",openRatio:null,openLiquid:false,gapView:"mine",tgtLang:"JP",tgtBudget:0,sort:"val_desc",view:"grid",mode:"accueil",catLang:"all",catQuery:"",catLangs:[],catColors:[],catCats:[],catRarities:[],catTypes:[],catTreats:[],catProvs:[],catSort:"price_desc",setLang:"JP",prodLang:"JP"};
 let PROD_VALUE=0;
 // Barre du haut : portefeuille détaillé (total = cartes + scellés), même valeur live que l'accueil
@@ -1157,6 +1158,21 @@ function priceConf(c){
     if(o!=null && o<5)  return Object.assign({t:'À revoir · '+o+' offres'},mk.warn);
     return Object.assign({t:'Fiable'+(o!=null?' · '+o+' offres':'')},mk.ok);
   }
+  if(MKT==='JP'){
+    if(c._jpconf===false) return Object.assign({t:'À confirmer · prix partagé entre variantes'},mk.bad);
+    const s=c._jpsrc, d=(c._jpdays==null?null:+c._jpdays);
+    if(s==='MANUAL') return Object.assign({t:'Prix manuel'},mk.ok);
+    if(s==='CARDRUSH'){ if(d!=null&&d>14) return Object.assign({t:'Cardrush · cote ancienne ('+d+' j)'},mk.warn); return Object.assign({t:'Fiable · Cardrush (boutique JP)'},mk.ok); }
+    if(s==='PRICECHARTING') return Object.assign({t:'Indicatif · PriceCharting (agrégé)'},mk.warn);
+    if(s==='OJA'||s==='LOGIA') return Object.assign({t:'Indicatif · valeur d\'import'},mk.warn);
+    return Object.assign({t:'Indicatif · source à confirmer'},mk.warn);
+  }
+  if(MKT==='US'){
+    const s=c._ussrc, d=(c._usdays==null?null:+c._usdays);
+    if(s==='MANUAL') return Object.assign({t:'Prix manuel'},mk.ok);
+    if(s==='PRICECHARTING'||s==='TCGPLAYER'){ if(d!=null&&d>21) return Object.assign({t:(s==='TCGPLAYER'?'TCGplayer':'PriceCharting')+' · un peu ancien ('+d+' j)'},mk.warn); return Object.assign({t:'Fiable · '+(s==='TCGPLAYER'?'TCGplayer':'PriceCharting')},mk.ok); }
+    return Object.assign({t:'Indicatif · source à confirmer'},mk.warn);
+  }
   return Object.assign({t:'Fiable'},mk.ok);
 }
 function confFrame(c){ const k=priceConf(c); return k&&k.f? (' style="'+k.f+'"') : ''; }
@@ -1172,11 +1188,11 @@ function confGauge(c){
 }
 const CONF_COL={ok:'#059669',warn:'#f59e0b',bad:'#ef4444',none:'#94a3b8'};
 function confLegend(){
-  const rows=[['ok','prix marché live et solide'],['warn','repli d’un autre marché'],['bad','une seule offre — à confirmer'],['none','pas de cote live — estimation figée']];
+  const rows=[['ok','solide : Cardrush (JP), PriceCharting (US), ≥5 offres (EU) ou prix manuel'],['warn','indicatif : PriceCharting agrégé, valeur d’import, cote ancienne ou repli'],['bad','fragile : 1 seule offre, ou prix partagé entre variantes à confirmer'],['none','pas de cote live — estimation figée']];
   return '<div class="conflegend">'+rows.map(function(r){ const lv=r[0], n=CONF_N[lv], col=CONF_COL[lv]; let bars=''; for(var i=0;i<3;i++) bars+='<i'+(i<n?' style="background:'+col+'"':'')+'></i>';
     return '<div class="clrow"><span class="cgauge"><span class="cgbars">'+bars+'</span><span>'+CONF_WORD[lv]+'</span></span><span class="cldesc">'+r[1]+'</span></div>'; }).join('')+'</div>';
 }
-function catMkPrice(c){ const d=c['disp_'+MKT.toLowerCase()]; if(d!=null) return Number(d); const v=c['mk_'+MKT.toLowerCase()]; if(v!=null) return Number(v); const f=c[MKT.toLowerCase()+'_eur']; if(f!=null) return Number(f); return c.price_eur!=null?Number(c.price_eur):null; }  // catalogue : prix du marché sélectionné (disp_* = brut sinon repli gradé ; même valeur que le tri)
+function catMkPrice(c){ const v=c['mk_'+MKT.toLowerCase()]; if(v!=null) return Number(v); const f=c[MKT.toLowerCase()+'_eur']; if(f!=null) return Number(f); return c.price_eur!=null?Number(c.price_eur):null; }  // catalogue : prix marché BRUT uniquement (jamais la cote gradée ; celle-ci reste affichée à part dans la fiche). Le tri suit ce prix brut.
 // Quand le prix affiché vient d'une cote GRADÉE (aucune vente brute), renvoie le libellé (ex "PSA 10") pour l'étiqueter clairement.
 function catGradedTag(c){ if(MKT==='JP') return (c.mk_jp==null && c.jp_g!=null)?(c.jp_gl||'gradé'):null; if(MKT==='US') return (c.mk_us==null && c.us_g!=null)?(c.us_gl||'gradé'):null; return null; }
 // Bloc prix de la fiche : montre TOUJOURS le prix marché brut ET la cote gradée (PSA/BGS) côte à côte,
@@ -1218,9 +1234,9 @@ function setMarket(k){
 async function loadMarketVals(){
   try{
     let mm=[],from=0,step=1000;
-    while(true){ const r=await fetch(SB+'/rest/v1/app_collection_market?select=item_id,jp_eur,eu_eur,us_eur,eu_offres,jp_live,eu_live,us_live&limit='+step+'&offset='+from,{headers:{apikey:ANON,Authorization:'Bearer '+ANON}}); const b=await r.json(); if(!Array.isArray(b))break; mm=mm.concat(b); if(b.length<step)break; from+=step; }
+    while(true){ const r=await fetch(SB+'/rest/v1/app_collection_market?select=item_id,jp_eur,eu_eur,us_eur,eu_offres,jp_live,eu_live,us_live,jp_src,jp_days,jp_conf,us_src,us_days&limit='+step+'&offset='+from,{headers:{apikey:ANON,Authorization:'Bearer '+ANON}}); const b=await r.json(); if(!Array.isArray(b))break; mm=mm.concat(b); if(b.length<step)break; from+=step; }
     const map={}; mm.forEach(x=>{ map[x.item_id]=x; });
-    DATA.forEach(c=>{ const x=map[c.item_id]; if(x){ c._jp=x.jp_eur; c._eu=x.eu_eur; c._us=x.us_eur; c._euof=x.eu_offres; c._jplive=x.jp_live; c._eulive=x.eu_live; c._uslive=x.us_live; } });
+    DATA.forEach(c=>{ const x=map[c.item_id]; if(x){ c._jp=x.jp_eur; c._eu=x.eu_eur; c._us=x.us_eur; c._euof=x.eu_offres; c._jplive=x.jp_live; c._eulive=x.eu_live; c._uslive=x.us_live; c._jpsrc=x.jp_src; c._jpdays=x.jp_days; c._jpconf=x.jp_conf; c._ussrc=x.us_src; c._usdays=x.us_days; } });
   }catch(e){}
 }
 // Rafraîchit le prix marché (JP/EU/US) d'UN seul item — après un changement de variante, sinon le prix affiché reste celui de l'ancienne variante.
@@ -1229,8 +1245,8 @@ async function refreshItemMarket(item){
     const r=await fetch(SB+'/rest/v1/app_collection_market?item_id=eq.'+encodeURIComponent(item)+'&select=item_id,jp_eur,eu_eur,us_eur,eu_offres,jp_live,eu_live,us_live',{headers:{apikey:ANON,Authorization:'Bearer '+ANON}});
     const b=await r.json();
     if(Array.isArray(b)&&b[0]){ const x=b[0];
-      if(detailCard&&String(detailCard.item_id)===String(item)){ detailCard._jp=x.jp_eur; detailCard._eu=x.eu_eur; detailCard._us=x.us_eur; detailCard._euof=x.eu_offres; detailCard._jplive=x.jp_live; detailCard._eulive=x.eu_live; detailCard._uslive=x.us_live; }
-      const d=findCard(item); if(d){ d._jp=x.jp_eur; d._eu=x.eu_eur; d._us=x.us_eur; d._euof=x.eu_offres; d._jplive=x.jp_live; d._eulive=x.eu_live; d._uslive=x.us_live; }
+      if(detailCard&&String(detailCard.item_id)===String(item)){ detailCard._jp=x.jp_eur; detailCard._eu=x.eu_eur; detailCard._us=x.us_eur; detailCard._euof=x.eu_offres; detailCard._jplive=x.jp_live; detailCard._eulive=x.eu_live; detailCard._uslive=x.us_live; detailCard._jpsrc=x.jp_src; detailCard._jpdays=x.jp_days; detailCard._jpconf=x.jp_conf; detailCard._ussrc=x.us_src; detailCard._usdays=x.us_days; }
+      const d=findCard(item); if(d){ d._jp=x.jp_eur; d._eu=x.eu_eur; d._us=x.us_eur; d._euof=x.eu_offres; d._jplive=x.jp_live; d._eulive=x.eu_live; d._uslive=x.us_live; d._jpsrc=x.jp_src; d._jpdays=x.jp_days; d._jpconf=x.jp_conf; d._ussrc=x.us_src; d._usdays=x.us_days; }
     }
   }catch(e){}
 }
@@ -1419,12 +1435,14 @@ function apply(){
   else if(state.pricef==="doubt") a=a.filter(c=>{const k=priceConf(c);return k&&(k.lvl==='warn'||k.lvl==='bad');});
   if(state.q){const q=state.q.toLowerCase();a=a.filter(c=>(c.card_name||"").toLowerCase().includes(q)||(c.card_number||"").toLowerCase().includes(q));}
   const s=state.sort;
-  a.sort((x,y)=> s==="val_asc"?val(x)-val(y): s==="name"?(x.card_name||"").localeCompare(y.card_name||""): s==="num"?(x.card_number||"").localeCompare(y.card_number||""): s==="qty"?(y.quantity||1)-(x.quantity||1): val(y)-val(x));
+  a.sort((x,y)=> s==="val_asc"?val(x)-val(y): s==="name"?(x.card_name||"").localeCompare(y.card_name||""): s==="num"?(x.card_number||"").localeCompare(y.card_number||""): s==="qty"?(y.quantity||1)-(x.quantity||1): s==="achat"?((y.acquired_date||"0").localeCompare(x.acquired_date||"0")||val(y)-val(x)): s==="set"?(setKeyC(x.set_code).localeCompare(setKeyC(y.set_code))||(x.card_number||"").localeCompare(y.card_number||"")): val(y)-val(x));
+  COLLIST=a;
   return a;
 }
 
 let VERIFY=new Set();
 let NEWPHOTO=new Set();
+let COLLIST=[];   // liste ordonnée courante de la collection (pour naviguer dans la fiche)
 let PENDING=new Set();   // cartes achetées, en collection, à réceptionner (confirmer sur la carte)
 async function loadPending(){
   try{
@@ -2295,6 +2313,18 @@ function tgtWhy(x){
   return r.slice(0,4);
 }
 function tgtOpenCatalog(num){ try{ setMode('catalog'); const q=document.getElementById('q'); if(q){ q.value=num; state.catQuery=num; if(typeof fetchCatalog==='function') fetchCatalog(); } }catch(e){} }
+// Clic sur une cible -> ouvre directement la FICHE de la carte (pas le catalogue complet).
+async function tgtOpenCard(o){
+  try{
+    const num=o&&o.n, lang=o&&o.l, vl=(o&&o.v)||'';
+    if(!num) return;
+    const url=SB+'/rest/v1/app_catalog_priced?card_number=eq.'+encodeURIComponent(num)+((lang&&lang!=='all')?('&language=eq.'+encodeURIComponent(lang)):'')+'&limit=30';
+    const r=await fetch(url,{headers:{apikey:ANON,Authorization:'Bearer '+ANON}});
+    let rows=await r.json(); if(!Array.isArray(rows)||!rows.length){ tgtOpenCatalog(num); return; }
+    const row=rows.find(rr=>String(rr.variant_label||'')===String(vl)) || rows.find(rr=>rr.mk_jp!=null||rr.price_eur!=null) || rows[0];
+    if(row && typeof openCatDetail==='function') openCatDetail(row); else tgtOpenCatalog(num);
+  }catch(e){ try{ tgtOpenCatalog(o&&o.n); }catch(_){} }
+}
 function renderTargets(){
   const stage=document.getElementById('stage'); stage.className='';
   const lang=state.tgtLang||'JP', bud=+state.tgtBudget||0;
@@ -2317,7 +2347,7 @@ function renderTargets(){
     const vl=(x.variant_label&&String(x.variant_label).toLowerCase()!=='normal')?(' · '+esc(x.variant_label)):'';
     const why=tgtWhy(x); const sc=+x.score;
     const col=sc>=72?'#059669':sc>=60?'#ea580c':'#64748b';
-    return '<div onclick="tgtOpenCatalog('+JSON.stringify(String(x.card_number)).replace(/"/g,'&quot;')+')" style="display:flex;gap:11px;align-items:flex-start;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:11px 13px;cursor:pointer">'+
+    return '<div onclick="tgtOpenCard('+JSON.stringify({n:String(x.card_number),l:x.lang,v:x.variant_label||''}).replace(/"/g,'&quot;')+')" style="display:flex;gap:11px;align-items:flex-start;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:11px 13px;cursor:pointer">'+
       '<div style="text-align:center;flex:none"><div style="font-size:20px;font-weight:900;color:'+col+';letter-spacing:-.5px">'+sc+'</div><div style="font-size:9px;color:var(--mut);font-weight:800">/100</div></div>'+
       '<div style="flex:1;min-width:0"><div style="font-weight:800;font-size:13px">'+(FLAG[x.lang]||'')+' '+esc(x.card_number||'')+vl+'</div>'+
         '<div class="dt" style="font-size:11.5px">'+esc(x.name||'')+'</div>'+
@@ -2326,7 +2356,7 @@ function renderTargets(){
       '</div>'+
       '<div style="text-align:right;flex:none;font-weight:900;font-size:13px;white-space:nowrap">'+eur0(x.price_eur)+'</div></div>';
   }).join('')+'</div>';
-  h+='<div class="dt" style="font-size:11px;margin:14px 2px 0;line-height:1.5">Prix marché live ('+(lang==='all'?'tous marchés':lang)+'). Le <b>narratif</b> suit l\'actualité One Piece et se met à jour automatiquement. Clique une carte pour l\'ouvrir dans le catalogue. Ceci t\'oriente — la décision reste la tienne.</div>';
+  h+='<div class="dt" style="font-size:11px;margin:14px 2px 0;line-height:1.5">Prix marché live ('+(lang==='all'?'tous marchés':lang)+'). Le <b>narratif</b> suit l\'actualité One Piece et se met à jour automatiquement. Clique une carte pour ouvrir sa fiche. Ceci t\'oriente — la décision reste la tienne.</div>';
   stage.innerHTML=h;
   document.getElementById('countLine').textContent=list.length+' cible'+(list.length>1?'s':'');
 }
@@ -2433,7 +2463,7 @@ async function fetchAchats(){
   const stage=document.getElementById('stage'); stage.className=""; stage.innerHTML='<div class="loading">Chargement des achats…</div>';
   try{
     const [ra,rp,rc,rs]=await Promise.all([
-      fetch(SB+'/rest/v1/app_purchases?select=id,purchase_date,seller,item_name,reference,quantity,ptype,grade,cert_number,ordered,received,currency,amount_origin,amount_eur,category,note,needs_id,printing_id,platform,subtotal_eur,market_eur_at_buy&order=purchase_date.desc&limit=1000',{headers:{apikey:ANON,Authorization:"Bearer "+ANON}}),
+      fetch(SB+'/rest/v1/app_purchases?select=id,purchase_date,seller,item_name,reference,quantity,ptype,grade,cert_number,ordered,received,currency,amount_origin,amount_eur,category,note,needs_id,printing_id,platform,subtotal_eur,market_eur_at_buy,needs_review&order=purchase_date.desc&limit=1000',{headers:{apikey:ANON,Authorization:"Bearer "+ANON}}),
       fetch(SB+'/rest/v1/app_portfolio_value?select=*',{headers:{apikey:ANON,Authorization:"Bearer "+ANON}}),
       fetch(SB+'/rest/v1/app_collection?select=acquired_date,acquired_price,market_value_eur&acquired_price=not.is.null&acquired_date=not.is.null&limit=3000',{headers:{apikey:ANON,Authorization:"Bearer "+ANON}}),
       fetch(SB+'/rest/v1/app_seller_stats?select=*',{headers:{apikey:ANON,Authorization:"Bearer "+ANON}})
@@ -2454,6 +2484,11 @@ async function toggleReceived(id){
   const a=ACHATS.find(x=>String(x.id)===String(id)); if(!a) return;
   const nv=isRecu(a.received)?'Non':'Oui'; a.received=nv; renderAchats();
   try{ await fetch(SB+'/rest/v1/rpc/set_purchase_received',{method:'POST',headers:{apikey:ANON,Authorization:'Bearer '+ANON,'Content-Type':'application/json'},body:JSON.stringify({p_id:id,p_val:nv})}); }catch(e){}
+}
+async function validateCard(id){
+  const a=ACHATS.find(x=>String(x.id)===String(id)); if(!a) return;
+  a.needs_review=false; renderAchats();
+  try{ await fetch(SB+'/rest/v1/rpc/set_purchase_reviewed',{method:'POST',headers:{apikey:ANON,Authorization:'Bearer '+ANON,'Content-Type':'application/json'},body:JSON.stringify({p_id:id,p_val:false})}); }catch(e){}
 }
 function platTag(p){ if(!p) return ''; const m={whatnot:['Whatnot','#8b5cf6'],ebay:['eBay','#2f80c8'],cardtrader:['CardTrader','#3f7d4e'],shop:['Shop','#8a6a2a'],site:['Site','#6f6656']}; const x=m[p]||[p,'#6f6656']; return '<span style="font-size:9px;font-weight:800;padding:1px 5px;border-radius:5px;background:'+x[1]+'22;color:'+x[1]+'">'+x[0]+'</span>'; }
 function renderAchats(){
@@ -2569,9 +2604,11 @@ function renderAchats(){
             '<div><span style="color:var(--muted)">Tout compris </span><b>'+eur0(amt)+'</b> → <b style="color:'+pctCol(p2)+'">'+p2+'%</b> <span style="color:var(--muted)">· cote '+eur0(mkt)+'</span></div>'+
           '</div>';
         } else line2='<div style="margin-top:2px;color:var(--muted);font-size:10px">Cote à préciser · payé tout compris '+eur0(amt)+'</div>';
-        return '<div style="padding:7px 6px 7px 26px;border-top:1px dashed var(--line)">'+
-          '<div style="font-size:12px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(x.item_name||'')+' <span style="color:var(--muted);font-size:10px;font-weight:400">'+achatDate(x.purchase_date)+'</span></div>'+
-          ref+line2+
+        const rev=x.needs_review?'<span style="font-size:8.5px;font-weight:800;background:rgba(245,158,11,.16);color:#b45309;padding:1px 6px;border-radius:5px;margin-left:5px">À VALIDER</span>':'';
+        const revBtn=x.needs_review?'<div style="margin-top:4px"><button onclick="validateCard(\''+esc(x.id)+'\')" style="border:1px solid #3f7d4e;background:rgba(63,125,78,.12);color:#3f7d4e;font-weight:800;font-size:10px;padding:3px 9px;border-radius:7px;cursor:pointer">✓ Valider cette carte</button> <span style="font-size:9.5px;color:var(--muted)">cote/variante à confirmer à la réception</span></div>':'';
+        return '<div style="padding:7px 6px 7px 26px;border-top:1px dashed var(--line)'+(x.needs_review?';background:rgba(245,158,11,.05)':'')+'">'+
+          '<div style="font-size:12px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(x.item_name||'')+rev+' <span style="color:var(--muted);font-size:10px;font-weight:400">'+achatDate(x.purchase_date)+'</span></div>'+
+          ref+line2+revBtn+
         '</div>';
       }).join('');
     };
@@ -2600,6 +2637,9 @@ function renderAchats(){
   // bandeau : cartes live à identifier à réception
   { const nPending=(ACHATS||[]).filter(x=>x.needs_id).length;
     if(nPending>0) h+='<div style="background:rgba(245,158,11,.12);border:1px solid rgba(245,158,11,.55);border-radius:12px;padding:10px 13px;margin-bottom:12px;font-size:12.5px;line-height:1.5;color:var(--ink)"><b>🔎 '+nPending+' carte'+(nPending>1?'s':'')+' à identifier</b> — achetée'+(nPending>1?'s':'')+' en live sans numéro. À réception, touche « Identifier &amp; réceptionner » : choisis la vraie carte, confirme l\'état, et elle entre en collection avec ton prix d\'achat comme coût.</div>'; }
+  // bandeau : cartes à valider (cote/variante pas sûre à 100%)
+  { const nRev=(ACHATS||[]).filter(x=>x.needs_review).length;
+    if(nRev>0) h+='<div style="background:rgba(180,83,9,.10);border:1px solid rgba(180,83,9,.45);border-radius:12px;padding:10px 13px;margin-bottom:12px;font-size:12.5px;line-height:1.5;color:var(--ink)"><b>⚠️ '+nRev+' carte'+(nRev>1?'s':'')+' à valider</b> — cote ou variante <b>pas sûre à 100 %</b> (promos rares, cartes gradées, versions CN, prix affecté par rang). Déplie le vendeur concerné, vérifie la carte à la réception, puis touche <b>« ✓ Valider »</b>. Si une info est fausse, dis-le-moi et je corrige.</div>'; }
   // liste
   h+='<div style="display:flex;flex-direction:column;gap:7px">'+rows.map(x=>{
     const gr=x.grade?'<span style="font-size:10px;font-weight:800;background:#fef9c3;color:#854d0e;padding:1px 6px;border-radius:6px;margin-left:5px">'+esc(x.grade)+'</span>':'';
@@ -2607,13 +2647,14 @@ function renderAchats(){
     const recu=isRecu(x.received);
     const needsId=x.needs_id===true;
     const idBadge=needsId?'<span style="font-size:10px;font-weight:800;background:rgba(245,158,11,.16);color:#b45309;padding:1px 7px;border-radius:6px;margin-left:5px">À IDENTIFIER</span>':'';
+    const revBadge=x.needs_review?'<span onclick="event.preventDefault();event.stopPropagation();validateCard(\''+esc(x.id)+'\')" title="Valider (cote/variante à confirmer)" style="font-size:10px;font-weight:800;background:rgba(180,83,9,.14);color:#b45309;padding:1px 7px;border-radius:6px;margin-left:5px;cursor:pointer">⚠️ À VALIDER ✓</span>':'';
     const rec=needsId
       ? '<button onclick="openIdentify(\''+esc(x.id)+'\')" style="border:1px solid var(--accent);background:var(--accent);color:#fff;font-weight:800;font-size:11px;padding:4px 10px;border-radius:8px;cursor:pointer">🔎 Identifier &amp; réceptionner</button>'
       : '<span onclick="event.preventDefault();event.stopPropagation();toggleReceived(\''+esc(x.id)+'\')" style="display:inline-flex;align-items:center;gap:5px;cursor:pointer;font-weight:800;color:'+(recu?'#059669':'#d97706')+'"><input type="checkbox" '+(recu?'checked':'')+' readonly tabindex="-1" style="width:15px;height:15px;accent-color:#059669;pointer-events:none;margin:0">'+(recu?'Réceptionné':'À réceptionner')+'</span>';
     const typ=x.ptype?esc(x.ptype):'';
     return '<div style="display:flex;gap:10px;align-items:flex-start;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px 12px">'+
       '<div style="flex:1;min-width:0">'+
-        '<div style="font-weight:800;font-size:13.5px">'+esc(x.item_name||'')+gr+qty+idBadge+'</div>'+
+        '<div style="font-weight:800;font-size:13.5px">'+esc(x.item_name||'')+gr+qty+idBadge+revBadge+'</div>'+
         '<div style="font-size:11px;color:var(--muted);margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(x.reference||'')+'</div>'+
         '<div style="font-size:10.5px;color:var(--muted);margin-top:4px;display:flex;gap:8px;flex-wrap:wrap;align-items:center"><span>'+achatDate(x.purchase_date)+'</span><span>·</span><span>'+esc(x.seller||'')+'</span>'+(x.platform?'<span>·</span>'+platTag(x.platform):'')+(typ?'<span>·</span><span>'+typ+'</span>':'')+'<span>·</span>'+rec+'</div>'+
       '</div>'+
@@ -3150,7 +3191,7 @@ function renderProducts(rows,lang){
   PROD_CAT_ORDER.forEach(cat=>{
     const list=byCat[cat]; if(!list||!list.length) return;
     let cOwn=0, cVal=0; list.forEach(r=>{ if(r.owned_qty>0){ cOwn+=r.owned_qty; const a=PRODARB[String(r.product_id)]; const rm=a?a.resolved_mode:'product'; cVal += (rm==='cards'&&a)?(+a.cards_value):(a?(+a.box_value):((r.price_eur||0)*r.owned_qty)); } });
-    const open = (PRODCATOPEN[cat]!==undefined)?PRODCATOPEN[cat]:(cOwn>0);
+    const open = (PRODCATOPEN[cat]!==undefined)?PRODCATOPEN[cat]:false; // replié par défaut ; l'utilisateur déplie au besoin
     const meta = (cOwn>0?('<b>'+cOwn+'</b> possédé'+(cOwn>1?'s':'')+' · '):'')+list.length+' dispo'+(cOwn>0?(' · <b>'+eur0(cVal)+'</b>'):'');
     h+='<details class="pcat"'+(open?' open':'')+' ontoggle="prodCatToggle(\''+cat+'\',this.open)">'+
        '<summary class="pcathead"><span class="pcatname">'+(PROD_CAT_LABELS[cat]||cat)+'</span><span class="pcatmeta">'+meta+'</span></summary>'+
@@ -3653,7 +3694,7 @@ async function homeBriefing(){
   }catch(e){ box.innerHTML='<div class="txt" style="color:var(--muted);font-size:13px">Erreur, réessaie.</div><button class="hbriefbtn" onclick="homeBriefing()">Réessayer</button>'; }
 }
 document.getElementById('modeSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMode(b.dataset.m);});
-const APP_VERSION='Version b46 · 28/08';
+const APP_VERSION='Version b51 · 28/08';
 { const nv=document.getElementById('navVersion'); if(nv) nv.textContent=APP_VERSION; }
 document.getElementById('mktSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMarket(b.dataset.k);});
 const CATARRS=["catColors","catCats","catRarities","catTreats","catProvs"];
@@ -4245,7 +4286,7 @@ applyThemeIcon();
 let detailCard=null, detailTab="col";
 const LANG_LABELS={JP:"Japonais",EN:"Anglais",FR:"Français",CN:"Chinois"};
 function drow(k,v){ return v?('<div class="drow"><span class="k">'+k+'</span><span class="v">'+v+'</span></div>'):''; }
-function openDetail(c){ detailCard=c; detailTab="col"; const im=document.getElementById("dimg"); const vf=document.getElementById("dvfy"); const isV=VERIFY.has(c.item_id); if(vf) vf.style.display=isV?"inline-block":"none"; im.src=c.image_url||""; im.onerror=function(){this.style.visibility="hidden"}; im.style.visibility=c.image_url?"visible":"hidden"; document.querySelectorAll('.dtabs button').forEach(b=>b.classList.toggle('on',b.dataset.t==='col')); renderDetail(); document.getElementById("dprints").innerHTML=""; document.getElementById("dladder").innerHTML=""; document.getElementById("dsrc").innerHTML='<div class="pxhdr">Prix marché — toutes sources</div><div class="pxloading">…</div>'; document.getElementById("overlay").classList.remove("hidden"); loadCardPrices(c,'dsrc'); loadLadder(c); loadPrints(c.card_number); }
+function openDetail(c){ detailCard=c; detailTab="col"; const im=document.getElementById("dimg"); const vf=document.getElementById("dvfy"); const isV=VERIFY.has(c.item_id); if(vf) vf.style.display=isV?"inline-block":"none"; im.src=c.image_url||""; im.onerror=function(){this.style.visibility="hidden"}; im.style.visibility=c.image_url?"visible":"hidden"; document.querySelectorAll('.dtabs button').forEach(b=>b.classList.toggle('on',b.dataset.t==='col')); renderDetail(); document.getElementById("dprints").innerHTML=""; document.getElementById("dladder").innerHTML=""; document.getElementById("dsrc").innerHTML='<div class="pxhdr">Prix marché — toutes sources</div><div class="pxloading">…</div>'; document.getElementById("overlay").classList.remove("hidden"); loadCardPrices(c,'dsrc'); loadLadder(c); loadPrints(c.card_number); updDetailNavBtns(); }
 async function loadLadder(c){
   const box=document.getElementById("dladder"); box.innerHTML="";
   if(!c || !c.is_graded || !c.printing_id) return;
@@ -4363,6 +4404,21 @@ async function validateCurrent(){
   }catch(e){}
 }
 function closeDetail(){ document.getElementById("overlay").classList.add("hidden"); }
+// Navigation carte suivante/précédente dans la fiche (sans fermer) — suit l'ordre affiché de la collection.
+function detailNav(dir){
+  if(!detailCard) return;
+  const list=COLLIST||[]; if(!list.length) return;
+  let i=list.findIndex(c=>String(c.item_id)===String(detailCard.item_id));
+  if(i<0) return;
+  let j=i+dir; if(j<0||j>=list.length) return;
+  openDetail(list[j]);
+}
+function updDetailNavBtns(){
+  const list=COLLIST||[]; const i=detailCard?list.findIndex(c=>String(c.item_id)===String(detailCard.item_id)):-1;
+  const pv=document.getElementById('dprev'), nx=document.getElementById('dnext');
+  if(pv) pv.style.display=(i>0)?'':'none';
+  if(nx) nx.style.display=(i>=0&&i<list.length-1)?'':'none';
+}
 const VARIANT_FR={alternate_art:'Alternate Art',special_alternate_art:'Alternate Art spéciale',manga:'Manga',manga_art:'Manga',black_white_alternate_art:'Manga (N&B)',full_art:'Full Art',championship:'Championship',jolly_roger:'Jolly Roger Foil',parallel:'Parallèle',sp:'SP',wanted:'Wanted',foil:'Foil',textured:'Textured Foil'};
 const MKSRC={JP:'Cardrush · Japon',EU:'CardTrader · Europe',US:'PriceCharting · US'};
 function mktBlock(c){
@@ -4471,6 +4527,15 @@ document.getElementById("scanInput").addEventListener("change",onScanPhoto);
 document.getElementById("scanOverlay").addEventListener("click",e=>{ if(e.target.id==="scanOverlay")closeScan(); });
 document.getElementById("dclose").addEventListener("click",closeDetail);
 document.getElementById("overlay").addEventListener("click",e=>{ if(e.target.id==="overlay")closeDetail(); });
+document.getElementById("dprev").addEventListener("click",e=>{ e.stopPropagation(); detailNav(-1); });
+document.getElementById("dnext").addEventListener("click",e=>{ e.stopPropagation(); detailNav(1); });
+// Swipe gauche/droite sur la fiche pour passer d'une carte à l'autre
+(function(){ const ov=document.getElementById("overlay"); let sx=0,sy=0,st=0,tracking=false;
+  ov.addEventListener("touchstart",e=>{ if(ov.classList.contains("hidden"))return; const t=e.changedTouches[0]; sx=t.clientX; sy=t.clientY; st=Date.now(); tracking=true; },{passive:true});
+  ov.addEventListener("touchend",e=>{ if(!tracking||ov.classList.contains("hidden"))return; tracking=false; const t=e.changedTouches[0]; const dx=t.clientX-sx, dy=t.clientY-sy; if(Math.abs(dx)>55 && Math.abs(dx)>Math.abs(dy)*1.6 && (Date.now()-st)<700){ detailNav(dx<0?1:-1); } },{passive:true});
+})();
+// Flèches clavier quand la fiche est ouverte
+document.addEventListener("keydown",e=>{ const ov=document.getElementById("overlay"); if(ov.classList.contains("hidden"))return; if(e.key==="ArrowLeft"){ detailNav(-1); } else if(e.key==="ArrowRight"){ detailNav(1); } else if(e.key==="Escape"){ closeDetail(); } });
 document.querySelectorAll('.dtabs button').forEach(b=>b.addEventListener("click",()=>{ detailTab=b.dataset.t; document.querySelectorAll('.dtabs button').forEach(x=>x.classList.toggle('on',x===b)); renderDetail(); }));
 
 // Bouton scan déplaçable : appui bref = ouvrir le scan, glisser = déplacer le bouton.
