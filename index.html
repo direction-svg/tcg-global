@@ -2415,7 +2415,7 @@ function openSetInCatalog(setCode,lang){
   setMode('catalog');
 }
 // ---------- Achats (suivi investissement) ----------
-let ACHATS=[], PORTVAL=null, ACQ=[];
+let ACHATS=[], PORTVAL=null, ACQ=[], SELLERSTATS=[];
 const ACHAT_PERIODS=[["all","Depuis le début"],["2026-06-01","Depuis juin 2026"]];
 function setAchatPeriod(p){ state.achatPeriod=p; renderAchats(); }
 const ACHAT_SORTS=[["date_desc","Date ↓"],["date_asc","Date ↑"],["price_desc","Prix ↓"],["price_asc","Prix ↑"],["seller","Vendeur"]];
@@ -2426,14 +2426,16 @@ function setAchatMonth(m){ state.achatMonth=m; renderAchats(); }
 async function fetchAchats(){
   const stage=document.getElementById('stage'); stage.className=""; stage.innerHTML='<div class="loading">Chargement des achats…</div>';
   try{
-    const [ra,rp,rc]=await Promise.all([
-      fetch(SB+'/rest/v1/app_purchases?select=id,purchase_date,seller,item_name,reference,quantity,ptype,grade,cert_number,ordered,received,currency,amount_origin,amount_eur,category,note,needs_id,printing_id&order=purchase_date.desc&limit=1000',{headers:{apikey:ANON,Authorization:"Bearer "+ANON}}),
+    const [ra,rp,rc,rs]=await Promise.all([
+      fetch(SB+'/rest/v1/app_purchases?select=id,purchase_date,seller,item_name,reference,quantity,ptype,grade,cert_number,ordered,received,currency,amount_origin,amount_eur,category,note,needs_id,printing_id,platform&order=purchase_date.desc&limit=1000',{headers:{apikey:ANON,Authorization:"Bearer "+ANON}}),
       fetch(SB+'/rest/v1/app_portfolio_value?select=*',{headers:{apikey:ANON,Authorization:"Bearer "+ANON}}),
-      fetch(SB+'/rest/v1/app_collection?select=acquired_date,acquired_price,market_value_eur&acquired_price=not.is.null&acquired_date=not.is.null&limit=3000',{headers:{apikey:ANON,Authorization:"Bearer "+ANON}})
+      fetch(SB+'/rest/v1/app_collection?select=acquired_date,acquired_price,market_value_eur&acquired_price=not.is.null&acquired_date=not.is.null&limit=3000',{headers:{apikey:ANON,Authorization:"Bearer "+ANON}}),
+      fetch(SB+'/rest/v1/app_seller_stats?select=*',{headers:{apikey:ANON,Authorization:"Bearer "+ANON}})
     ]);
     let rows=await ra.json(); if(!Array.isArray(rows))rows=[];
     let pv=await rp.json(); PORTVAL=(Array.isArray(pv)&&pv[0])?pv[0]:null;
     let acq=await rc.json(); ACQ=Array.isArray(acq)?acq:[];
+    let ss=await rs.json(); SELLERSTATS=Array.isArray(ss)?ss:[];
     if(state.mode!=='achats') return;
     ACHATS=rows; renderAchats();
   }catch(e){ stage.innerHTML='<div class="empty">Erreur de chargement des achats.</div>'; }
@@ -2447,6 +2449,7 @@ async function toggleReceived(id){
   const nv=isRecu(a.received)?'Non':'Oui'; a.received=nv; renderAchats();
   try{ await fetch(SB+'/rest/v1/rpc/set_purchase_received',{method:'POST',headers:{apikey:ANON,Authorization:'Bearer '+ANON,'Content-Type':'application/json'},body:JSON.stringify({p_id:id,p_val:nv})}); }catch(e){}
 }
+function platTag(p){ if(!p) return ''; const m={whatnot:['Whatnot','#8b5cf6'],ebay:['eBay','#2f80c8'],cardtrader:['CardTrader','#3f7d4e'],shop:['Shop','#8a6a2a'],site:['Site','#6f6656']}; const x=m[p]||[p,'#6f6656']; return '<span style="font-size:9px;font-weight:800;padding:1px 5px;border-radius:5px;background:'+x[1]+'22;color:'+x[1]+'">'+x[0]+'</span>'; }
 function renderAchats(){
   const stage=document.getElementById('stage'); stage.className="";
   const num=x=>+x.amount_eur||0;
@@ -2532,6 +2535,29 @@ function renderAchats(){
         sellers.map(s=>'<div class="chip'+(selSeller===s?' on':'')+'" onclick="setAchatSeller('+JSON.stringify(s).replace(/"/g,'&quot;')+')">'+esc(s)+' <span style="opacity:.7">'+sc[s]+' · '+eur0(stot[s])+'</span></div>').join('')+'</div>'+
     '</div>'+
   '</details>';
+  // Section Vendeurs (classement prix payé vs cote marché japonaise)
+  if(SELLERSTATS&&SELLERSTATS.length){
+    const ss=SELLERSTATS.filter(s=>s.seller&&s.seller!=='(inconnu)'&&s.seller!=='—');
+    const totAll=ss.reduce((a,s)=>a+(+s.total_eur||0),0);
+    const ranked=ss.slice().sort((a,b)=>{ const da=a.deal_pct,db=b.deal_pct;
+      if(da!=null&&db!=null) return da-db; if(da!=null) return -1; if(db!=null) return 1; return (+b.total_eur)-(+a.total_eur); });
+    const dealBadge=p=>{ if(p==null) return '<span style="font-size:10.5px;color:var(--muted)">cote non liée</span>';
+      const col=p<=100?'#3f7d4e':(p<=120?'#b45309':'#b23b2e'); const lab=p<=100?'sous le marché':(p<=120?'~ marché':'au-dessus');
+      return '<span style="font-size:10.5px;font-weight:800;color:'+col+'">'+Math.round(p)+'% du marché · '+lab+'</span>'; };
+    const rows2=ranked.map((s,i)=>{ const best=s.deal_pct!=null&&s.deal_pct<=100;
+      return '<div style="display:flex;align-items:center;gap:10px;padding:9px 4px;border-top:1px solid var(--line)">'+
+        '<div style="width:20px;text-align:center;font-weight:800;color:'+(i<3?'var(--gold)':'var(--muted)')+';font-size:12px">'+(i+1)+'</div>'+
+        '<div style="flex:1;min-width:0"><div style="font-weight:700;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(s.seller)+' '+platTag(s.platform)+(best?' ⭐':'')+'</div><div style="margin-top:2px">'+dealBadge(s.deal_pct)+(s.n_linked>0?' <span style="font-size:10px;color:var(--muted)">('+s.n_linked+'/'+s.n+' relié'+(s.n_linked>1?'s':'')+')</span>':'')+(s.n_must>0?' <span style="font-size:10px;font-weight:800;color:var(--gold)">🔥 '+s.n_must+' sous marché tt compris</span>':'')+'</div>'+((s.q_good||s.q_bad||s.psa10)?'<div style="margin-top:2px;font-size:10px">'+(s.q_good?'<span style="color:#3f7d4e">✔ '+s.q_good+' bonne récep.</span> ':'')+(s.q_bad?'<span style="color:#b23b2e">⚠ '+s.q_bad+'</span> ':'')+(s.psa10?'<span style="color:var(--gold)">🏆 '+s.psa10+' PSA10</span>':'')+'</div>':'')+'</div>'+
+        '<div style="text-align:right"><div style="font-weight:800;font-size:13px">'+eur0(s.total_eur)+'</div><div style="font-size:10.5px;color:var(--muted)">'+s.n+' achat'+(s.n>1?'s':'')+'</div></div>'+
+      '</div>'; }).join('');
+    h+='<details class="pxdet"'+(state.sellerOpen?' open':'')+' ontoggle="state.sellerOpen=this.open" style="margin-bottom:10px">'+
+      '<summary>Vendeurs ('+ss.length+')<span style="text-transform:none;letter-spacing:0;font-weight:700;color:var(--muted);font-size:11px;margin-left:auto;margin-right:10px">'+eur0(totAll)+'</span></summary>'+
+      '<div class="pxbody" style="padding-top:6px">'+
+        '<div style="font-size:11.5px;color:var(--muted);margin:0 2px 4px">Classé par <b>prix de la carte</b> (sous-total du reçu si connu, sinon tout compris ÷1,26 — l\'import TVA+douane est fixe ~26 %) vs <b>cote marché JP figée à l\'achat</b>. <b>&lt;100 %</b> = carte payée sous le marché japonais ⭐. <b>🔥</b> = même <b>tout compris</b> (TVA+douane+port) tu es sous le marché : le must. « Cote non liée » = achats pas encore reliés à une carte cotée.</div>'+
+        rows2+
+      '</div>'+
+    '</details>';
+  }
   // bandeau : cartes live à identifier à réception
   { const nPending=(ACHATS||[]).filter(x=>x.needs_id).length;
     if(nPending>0) h+='<div style="background:rgba(245,158,11,.12);border:1px solid rgba(245,158,11,.55);border-radius:12px;padding:10px 13px;margin-bottom:12px;font-size:12.5px;line-height:1.5;color:var(--ink)"><b>🔎 '+nPending+' carte'+(nPending>1?'s':'')+' à identifier</b> — achetée'+(nPending>1?'s':'')+' en live sans numéro. À réception, touche « Identifier &amp; réceptionner » : choisis la vraie carte, confirme l\'état, et elle entre en collection avec ton prix d\'achat comme coût.</div>'; }
@@ -2550,7 +2576,7 @@ function renderAchats(){
       '<div style="flex:1;min-width:0">'+
         '<div style="font-weight:800;font-size:13.5px">'+esc(x.item_name||'')+gr+qty+idBadge+'</div>'+
         '<div style="font-size:11px;color:var(--muted);margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(x.reference||'')+'</div>'+
-        '<div style="font-size:10.5px;color:var(--muted);margin-top:4px;display:flex;gap:8px;flex-wrap:wrap;align-items:center"><span>'+achatDate(x.purchase_date)+'</span><span>·</span><span>'+esc(x.seller||'')+'</span>'+(typ?'<span>·</span><span>'+typ+'</span>':'')+'<span>·</span>'+rec+'</div>'+
+        '<div style="font-size:10.5px;color:var(--muted);margin-top:4px;display:flex;gap:8px;flex-wrap:wrap;align-items:center"><span>'+achatDate(x.purchase_date)+'</span><span>·</span><span>'+esc(x.seller||'')+'</span>'+(x.platform?'<span>·</span>'+platTag(x.platform):'')+(typ?'<span>·</span><span>'+typ+'</span>':'')+'<span>·</span>'+rec+'</div>'+
       '</div>'+
       '<div style="text-align:right;white-space:nowrap"><div style="font-weight:900;font-size:15px">'+eur0(num(x))+'</div>'+((x.currency&&x.currency!=='EUR')?('<div style="font-size:10px;color:var(--muted)">'+(x.amount_origin!=null?Math.round(x.amount_origin).toLocaleString('fr-FR'):'')+' '+esc(x.currency)+'</div>'):'')+'</div>'+
     '</div>';
@@ -3588,7 +3614,7 @@ async function homeBriefing(){
   }catch(e){ box.innerHTML='<div class="txt" style="color:var(--muted);font-size:13px">Erreur, réessaie.</div><button class="hbriefbtn" onclick="homeBriefing()">Réessayer</button>'; }
 }
 document.getElementById('modeSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMode(b.dataset.m);});
-const APP_VERSION='Version b40 · 28/08';
+const APP_VERSION='Version b44 · 28/08';
 { const nv=document.getElementById('navVersion'); if(nv) nv.textContent=APP_VERSION; }
 document.getElementById('mktSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMarket(b.dataset.k);});
 const CATARRS=["catColors","catCats","catRarities","catTreats","catProvs"];
