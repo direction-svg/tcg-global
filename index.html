@@ -241,6 +241,12 @@ body{font-family:'Sora',-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helve
 .pxdet>summary:hover{color:var(--accent)}
 .pxdet .pxbody{padding:0 13px 12px}
 .pxdet .pxsub:first-child{margin-top:2px}
+.svdet{border-top:1px solid var(--line)}
+.svdet>summary{list-style:none;cursor:pointer;user-select:none}
+.svdet>summary:hover{background:var(--chip)}
+.svdet>summary::-webkit-details-marker{display:none}
+.svdet>summary .cv{transition:transform .15s;display:inline-block;color:var(--muted);font-size:11px}
+.svdet[open]>summary .cv{transform:rotate(90deg)}
 .pxadd{margin-top:12px;width:100%;border:1px dashed var(--accent);background:transparent;color:var(--accent);font-weight:800;padding:11px;border-radius:12px;cursor:pointer;font-size:14px}
 .collact{margin-top:10px}
 .collbtn{border:none;border-radius:12px;font-weight:800;padding:11px;cursor:pointer;font-size:14px}
@@ -2427,7 +2433,7 @@ async function fetchAchats(){
   const stage=document.getElementById('stage'); stage.className=""; stage.innerHTML='<div class="loading">Chargement des achats…</div>';
   try{
     const [ra,rp,rc,rs]=await Promise.all([
-      fetch(SB+'/rest/v1/app_purchases?select=id,purchase_date,seller,item_name,reference,quantity,ptype,grade,cert_number,ordered,received,currency,amount_origin,amount_eur,category,note,needs_id,printing_id,platform&order=purchase_date.desc&limit=1000',{headers:{apikey:ANON,Authorization:"Bearer "+ANON}}),
+      fetch(SB+'/rest/v1/app_purchases?select=id,purchase_date,seller,item_name,reference,quantity,ptype,grade,cert_number,ordered,received,currency,amount_origin,amount_eur,category,note,needs_id,printing_id,platform,subtotal_eur,market_eur_at_buy&order=purchase_date.desc&limit=1000',{headers:{apikey:ANON,Authorization:"Bearer "+ANON}}),
       fetch(SB+'/rest/v1/app_portfolio_value?select=*',{headers:{apikey:ANON,Authorization:"Bearer "+ANON}}),
       fetch(SB+'/rest/v1/app_collection?select=acquired_date,acquired_price,market_value_eur&acquired_price=not.is.null&acquired_date=not.is.null&limit=3000',{headers:{apikey:ANON,Authorization:"Bearer "+ANON}}),
       fetch(SB+'/rest/v1/app_seller_stats?select=*',{headers:{apikey:ANON,Authorization:"Bearer "+ANON}})
@@ -2544,16 +2550,39 @@ function renderAchats(){
     const dealBadge=p=>{ if(p==null) return '<span style="font-size:10.5px;color:var(--muted)">cote non liée</span>';
       const col=p<=100?'#3f7d4e':(p<=120?'#b45309':'#b23b2e'); const lab=p<=100?'sous le marché':(p<=120?'~ marché':'au-dessus');
       return '<span style="font-size:10.5px;font-weight:800;color:'+col+'">'+Math.round(p)+'% du marché · '+lab+'</span>'; };
+    const cardPrice=x=>{ const amt=+x.amount_eur||0; if(x.subtotal_eur!=null) return +x.subtotal_eur; return x.platform==='whatnot'?amt/1.26:amt; };
+    const detRows=seller=>{
+      const items=(ACHATS||[]).filter(x=>x.seller===seller&&x.category!=='baseline')
+        .sort((a,b)=>(b.purchase_date||'').localeCompare(a.purchase_date||''));
+      if(!items.length) return '';
+      return items.map(x=>{
+        const amt=+x.amount_eur||0; const mkt=(x.market_eur_at_buy!=null)?+x.market_eur_at_buy:null;
+        let cmp;
+        if(mkt!=null&&mkt>0){ const cp=cardPrice(x); const pct=Math.round(cp/mkt*100);
+          const col=pct<=100?'#3f7d4e':(pct<=120?'#b45309':'#b23b2e');
+          cmp='<span style="font-weight:800;color:'+col+'">'+pct+'%</span> <span style="color:var(--muted)">cote '+eur0(mkt)+'</span>';
+        } else cmp='<span style="color:var(--muted);font-size:10px">cote à préciser</span>';
+        return '<div style="display:flex;gap:8px;align-items:baseline;padding:5px 6px 5px 26px;border-top:1px dashed var(--line);font-size:11.5px">'+
+          '<div style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(x.item_name||'')+' <span style="color:var(--muted);font-size:10px">'+achatDate(x.purchase_date)+'</span></div>'+
+          '<div style="white-space:nowrap;text-align:right">'+cmp+'</div>'+
+          '<div style="width:54px;text-align:right;font-weight:800">'+eur0(amt)+'</div>'+
+        '</div>';
+      }).join('');
+    };
     const rows2=ranked.map((s,i)=>{ const best=s.deal_pct!=null&&s.deal_pct<=100;
-      return '<div style="display:flex;align-items:center;gap:10px;padding:9px 4px;border-top:1px solid var(--line)">'+
-        '<div style="width:20px;text-align:center;font-weight:800;color:'+(i<3?'var(--gold)':'var(--muted)')+';font-size:12px">'+(i+1)+'</div>'+
+      let svm='';
+      if(s.market_linked>0){ const paid=+s.card_linked, mv=+s.market_linked, d=paid-mv;
+        svm='<div style="padding:6px 6px 6px 26px;font-size:11px;color:var(--muted);border-top:1px dashed var(--line)">Sur '+s.n_linked+' carte'+(s.n_linked>1?'s':'')+' cotée'+(s.n_linked>1?'s':'')+' : payé <b style="color:var(--ink)">'+eur0(paid)+'</b> vs cote <b style="color:var(--ink)">'+eur0(mv)+'</b> · écart <b style="color:'+(d<=0?'#3f7d4e':'#b23b2e')+'">'+(d<=0?'':'+')+eur0(d)+'</b></div>'; }
+      const head='<span class="cv">▸</span>'+
+        '<div style="width:18px;text-align:center;font-weight:800;color:'+(i<3?'var(--gold)':'var(--muted)')+';font-size:12px">'+(i+1)+'</div>'+
         '<div style="flex:1;min-width:0"><div style="font-weight:700;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(s.seller)+' '+platTag(s.platform)+(best?' ⭐':'')+'</div><div style="margin-top:2px">'+dealBadge(s.deal_pct)+(s.n_linked>0?' <span style="font-size:10px;color:var(--muted)">('+s.n_linked+'/'+s.n+' relié'+(s.n_linked>1?'s':'')+')</span>':'')+(s.n_must>0?' <span style="font-size:10px;font-weight:800;color:var(--gold)">🔥 '+s.n_must+' sous marché tt compris</span>':'')+'</div>'+((s.q_good||s.q_bad||s.psa10)?'<div style="margin-top:2px;font-size:10px">'+(s.q_good?'<span style="color:#3f7d4e">✔ '+s.q_good+' bonne récep.</span> ':'')+(s.q_bad?'<span style="color:#b23b2e">⚠ '+s.q_bad+'</span> ':'')+(s.psa10?'<span style="color:var(--gold)">🏆 '+s.psa10+' PSA10</span>':'')+'</div>':'')+'</div>'+
-        '<div style="text-align:right"><div style="font-weight:800;font-size:13px">'+eur0(s.total_eur)+'</div><div style="font-size:10.5px;color:var(--muted)">'+s.n+' achat'+(s.n>1?'s':'')+'</div></div>'+
-      '</div>'; }).join('');
+        '<div style="text-align:right"><div style="font-weight:800;font-size:13px">'+eur0(s.total_eur)+'</div><div style="font-size:10.5px;color:var(--muted)">'+s.n+' achat'+(s.n>1?'s':'')+'</div></div>';
+      return '<details class="svdet"><summary style="display:flex;align-items:center;gap:10px;padding:9px 4px">'+head+'</summary>'+svm+detRows(s.seller)+'</details>';
+    }).join('');
     h+='<details class="pxdet"'+(state.sellerOpen?' open':'')+' ontoggle="state.sellerOpen=this.open" style="margin-bottom:10px">'+
       '<summary>Vendeurs ('+ss.length+')<span style="text-transform:none;letter-spacing:0;font-weight:700;color:var(--muted);font-size:11px;margin-left:auto;margin-right:10px">'+eur0(totAll)+'</span></summary>'+
       '<div class="pxbody" style="padding-top:6px">'+
-        '<div style="font-size:11.5px;color:var(--muted);margin:0 2px 4px">Classé par <b>prix de la carte</b> (sous-total du reçu si connu, sinon tout compris ÷1,26 — l\'import TVA+douane est fixe ~26 %) vs <b>cote marché JP figée à l\'achat</b>. <b>&lt;100 %</b> = carte payée sous le marché japonais ⭐. <b>🔥</b> = même <b>tout compris</b> (TVA+douane+port) tu es sous le marché : le must. « Cote non liée » = achats pas encore reliés à une carte cotée.</div>'+
+        '<div style="font-size:11.5px;color:var(--muted);margin:0 2px 4px">Classé par <b>prix de la carte</b> (sous-total du reçu si connu, sinon tout compris ÷1,26 — l\'import TVA+douane est fixe ~26 %) vs <b>cote marché JP figée à l\'achat</b>. <b>&lt;100 %</b> = carte payée sous le marché japonais ⭐. <b>🔥</b> = même <b>tout compris</b> (TVA+douane+port) tu es sous le marché : le must. « Cote non liée » = achats pas encore reliés à une carte cotée. <b>Déplie un vendeur</b> pour voir le détail de ses achats (payé vs cote).</div>'+
         rows2+
       '</div>'+
     '</details>';
@@ -3614,7 +3643,7 @@ async function homeBriefing(){
   }catch(e){ box.innerHTML='<div class="txt" style="color:var(--muted);font-size:13px">Erreur, réessaie.</div><button class="hbriefbtn" onclick="homeBriefing()">Réessayer</button>'; }
 }
 document.getElementById('modeSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMode(b.dataset.m);});
-const APP_VERSION='Version b44 · 28/08';
+const APP_VERSION='Version b45 · 28/08';
 { const nv=document.getElementById('navVersion'); if(nv) nv.textContent=APP_VERSION; }
 document.getElementById('mktSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMarket(b.dataset.k);});
 const CATARRS=["catColors","catCats","catRarities","catTreats","catProvs"];
