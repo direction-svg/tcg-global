@@ -2549,30 +2549,40 @@ function renderAchats(){
       if(da!=null&&db!=null) return da-db; if(da!=null) return -1; if(db!=null) return 1; return (+b.total_eur)-(+a.total_eur); });
     const dealBadge=p=>{ if(p==null) return '<span style="font-size:10.5px;color:var(--muted)">cote non liée</span>';
       const col=p<=100?'#3f7d4e':(p<=120?'#b45309':'#b23b2e'); const lab=p<=100?'sous le marché':(p<=120?'~ marché':'au-dessus');
-      return '<span style="font-size:10.5px;font-weight:800;color:'+col+'">'+Math.round(p)+'% du marché · '+lab+'</span>'; };
+      return '<span style="font-size:10.5px;font-weight:800;color:'+col+'">carte '+Math.round(p)+'% du marché JP · '+lab+'</span>'; };
     const cardPrice=x=>{ const amt=+x.amount_eur||0; if(x.subtotal_eur!=null) return +x.subtotal_eur; return x.platform==='whatnot'?amt/1.26:amt; };
+    const pctCol=p=>p<=100?'#3f7d4e':(p<=120?'#b45309':'#b23b2e');
+    const linkStats=seller=>{ let card=0,allin=0,mkt=0,n=0;
+      (ACHATS||[]).forEach(x=>{ if(x.seller===seller&&x.category!=='baseline'&&x.market_eur_at_buy!=null){ card+=cardPrice(x); allin+=(+x.amount_eur||0); mkt+=(+x.market_eur_at_buy||0); n++; } });
+      return {card,allin,mkt,n}; };
     const detRows=seller=>{
       const items=(ACHATS||[]).filter(x=>x.seller===seller&&x.category!=='baseline')
         .sort((a,b)=>(b.purchase_date||'').localeCompare(a.purchase_date||''));
       if(!items.length) return '';
       return items.map(x=>{
-        const amt=+x.amount_eur||0; const mkt=(x.market_eur_at_buy!=null)?+x.market_eur_at_buy:null;
-        let cmp;
-        if(mkt!=null&&mkt>0){ const cp=cardPrice(x); const pct=Math.round(cp/mkt*100);
-          const col=pct<=100?'#3f7d4e':(pct<=120?'#b45309':'#b23b2e');
-          cmp='<span style="font-weight:800;color:'+col+'">'+pct+'%</span> <span style="color:var(--muted)">cote '+eur0(mkt)+'</span>';
-        } else cmp='<span style="color:var(--muted);font-size:10px">cote à préciser</span>';
-        return '<div style="display:flex;gap:8px;align-items:baseline;padding:5px 6px 5px 26px;border-top:1px dashed var(--line);font-size:11.5px">'+
-          '<div style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(x.item_name||'')+' <span style="color:var(--muted);font-size:10px">'+achatDate(x.purchase_date)+'</span></div>'+
-          '<div style="white-space:nowrap;text-align:right">'+cmp+'</div>'+
-          '<div style="width:54px;text-align:right;font-weight:800">'+eur0(amt)+'</div>'+
+        const amt=+x.amount_eur||0; const cp=cardPrice(x); const mkt=(x.market_eur_at_buy!=null)?+x.market_eur_at_buy:null;
+        const ref=x.reference?('<div style="color:var(--muted);font-size:9.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(String(x.reference).slice(0,60))+'</div>'):'';
+        let line2;
+        if(mkt!=null&&mkt>0){ const p1=Math.round(cp/mkt*100), p2=Math.round(amt/mkt*100);
+          line2='<div style="margin-top:3px;font-size:11px;line-height:1.5">'+
+            '<div><span style="color:var(--muted)">Carte JP (hors import) </span><b>'+eur0(cp)+'</b> → <b style="color:'+pctCol(p1)+'">'+p1+'% de la cote</b></div>'+
+            '<div><span style="color:var(--muted)">Tout compris </span><b>'+eur0(amt)+'</b> → <b style="color:'+pctCol(p2)+'">'+p2+'%</b> <span style="color:var(--muted)">· cote '+eur0(mkt)+'</span></div>'+
+          '</div>';
+        } else line2='<div style="margin-top:2px;color:var(--muted);font-size:10px">Cote à préciser · payé tout compris '+eur0(amt)+'</div>';
+        return '<div style="padding:7px 6px 7px 26px;border-top:1px dashed var(--line)">'+
+          '<div style="font-size:12px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(x.item_name||'')+' <span style="color:var(--muted);font-size:10px;font-weight:400">'+achatDate(x.purchase_date)+'</span></div>'+
+          ref+line2+
         '</div>';
       }).join('');
     };
     const rows2=ranked.map((s,i)=>{ const best=s.deal_pct!=null&&s.deal_pct<=100;
-      let svm='';
-      if(s.market_linked>0){ const paid=+s.card_linked, mv=+s.market_linked, d=paid-mv;
-        svm='<div style="padding:6px 6px 6px 26px;font-size:11px;color:var(--muted);border-top:1px dashed var(--line)">Sur '+s.n_linked+' carte'+(s.n_linked>1?'s':'')+' cotée'+(s.n_linked>1?'s':'')+' : payé <b style="color:var(--ink)">'+eur0(paid)+'</b> vs cote <b style="color:var(--ink)">'+eur0(mv)+'</b> · écart <b style="color:'+(d<=0?'#3f7d4e':'#b23b2e')+'">'+(d<=0?'':'+')+eur0(d)+'</b></div>'; }
+      let svm=''; const L=linkStats(s.seller);
+      if(L.mkt>0){ const pC=Math.round(L.card/L.mkt*100), pA=Math.round(L.allin/L.mkt*100);
+        svm='<div style="padding:8px 6px 8px 26px;font-size:11px;border-top:1px dashed var(--line);background:rgba(255,255,255,.015)">'+
+          '<div style="font-size:10px;text-transform:uppercase;letter-spacing:.3px;color:var(--muted);font-weight:800;margin-bottom:3px">Sur '+L.n+' carte'+(L.n>1?'s':'')+' cotée'+(L.n>1?'s':'')+'</div>'+
+          '<div><b style="color:var(--ink)">Prix carte (hors import)</b> : '+eur0(L.card)+' vs cote '+eur0(L.mkt)+' → <b style="color:'+pctCol(pC)+'">'+pC+'%</b></div>'+
+          '<div style="margin-top:1px"><b style="color:var(--ink)">Tout compris</b> : '+eur0(L.allin)+' vs cote '+eur0(L.mkt)+' → <b style="color:'+pctCol(pA)+'">'+pA+'%</b> <span style="color:var(--muted)">(＋TVA/douane/port)</span></div>'+
+        '</div>'; }
       const head='<span class="cv">▸</span>'+
         '<div style="width:18px;text-align:center;font-weight:800;color:'+(i<3?'var(--gold)':'var(--muted)')+';font-size:12px">'+(i+1)+'</div>'+
         '<div style="flex:1;min-width:0"><div style="font-weight:700;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(s.seller)+' '+platTag(s.platform)+(best?' ⭐':'')+'</div><div style="margin-top:2px">'+dealBadge(s.deal_pct)+(s.n_linked>0?' <span style="font-size:10px;color:var(--muted)">('+s.n_linked+'/'+s.n+' relié'+(s.n_linked>1?'s':'')+')</span>':'')+(s.n_must>0?' <span style="font-size:10px;font-weight:800;color:var(--gold)">🔥 '+s.n_must+' sous marché tt compris</span>':'')+'</div>'+((s.q_good||s.q_bad||s.psa10)?'<div style="margin-top:2px;font-size:10px">'+(s.q_good?'<span style="color:#3f7d4e">✔ '+s.q_good+' bonne récep.</span> ':'')+(s.q_bad?'<span style="color:#b23b2e">⚠ '+s.q_bad+'</span> ':'')+(s.psa10?'<span style="color:var(--gold)">🏆 '+s.psa10+' PSA10</span>':'')+'</div>':'')+'</div>'+
@@ -2582,7 +2592,7 @@ function renderAchats(){
     h+='<details class="pxdet"'+(state.sellerOpen?' open':'')+' ontoggle="state.sellerOpen=this.open" style="margin-bottom:10px">'+
       '<summary>Vendeurs ('+ss.length+')<span style="text-transform:none;letter-spacing:0;font-weight:700;color:var(--muted);font-size:11px;margin-left:auto;margin-right:10px">'+eur0(totAll)+'</span></summary>'+
       '<div class="pxbody" style="padding-top:6px">'+
-        '<div style="font-size:11.5px;color:var(--muted);margin:0 2px 4px">Classé par <b>prix de la carte</b> (sous-total du reçu si connu, sinon tout compris ÷1,26 — l\'import TVA+douane est fixe ~26 %) vs <b>cote marché JP figée à l\'achat</b>. <b>&lt;100 %</b> = carte payée sous le marché japonais ⭐. <b>🔥</b> = même <b>tout compris</b> (TVA+douane+port) tu es sous le marché : le must. « Cote non liée » = achats pas encore reliés à une carte cotée. <b>Déplie un vendeur</b> pour voir le détail de ses achats (payé vs cote).</div>'+
+        '<div style="font-size:11.5px;color:var(--muted);margin:0 2px 6px;line-height:1.55">Deux comparaisons, toutes deux vs la <b>cote marché JP figée à l\'achat</b> :<br>• <b>Prix carte (hors import)</b> = ce que la carte a coûté seule (sous-total du reçu). <b>&lt;100 %</b> = payée sous le marché japonais ⭐ — c\'est ça qui juge le vendeur.<br>• <b>Tout compris</b> = carte + TVA + douane + transport (l\'import varie selon le colis et le pays du vendeur ; les vendeurs 🇫🇷 n\'ont pas de TVA/douane). <b>🔥</b> = même tout compris tu es sous le marché : le must.<br><b>Déplie un vendeur</b> pour le détail carte par carte.</div>'+
         rows2+
       '</div>'+
     '</details>';
@@ -3643,7 +3653,7 @@ async function homeBriefing(){
   }catch(e){ box.innerHTML='<div class="txt" style="color:var(--muted);font-size:13px">Erreur, réessaie.</div><button class="hbriefbtn" onclick="homeBriefing()">Réessayer</button>'; }
 }
 document.getElementById('modeSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMode(b.dataset.m);});
-const APP_VERSION='Version b45 · 28/08';
+const APP_VERSION='Version b46 · 28/08';
 { const nv=document.getElementById('navVersion'); if(nv) nv.textContent=APP_VERSION; }
 document.getElementById('mktSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMarket(b.dataset.k);});
 const CATARRS=["catColors","catCats","catRarities","catTreats","catProvs"];
