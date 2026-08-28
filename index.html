@@ -1069,6 +1069,13 @@ const TYPE_ORDER=["normal","alternate_art","sp","manga","full_art","textured_foi
 const CAT_ORDER=["LEADER","CHARACTER","EVENT","STAGE","DON"];
 const SORTS=[["val_desc","Valeur ↓ (décroissant)"],["val_asc","Valeur ↑ (croissant)"],["achat","Date d'achat (récent)"],["set","Par set"],["name","Nom (A→Z)"],["num","Numéro"],["qty","Quantité"]];
 function setKeyC(code){ const m=String(code||'').toUpperCase().match(/([A-Z]+)[-\s]?0*(\d+)?/); if(!m) return 'ZZZZ9999'; return (m[1]||'ZZ')+String(m[2]||'0').padStart(4,'0'); }
+// Date d'achat : le 16/08 = date d'IMPORT en masse de la collection existante (pas un vrai achat).
+// Ces cartes sont considérées acquises sur la PÉRIODE 1er janv. → 1er juin 2026 (avant le suivi).
+const IMPORT_DATE='2026-08-16';
+const IMPORT_PERIOD_SORT='2026-03-15'; // milieu de la période, pour le tri
+const IMPORT_PERIOD_LABEL='janv. → juin 2026';
+function achatKey(c){ const d=c&&c.acquired_date; if(!d) return '0'; return (d===IMPORT_DATE)? IMPORT_PERIOD_SORT : d; }
+function acqLabel(c){ const d=c&&c.acquired_date; if(!d) return null; return (d===IMPORT_DATE)? IMPORT_PERIOD_LABEL : new Date(d).toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit',year:'numeric'}); }
 const DEF={q:"",lang:"all",color:"all",type:"all",prov:"all",cat:"all",rarity:"all",character:"all",grade:"all",minVal:0,imgf:"all",authf:"all",recvf:"all",pricef:"all",variant:"all",achatPeriod:"all",openRatio:null,openLiquid:false,gapView:"mine",tgtLang:"JP",tgtBudget:0,sort:"val_desc",view:"grid",mode:"accueil",catLang:"all",catQuery:"",catLangs:[],catColors:[],catCats:[],catRarities:[],catTypes:[],catTreats:[],catProvs:[],catSort:"price_desc",setLang:"JP",prodLang:"JP"};
 let PROD_VALUE=0;
 // Barre du haut : portefeuille détaillé (total = cartes + scellés), même valeur live que l'accueil
@@ -1435,7 +1442,7 @@ function apply(){
   else if(state.pricef==="doubt") a=a.filter(c=>{const k=priceConf(c);return k&&(k.lvl==='warn'||k.lvl==='bad');});
   if(state.q){const q=state.q.toLowerCase();a=a.filter(c=>(c.card_name||"").toLowerCase().includes(q)||(c.card_number||"").toLowerCase().includes(q));}
   const s=state.sort;
-  a.sort((x,y)=> s==="val_asc"?val(x)-val(y): s==="name"?(x.card_name||"").localeCompare(y.card_name||""): s==="num"?(x.card_number||"").localeCompare(y.card_number||""): s==="qty"?(y.quantity||1)-(x.quantity||1): s==="achat"?((y.acquired_date||"0").localeCompare(x.acquired_date||"0")||val(y)-val(x)): s==="set"?(setKeyC(x.set_code).localeCompare(setKeyC(y.set_code))||(x.card_number||"").localeCompare(y.card_number||"")): val(y)-val(x));
+  a.sort((x,y)=> s==="val_asc"?val(x)-val(y): s==="name"?(x.card_name||"").localeCompare(y.card_name||""): s==="num"?(x.card_number||"").localeCompare(y.card_number||""): s==="qty"?(y.quantity||1)-(x.quantity||1): s==="achat"?((achatKey(y)).localeCompare(achatKey(x))||val(y)-val(x)): s==="set"?(setKeyC(x.set_code).localeCompare(setKeyC(y.set_code))||(x.card_number||"").localeCompare(y.card_number||"")): val(y)-val(x));
   COLLIST=a;
   return a;
 }
@@ -3694,7 +3701,7 @@ async function homeBriefing(){
   }catch(e){ box.innerHTML='<div class="txt" style="color:var(--muted);font-size:13px">Erreur, réessaie.</div><button class="hbriefbtn" onclick="homeBriefing()">Réessayer</button>'; }
 }
 document.getElementById('modeSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMode(b.dataset.m);});
-const APP_VERSION='Version b51 · 28/08';
+const APP_VERSION='Version b53 · 28/08';
 { const nv=document.getElementById('navVersion'); if(nv) nv.textContent=APP_VERSION; }
 document.getElementById('mktSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMarket(b.dataset.k);});
 const CATARRS=["catColors","catCats","catRarities","catTreats","catProvs"];
@@ -4464,7 +4471,7 @@ function renderDetail(){ const c=detailCard; if(!c)return; const body=document.g
     const srcline=src?('<div class="s" style="margin-top:3px">'+(src.indexOf("Logia")>=0?"⚠ ":"● ")+esc(SRC_LABELS[src]||src)+asof+'</div>'):'';
     const nd='<span style="opacity:.55">Non défini</span>';
     const achFrom=(c.acquired_from&&String(c.acquired_from).trim())?esc(c.acquired_from):nd;
-    const achDate=c.acquired_date?new Date(c.acquired_date).toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit',year:'numeric'}):nd;
+    const achDate=acqLabel(c)||nd;
     const achPrice=(c.acquired_price!=null&&c.acquired_price!=='')?eur(c.acquired_price):nd;
     const lv=c.live_value_eur, sd=c.seed_value_eur;
     let cmp="";
