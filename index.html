@@ -873,6 +873,7 @@ body{-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
   <div class="sheet fsheet">
     <div class="fbar"><b>Filtres</b><button class="x" id="fclose">&times;</button></div>
     <div class="fsec"><h5>Langue</h5><div class="chipwrap" id="mLang"></div></div>
+    <div class="fsec"><h5>Set / collection</h5><div class="chipwrap" id="mSet"></div></div>
     <div class="fsec"><h5>Couleur</h5><div class="chipwrap" id="mColor"></div></div>
     <div class="fsec"><h5>Cat&eacute;gorie</h5><div class="chipwrap" id="mCat"></div></div>
     <div class="fsec"><h5>Traitement (artwork)</h5><div class="chipwrap" id="mType"></div></div>
@@ -1076,7 +1077,17 @@ const IMPORT_PERIOD_SORT='2026-03-15'; // milieu de la période, pour le tri
 const IMPORT_PERIOD_LABEL='janv. → juin 2026';
 function achatKey(c){ const d=c&&c.acquired_date; if(!d) return '0'; return (d===IMPORT_DATE)? IMPORT_PERIOD_SORT : d; }
 function acqLabel(c){ const d=c&&c.acquired_date; if(!d) return null; return (d===IMPORT_DATE)? IMPORT_PERIOD_LABEL : new Date(d).toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit',year:'numeric'}); }
-const DEF={q:"",lang:"all",color:"all",type:"all",prov:"all",cat:"all",rarity:"all",character:"all",grade:"all",minVal:0,imgf:"all",authf:"all",recvf:"all",pricef:"all",variant:"all",achatPeriod:"all",openRatio:null,openLiquid:false,gapView:"mine",tgtLang:"JP",tgtBudget:0,sort:"val_desc",view:"grid",mode:"accueil",catLang:"all",catQuery:"",catLangs:[],catColors:[],catCats:[],catRarities:[],catTypes:[],catTreats:[],catProvs:[],catSort:"price_desc",setLang:"JP",prodLang:"JP"};
+// Famille de set pour le filtre : OP14, PRB01, EB02, ST13… ; promos regroupées.
+function setFamily(code){ const s=String(code||'').toUpperCase().trim(); if(!s) return '—';
+  const m=s.match(/^([A-Z]+)-?0*(\d+)?/); if(!m) return s;
+  const pre=m[1], num=m[2];
+  if(pre==='P') return 'Promo';
+  if(pre==='OP' && !num) return 'Promo';   // OP-PR, OPRP…
+  if(num) return pre+String(num).padStart(2,'0');
+  return pre;
+}
+function setFamRank(fam){ const m=String(fam).match(/^([A-Z]+)(\d+)?/); const g=({OP:0,EB:1,PRB:2,ST:3})[m?m[1]:'']; return [(g==null?8:g), m?m[1]:'zz', (m&&m[2])?+m[2]:999]; }
+const DEF={q:"",lang:"all",color:"all",type:"all",prov:"all",cat:"all",rarity:"all",character:"all",grade:"all",set:"all",minVal:0,imgf:"all",authf:"all",recvf:"all",pricef:"all",variant:"all",achatPeriod:"all",openRatio:null,openLiquid:false,gapView:"mine",tgtLang:"JP",tgtBudget:0,sort:"val_desc",view:"grid",mode:"accueil",catLang:"all",catQuery:"",catLangs:[],catColors:[],catCats:[],catRarities:[],catTypes:[],catTreats:[],catProvs:[],catSort:"price_desc",setLang:"JP",prodLang:"JP"};
 let PROD_VALUE=0;
 // Barre du haut : portefeuille détaillé (total = cartes + scellés), même valeur live que l'accueil
 function portfolioMini(){
@@ -1314,6 +1325,12 @@ function buildFilterModal(){
   LANGS.forEach(([code,label])=>{ const n=code==="all"?DATA.length:(code==="autre"?autreN:(lc[code]||0)); if(code!=="all"&&!n)return;
     mL.appendChild(makeChip(((code==="all"||code==="autre")?"":FLAG[code]+" ")+label,n,state.lang===code,()=>{state.lang=code;afterFilter()})); });
 
+  const sf={}; DATA.forEach(c=>{ const f=setFamily(c.set_code); sf[f]=(sf[f]||0)+1; });
+  const mS=document.getElementById("mSet"); if(mS){ mS.innerHTML="";
+    mS.appendChild(makeChip("Tous",DATA.length,state.set==="all"||!state.set,()=>{state.set="all";afterFilter()}));
+    Object.keys(sf).sort((a,b)=>{ const ra=setFamRank(a),rb=setFamRank(b); return ra[0]-rb[0]||(ra[1]<rb[1]?-1:ra[1]>rb[1]?1:0)||ra[2]-rb[2]; })
+      .forEach(f=>{ mS.appendChild(makeChip(f,sf[f],state.set===f,()=>{state.set=f;afterFilter()})); }); }
+
   const colc={}; DATA.forEach(c=>{ if(c.color) c.color.split(";").forEach(x=>colc[x]=(colc[x]||0)+1); });
   const mC=document.getElementById("mColor"); mC.innerHTML="";
   mC.appendChild(makeChip("Toutes",DATA.length,state.color==="all",()=>{state.color="all";afterFilter()}));
@@ -1441,6 +1458,7 @@ function apply(){
   if(state.pricef==="noprice") a=a.filter(c=>{const k=priceConf(c);return k&&k.lvl==='none';});
   else if(state.pricef==="doubt") a=a.filter(c=>{const k=priceConf(c);return k&&(k.lvl==='warn'||k.lvl==='bad');});
   if(state.q){const q=state.q.toLowerCase();a=a.filter(c=>(c.card_name||"").toLowerCase().includes(q)||(c.card_number||"").toLowerCase().includes(q));}
+  if(state.set&&state.set!=='all') a=a.filter(c=>setFamily(c.set_code)===state.set);
   const s=state.sort;
   a.sort((x,y)=> s==="val_asc"?val(x)-val(y): s==="name"?(x.card_name||"").localeCompare(y.card_name||""): s==="num"?(x.card_number||"").localeCompare(y.card_number||""): s==="qty"?(y.quantity||1)-(x.quantity||1): s==="achat"?((achatKey(y)).localeCompare(achatKey(x))||val(y)-val(x)): s==="set"?(setKeyC(x.set_code).localeCompare(setKeyC(y.set_code))||(x.card_number||"").localeCompare(y.card_number||"")): val(y)-val(x));
   COLLIST=a;
@@ -1530,7 +1548,7 @@ function closeSort(){ document.getElementById("smodal").classList.add("hidden");
 // ---------- Filtres open/close ----------
 function openFilters(){ buildFilterModal(); document.getElementById("fmodal").classList.remove("hidden"); }
 function closeFilters(){ document.getElementById("fmodal").classList.add("hidden"); }
-function resetFilters(){ ["lang","color","type","prov","cat","rarity","character","variant","grade"].forEach(k=>{ state[k]="all"; }); state.pricef="all"; afterFilter(); }
+function resetFilters(){ ["lang","color","type","prov","cat","rarity","character","variant","grade","set"].forEach(k=>{ state[k]="all"; }); state.pricef="all"; afterFilter(); }
 
 // ---------- Events ----------
 let catTimer=null;
@@ -3701,7 +3719,7 @@ async function homeBriefing(){
   }catch(e){ box.innerHTML='<div class="txt" style="color:var(--muted);font-size:13px">Erreur, réessaie.</div><button class="hbriefbtn" onclick="homeBriefing()">Réessayer</button>'; }
 }
 document.getElementById('modeSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMode(b.dataset.m);});
-const APP_VERSION='Version b53 · 28/08';
+const APP_VERSION='Version b54 · 28/08';
 { const nv=document.getElementById('navVersion'); if(nv) nv.textContent=APP_VERSION; }
 document.getElementById('mktSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMarket(b.dataset.k);});
 const CATARRS=["catColors","catCats","catRarities","catTreats","catProvs"];
