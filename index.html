@@ -212,6 +212,12 @@ body{font-family:'Sora',-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helve
 .buylab{font-size:12px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:7px}
 .buyinput{width:100%;border:1.5px solid var(--line);border-radius:12px;padding:12px 14px;font-size:16px;font-weight:700;background:var(--bg);color:var(--ink)}
 .buysrc{display:flex;flex-wrap:wrap;gap:8px}
+.gsw{position:relative;display:inline-block;width:46px;height:26px;flex:none}
+.gsw input{opacity:0;width:0;height:0;position:absolute}
+.gsl{position:absolute;inset:0;background:var(--line);border-radius:26px;transition:.2s;cursor:pointer}
+.gsl::before{content:"";position:absolute;height:20px;width:20px;left:3px;top:3px;background:#fff;border-radius:50%;transition:.2s;box-shadow:0 1px 3px rgba(0,0,0,.3)}
+.gsw input:checked + .gsl{background:var(--accent)}
+.gsw input:checked + .gsl::before{transform:translateX(20px)}
 .buysrc .chip{background:var(--chip);border:1.5px solid transparent;border-radius:20px;padding:8px 13px;font-weight:700;font-size:13px;cursor:pointer}
 .buysrc .chip.on{background:rgba(166,124,39,.1);border-color:var(--accent);color:var(--accent)}
 .buybtn{flex:1;border:none;border-radius:12px;padding:13px;font-weight:800;font-size:14px;cursor:pointer;background:var(--accent);color:#fff}
@@ -900,7 +906,7 @@ body{-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
 <div id="overlay" class="overlay hidden">
   <div class="sheet">
     <div class="dhead"><button class="dclose" id="dclose">&times;</button><button id="dprev" title="Carte précédente" style="position:absolute;left:6px;top:50%;transform:translateY(-50%);z-index:5;width:38px;height:38px;border-radius:50%;border:none;background:rgba(0,0,0,.45);color:#fff;font-size:22px;font-weight:800;cursor:pointer;line-height:1">&lsaquo;</button><button id="dnext" title="Carte suivante" style="position:absolute;right:6px;top:50%;transform:translateY(-50%);z-index:5;width:38px;height:38px;border-radius:50%;border:none;background:rgba(0,0,0,.45);color:#fff;font-size:22px;font-weight:800;cursor:pointer;line-height:1">&rsaquo;</button><img id="dimg" referrerpolicy="no-referrer"><div id="dvfy" style="display:none;position:absolute;top:8px;left:8px;background:#f97316;color:#fff;font-weight:800;font-size:11px;padding:3px 9px;border-radius:9px;z-index:4">🔍 à vérifier</div></div>
-    <div class="dtabs"><button data-t="col" class="on">Collection</button><button data-t="det">D&eacute;tails</button></div>
+    <div class="dtabs"><button data-t="col" class="on">Collection</button><button data-t="tar">Tarifs</button><button data-t="det">D&eacute;tails</button></div>
     <div id="dbody"></div>
     <div id="dsrc" class="dprices"></div>
     <div id="dladder"></div>
@@ -973,6 +979,19 @@ body{-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
       <input id="buyPrice" class="buyinput" type="number" inputmode="decimal" placeholder="ex : 24,50">
       <div class="buylab" style="margin-top:14px">Provenance</div>
       <div id="buySources" class="buysrc"></div>
+      <div class="buylab" style="margin-top:16px;display:flex;align-items:center;justify-content:space-between">
+        <span>Carte gradée ?</span>
+        <label class="gsw"><input type="checkbox" id="buyGraded" onchange="toggleGradedBuy()"><span class="gsl"></span></label>
+      </div>
+      <div id="buyGradedBox" style="display:none">
+        <div class="buylab" style="margin-top:6px">Soci&eacute;t&eacute; de gradation</div>
+        <div id="buyGco" class="buysrc"></div>
+        <div class="buylab" style="margin-top:10px">Note</div>
+        <div id="buyGrade" class="buysrc"></div>
+        <div class="buylab" style="margin-top:10px">N&deg; de certification <span style="color:var(--muted);font-weight:600">&mdash; optionnel</span></div>
+        <input id="buyCert" class="buyinput" placeholder="ex : 165624968" oninput="refreshGradedPreview()">
+        <div id="buyGval" style="margin-top:10px;font-size:13px"></div>
+      </div>
     </div>
     <div style="padding:14px 16px calc(20px + env(safe-area-inset-bottom));display:flex;gap:8px">
       <button class="buybtn ghost" onclick="confirmBuy(false)">Ajouter sans détail</button>
@@ -1296,24 +1315,43 @@ async function refreshItemMarket(item){
   }catch(e){}
 }
 
+const COLL_CACHE_KEY='bounty_coll_cache_v1';
+function saveCollCache(){ try{ if(Array.isArray(DATA)&&DATA.length) localStorage.setItem(COLL_CACHE_KEY, JSON.stringify(DATA)); }catch(e){} }
 async function load(){
+  // 0) FAÇADE : afficher immédiatement le dernier état connu (cache local), le temps que le frais arrive.
+  //    Évite l'écran vide / l'attente quand les vues serveur sont lentes.
+  if(!Array.isArray(DATA)||!DATA.length){
+    try{ const c=localStorage.getItem(COLL_CACHE_KEY);
+      if(c){ const arr=JSON.parse(c);
+        if(Array.isArray(arr)&&arr.length){ DATA=arr; DATALOADED=true;
+          if(DATA.some(x=>x&&x._jp!=null)) MKT_OVERLAY_OK=true;
+          buildFilterModal();
+          if(state.mode==="accueil"){ renderHome(); } else { render(); if(state.mode==="collection") loadBriefing(); }
+        }
+      }
+    }catch(e){}
+  }
+  // 1) Fetch frais en arrière-plan
   let all=[],from=0,step=1000;
   while(true){
     const r=await fetch(SB+"/rest/v1/app_collection?select=item_id,printing_id,card_number,card_name,card_type,category,color,rarity,language,is_graded,grading_company,grade,cert_number,quantity,market_value_eur,seed_value_eur,live_value_eur,psa_estimate_eur,population,pop_higher,price_source,price_asof,image_url,set_code,set_name,variant,variant_label,origin,art_suffix,reverify,img_locked,acquired_from,acquired_date,acquired_price&order=market_value_eur.desc.nullslast&limit="+step+"&offset="+from,{headers:{apikey:ANON,Authorization:"Bearer "+ANON}});
-    if(!r.ok){document.getElementById("stage").innerHTML='<div class="empty">Erreur de chargement ('+r.status+').</div>';return;}
-    const b=await r.json(); all=all.concat(b); if(b.length<step)break; from+=step;
+    if(!r.ok){ if(DATALOADED) return; document.getElementById("stage").innerHTML='<div class="empty">Erreur de chargement ('+r.status+').</div>';return;}
+    const b=await r.json(); if(!Array.isArray(b)){ if(DATALOADED) return; break; } all=all.concat(b); if(b.length<step)break; from+=step;
   }
+  if(!all.length && DATALOADED) return; // le frais a échoué mais on garde la façade
   DATA=all; DATALOADED=true; buildFilterModal();
-  // 1) Rendu immédiat depuis DATA — la collection s'affiche quoi qu'il arrive
+  // 2) Rendu depuis les données fraîches
   if(state.mode==="accueil"){ renderHome(); }
   else { render(); if(state.mode==="collection") loadBriefing(); }
-  // 2) Enrichissements non bloquants (verify / images PriceCharting / valeurs marché)
+  saveCollCache();
+  // 3) Enrichissements non bloquants (verify / images PriceCharting / valeurs marché)
   try{ await loadVerify(); }catch(e){}
   try{ await loadPending(); }catch(e){}
   try{ await loadPcImages(); }catch(e){}
   try{ await loadMarketVals(); }catch(e){}
   if(state.mode==="accueil"){ renderHome(); }
   else if(state.mode==="collection"||state.mode==="catalog"){ render(); }
+  saveCollCache(); // cache enrichi (avec prix marché) pour la prochaine ouverture
 }
 let DATALOADED=false;
 const USER_NAME="Christopher";
@@ -3746,7 +3784,7 @@ async function homeBriefing(){
   }catch(e){ box.innerHTML='<div class="txt" style="color:var(--muted);font-size:13px">Erreur, réessaie.</div><button class="hbriefbtn" onclick="homeBriefing()">Réessayer</button>'; }
 }
 document.getElementById('modeSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMode(b.dataset.m);});
-const APP_VERSION='Version b59 · 29/08';
+const APP_VERSION='Version b63 · 29/08';
 { const nv=document.getElementById('navVersion'); if(nv) nv.textContent=APP_VERSION; }
 document.getElementById('mktSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMarket(b.dataset.k);});
 const CATARRS=["catColors","catCats","catRarities","catTreats","catProvs"];
@@ -4084,10 +4122,17 @@ async function loadCardVersions(c){
 }
 function collAddFromList(pid,btn){
   if(!pid) return;
-  openBuySheet(pid,'',async(price,from)=>{
+  openBuySheet(pid,'',async(price,from,graded)=>{
     btn.disabled=true; const old=btn.textContent; btn.textContent='…';
-    try{ const r=await fetch(SB+'/rest/v1/rpc/add_to_collection',{method:'POST',headers:{apikey:ANON,Authorization:"Bearer "+ANON,"Content-Type":"application/json"},body:JSON.stringify({p_printing:pid,p_qty:1,p_price:price,p_from:from})}); const j=await r.json(); const q=(Array.isArray(j)&&j[0])?j[0].res_quantity:1; btn.disabled=false; btn.classList.add('have'); btn.textContent='✓ ×'+q; markOwnedInGrid(pid,true); const cb=document.getElementById('cdcollact'); if(cb&&detailCatPid===pid) paintCollBtn(pid,q); }
-    catch(e){ btn.disabled=false; btn.textContent=old; alert("Erreur lors de l'ajout."); }
+    try{
+      if(graded){
+        const r=await fetch(SB+'/rest/v1/rpc/add_graded_to_collection',{method:'POST',headers:{apikey:ANON,Authorization:"Bearer "+ANON,"Content-Type":"application/json"},body:JSON.stringify({p_printing:pid,p_company:graded.company,p_grade:graded.grade,p_cert:graded.cert,p_price:price,p_from:from})}); const j=await r.json(); if(!Array.isArray(j)) throw new Error(j&&j.message||'');
+        btn.disabled=false; btn.classList.add('have'); btn.textContent='✓ '+graded.company+' '+graded.grade; markOwnedInGrid(pid,true);
+      } else {
+        const r=await fetch(SB+'/rest/v1/rpc/add_to_collection',{method:'POST',headers:{apikey:ANON,Authorization:"Bearer "+ANON,"Content-Type":"application/json"},body:JSON.stringify({p_printing:pid,p_qty:1,p_price:price,p_from:from})}); const j=await r.json(); const q=(Array.isArray(j)&&j[0])?j[0].res_quantity:1; btn.disabled=false; btn.classList.add('have'); btn.textContent='✓ ×'+q; markOwnedInGrid(pid,true); const cb=document.getElementById('cdcollact'); if(cb&&detailCatPid===pid) paintCollBtn(pid,q);
+      }
+    }
+    catch(e){ btn.disabled=false; btn.textContent=old; alert((e&&e.message)?e.message:"Erreur lors de l'ajout."); }
   });
 }
 let detailCatPid=null;
@@ -4194,25 +4239,78 @@ function paintCollBtn(pid,qty){
 const BUY_SOURCES=["eBay","Whatnot","Particulier","Enchères","Cardmarket","Boutique","TCGplayer","Convention","Autre"];
 let BUY_CTX=null;
 function openBuySheet(id,name,onDone){
-  BUY_CTX={id,onDone,src:null};
+  BUY_CTX={id,onDone,src:null,graded:null};
   document.getElementById('buyTitle').textContent=name?('Ajouter — '+name):'Ajouter à ma collection';
   document.getElementById('buyPrice').value='';
   document.getElementById('buySources').innerHTML=BUY_SOURCES.map(s=>'<div class="chip" data-s="'+esc(s)+'" onclick="pickBuySrc(this)">'+esc(s)+'</div>').join('');
+  // réinitialise le volet gradation
+  const gchk=document.getElementById('buyGraded'); if(gchk) gchk.checked=false;
+  const gbox=document.getElementById('buyGradedBox'); if(gbox) gbox.style.display='none';
+  const gco=document.getElementById('buyGco'); if(gco) gco.innerHTML='';
+  const ggr=document.getElementById('buyGrade'); if(ggr) ggr.innerHTML='';
+  const gcert=document.getElementById('buyCert'); if(gcert) gcert.value='';
+  const gval=document.getElementById('buyGval'); if(gval) gval.innerHTML='';
   document.getElementById('buySheet').classList.remove('hidden');
+}
+const GRADE_COS=['PSA','BGS','CGC','SGC','NOVA'];
+const GRADE_VALS=['10','9.5','9','8.5','8','7'];
+function toggleGradedBuy(){
+  const on=document.getElementById('buyGraded').checked;
+  document.getElementById('buyGradedBox').style.display=on?'':'none';
+  if(BUY_CTX) BUY_CTX.graded=on?{company:null,grade:null}:null;
+  if(on){
+    if(!document.getElementById('buyGco').innerHTML){
+      document.getElementById('buyGco').innerHTML=GRADE_COS.map(s=>'<div class="chip" data-co="'+s+'" onclick="pickGradeCo(this)">'+s+'</div>').join('');
+      document.getElementById('buyGrade').innerHTML=GRADE_VALS.map(s=>'<div class="chip" data-g="'+s+'" onclick="pickGradeVal(this)">'+s+'</div>').join('');
+    }
+    refreshGradedPreview();
+  }
+}
+function pickGradeCo(el){ document.querySelectorAll('#buyGco .chip').forEach(c=>c.classList.remove('on')); el.classList.add('on'); if(BUY_CTX&&BUY_CTX.graded) BUY_CTX.graded.company=el.getAttribute('data-co'); refreshGradedPreview(); }
+function pickGradeVal(el){ document.querySelectorAll('#buyGrade .chip').forEach(c=>c.classList.remove('on')); el.classList.add('on'); if(BUY_CTX&&BUY_CTX.graded) BUY_CTX.graded.grade=parseFloat(el.getAttribute('data-g')); refreshGradedPreview(); }
+async function refreshGradedPreview(){
+  const box=document.getElementById('buyGval'); if(!box||!BUY_CTX) return;
+  const g=BUY_CTX.graded;
+  if(!g||!g.company||!g.grade){ box.innerHTML='<span style="color:var(--muted)">Choisis la soci&eacute;t&eacute; et la note pour estimer la valeur.</span>'; return; }
+  const certEl=document.getElementById('buyCert'); const cert=(certEl&&certEl.value.trim())||'';
+  const psaCert=(g.company==='PSA' && !!cert);
+  const pid=BUY_CTX.id; box.innerHTML='<span style="color:var(--muted)">Recherche de la cote&hellip;</span>';
+  let coteHtml='';
+  try{
+    const r=await fetch(SB+'/rest/v1/app_price_ladder?printing_id=eq.'+encodeURIComponent(pid)+'&grading_company=eq.'+encodeURIComponent(g.company)+'&grade=eq.'+g.grade+'&select=price_eur,market&order=price_eur.desc',{headers:{apikey:ANON,Authorization:'Bearer '+ANON}});
+    const j=await r.json();
+    if(Array.isArray(j)&&j[0]&&j[0].price_eur!=null){ coteHtml='<div style="color:#7a5b1e;font-weight:800">Cote march&eacute; '+esc(g.company)+' '+g.grade+' &asymp; '+eur(j[0].price_eur)+' <span style="color:var(--muted);font-weight:600;font-size:11px">('+esc(j[0].market||'')+' &middot; ventes PriceCharting)</span></div>'; }
+    else { coteHtml='<div style="color:var(--muted)">Pas de cote de ventes pour cette note &mdash; valeur estim&eacute;e automatiquement &agrave; l\'ajout.</div>'; }
+  }catch(e){ coteHtml='<div style="color:var(--muted)">Valeur estim&eacute;e automatiquement &agrave; l\'ajout.</div>'; }
+  if(BUY_CTX&&BUY_CTX.graded!==g) return; // la sélection a changé pendant la requête
+  const psaHtml=psaCert?'<div style="color:#059669;font-weight:800;margin-top:4px">🔒 Valeur <b>exacte PSA</b> r&eacute;cup&eacute;r&eacute;e depuis le certificat &agrave; l\'ajout (population + estimate officiels).</div>':(g.company==='PSA'?'<div style="color:var(--muted);font-size:11px;margin-top:3px">Ajoute le n&deg; de cert pour la valeur exacte PSA (au lieu de la cote de marché).</div>':'');
+  box.innerHTML=coteHtml+psaHtml;
 }
 function pickBuySrc(el){ const on=el.classList.contains('on'); document.querySelectorAll('#buySources .chip').forEach(c=>c.classList.remove('on')); if(!on){ el.classList.add('on'); if(BUY_CTX)BUY_CTX.src=el.getAttribute('data-s'); } else if(BUY_CTX){ BUY_CTX.src=null; } }
 function closeBuySheet(){ document.getElementById('buySheet').classList.add('hidden'); BUY_CTX=null; }
 async function confirmBuy(withDetail){
   if(!BUY_CTX) return; const ctx=BUY_CTX; let price=null, from=null;
   if(withDetail){ const v=document.getElementById('buyPrice').value; const num=parseFloat(String(v).replace(',','.').replace(/[^0-9.]/g,'')); if(num>0) price=num; from=ctx.src||null; }
-  closeBuySheet(); if(ctx.onDone) await ctx.onDone(price, from);
+  // gradation : on ne la transmet que si société + note sont bien choisies
+  let graded=null;
+  if(ctx.graded && ctx.graded.company && ctx.graded.grade){
+    const certEl=document.getElementById('buyCert');
+    graded={company:ctx.graded.company, grade:ctx.graded.grade, cert:(certEl&&certEl.value.trim())||null};
+  }
+  closeBuySheet(); if(ctx.onDone) await ctx.onDone(price, from, graded);
 }
 document.getElementById('buySheet').addEventListener('click',e=>{ if(e.target.id==='buySheet') closeBuySheet(); });
 function collAdd(pid,name){
-  openBuySheet(pid,name,async(price,from)=>{
+  openBuySheet(pid,name,async(price,from,graded)=>{
     const box=document.getElementById('cdcollact'); if(box) box.style.opacity=.5;
-    try{ const r=await fetch(SB+'/rest/v1/rpc/add_to_collection',{method:'POST',headers:{apikey:ANON,Authorization:"Bearer "+ANON,"Content-Type":"application/json"},body:JSON.stringify({p_printing:pid,p_qty:1,p_price:price,p_from:from})}); const j=await r.json(); const q=(Array.isArray(j)&&j[0])?j[0].res_quantity:1; if(box)box.style.opacity=1; paintCollBtn(pid,q); markOwnedInGrid(pid,true); }
-    catch(e){ if(box)box.style.opacity=1; alert("Erreur lors de l'ajout."); }
+    try{
+      if(graded){
+        const r=await fetch(SB+'/rest/v1/rpc/add_graded_to_collection',{method:'POST',headers:{apikey:ANON,Authorization:"Bearer "+ANON,"Content-Type":"application/json"},body:JSON.stringify({p_printing:pid,p_company:graded.company,p_grade:graded.grade,p_cert:graded.cert,p_price:price,p_from:from})}); const j=await r.json(); if(!Array.isArray(j)) throw new Error(j&&j.message||''); if(box)box.style.opacity=1; markOwnedInGrid(pid,true);
+      } else {
+        const r=await fetch(SB+'/rest/v1/rpc/add_to_collection',{method:'POST',headers:{apikey:ANON,Authorization:"Bearer "+ANON,"Content-Type":"application/json"},body:JSON.stringify({p_printing:pid,p_qty:1,p_price:price,p_from:from})}); const j=await r.json(); const q=(Array.isArray(j)&&j[0])?j[0].res_quantity:1; if(box)box.style.opacity=1; paintCollBtn(pid,q); markOwnedInGrid(pid,true);
+      }
+    }
+    catch(e){ if(box)box.style.opacity=1; alert((e&&e.message)?e.message:"Erreur lors de l'ajout."); }
   });
 }
 async function collRemove(pid){
@@ -4534,6 +4632,34 @@ function convDetailChip(c){
     '<div class="dt" style="font-size:11px;margin-top:2px">Rareté '+x.rar_score+' · Liquidité '+x.liq_score+' · Valeur '+x.val_score+' · Momentum '+Math.round(convMomBar(x.mom_pct))+'</div></div></div>';
 }
 function renderDetail(){ const c=detailCard; if(!c)return; const body=document.getElementById("dbody");
+  // Onglets fiche (façon Logia) : Collection = ta possession · Tarifs = les prix/sources · Détails = la carte.
+  // Les blocs asynchrones (#dsrc sources, #dladder cote gradée, #dprints variantes) restent peuplés
+  // par openDetail ; on ne fait que les montrer/masquer selon l'onglet — rien n'est cassé.
+  const show=(id,vis)=>{ const el=document.getElementById(id); if(el) el.style.display=vis?'':'none'; };
+  show('dsrc', detailTab==='tar');
+  show('dladder', detailTab==='tar');
+  show('dprints', detailTab==='det');
+  if(detailTab==="tar"){
+    // Prix par marché (JP/EU/US) + jauge de fiabilité, puis le détail des sources (#dsrc) et la cote gradée (#dladder) juste en dessous.
+    body.innerHTML='<div class="dval" style="margin-bottom:6px"><div class="b">'+eur(val(c))+'</div><div class="s">valeur retenue'+((c.quantity||1)>1?(' · total '+eur(val(c)*(c.quantity||1))):'')+'</div></div>'+mktBlock(c);
+    return;
+  }
+  if(detailTab==="det"){
+    const artwork=variantNice(c);
+    const typ=(c.card_type&&TYPE_LABELS[c.card_type]&&String(c.card_type).toLowerCase()!=='normal')?(TYPE_LABELS[c.card_type]||c.card_type):'';
+    body.innerHTML=
+      drow("Nom", esc(c.card_name))+
+      drow("Numéro de carte", esc(c.card_number))+
+      drow("Rareté", RAR_LABELS[c.rarity]||c.rarity||"—")+
+      drow("Rareté de l’œuvre", '<b>'+artwork+'</b>')+
+      drow("Type d’illustration", typ)+
+      drow("Provenance", c.origin?(ORIGIN_LABELS[c.origin]||c.origin):"")+
+      drow("Catégorie", CAT_LABELS[c.category]||c.category)+
+      drow("Couleur", (c.color||"").split(";").filter(Boolean).join(" / "))+
+      drow("Set / Édition", esc((c.set_code||"")+(c.set_name?(" — "+c.set_name):"")))+
+      drow("Langue", (FLAG[c.language]||"")+' '+(LANG_LABELS[c.language]||c.language));
+    return;
+  }
   if(detailTab==="col"){
     const g=c.is_graded?('<span class="pill gold">'+(c.grading_company||"")+' '+(c.grade!=null?String(c.grade).replace(/\.0$/,''):'')+(c.cert_number?(' · '+c.cert_number):'')+'</span>'):'Brute';
     const src=c.price_source||"";
@@ -4549,14 +4675,12 @@ function renderDetail(){ const c=detailCard; if(!c)return; const body=document.g
       cmp='<div class="s" style="margin-top:1px;opacity:.75">Réf. import Logia : '+eur(sd)+'</div>';
     }
     body.innerHTML='<div class="dval"><div class="b">'+eur(val(c))+'</div><div class="s">valeur marchande'+((c.quantity||1)>1?(' · total '+eur(val(c)*(c.quantity||1))):'')+'</div>'+srcline+cmp+'</div>'+
-      mktBlock(c)+
       convDetailChip(c)+
       (PENDING.has(c.item_id)?'<div style="margin:8px 0;padding:10px 12px;border:1px solid #dcc48a;background:#f3ecdc;border-radius:10px;font-size:13px;color:#7a5b1e">📦 <b>&Agrave; r&eacute;ceptionner.</b> Carte command&eacute;e, en attente de r&eacute;ception. V&eacute;rifie &agrave; l\'arriv&eacute;e qu\'elle est conforme et sans dommage, puis <button onclick=\'confirmReceipt()\' style="border:0;background:#a67c27;color:#fff;font-weight:800;padding:4px 10px;border-radius:8px;cursor:pointer;margin-left:4px">&#10003; Confirmer la r&eacute;ception</button></div>':'')+
       (NEWPHOTO.has(c.item_id)?'<div style="margin:8px 0;padding:10px 12px;border:1px solid #dcc48a;background:#f3ecdc;border-radius:10px;font-size:13px;color:#a67c27">🆕 <b>Nouvelle photo reçue — à valider.</b> Une illustration vient d\'arriver pour cette carte. Tape la bonne ci-dessous pour la valider, ou <button onclick=\'validateCurrent()\' style="border:0;background:#a67c27;color:#fff;font-weight:800;padding:4px 10px;border-radius:8px;cursor:pointer">✓ Valider cette photo</button></div>':(VERIFY.has(c.item_id)?'<div style="margin:8px 0;padding:10px 12px;border:1px solid #fdba74;background:#fff7ed;border-radius:10px;font-size:13px;color:#9a3412">🔍 <b>Photo à vérifier.</b> Tape la bonne illustration ci-dessous pour la valider, ou <button onclick=\'validateCurrent()\' style="border:0;background:#f97316;color:#fff;font-weight:800;padding:4px 10px;border-radius:8px;cursor:pointer">✓ Valider cette photo</button></div>':''))+
       (c.reverify?'<div style="margin:8px 0;padding:10px 12px;border:1px solid #fecaca;background:#fef2f2;border-radius:10px;font-size:13px;color:#991b1b">🔴 <b>À revérifier — authenticité.</b> Carte à contrôler (test de la tranche / lumière / comparaison avec une vraie). <button onclick=\'clearReverify()\' style="border:0;background:#ef4444;color:#fff;font-weight:800;padding:4px 10px;border-radius:8px;cursor:pointer;margin-left:4px">✓ Vérifiée (authentique)</button></div>':'')+
       '<div class="qtybox"><span class="s">Possédé :</span> <span class="b">'+(c.quantity||1)+'</span></div>'+
-      drow("Acheté chez", achFrom)+drow("Date d’achat", achDate)+drow("Prix payé", achPrice)+
-      drow("Variante", '<b>'+variantNice(c)+'</b>')+drow("Provenance", c.origin?(ORIGIN_LABELS[c.origin]||c.origin):"")+drow("Rareté", RAR_LABELS[c.rarity]||c.rarity||"—")+drow("État", g)+drow("Langue", (FLAG[c.language]||"")+' '+(LANG_LABELS[c.language]||c.language))+drow("Nom", esc(c.card_name))+drow("Numéro", esc(c.card_number))+drow("Set", esc((c.set_code||"")+(c.set_name?(" — "+c.set_name):"")))+
+      drow("Acheté chez", achFrom)+drow("Date d’achat", achDate)+drow("Prix payé", achPrice)+drow("État", g)+
       '<details class="pxdet" style="margin-top:10px"><summary><span style="font-weight:800">💶 Vendre cette carte</span></summary>'+
         '<div class="pxbody" style="padding-top:12px;display:flex;flex-direction:column;gap:8px">'+
           '<div style="display:flex;gap:8px;flex-wrap:wrap">'+
