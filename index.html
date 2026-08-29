@@ -88,6 +88,7 @@ body{font-family:'Sora',-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helve
 .vfybadge{position:absolute;top:6px;right:6px;background:#f97316;color:#fff;font-size:9px;font-weight:800;padding:2px 6px;border-radius:8px;z-index:4}
 .badges{position:absolute;top:6px;left:6px;right:6px;display:flex;justify-content:flex-end;pointer-events:none}
 .flag{position:absolute;bottom:6px;right:6px;z-index:5;font-size:14px;line-height:1;background:var(--panel);border:1px solid var(--line);border-radius:7px;padding:2px 4px;box-shadow:0 1px 4px rgba(0,0,0,.25);pointer-events:none}
+.verstag{position:absolute;top:6px;right:6px;z-index:6;font-size:10px;font-weight:800;line-height:1;color:#fff;background:rgba(31,41,63,.92);border:1px solid rgba(255,255,255,.25);border-radius:7px;padding:3px 6px;box-shadow:0 1px 4px rgba(0,0,0,.3);pointer-events:none}
 .grade{background:var(--gold);color:#3a2a06;font-weight:900;font-size:10px;padding:2px 6px;border-radius:7px}
 .meta{padding:7px 8px 9px}
 .nm{font-weight:800;font-size:12px;line-height:1.15;margin:0 0 2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -1087,7 +1088,7 @@ function setFamily(code){ const s=String(code||'').toUpperCase().trim(); if(!s) 
   return pre;
 }
 function setFamRank(fam){ const m=String(fam).match(/^([A-Z]+)(\d+)?/); const g=({OP:0,EB:1,PRB:2,ST:3})[m?m[1]:'']; return [(g==null?8:g), m?m[1]:'zz', (m&&m[2])?+m[2]:999]; }
-const DEF={q:"",lang:"all",color:"all",type:"all",prov:"all",cat:"all",rarity:"all",character:"all",grade:"all",set:"all",minVal:0,imgf:"all",authf:"all",recvf:"all",pricef:"all",variant:"all",achatPeriod:"all",openRatio:null,openLiquid:false,gapView:"mine",tgtLang:"JP",tgtBudget:0,sort:"val_desc",view:"grid",mode:"accueil",catLang:"all",catQuery:"",catLangs:[],catColors:[],catCats:[],catRarities:[],catTypes:[],catTreats:[],catProvs:[],catSort:"price_desc",setLang:"JP",prodLang:"JP"};
+const DEF={q:"",lang:"all",color:"all",type:"all",prov:"all",cat:"all",rarity:"all",character:"all",grade:"all",set:"all",minVal:0,imgf:"all",authf:"all",recvf:"all",pricef:"all",variant:"all",achatPeriod:"all",openRatio:null,openLiquid:false,gapView:"mine",tgtLang:"JP",tgtBudget:0,sort:"val_desc",view:"grid",mode:"accueil",catLang:"all",catQuery:"",catLangs:[],catColors:[],catCats:[],catRarities:[],catTypes:[],catTreats:[],catProvs:[],catSort:"price_desc",catGroup:true,setLang:"JP",prodLang:"JP"};
 let PROD_VALUE=0;
 // Barre du haut : portefeuille détaillé (total = cartes + scellés), même valeur live que l'accueil
 function portfolioMini(){
@@ -1249,12 +1250,23 @@ function setMarket(k){
   const mb=document.getElementById('miniBar');
   if(mb && m!=='accueil'){ mb.innerHTML=portfolioMini(); }
 }
+async function pullCollMkt(cols){ let mm=[],from=0,step=1000;
+  while(true){ const r=await fetch(SB+'/rest/v1/app_collection_market?select='+cols+'&limit='+step+'&offset='+from,{headers:{apikey:ANON,Authorization:'Bearer '+ANON}}); const b=await r.json(); if(!Array.isArray(b)) return null; mm=mm.concat(b); if(b.length<step)break; from+=step; }
+  return mm; }
 async function loadMarketVals(){
+  // 1) PRIX PAR MARCHÉ — colonnes de base uniquement : ne doit JAMAIS dépendre des colonnes de fiabilité.
   try{
-    let mm=[],from=0,step=1000;
-    while(true){ const r=await fetch(SB+'/rest/v1/app_collection_market?select=item_id,jp_eur,eu_eur,us_eur,eu_offres,jp_live,eu_live,us_live,jp_src,jp_days,jp_conf,us_src,us_days&limit='+step+'&offset='+from,{headers:{apikey:ANON,Authorization:'Bearer '+ANON}}); const b=await r.json(); if(!Array.isArray(b))break; mm=mm.concat(b); if(b.length<step)break; from+=step; }
-    const map={}; mm.forEach(x=>{ map[x.item_id]=x; });
-    DATA.forEach(c=>{ const x=map[c.item_id]; if(x){ c._jp=x.jp_eur; c._eu=x.eu_eur; c._us=x.us_eur; c._euof=x.eu_offres; c._jplive=x.jp_live; c._eulive=x.eu_live; c._uslive=x.us_live; c._jpsrc=x.jp_src; c._jpdays=x.jp_days; c._jpconf=x.jp_conf; c._ussrc=x.us_src; c._usdays=x.us_days; } });
+    const mm=await pullCollMkt('item_id,jp_eur,eu_eur,us_eur,eu_offres,jp_live,eu_live,us_live');
+    if(Array.isArray(mm)){ const map={}; mm.forEach(x=>{ map[x.item_id]=x; });
+      DATA.forEach(c=>{ const x=map[c.item_id]; if(x){ c._jp=x.jp_eur; c._eu=x.eu_eur; c._us=x.us_eur; c._euof=x.eu_offres; c._jplive=x.jp_live; c._eulive=x.eu_live; c._uslive=x.us_live; } });
+    }
+  }catch(e){}
+  // 2) FIABILITÉ — en bonus, best-effort ; un échec ici n'impacte pas les prix ci-dessus.
+  try{
+    const mm2=await pullCollMkt('item_id,jp_src,jp_days,jp_conf,us_src,us_days');
+    if(Array.isArray(mm2)){ const map2={}; mm2.forEach(x=>{ map2[x.item_id]=x; });
+      DATA.forEach(c=>{ const x=map2[c.item_id]; if(x){ c._jpsrc=x.jp_src; c._jpdays=x.jp_days; c._jpconf=x.jp_conf; c._ussrc=x.us_src; c._usdays=x.us_days; } });
+    }
   }catch(e){}
 }
 // Rafraîchit le prix marché (JP/EU/US) d'UN seul item — après un changement de variante, sinon le prix affiché reste celui de l'ancienne variante.
@@ -3719,7 +3731,7 @@ async function homeBriefing(){
   }catch(e){ box.innerHTML='<div class="txt" style="color:var(--muted);font-size:13px">Erreur, réessaie.</div><button class="hbriefbtn" onclick="homeBriefing()">Réessayer</button>'; }
 }
 document.getElementById('modeSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMode(b.dataset.m);});
-const APP_VERSION='Version b55 · 28/08';
+const APP_VERSION='Version b58 · 29/08';
 { const nv=document.getElementById('navVersion'); if(nv) nv.textContent=APP_VERSION; }
 document.getElementById('mktSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMarket(b.dataset.k);});
 const CATARRS=["catColors","catCats","catRarities","catTreats","catProvs"];
@@ -3747,6 +3759,12 @@ function buildCatLangRow(){
     el.onclick=()=>{ toggleCat("catLangs",code); buildCatLangRow(); fetchCatalog(); };
     row.appendChild(el);
   });
+  // Toggle : regrouper toutes les versions d'une même carte sous une seule vignette (anti-doublon)
+  const g=document.createElement('div'); g.className="chip"+(state.catGroup?" on":"");
+  g.style.marginLeft="6px";
+  g.innerHTML=(state.catGroup?"◱ ":"▦ ")+"Grouper par carte";
+  g.onclick=()=>{ state.catGroup=!state.catGroup; buildCatLangRow(); renderCatalog(CATROWS, CATLASTMORE); };
+  row.appendChild(g);
 }
 function buildCatFilterModal(){
   const colorOpts=[["all","Toutes"]].concat(COLORS.map(c=>[c,'<span style="width:11px;height:11px;border-radius:50%;background:'+(COLOR_HEX[c]||"#888")+';display:inline-block"></span> '+c]));
@@ -3813,17 +3831,36 @@ async function fetchCatalog(append){
     renderCatalog(CATACC, batch.length>=CATPAGE);
   }catch(e){ stage.innerHTML='<div class="empty">Erreur de recherche.</div>'; }
 }
+let CATLASTMORE=false;
 function renderCatalog(rows, hasMore){
   CATROWS=rows;
+  if(hasMore!==undefined) CATLASTMORE=hasMore; else hasMore=CATLASTMORE;
   const stage=document.getElementById('stage'); stage.className="";
-  document.getElementById('countLine').textContent=rows.length+" carte"+(rows.length>1?"s":"")+(hasMore?" (fais défiler, puis « Charger plus »)":"");
-  if(!rows.length){ stage.innerHTML='<div class="empty">Aucune carte trouvée.</div>'; return; }
-  const grid='<div class="grid">'+rows.map((c,i)=>{
+  if(!rows.length){ document.getElementById('countLine').textContent="0 carte"; stage.innerHTML='<div class="empty">Aucune carte trouvée.</div>'; return; }
+  // Groupement anti-doublon : une vignette par carte (card_number + langue). Toutes les
+  // versions/variantes de la même carte sont regroupées ; on déplie dans la fiche « Toutes les versions ».
+  let display;
+  if(state.catGroup){
+    const gm={}, order=[];
+    rows.forEach((c,i)=>{
+      const key=(c.card_number||('#'+i))+'|'+(c.language||'');
+      if(!gm[key]){ gm[key]={rep:c, idx:i, n:0, owned:false, maxpx:-1}; order.push(key); }
+      const g=gm[key]; g.n++; if(c.owned) g.owned=true;
+      const px=catMkPrice(c); if(px!=null && px>g.maxpx){ g.maxpx=px; g.rep=c; g.idx=i; }
+    });
+    display=order.map(k=>{ const g=gm[k]; return Object.assign({}, g.rep, {_idx:g.idx, _n:g.n, _grpOwned:g.owned}); });
+  } else {
+    display=rows.map((c,i)=>Object.assign({}, c, {_idx:i, _n:1, _grpOwned:c.owned}));
+  }
+  document.getElementById('countLine').textContent=display.length+" carte"+(display.length>1?"s":"")+(state.catGroup&&display.length<rows.length?(" ("+rows.length+" versions)"):"")+(hasMore?" · défile puis « Charger plus »":"");
+  const grid='<div class="grid">'+display.map(c=>{
     const pcu=PCIMG[c.printing_id]; const eff=pcu||c.image_url; const vfy=c.img_verify&&!pcu;
     const img=vfy?('<div class="vfy"><span class="vt">🔍</span>Photo à vérifier</div>'):(eff?('<img loading="lazy" referrerpolicy="no-referrer" src="'+esc(eff)+'" onerror="this.remove()">'):('<div class="vfy vfywait"><span class="vt">⏳</span>En attente d\'image<br><span style="font-weight:700;font-size:10px;opacity:.85">'+esc(c.card_number||"")+'</span></div>'));
-    const badge=c.owned?'<span class="owntag own">✓ Possédée</span>':'<span class="owntag no">Non possédée</span>';
+    const owned=c._grpOwned;
+    const badge=owned?'<span class="owntag own">✓ Possédée</span>':'<span class="owntag no">Non possédée</span>';
+    const vtag=(c._n>1)?('<span class="verstag">'+c._n+' versions</span>'):'';
     const cpx=catMkPrice(c); const gtag=catGradedTag(c); const px=(cpx!=null)?('<span class="pxg">'+eur(cpx)+(gtag?(' <span style="font-size:9px;background:#b08528;color:#fff;padding:1px 4px;border-radius:5px;font-weight:800;vertical-align:middle">'+esc(gtag)+'</span>'):'')+'</span>'):'';
-    return '<div class="card" data-idx="'+i+'"><div class="imgwrap">'+img+'<span class="flag">'+(FLAG[c.language]||"")+'</span>'+(px?'<div class="pxcorner">'+px+'</div>':'')+'</div><div class="meta"><p class="nm">'+esc(c.name||"")+'</p><div class="sub"><span>'+esc(c.card_number||"")+'</span>'+descTags(c)+'</div>'+badge+'</div></div>';
+    return '<div class="card" data-idx="'+c._idx+'"><div class="imgwrap">'+img+'<span class="flag">'+(FLAG[c.language]||"")+'</span>'+vtag+(px?'<div class="pxcorner">'+px+'</div>':'')+'</div><div class="meta"><p class="nm">'+esc(c.name||"")+'</p><div class="sub"><span>'+esc(c.card_number||"")+'</span>'+(c._n>1?'':descTags(c))+'</div>'+badge+'</div></div>';
   }).join("")+'</div>';
   stage.innerHTML=grid+(hasMore?'<div class="loadmore"><button onclick="fetchCatalog(true)">Charger plus</button></div>':'');
 }
