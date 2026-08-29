@@ -3784,7 +3784,7 @@ async function homeBriefing(){
   }catch(e){ box.innerHTML='<div class="txt" style="color:var(--muted);font-size:13px">Erreur, réessaie.</div><button class="hbriefbtn" onclick="homeBriefing()">Réessayer</button>'; }
 }
 document.getElementById('modeSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMode(b.dataset.m);});
-const APP_VERSION='Version b63 · 29/08';
+const APP_VERSION='Version b64 · 29/08';
 { const nv=document.getElementById('navVersion'); if(nv) nv.textContent=APP_VERSION; }
 document.getElementById('mktSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMarket(b.dataset.k);});
 const CATARRS=["catColors","catCats","catRarities","catTreats","catProvs"];
@@ -4606,9 +4606,9 @@ function mktBlock(c){
   const rows=['JP','EU','US'].map(function(k){
     const v=c['_'+k.toLowerCase()]; const on=(k===MKT);
     const off=(k==='EU'&&c._euof!=null)?(' · '+c._euof+' offre'+(c._euof>1?'s':'')):'';
-    return '<div style="display:flex;justify-content:space-between;align-items:center;padding:7px 11px;border-radius:9px;margin-bottom:3px;'+(on?'background:#f3ecdc;border:1px solid #e6d6ad':'background:#f6f3ec;border:1px solid #f1ece2')+'">'+
-      '<span style="font-size:12px;'+(on?'font-weight:800;color:#7a5b1e':'color:var(--muted)')+'">'+MKT_LABEL[k]+' <span style="font-size:10px;opacity:.7;font-weight:600">'+esc(MKSRC[k])+esc(off)+'</span>'+(on?' <span style="font-size:9px;background:#7a5b1e;color:#fff;padding:1px 5px;border-radius:6px;margin-left:2px">SÉLECTIONNÉ</span>':'')+'</span>'+
-      '<b style="font-size:'+(on?'15px':'13px')+';'+(on?'color:#7a5b1e':'color:var(--ink)')+'">'+(v!=null?eur(v):'—')+'</b></div>';
+    return '<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 11px;border-radius:9px;margin-bottom:3px;'+(on?'background:#f3ecdc;border:1px solid #d9c48a':'background:#faf6ec;border:1px solid #efe6d2')+'">'+
+      '<span style="font-size:12px;font-weight:'+(on?'800':'700')+';color:'+(on?'#7a5b1e':'#5a4a2c')+'">'+MKT_LABEL[k]+' <span style="font-size:10px;font-weight:600;color:#8a7550">'+esc(MKSRC[k])+esc(off)+'</span>'+(on?' <span style="font-size:9px;background:#7a5b1e;color:#fff;padding:1px 5px;border-radius:6px;margin-left:2px">SÉLECTIONNÉ</span>':'')+'</span>'+
+      '<b style="font-size:'+(on?'15px':'14px')+';color:'+(on?'#7a5b1e':'#33280f')+'">'+(v!=null?eur(v):'—')+'</b></div>';
   }).join('');
   const k=priceConf(c);
   const chip=k?('<div style="margin:6px 2px 2px;font-size:11.5px;font-weight:700;display:flex;align-items:center;gap:6px;color:'+k.c+'"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:'+k.c+'"></span>'+esc(k.t)+'</div>'):'';
