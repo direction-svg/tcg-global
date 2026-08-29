@@ -3784,7 +3784,7 @@ async function homeBriefing(){
   }catch(e){ box.innerHTML='<div class="txt" style="color:var(--muted);font-size:13px">Erreur, réessaie.</div><button class="hbriefbtn" onclick="homeBriefing()">Réessayer</button>'; }
 }
 document.getElementById('modeSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMode(b.dataset.m);});
-const APP_VERSION='Version b64 · 29/08';
+const APP_VERSION='Version b65 · 29/08';
 { const nv=document.getElementById('navVersion'); if(nv) nv.textContent=APP_VERSION; }
 document.getElementById('mktSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMarket(b.dataset.k);});
 const CATARRS=["catColors","catCats","catRarities","catTreats","catProvs"];
@@ -4177,7 +4177,9 @@ async function loadCardPrices(c, boxId){
   if(adv) html+=det('Faut-il la grader ?', adv.replace('<div class="pxsub">Faut-il la grader ?</div>',''));
   html+='<button class="pxadd" onclick="addPrice(this)" data-pid="'+esc(c.printing_id||'')+'" data-mk="'+esc(c.language||'')+'" data-box="'+esc(boxId)+'">+ Ajouter un prix manuel</button>';
   box.innerHTML=html;
-  loadMarketCompare(c, boxId);
+  // Bloc « Comparatif marché » retiré (b65) : il dupliquait le bloc 3 marchés du haut (mktBlock) et
+  // s'appuyait sur l'ancienne vue app_card_market (d'avant l'ancrage CardTrader) → valeurs « — » périmées.
+  // Le haut (JP/EU/US + jauge) fait désormais foi. On garde en dessous : sources+date, variantes Cardrush, grader, prix manuel.
 }
 async function loadMarketCompare(c, boxId){
   const box=document.getElementById(boxId||'cdprice'); if(!box||!c||!c.card_number) return;
