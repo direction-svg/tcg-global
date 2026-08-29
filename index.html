@@ -1148,6 +1148,7 @@ function gradeAdvice(ung, grd){
 }
 let CATROWS=[];
 let DATA=[], state=Object.assign({},DEF);
+let MKT_OVERLAY_OK=false; // true dès que les prix par marché (jp/eu/us) sont chargés depuis app_collection_market
 
 const eur=n=> (n==null?"—":(Number(n).toLocaleString("fr-FR",{minimumFractionDigits:2,maximumFractionDigits:2})+" €"));
 const eur0=n=> (n==null?"—":(Math.round(Number(n)).toLocaleString("fr-FR")+" €"));
@@ -1254,14 +1255,28 @@ async function pullCollMkt(cols){ let mm=[],from=0,step=1000;
   while(true){ const r=await fetch(SB+'/rest/v1/app_collection_market?select='+cols+'&limit='+step+'&offset='+from,{headers:{apikey:ANON,Authorization:'Bearer '+ANON}}); const b=await r.json(); if(!Array.isArray(b)) return null; mm=mm.concat(b); if(b.length<step)break; from+=step; }
   return mm; }
 async function loadMarketVals(){
-  // 1) PRIX PAR MARCHÉ — colonnes de base uniquement : ne doit JAMAIS dépendre des colonnes de fiabilité.
+  // 1) PRIX PAR MARCHÉ — UNIQUEMENT les 3 colonnes historiques jp_eur/eu_eur/us_eur.
+  //    C'est le cœur de l'affichage par marché : il ne doit JAMAIS dépendre d'une colonne
+  //    ajoutée plus tard (eu_offres, *_live, *_src…). Si une colonne récente n'est pas encore
+  //    dans le cache de schéma PostgREST, un select qui la contient renvoie 400 et TOUT
+  //    l'overlay tombe → JP=EU=US identique (le bug des 24405 € partout). On isole donc.
+  MKT_OVERLAY_OK=false;
   try{
-    const mm=await pullCollMkt('item_id,jp_eur,eu_eur,us_eur,eu_offres,jp_live,eu_live,us_live');
+    const mm=await pullCollMkt('item_id,jp_eur,eu_eur,us_eur');
     if(Array.isArray(mm)){ const map={}; mm.forEach(x=>{ map[x.item_id]=x; });
-      DATA.forEach(c=>{ const x=map[c.item_id]; if(x){ c._jp=x.jp_eur; c._eu=x.eu_eur; c._us=x.us_eur; c._euof=x.eu_offres; c._jplive=x.jp_live; c._eulive=x.eu_live; c._uslive=x.us_live; } });
+      let hit=0;
+      DATA.forEach(c=>{ const x=map[c.item_id]; if(x){ c._jp=x.jp_eur; c._eu=x.eu_eur; c._us=x.us_eur; hit++; } });
+      if(hit>0) MKT_OVERLAY_OK=true;
     }
   }catch(e){}
-  // 2) FIABILITÉ — en bonus, best-effort ; un échec ici n'impacte pas les prix ci-dessus.
+  // 2) PROFONDEUR D'OFFRES + LIVE — best-effort, séparé (colonnes plus récentes).
+  try{
+    const mm=await pullCollMkt('item_id,eu_offres,jp_live,eu_live,us_live');
+    if(Array.isArray(mm)){ const map={}; mm.forEach(x=>{ map[x.item_id]=x; });
+      DATA.forEach(c=>{ const x=map[c.item_id]; if(x){ c._euof=x.eu_offres; c._jplive=x.jp_live; c._eulive=x.eu_live; c._uslive=x.us_live; } });
+    }
+  }catch(e){}
+  // 3) FIABILITÉ (jauge) — en bonus, best-effort ; un échec ici n'impacte pas les prix ci-dessus.
   try{
     const mm2=await pullCollMkt('item_id,jp_src,jp_days,jp_conf,us_src,us_days');
     if(Array.isArray(mm2)){ const map2={}; mm2.forEach(x=>{ map2[x.item_id]=x; });
@@ -3369,7 +3384,7 @@ async function renderHome(){
       '<div class="nh-big">'+eur0(global)+'</div>'+
       (deltaHtml?deltaHtml.replace('class="delta','class="nh-delta'):'')+
       '<div class="nh-spark">'+heroSpark(snaps)+'</div>'+
-      '<div class="nh-real">Valeur réelle '+esc(MKT_LABEL[MKT])+' : <b>'+eur0(globalStrict)+'</b> — '+cov+' % couverte par un vrai prix '+MKT+(MKT==='JP'?'':' (reste estimé JP)')+'<div class="nh-cov"><i style="width:'+cov+'%"></i></div></div>'+
+      '<div class="nh-real">Valeur réelle '+esc(MKT_LABEL[MKT])+' : <b>'+eur0(globalStrict)+'</b> — '+cov+' % couverte par un vrai prix '+MKT+(MKT==='JP'?'':' (reste estimé JP)')+(MKT_OVERLAY_OK?'':' <span style="color:#f59e0b;font-weight:800">⚠ prix marché non chargés — réessaie</span>')+'<div class="nh-cov"><i style="width:'+cov+'%"></i></div></div>'+
       '<div class="nh-split"><div class="nh-seg"><div class="k"><span class="dotc" style="background:#e6d6ad"></span>Cartes</div><div class="v">'+eur0(cardsVal)+'</div></div>'+
         '<div class="nh-seg"><div class="k"><span class="dotc" style="background:#fcd34d"></span>Produits &amp; sets</div><div class="v">'+eur0(prodVal)+'</div></div></div>'+
     '</div>'+
@@ -3731,7 +3746,7 @@ async function homeBriefing(){
   }catch(e){ box.innerHTML='<div class="txt" style="color:var(--muted);font-size:13px">Erreur, réessaie.</div><button class="hbriefbtn" onclick="homeBriefing()">Réessayer</button>'; }
 }
 document.getElementById('modeSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMode(b.dataset.m);});
-const APP_VERSION='Version b58 · 29/08';
+const APP_VERSION='Version b59 · 29/08';
 { const nv=document.getElementById('navVersion'); if(nv) nv.textContent=APP_VERSION; }
 document.getElementById('mktSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMarket(b.dataset.k);});
 const CATARRS=["catColors","catCats","catRarities","catTreats","catProvs"];
