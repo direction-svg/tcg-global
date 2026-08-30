@@ -1020,6 +1020,18 @@ body{-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
         <label class="scanminibtn">&#128247; Importer une photo<input type="file" accept="image/*" capture="environment" id="scanInput" hidden></label>
         <div class="scanmanual"><input id="scanCode" class="buyinput" placeholder="ou saisis le n&deg; (ex : OP05-119)" autocomplete="off"><button class="scanminibtn go" onclick="scanLookupManual()">OK</button></div>
       </div>
+      <div id="authBlock" class="authblock">
+        <div class="authhdr" onclick="authToggle()"><span>&#128269; V&eacute;rifier l'authenticit&eacute;</span><span class="authsub">recto + verso &middot; d&eacute;tection de fausse carte</span><span id="authChev" class="authchev">&#9662;</span></div>
+        <div id="authBody" class="authbody" style="display:none">
+          <div class="authrow">
+            <label class="scanminibtn">&#128247; Recto<input type="file" accept="image/*" capture="environment" id="authFront" hidden onchange="authPick('front',this)"></label>
+            <label class="scanminibtn">&#128247; Verso<input type="file" accept="image/*" capture="environment" id="authBack" hidden onchange="authPick('back',this)"></label>
+            <button class="scanminibtn go" id="authGo" onclick="authRun()">Analyser</button>
+          </div>
+          <div class="auththumbs"><img id="authFrontImg" class="authth" style="display:none"><img id="authBackImg" class="authth" style="display:none"></div>
+          <div id="authResult" class="authres"></div>
+        </div>
+      </div>
     </div>
     <div style="height:calc(14px + env(safe-area-inset-bottom))"></div>
   </div>
@@ -1027,6 +1039,29 @@ body{-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
 
 <button id="scanFab" class="scanfab hidden" aria-label="Scanner une carte">&#128247;</button>
 
+<style>
+.authblock{margin-top:12px;border-top:1px solid var(--line,#e5e7eb);padding-top:10px}
+.authhdr{display:flex;align-items:center;gap:8px;flex-wrap:wrap;cursor:pointer;font-weight:800}
+.authhdr .authsub{font-weight:500;font-size:11px;color:var(--muted,#6b7280)}
+.authhdr .authchev{margin-left:auto}
+.authbody{margin-top:10px}
+.authrow{display:flex;gap:8px;flex-wrap:wrap}
+.auththumbs{display:flex;gap:8px;margin-top:8px}
+.authth{width:64px;height:90px;object-fit:cover;border-radius:8px;border:1px solid var(--line,#e5e7eb)}
+.authres{margin-top:10px}
+.authbadge{display:inline-block;font-weight:800;padding:8px 12px;border-radius:10px;margin-bottom:8px}
+.authbadge.genuine{background:#dcfce7;color:#166534}
+.authbadge.doubt{background:#fef3c7;color:#92400e}
+.authbadge.fake{background:#fee2e2;color:#991b1b}
+.authbadge.na{background:#f3f4f6;color:#374151}
+.authchk{display:flex;gap:8px;align-items:baseline;font-size:12.5px;padding:3px 0}
+.authchk .cdot{flex:0 0 auto;width:9px;height:9px;border-radius:50%;margin-top:4px}
+.authchk .cdot.ok{background:#22c55e}.authchk .cdot.concern{background:#f59e0b}.authchk .cdot.na{background:#d1d5db}
+.authchk .ck{font-weight:700;min-width:96px;text-transform:capitalize}
+.authflags{margin-top:8px;background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:8px 10px;font-size:12.5px}
+.authneeds{margin-top:8px;font-size:12px;color:var(--muted,#6b7280)}
+.authcav{margin-top:8px;font-size:11px;color:var(--muted,#6b7280);font-style:italic}
+</style>
 
 <script>
 const SB="https://bvnjkiivuntbjbmltpkl.supabase.co";
@@ -2955,8 +2990,17 @@ async function grAnalyze(id){
     if(cen){ res.centering=Object.assign({},res.centering||{},cen); if(!imgs.surface){} }
     GR_PG[id]=res;
     const warn=(!q.ok)?('<div style="background:rgba(245,158,11,.14);border:1px solid #f59e0b;border-radius:9px;padding:7px 9px;font-size:11.5px;margin-bottom:7px">⚠️ Photo '+[q.blurry?'floue':null,q.glary?'avec reflet':null].filter(Boolean).join(' + ')+' — refais-la bien à plat, lumière diffuse, pour un verdict fiable.</div>'):'';
-    box.innerHTML=warn+grPgHTML(res,id);
+    box.innerHTML=warn+grPgHTML(res,id)+'<div style="margin-top:8px"><button class="scanminibtn" onclick="grAuth(\''+id+'\')">&#128269; V&eacute;rifier l\'authenticit&eacute;</button><div id="grauth_'+id+'" class="authres"></div></div>';
   }catch(e){ box.innerHTML='<span style="color:#dc2626;font-size:12px">Erreur d\'analyse.</span>'; }
+}
+async function grAuth(id){ const imgs=GR_IMGS[id]||{}; const box=document.getElementById('grauth_'+id); if(!box)return;
+  if(!imgs.front){ box.innerHTML='<div class="authneeds">Ajoute au moins la photo recto.</div>'; return; }
+  box.innerHTML='<div class="authneeds">Analyse de l\'authenticit&eacute; en cours… (~20&nbsp;s)</div>';
+  try{ const body={front_b64:imgs.front}; if(imgs.back)body.back_b64=imgs.back; if(imgs.surface)body.foil_b64=imgs.surface;
+    const r=await fetch(SB+'/functions/v1/card-authenticate',{method:'POST',headers:{'Content-Type':'application/json',apikey:ANON,Authorization:'Bearer '+ANON},body:JSON.stringify(body)});
+    const j=await r.json(); if(j&&j.rate_limited){ box.innerHTML='<div class="authneeds">&#9203; Limite IA atteinte, réessaie dans '+(j.retry_after||30)+'&nbsp;s.</div>'; return; }
+    if(j&&j.result){ authRender(j.result, box); } else box.innerHTML='<div class="authneeds">Analyse impossible.</div>';
+  }catch(e){ box.innerHTML='<div class="authneeds">Erreur réseau.</div>'; }
 }
 async function grSavePg(id){ const res=GR_PG[id]; if(res){ try{ await fetch(SB+'/rest/v1/rpc/gr_save_pregrade',{method:'POST',headers:{apikey:ANON,Authorization:'Bearer '+ANON,'Content-Type':'application/json'},body:JSON.stringify({p_id:id,p_json:res})}); }catch(e){} } await grQueue(id,(res&&res.psa10_probability>=0.5)?'PSA':'PSA',true); }
 function grPgToggle(id){ const el=document.getElementById('pg_'+id); if(el) el.classList.toggle('hidden'); }
@@ -3810,7 +3854,7 @@ async function homeBriefing(){
   }catch(e){ box.innerHTML='<div class="txt" style="color:var(--muted);font-size:13px">Erreur, réessaie.</div><button class="hbriefbtn" onclick="homeBriefing()">Réessayer</button>'; }
 }
 document.getElementById('modeSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMode(b.dataset.m);});
-const APP_VERSION='Version b69 · 30/08';
+const APP_VERSION='Version b70 · 30/08';
 { const nv=document.getElementById('navVersion'); if(nv) nv.textContent=APP_VERSION; }
 document.getElementById('mktSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMarket(b.dataset.k);});
 const CATARRS=["catColors","catCats","catRarities","catTreats","catProvs"];
@@ -4458,6 +4502,7 @@ async function processCanvas(cv,opts){
   opts=opts||{}; if(scanBusy) return; scanBusy=true;
   setScanStatus(opts.auto?'Analyse de la carte&hellip;':'Reconnaissance IA&hellip;');
   const b64=canvasDownscaled(cv,820).toDataURL('image/jpeg',0.8);
+  try{ window.__lastScanFront=b64; }catch(e){}
   try{
     const r=await fetch(SB+'/functions/v1/card-recognize',{method:'POST',headers:{'Content-Type':'application/json',apikey:ANON,Authorization:'Bearer '+ANON},body:JSON.stringify({image_b64:b64})});
     const j=await r.json();
@@ -4487,6 +4532,7 @@ let TESS_LOADING=null;
 function ensureTess(){ if(window.Tesseract) return Promise.resolve(); if(TESS_LOADING) return TESS_LOADING; TESS_LOADING=new Promise((res,rej)=>{ const s=document.createElement('script'); s.src='https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/5.1.0/tesseract.min.js'; s.onload=res; s.onerror=rej; document.head.appendChild(s); }); return TESS_LOADING; }
 async function onScanPhoto(e){ const f=e.target.files&&e.target.files[0]; if(!f) return; const url=URL.createObjectURL(f); const pv=document.getElementById('scanPreview'); pv.src=url; pv.style.display='block'; try{ const cv=await downscaleImg(url,1500); processCanvas(cv); }catch(err){ setScanStatus('Impossible de lire l\'image. Saisis le num&eacute;ro.'); } }
 async function scanLookup(code, det){
+  try{ window.__lastScanCode=code; }catch(e){}
   setScanStatus('Recherche de <b>'+esc(code)+'</b>&hellip;');
   let rows=[];
   try{ const r=await fetch(SB+'/rest/v1/app_catalog_priced?card_number=eq.'+encodeURIComponent(code)+'&select=card_number,language,name,image_url,variant,variant_label,rarity,set_code,set_name,category,origin,printing_id,price_eur,price_source&limit=80',{headers:{apikey:ANON,Authorization:"Bearer "+ANON}}); rows=await r.json(); if(!Array.isArray(rows))rows=[]; }catch(e){}
@@ -4500,11 +4546,62 @@ async function scanLookup(code, det){
     return s;
   }
   rows.sort((a,b)=> (scr(b)-scr(a)) || ((LO[a.language]??9)-(LO[b.language]??9)) || ((b.price_eur||0)-(a.price_eur||0)) );
-  const top=rows[0];
-  if(top&&top.price_eur!=null){ setScanStatus('<b>'+esc(top.name||code)+'</b> '+(FLAG[top.language]||'')+' &middot; valeur &asymp; <b>'+eur0(top.price_eur)+'</b>'); }
-  closeScan(); openCatDetail(top);
+  const top=rows[0]; window.__lastScanTop=top;
+  const vh=(top&&top.price_eur!=null)?(' &middot; valeur &asymp; <b>'+eur0(top.price_eur)+'</b>'):'';
+  setScanStatus('<div style="margin-bottom:8px"><b>'+esc(top.name||code)+'</b> '+(FLAG[top.language]||'')+' &middot; '+esc(top.card_number||code)+vh+'</div>'+
+    '<div class="authrow">'+
+      '<button class="scanminibtn go" onclick="addScanned()">&#10133; Ajouter &agrave; ma collection</button>'+
+      '<button class="scanminibtn" onclick="openScannedFiche()">Choisir la variante / fiche</button>'+
+    '</div>'+
+    '<div class="authneeds">Carte de valeur ? V&eacute;rifie l\'authenticit&eacute; ci-dessous (recto + verso) avant d\'ajouter.</div>');
+  try{ const b=document.getElementById('authBody'); if(b&&b.style.display==='none') authToggle(); }catch(e){}
 }
+async function addScanned(){ const top=window.__lastScanTop; if(!top||!top.printing_id){ openScannedFiche(); return; }
+  try{ const r=await fetch(SB+'/rest/v1/rpc/add_to_collection',{method:'POST',headers:{apikey:ANON,Authorization:'Bearer '+ANON,'Content-Type':'application/json'},body:JSON.stringify({p_printing:top.printing_id,p_qty:1,p_price:null,p_from:'scan'})}); await r.json();
+    try{ if(typeof markOwnedInGrid==='function') markOwnedInGrid(top.printing_id,true); }catch(e){}
+    setScanStatus('&#9989; <b>'+esc(top.name||top.card_number)+'</b> ajout&eacute;e &agrave; ta collection.'+
+      '<div class="authneeds" style="margin-top:6px">Mauvaise variante ? <a href="#" onclick="openScannedFiche();return false;">Ouvre la fiche</a> pour corriger.</div>');
+  }catch(e){ setScanStatus('Ajout impossible &mdash; ouvre la fiche pour choisir la variante.'); openScannedFiche(); }
+}
+function openScannedFiche(){ const top=window.__lastScanTop; closeScan(); if(top) openCatDetail(top); }
 function scanLookupManual(){ const raw=(document.getElementById('scanCode').value||'').toUpperCase().replace(/\s+/g,''); const code=extractCode(raw)||(/^[A-Z]{1,3}\d?\d?-?\d{2,3}$/.test(raw)?raw:null); if(!code){ setScanStatus('Format non reconnu. Ex : OP05-119 ou P-110'); return; } scanLookup(code); }
+
+// ---------- Authenticité (détection de fausse carte) ----------
+const AUTH_IMG={front:null,back:null};
+function authToggle(){ const b=document.getElementById('authBody'); const ch=document.getElementById('authChev'); const open=b.style.display==='none'; b.style.display=open?'':'none'; if(ch)ch.innerHTML=open?'&#9652;':'&#9662;';
+  if(open && !AUTH_IMG.front && window.__lastScanFront){ AUTH_IMG.front=window.__lastScanFront; const im=document.getElementById('authFrontImg'); im.src=AUTH_IMG.front; im.style.display='block'; } }
+function fileToDataURL(file,maxw){ return new Promise((res,rej)=>{ const url=URL.createObjectURL(file); const im=new Image(); im.onload=()=>{ const sc=Math.min(1,maxw/im.width); const cv=document.createElement('canvas'); cv.width=Math.round(im.width*sc); cv.height=Math.round(im.height*sc); cv.getContext('2d').drawImage(im,0,0,cv.width,cv.height); URL.revokeObjectURL(url); res(cv.toDataURL('image/jpeg',0.82)); }; im.onerror=rej; im.src=url; }); }
+async function authPick(side,input){ const f=input.files&&input.files[0]; if(!f) return; try{ const d=await fileToDataURL(f,1200); AUTH_IMG[side]=d; const im=document.getElementById(side==='front'?'authFrontImg':'authBackImg'); im.src=d; im.style.display='block'; }catch(e){} }
+async function authRun(){
+  const front=AUTH_IMG.front||window.__lastScanFront;
+  const res=document.getElementById('authResult');
+  if(!front){ res.innerHTML='<div class="authneeds">Ajoute au moins une photo du <b>recto</b> (ou scanne d\'abord une carte).</div>'; return; }
+  const go=document.getElementById('authGo'); go.disabled=true; const old=go.textContent; go.textContent='Analyse…';
+  res.innerHTML='<div class="authneeds">Analyse de l\'authenticité en cours… (peut prendre ~20&nbsp;s)</div>';
+  try{
+    const body={front_b64:front}; if(AUTH_IMG.back) body.back_b64=AUTH_IMG.back;
+    if(window.__lastScanCode) body.card_number=window.__lastScanCode;
+    const r=await fetch(SB+'/functions/v1/card-authenticate',{method:'POST',headers:{'Content-Type':'application/json',apikey:ANON,Authorization:'Bearer '+ANON},body:JSON.stringify(body)});
+    const j=await r.json();
+    if(j&&j.rate_limited){ res.innerHTML='<div class="authneeds">&#9203; Limite gratuite de l\'IA atteinte. Réessaie dans '+(j.retry_after||30)+'&nbsp;s.</div>'; return; }
+    if(j&&j.result){ authRender(j.result); } else { res.innerHTML='<div class="authneeds">Analyse impossible pour le moment. Réessaie.</div>'; }
+  }catch(e){ res.innerHTML='<div class="authneeds">Erreur réseau. Réessaie.</div>'; }
+  finally{ go.disabled=false; go.textContent=old; }
+}
+function authRender(r,target){
+  const res=target||document.getElementById('authResult');
+  const v=r.verdict||'na';
+  const LBL={likely_genuine:['genuine','&#9989; Aucun signal suspect'],doubt:['doubt','&#9888;&#65039; Doute — à vérifier'],likely_fake:['fake','&#128681; Signaux de contrefaçon'],na:['na','&#8505;&#65039; Analyse non concluante']};
+  const meta=LBL[v]||LBL.na;
+  const sc=(typeof r.doubt_score==='number')?Math.round(r.doubt_score*100):null;
+  let h='<div class="authbadge '+meta[0]+'">'+meta[1]+(sc!=null&&v!=='na'?(' &middot; risque '+sc+'%'):'')+'</div>';
+  const CK={back_color:'Dos (couleur)',stamp:'Tampon',text:'Texte',foil:'Foil',print_clarity:'Impression',texture:'Texture',cut:'Découpe'};
+  if(r.checks){ for(const k of Object.keys(CK)){ const c=r.checks[k]; if(!c)continue; const st=(c.status||'na'); h+='<div class="authchk"><span class="cdot '+st+'"></span><span class="ck">'+CK[k]+'</span><span>'+esc(c.note||'')+'</span></div>'; } }
+  if(Array.isArray(r.red_flags)&&r.red_flags.length){ h+='<div class="authflags"><b>Points d\'alerte :</b><br>&bull; '+r.red_flags.map(x=>esc(x)).join('<br>&bull; ')+'</div>'; }
+  if(Array.isArray(r.needs)&&r.needs.length){ h+='<div class="authneeds">Pour mieux juger : '+r.needs.map(x=>esc(x)).join(', ')+'.</div>'; }
+  if(r.caveat){ h+='<div class="authcav">'+esc(r.caveat)+'</div>'; }
+  res.innerHTML=h;
+}
 document.getElementById("sortBtn").addEventListener("click",()=>{ state.mode==="catalog"?openCatSort():openSort(); });
 document.getElementById("sclose").addEventListener("click",closeSort);
 document.getElementById("filterBtn").addEventListener("click",()=>{ state.mode==="catalog"?openCatFilters():openFilters(); });
