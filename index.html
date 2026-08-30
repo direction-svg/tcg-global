@@ -3951,7 +3951,7 @@ async function homeBriefing(){
   }catch(e){ box.innerHTML='<div class="txt" style="color:var(--muted);font-size:13px">Erreur, réessaie.</div><button class="hbriefbtn" onclick="homeBriefing()">Réessayer</button>'; }
 }
 document.getElementById('modeSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMode(b.dataset.m);});
-const APP_VERSION='Version b77 · 30/08';
+const APP_VERSION='Version b78 · 30/08';
 { const nv=document.getElementById('navVersion'); if(nv) nv.textContent=APP_VERSION; }
 document.getElementById('mktSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMarket(b.dataset.k);});
 const CATARRS=["catColors","catCats","catRarities","catTreats","catProvs"];
@@ -5078,9 +5078,12 @@ const Fake = (function(){
     {key:'stamp', lab:'STAMP', ar:1, frac:0.5, torch:true, skip:true,
      tip:"Facultatif — si la carte n'a PAS de stamp, appuie sur « Ignorer ». Sinon incline légèrement pour révéler le relief.",
      instr:"Gros plan sur le stamp : tampon embossé « ONE PIECE » (bas gauche) OU stamp doré/argenté de tournoi/promo (Winner, Finalist, event). Incline + flash.", label:"Stamp / tampon"},
-    {key:'dos', lab:'DOS', ar:1, frac:0.55, torch:true, ghost:true,
-     tip:"Très près : le logo ⊗ONE aussi gros que le repère, points d'impression visibles.",
-     instr:"Retourne la carte. Rapproche jusqu'à ce que le logo ⊗ONE remplisse le repère.", label:"Logo ⊗ONE (dos)"}
+    {key:'backfull', lab:'DOS', ar:63/88, frac:0.9, torch:false,
+     tip:"Retourne la carte. Lumière neutre, évite les reflets — pas de flash ici (meilleure lecture couleur).",
+     instr:"Tout le dos dans le cadre, bien à plat : sert à mesurer la couleur du logo et du fond.", label:"Dos entier"},
+    {key:'logo', lab:'LOGO', ar:1, frac:0.55, torch:true, ghost:true,
+     tip:"Maintenant très près : le logo ⊗ONE aussi gros que le repère, points d'impression visibles.",
+     instr:"Rapproche jusqu'à ce que le logo ⊗ONE remplisse le repère.", label:"Logo ⊗ONE (macro)"}
   ];
   let idx=0, stream=null, track=null, torchOn=false, shots={}, metrics={}, calibMode=false, calibCat=null, busy=false;
   const CATS=[
@@ -5271,9 +5274,9 @@ const Fake = (function(){
     if(shots.recto){ metrics.recto=await microMetrics(shots.recto); }
     if(shots.bandai){ metrics.bandai=await microMetrics(shots.bandai); }
     if(shots.stamp){ metrics.stamp=await microMetrics(shots.stamp); }
-    if(shots.dos){ metrics.dos=await microMetrics(shots.dos); }
+    if(shots.logo){ metrics.dos=await microMetrics(shots.logo); }
     let colorRes=null;
-    if(shots.dos && typeof backColorCheck==='function'){ try{ colorRes=await backColorCheck(shots.dos); }catch(e){} }
+    if(shots.backfull && typeof backColorCheck==='function'){ try{ colorRes=await backColorCheck(shots.backfull); }catch(e){} }
 
     // mode calibration : on enregistre un relevé taggé et on retourne au tableau
     if(calibMode){
@@ -5296,7 +5299,7 @@ const Fake = (function(){
     try{
       const body={};
       if(shots.recto) body.front_b64=shots.recto;
-      if(shots.dos) body.back_b64=shots.dos;
+      if(shots.backfull) body.back_b64=shots.backfull;
       if(shots.bandai) body.bandai_b64=shots.bandai;
       if(shots.stamp) body.stamp_b64=shots.stamp;
       const top=(typeof window!=='undefined')?window.__lastScanTop:null;
@@ -5352,7 +5355,7 @@ const Fake = (function(){
     if(rr.__metrics){ const mr=rr.__metrics.recto, mb=rr.__metrics.bandai, ms=rr.__metrics.stamp, md=rr.__metrics.dos;
       const calibrated=loadCalib().cards.length>=3;
       extra="<div style='margin-top:12px;font-size:11.5px;color:#9c8fb8'>Mesures (netteté micro-texte) : "+
-        (mr?("recto "+mr.crisp):"recto —")+" · "+(mb?("BANDAI "+mb.crisp):"BANDAI —")+" · "+(ms?("stamp "+ms.crisp):"stamp —")+" · "+(md?("dos "+md.crisp):"dos —")+
+        (mr?("recto "+mr.crisp):"recto —")+" · "+(mb?("BANDAI "+mb.crisp):"BANDAI —")+" · "+(ms?("stamp "+ms.crisp):"stamp —")+" · "+(md?("logo "+md.crisp):"logo —")+
         (calibrated?"":" · <i>calibre des vraies cartes (bouton Calibration) pour activer le verdict micro-texte</i>")+"</div>"; }
     box.innerHTML=html+extra+
       "<div style='margin-top:18px;display:flex;gap:10px'><button class='fkghostbtn' onclick=\"Fake.open()\">Nouvelle carte</button><button class='fkghostbtn' onclick=\"Fake.close()\">Fermer</button></div>";
