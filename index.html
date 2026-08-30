@@ -190,6 +190,8 @@ body{font-family:'Sora',-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helve
 .pcatbody .prow:last-child{margin-bottom:0}
 .setrow{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:11px 13px;margin-bottom:9px;display:flex;align-items:center;gap:11px;cursor:pointer}
 .setrow .snm{flex:1;min-width:0}
+.setrow .sthumb{flex:none;width:46px;height:46px;border-radius:9px;overflow:hidden;background:var(--chip);display:grid;place-items:center;font-size:20px}
+.setrow .sthumb img{width:100%;height:100%;object-fit:cover}
 .setrow .stitle{font-weight:800;font-size:14px;line-height:1.15}
 .setrow .scnt{font-size:12px;color:var(--muted);margin-top:5px;margin-bottom:5px}
 .setrow .scnt b{color:var(--ink)}
@@ -2500,31 +2502,53 @@ const SET_GRP_LABELS={BOOSTER:"Booster / Extra / Premium",STARTER:"Starter Decks
 const SET_GRP_ORDER=["BOOSTER","STARTER","PROMO","DON","AUTRES"];
 const SET_LANGS=[["JP","Japonais"],["EN","Anglais"],["FR","Français"],["CN","Chinois"]];
 function setCodeRank(code){ const m=(code||"").match(/^([A-Za-z]+)(\d*)$/); if(!m) return [9,code,0]; const fam={OP:0,EB:1,PRB:2,ST:0}[m[1]]??5; return [fam, m[1], m[2]?parseInt(m[2]):0]; }
+let SETIMG={};
+function normSet(s){ return String(s||'').toUpperCase().replace(/[^A-Z0-9]/g,''); }
 async function fetchSets(){
   const stage=document.getElementById('stage'); stage.className=""; stage.innerHTML='<div class="loading">Chargement des sets…</div>';
   const lang=state.setLang||'JP';
   try{
+    // images représentatives par set (produits) — chargées une fois, réutilisées pour toutes les langues
+    if(!Object.keys(SETIMG).length){
+      try{ const ri=await fetch(SB+'/rest/v1/app_products?select=set_code,image_url,category&image_url=not.is.null&limit=800',{headers:{apikey:ANON,Authorization:"Bearer "+ANON}});
+        const pi=await ri.json();
+        if(Array.isArray(pi)){ pi.sort((a,b)=>((String(a.category||'').includes('BOX')?0:1)-(String(b.category||'').includes('BOX')?0:1)));
+          pi.forEach(x=>{ const k=normSet(x.set_code); if(k && !SETIMG[k]) SETIMG[k]=x.image_url; }); }
+      }catch(e){}
+    }
     const r=await fetch(SB+'/rest/v1/app_set_completion?language=eq.'+lang+'&select=groupe,set_code,total,owned',{headers:{apikey:ANON,Authorization:"Bearer "+ANON}});
     let rows=await r.json(); if(!Array.isArray(rows))rows=[];
     if(state.mode!=='sets') return;
     renderSets(rows,lang);
   }catch(e){ stage.innerHTML='<div class="empty">Erreur de chargement des sets.</div>'; }
 }
+let SETROWS=[];
+function setSetGrp(g){ state.setGrp=g; renderSets(SETROWS, state.setLang||'JP'); }
 function renderSets(rows,lang){
   const stage=document.getElementById('stage'); stage.className="";
-  let tot=0,own=0; rows.forEach(r=>{tot+=r.total||0;own+=r.owned||0;});
+  SETROWS=rows;
+  const byGrp={}; rows.forEach(r=>{ (byGrp[r.groupe]=byGrp[r.groupe]||[]).push(r); });
+  const grpsPresent=SET_GRP_ORDER.filter(g=>byGrp[g]&&byGrp[g].length);
+  const cur=(state.setGrp && (state.setGrp==='all'||grpsPresent.includes(state.setGrp)))?state.setGrp:'all';
+  // total affiché = selon l'onglet typologie sélectionné
+  const shownGrps = (cur==='all')?grpsPresent:[cur];
+  let tot=0,own=0; shownGrps.forEach(g=>byGrp[g].forEach(r=>{tot+=r.total||0;own+=r.owned||0;}));
   const langChips=SET_LANGS.map(([c,l])=>'<div class="chip'+(c===lang?' on':'')+'" onclick="setSetLang(\''+c+'\')">'+(FLAG[c]||'')+' '+l+'</div>').join('');
   let h='<div class="setlangrow">'+langChips+'</div>';
-  h+='<div class="sethead"><span>Ma collection '+(LANG_LABELS[lang]||lang)+'</span><span class="pct">'+own+' / '+tot+' · '+(tot?Math.round(own/tot*100):0)+'%</span></div>';
-  const byGrp={}; rows.forEach(r=>{ (byGrp[r.groupe]=byGrp[r.groupe]||[]).push(r); });
-  SET_GRP_ORDER.forEach(g=>{
+  // Onglets par typologie (façon Logia) : Tous + les familles présentes
+  const tab=(v,l)=>'<div class="chip'+(cur===v?' on':'')+'" onclick="setSetGrp(\''+v+'\')">'+esc(l)+'</div>';
+  h+='<div class="setlangrow" style="margin-top:7px">'+tab('all','Tous')+grpsPresent.map(g=>tab(g,SET_GRP_LABELS[g]||g)).join('')+'</div>';
+  h+='<div class="sethead"><span>'+(cur==='all'?('Ma collection '+(LANG_LABELS[lang]||lang)):(SET_GRP_LABELS[cur]||cur))+'</span><span class="pct">'+own+' / '+tot+' · '+(tot?Math.round(own/tot*100):0)+'%</span></div>';
+  shownGrps.forEach(g=>{
     const list=byGrp[g]; if(!list||!list.length) return;
     list.sort((a,b)=>{ const ra=setCodeRank(a.set_code),rb=setCodeRank(b.set_code); return ra[0]-rb[0] || (ra[1]<rb[1]?-1:ra[1]>rb[1]?1:0) || rb[2]-ra[2]; });
     h+='<div class="setgrp">'+(SET_GRP_LABELS[g]||g)+'</div>';
     h+=list.map(r=>{
       const p=r.total?Math.round(r.owned/r.total*100):0; const full=(r.owned>=r.total&&r.total>0);
       const nm=SET_NAMES[r.set_code]||r.set_code; const showCode=(nm!==r.set_code);
-      return '<div class="setrow" onclick="openSetInCatalog(\''+esc(r.set_code)+'\',\''+lang+'\')"><div class="snm"><div class="stitle">'+esc(nm)+'</div>'+
+      const simg=SETIMG[normSet(r.set_code)];
+      const thumb='<div class="sthumb">'+(simg?('<img loading="lazy" referrerpolicy="no-referrer" src="'+esc(simg)+'" onerror="this.parentNode.textContent=\'📦\'">'):'📦')+'</div>';
+      return '<div class="setrow" onclick="openSetInCatalog(\''+esc(r.set_code)+'\',\''+lang+'\')">'+thumb+'<div class="snm"><div class="stitle">'+esc(nm)+'</div>'+
         '<div class="scnt"><b>'+r.owned+'</b> ou '+r.total+' · '+p+'%</div><div class="setpbar"><div class="setpfill'+(full?' full':'')+'" style="width:'+Math.max(p,1)+'%"></div></div></div>'+
         (showCode?'<div class="scode">'+esc(r.set_code)+'</div>':'')+'</div>';
     }).join('');
@@ -3784,7 +3808,7 @@ async function homeBriefing(){
   }catch(e){ box.innerHTML='<div class="txt" style="color:var(--muted);font-size:13px">Erreur, réessaie.</div><button class="hbriefbtn" onclick="homeBriefing()">Réessayer</button>'; }
 }
 document.getElementById('modeSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMode(b.dataset.m);});
-const APP_VERSION='Version b65 · 29/08';
+const APP_VERSION='Version b67 · 29/08';
 { const nv=document.getElementById('navVersion'); if(nv) nv.textContent=APP_VERSION; }
 document.getElementById('mktSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMarket(b.dataset.k);});
 const CATARRS=["catColors","catCats","catRarities","catTreats","catProvs"];
