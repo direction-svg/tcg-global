@@ -1021,7 +1021,7 @@ body{-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
         <div class="scanmanual"><input id="scanCode" class="buyinput" placeholder="ou saisis le n&deg; (ex : OP05-119)" autocomplete="off"><button class="scanminibtn go" onclick="scanLookupManual()">OK</button></div>
       </div>
       <div id="authBlock" class="authblock">
-        <div class="authhdr" onclick="authToggle()"><span>&#128269; V&eacute;rifier l'authenticit&eacute;</span><span class="authsub">recto + verso &middot; d&eacute;tection de fausse carte</span><span id="authChev" class="authchev">&#9662;</span></div>
+        <div class="authhdr" onclick="authToggle()"><span>&#128269; V&eacute;rifier l'authenticit&eacute;</span><span class="authsub">recto + verso &middot; alerte si doute &middot; ne certifie pas l'authenticit&eacute;</span><span id="authChev" class="authchev">&#9662;</span></div>
         <div id="authBody" class="authbody" style="display:none">
           <div class="authrow">
             <label class="scanminibtn">&#128247; Recto<input type="file" accept="image/*" capture="environment" id="authFront" hidden onchange="authPick('front',this)"></label>
@@ -3854,7 +3854,7 @@ async function homeBriefing(){
   }catch(e){ box.innerHTML='<div class="txt" style="color:var(--muted);font-size:13px">Erreur, réessaie.</div><button class="hbriefbtn" onclick="homeBriefing()">Réessayer</button>'; }
 }
 document.getElementById('modeSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMode(b.dataset.m);});
-const APP_VERSION='Version b70 · 30/08';
+const APP_VERSION='Version b72 · 30/08';
 { const nv=document.getElementById('navVersion'); if(nv) nv.textContent=APP_VERSION; }
 document.getElementById('mktSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMarket(b.dataset.k);});
 const CATARRS=["catColors","catCats","catRarities","catTreats","catProvs"];
@@ -4580,7 +4580,9 @@ async function authRun(){
   res.innerHTML='<div class="authneeds">Analyse de l\'authenticité en cours… (peut prendre ~20&nbsp;s)</div>';
   try{
     const body={front_b64:front}; if(AUTH_IMG.back) body.back_b64=AUTH_IMG.back;
-    if(window.__lastScanCode) body.card_number=window.__lastScanCode;
+    const top=window.__lastScanTop;
+    if(top){ if(top.card_number)body.card_number=top.card_number; if(top.language)body.language=top.language; if(top.rarity)body.rarity=top.rarity; if(top.image_url)body.ref_url=top.image_url; }
+    else if(window.__lastScanCode){ body.card_number=window.__lastScanCode; }
     const r=await fetch(SB+'/functions/v1/card-authenticate',{method:'POST',headers:{'Content-Type':'application/json',apikey:ANON,Authorization:'Bearer '+ANON},body:JSON.stringify(body)});
     const j=await r.json();
     if(j&&j.rate_limited){ res.innerHTML='<div class="authneeds">&#9203; Limite gratuite de l\'IA atteinte. Réessaie dans '+(j.retry_after||30)+'&nbsp;s.</div>'; return; }
@@ -4591,12 +4593,15 @@ async function authRun(){
 function authRender(r,target){
   const res=target||document.getElementById('authResult');
   const v=r.verdict||'na';
-  const LBL={likely_genuine:['genuine','&#9989; Aucun signal suspect'],doubt:['doubt','&#9888;&#65039; Doute — à vérifier'],likely_fake:['fake','&#128681; Signaux de contrefaçon'],na:['na','&#8505;&#65039; Analyse non concluante']};
+  const LBL={suspect:['fake','&#128681; Signes de fausse carte'],inconclusive:['doubt','&#9888;&#65039; Rien d\'&eacute;vident vu &mdash; NON certifiable'],na:['na','&#8505;&#65039; Analyse impossible sur cette photo'],
+             likely_fake:['fake','&#128681; Signes de fausse carte'],doubt:['doubt','&#9888;&#65039; Rien d\'&eacute;vident vu &mdash; NON certifiable'],likely_genuine:['doubt','&#9888;&#65039; Rien d\'&eacute;vident vu &mdash; NON certifiable']};
   const meta=LBL[v]||LBL.na;
   const sc=(typeof r.doubt_score==='number')?Math.round(r.doubt_score*100):null;
-  let h='<div class="authbadge '+meta[0]+'">'+meta[1]+(sc!=null&&v!=='na'?(' &middot; risque '+sc+'%'):'')+'</div>';
-  const CK={back_color:'Dos (couleur)',stamp:'Tampon',text:'Texte',foil:'Foil',print_clarity:'Impression',texture:'Texture',cut:'Découpe'};
+  const showPct=(v==='suspect'||v==='likely_fake')&&sc!=null;
+  let h='<div class="authbadge '+meta[0]+'">'+meta[1]+(showPct?(' &middot; risque '+sc+'%'):'')+'</div>';
+  const CK={foil:'Foil',delamination:'D&eacute;collement',surface:'Surface',print_clarity:'Impression',text:'Texte',back_color:'Dos (couleur)',cut:'D&eacute;coupe',stamp:'Tampon',texture:'Texture'};
   if(r.checks){ for(const k of Object.keys(CK)){ const c=r.checks[k]; if(!c)continue; const st=(c.status||'na'); h+='<div class="authchk"><span class="cdot '+st+'"></span><span class="ck">'+CK[k]+'</span><span>'+esc(c.note||'')+'</span></div>'; } }
+  if(Array.isArray(r.differences)&&r.differences.length){ h+='<div class="authflags" style="background:#fffbeb;border-color:#fde68a;color:#92400e"><b>&Eacute;carts vs image officielle Bandai :</b><br>&bull; '+r.differences.map(x=>esc(x)).join('<br>&bull; ')+'</div>'; }
   if(Array.isArray(r.red_flags)&&r.red_flags.length){ h+='<div class="authflags"><b>Points d\'alerte :</b><br>&bull; '+r.red_flags.map(x=>esc(x)).join('<br>&bull; ')+'</div>'; }
   if(Array.isArray(r.needs)&&r.needs.length){ h+='<div class="authneeds">Pour mieux juger : '+r.needs.map(x=>esc(x)).join(', ')+'.</div>'; }
   if(r.caveat){ h+='<div class="authcav">'+esc(r.caveat)+'</div>'; }
