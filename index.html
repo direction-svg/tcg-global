@@ -919,7 +919,9 @@ body{-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
 <div id="catOverlay" class="overlay hidden">
   <div class="sheet">
     <div class="dhead"><button class="dclose" id="cdclose">&times;</button><img id="cdimg" referrerpolicy="no-referrer"><div id="cdvfy" class="vfy" style="display:none"><span class="vt">🔍</span>Photo à vérifier</div></div>
+    <div class="dtabs" id="cdtabs"><button data-ct="col" class="on">Collection</button><button data-ct="tar">Tarifs</button><button data-ct="det">D&eacute;tails</button></div>
     <div id="cdbody"></div>
+    <div id="cdprice" class="dprices"></div>
     <div id="cdprints"></div>
   </div>
 </div>
@@ -3808,7 +3810,7 @@ async function homeBriefing(){
   }catch(e){ box.innerHTML='<div class="txt" style="color:var(--muted);font-size:13px">Erreur, réessaie.</div><button class="hbriefbtn" onclick="homeBriefing()">Réessayer</button>'; }
 }
 document.getElementById('modeSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMode(b.dataset.m);});
-const APP_VERSION='Version b67 · 29/08';
+const APP_VERSION='Version b69 · 30/08';
 { const nv=document.getElementById('navVersion'); if(nv) nv.textContent=APP_VERSION; }
 document.getElementById('mktSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMarket(b.dataset.k);});
 const CATARRS=["catColors","catCats","catRarities","catTreats","catProvs"];
@@ -4093,21 +4095,46 @@ async function saveOrient(){
 document.getElementById('oclose').addEventListener('click',closeOrient);
 document.getElementById('omodal').addEventListener('click',e=>{ if(e.target.id==='omodal')closeOrient(); });
 document.getElementById('osave').addEventListener('click',saveOrient);
+let catDetailCard=null, catDetailTab="col";
+function renderCatDetail(){
+  const c=catDetailCard; if(!c) return;
+  const body=document.getElementById("cdbody");
+  const show=(id,v)=>{ const e=document.getElementById(id); if(e) e.style.display=v?"":"none"; };
+  show("cdprice", catDetailTab==="tar");
+  show("cdprints", catDetailTab==="det");
+  if(catDetailTab==="tar"){
+    body.innerHTML='<div class="dval" style="margin-bottom:6px"><div class="b">'+esc(c.name||"")+'</div><div class="s">'+(FLAG[c.language]||"")+' '+esc(c.card_number||"")+'</div></div>'+cdPriceBlock(c);
+    return;
+  }
+  if(catDetailTab==="det"){
+    body.innerHTML=
+      drow("Nom", esc(c.name))+drow("Numéro de carte", esc(c.card_number))+
+      drow("Rareté", RAR_LABELS[c.rarity]||c.rarity||"—")+
+      drow("Rareté de l’œuvre", '<b>'+variantNice(c)+'</b>')+
+      drow("Type", c.origin?(ORIGIN_LABELS[c.origin]||c.origin):"")+
+      drow("Catégorie", CAT_LABELS[c.category]||c.category)+
+      drow("Set / Édition", esc((c.set_code||"")+(c.set_name?(" — "+c.set_name):"")))+
+      drow("Langue", (FLAG[c.language]||"")+' '+(LANG_LABELS[c.language]||c.language));
+    return;
+  }
+  // col : possession / ajout
+  body.innerHTML='<div class="dval"><div class="b">'+esc(c.name||"")+'</div><div class="s">'+(FLAG[c.language]||"")+' '+(LANG_LABELS[c.language]||c.language)+' · '+esc(c.card_number||"")+'</div><div class="collact" id="cdcollact"></div></div>';
+  renderCollBtn(c.printing_id);
+}
 async function openCatDetail(c){
   if(!c) return;
   { const pcu=(c.is_graded||c.img_locked)?null:PCIMG[c.printing_id]; const eff=pcu||c.image_url; const vfy=c.img_verify&&!pcu&&!c.is_graded&&!c.img_locked; const cv=document.getElementById("cdvfy"); if(cv) cv.style.display=vfy?"grid":"none"; document.getElementById("cdimg").src=vfy?"":(eff||""); document.getElementById("cdimg").style.visibility=(!vfy&&eff)?"visible":"hidden"; }
-  const vl=c.variant_label||c.variant;
-  document.getElementById("cdbody").innerHTML=
-    '<div class="dval"><div class="b">'+esc(c.name||"")+'</div><div class="s">'+(FLAG[c.language]||"")+' '+(LANG_LABELS[c.language]||c.language)+' · '+esc(c.card_number||"")+'</div><div class="collact" id="cdcollact"></div></div>'+
-    drow("Rareté", RAR_LABELS[c.rarity]||c.rarity)+drow("Variante", variantNice(c))+drow("Type", c.origin?(ORIGIN_LABELS[c.origin]||c.origin):"")+drow("Catégorie", CAT_LABELS[c.category]||c.category)+drow("Set", esc((c.set_code||"")+(c.set_name?(" — "+c.set_name):"")))+
-    '<div id="cdprice" class="dprices">'+cdPriceBlock(c)+'</div>';
+  catDetailCard=c; catDetailTab="col";
+  document.querySelectorAll('#cdtabs button').forEach(b=>b.classList.toggle('on',b.dataset.ct==='col'));
+  document.getElementById("cdprice").innerHTML="";
   document.getElementById("cdprints").innerHTML='<div class="dprints"><h4>Toutes les versions</h4><div class="pxloading">…</div></div>';
+  renderCatDetail();
   document.getElementById("catOverlay").classList.remove("hidden");
   detailCatPid=c.printing_id||null;
-  renderCollBtn(c.printing_id);
   loadCardPrices(c);
   loadCardVersions(c);
 }
+document.querySelectorAll('#cdtabs button').forEach(b=>b.addEventListener("click",()=>{ catDetailTab=b.dataset.ct; document.querySelectorAll('#cdtabs button').forEach(x=>x.classList.toggle('on',x===b)); renderCatDetail(); }));
 let CATPRINTS=[];
 // Toutes les versions de la carte (toutes langues + variantes) — style Logia
 async function loadCardVersions(c){
@@ -4165,7 +4192,7 @@ async function loadCardPrices(c, boxId){
   const box=document.getElementById(boxId); if(!box) return;
   let rows=[];
   if(c.printing_id){
-    try{ const r=await fetch(SB+'/rest/v1/app_price_source?printing_id=eq.'+encodeURIComponent(c.printing_id)+'&select=source,market,grade,price_eur,orig_price,orig_currency,captured_at&order=grade.asc.nullsfirst,price_eur.desc',{headers:{apikey:ANON,Authorization:"Bearer "+ANON}}); rows=await r.json(); if(!Array.isArray(rows))rows=[]; }catch(e){ rows=[]; }
+    try{ const r=await fetch(SB+'/rest/v1/app_price_source?printing_id=eq.'+encodeURIComponent(c.printing_id)+'&select=source,market,grade,grading_company,price_eur,orig_price,orig_currency,captured_at&order=grade.asc.nullsfirst,price_eur.desc',{headers:{apikey:ANON,Authorization:"Bearer "+ANON}}); rows=await r.json(); if(!Array.isArray(rows))rows=[]; }catch(e){ rows=[]; }
   }
   let cr=[];
   if(c.language==='JP' && c.card_number){
@@ -4187,8 +4214,17 @@ async function loadCardPrices(c, boxId){
     srcInner+='<div class="pxnone">'+(c.language==='CN'?'Aucune cote automatique (exclusivité chinoise). Ajoute le prix que tu connais — il sera daté et conservé.':(c.language==='JP'?'Prix Japon en cours de récupération (Cardrush) — reviens bientôt.':'Pas encore de cote automatique pour cette variante.'))+'</div>';
   }
   if(grd.length){
-    srcInner+='<div class="pxsub">Gradées</div><table class="pxtab"><tbody>'+grd.map(x=>{
-      return '<tr><td class="src">Grade '+(x.grade)+'</td><td>'+(FLAG[x.market]||x.market)+'</td><td class="px">'+eur(x.price_eur)+'</td><td class="dt">'+esc(SRC_LABELS[x.source]||x.source)+'</td></tr>';
+    // Une ligne par (société, note) : les multiples « Grade 10 » = sociétés différentes (PSA/BGS/CGC/SGC),
+    // pas des doublons. On dédoublonne les captures répétées et on affiche la société en clair.
+    const CO_ORD={PSA:0,BGS:1,CGC:2,SGC:3,ARS:4,NOVA:5};
+    const gsorted=grd.slice().sort((a,b)=> (Number(b.price_eur)||0)-(Number(a.price_eur)||0)); // garde la cote la plus élevée par société+note
+    const seen={}, uniq=[];
+    gsorted.forEach(x=>{ const k=(x.grading_company||'?')+'|'+x.market+'|'+x.grade; if(!seen[k]){ seen[k]=1; uniq.push(x); } });
+    uniq.sort((a,b)=>{ const ca=(a.grading_company||'').toUpperCase(),cb=(b.grading_company||'').toUpperCase(); return (CO_ORD[ca]??9)-(CO_ORD[cb]??9) || (Number(b.grade)-Number(a.grade)); });
+    srcInner+='<div class="pxsub">Cotes gradées</div><table class="pxtab"><tbody>'+uniq.map(x=>{
+      const co=x.grading_company?esc(x.grading_company):'Gradée';
+      const g=String(x.grade).replace(/\.0$/,'');
+      return '<tr><td class="src"><b>'+co+' '+g+'</b></td><td>'+(FLAG[x.market]||x.market)+'</td><td class="px">'+eur(x.price_eur)+'</td><td class="dt">'+esc(SRC_LABELS[x.source]||x.source)+'</td></tr>';
     }).join('')+'</tbody></table>';
   }
   if(srcInner) html+=det('Toutes les sources de prix', srcInner);
