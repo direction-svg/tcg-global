@@ -1020,8 +1020,9 @@ body{-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
         <label class="scanminibtn">&#128247; Importer une photo<input type="file" accept="image/*" capture="environment" id="scanInput" hidden></label>
         <div class="scanmanual"><input id="scanCode" class="buyinput" placeholder="ou saisis le n&deg; (ex : OP05-119)" autocomplete="off"><button class="scanminibtn go" onclick="scanLookupManual()">OK</button></div>
       </div>
+      <button class="fakeentry" onclick="Fake.open()">&#128269; D&eacute;tecteur de faux <span class="fkbeta">BETA</span><span class="fkentrysub">capture guid&eacute;e &middot; zones Bandai / stamp / dos</span></button>
       <div id="authBlock" class="authblock">
-        <div class="authhdr" onclick="authToggle()"><span>&#128269; V&eacute;rifier l'authenticit&eacute;</span><span class="authsub">recto + verso &middot; alerte si doute &middot; ne certifie pas l'authenticit&eacute;</span><span id="authChev" class="authchev">&#9662;</span></div>
+        <div class="authhdr" onclick="authToggle()"><span>&#128269; V&eacute;rif rapide par photo</span><span class="authsub">recto + verso &middot; alerte si doute &middot; ne certifie pas l'authenticit&eacute;</span><span id="authChev" class="authchev">&#9662;</span></div>
         <div id="authBody" class="authbody" style="display:none">
           <div class="authrow">
             <label class="scanminibtn">&#128247; Recto<input type="file" accept="image/*" capture="environment" id="authFront" hidden onchange="authPick('front',this)"></label>
@@ -1035,6 +1036,41 @@ body{-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
     </div>
     <div style="height:calc(14px + env(safe-area-inset-bottom))"></div>
   </div>
+</div>
+
+<!-- ============ D&eacute;tecteur de faux (capture guid&eacute;e) ============ -->
+<div id="fkOverlay" class="fkoverlay hidden">
+  <div class="fktop">
+    <button class="fktorch" id="fkTorch" onclick="Fake.toggleTorch()" aria-label="Flash">&#9889;</button>
+    <div class="fktitle">&#128269; D&eacute;tecteur de faux <span class="fkbeta">BETA</span></div>
+    <button class="fkx" onclick="Fake.close()" aria-label="Fermer">&times;</button>
+  </div>
+  <div class="fksteps" id="fkSteps"></div>
+  <div class="fktip" id="fkTip"></div>
+
+  <div class="fkstage" id="fkStage">
+    <video id="fkVideo" playsinline muted></video>
+    <div class="fkframe" id="fkFrame"><span class="fkframelabel" id="fkFrameLabel"></span></div>
+    <img id="fkGhost" class="fkghost" alt="" style="display:none">
+    <div class="fkinstr" id="fkInstr"></div>
+    <img id="fkShot" class="fkshot" style="display:none">
+  </div>
+
+  <div class="fkanalyze hidden" id="fkAnalyze">
+    <div class="fkring"><div class="fkpct" id="fkPct">0%</div></div>
+    <div class="fkanalabel">&#128269; DEEP ANALYSIS &middot; BETA</div>
+    <div class="fkanasub" id="fkAnaSub">Pr&eacute;paration&hellip;</div>
+  </div>
+
+  <div class="fkresult hidden" id="fkResult"></div>
+  <div class="fkcalibpanel hidden" id="fkCalibPanel"></div>
+
+  <div class="fkbottom" id="fkBottom">
+    <button class="fkghostbtn" id="fkRetry" onclick="Fake.retry()">R&eacute;essayer</button>
+    <button class="fkcap" id="fkCap" onclick="Fake.capture()" aria-label="Capturer"><span></span></button>
+    <button class="fkskip" id="fkSkip" onclick="Fake.skip()">Ignorer &rarr;</button>
+  </div>
+  <div class="fkcalib" id="fkCalib" onclick="Fake.openCalib()">&#127919; Calibration &mdash; cartes authentiques (par type)</div>
 </div>
 
 <button id="scanFab" class="scanfab hidden" aria-label="Scanner une carte">&#128247;</button>
@@ -1061,6 +1097,67 @@ body{-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
 .authflags{margin-top:8px;background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:8px 10px;font-size:12.5px}
 .authneeds{margin-top:8px;font-size:12px;color:var(--muted,#6b7280)}
 .authcav{margin-top:8px;font-size:11px;color:var(--muted,#6b7280);font-style:italic}
+/* ---- entry button ---- */
+.fakeentry{display:flex;flex-direction:column;align-items:flex-start;gap:2px;width:100%;margin-top:12px;padding:11px 14px;border:none;border-radius:12px;cursor:pointer;font-weight:800;font-size:14px;color:#fff;background:linear-gradient(135deg,#7c3aed,#4f46e5);box-shadow:0 4px 14px rgba(79,70,229,.35)}
+.fakeentry .fkbeta{font-size:10px;background:rgba(255,255,255,.22);padding:1px 6px;border-radius:6px;margin-left:6px;vertical-align:middle}
+.fakeentry .fkentrysub{font-weight:500;font-size:11px;opacity:.85}
+/* ---- guided detector overlay ---- */
+.fkoverlay{position:fixed;inset:0;z-index:6000;background:#0b0713;color:#fff;display:flex;flex-direction:column;overflow:hidden}
+.fkoverlay.hidden{display:none}
+.fktop{display:flex;align-items:center;gap:10px;padding:calc(8px + env(safe-area-inset-top)) 14px 8px}
+.fktitle{flex:1;text-align:center;font-weight:800;font-size:16px}
+.fktitle .fkbeta{font-size:10px;background:#f59e0b;color:#1a1205;padding:1px 6px;border-radius:6px;margin-left:4px;font-weight:900}
+.fktorch,.fkx{width:40px;height:40px;border-radius:50%;border:none;font-size:20px;cursor:pointer;background:#241a33;color:#fff;display:flex;align-items:center;justify-content:center}
+.fktorch.on{background:#f59e0b;color:#1a1205}
+.fksteps{display:flex;align-items:center;justify-content:center;gap:2px;padding:4px 14px 8px}
+.fkstep{display:flex;flex-direction:column;align-items:center;gap:4px;flex:0 0 auto}
+.fkdot{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:800;background:#241a33;color:#8b7ea8;border:2px solid #241a33}
+.fkstep.done .fkdot{background:#10b981;color:#04110c;border-color:#10b981}
+.fkstep.active .fkdot{background:#7c3aed;color:#fff;border-color:#a78bfa;box-shadow:0 0 0 4px rgba(124,58,237,.25)}
+.fkstep .fklab{font-size:10px;font-weight:700;letter-spacing:.04em;color:#8b7ea8}
+.fkstep.active .fklab{color:#c4b5fd}.fkstep.done .fklab{color:#6ee7b7}
+.fkbar{width:20px;height:2px;background:#2e2340;margin:0 1px 16px}
+.fkbar.done{background:#10b981}
+.fktip{margin:0 14px 6px;background:rgba(245,158,11,.12);border:1px solid rgba(245,158,11,.3);color:#fcd34d;border-radius:10px;padding:8px 12px;font-size:12px;line-height:1.35;text-align:center}
+.fkstage{position:relative;flex:1;margin:2px 14px;border-radius:16px;overflow:hidden;background:#000;min-height:0}
+#fkVideo{width:100%;height:100%;object-fit:cover;display:block}
+.fkframe{position:absolute;border:2.5px dashed #a78bfa;border-radius:12px;box-shadow:0 0 0 100vmax rgba(5,3,10,.45);pointer-events:none;transition:all .18s}
+.fkframe .fkframelabel{position:absolute;top:-11px;left:50%;transform:translateX(-50%);background:#7c3aed;color:#fff;font-size:11px;font-weight:800;padding:2px 10px;border-radius:8px;white-space:nowrap}
+.fkghost{position:absolute;pointer-events:none;opacity:.42;mix-blend-mode:screen;filter:contrast(1.2)}
+.fkinstr{position:absolute;left:12px;right:12px;top:12px;background:rgba(10,6,18,.72);border-radius:10px;padding:9px 12px;font-size:13px;line-height:1.35;text-align:center;backdrop-filter:blur(4px)}
+.fkshot{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.fkbottom{display:flex;align-items:center;justify-content:center;gap:26px;padding:12px 14px calc(10px + env(safe-area-inset-bottom))}
+.fkcap{width:74px;height:74px;border-radius:50%;border:5px solid #0b0713;background:#7c3aed;box-shadow:0 0 0 4px #7c3aed;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.fkcap span{width:26px;height:26px;border:3px solid #fff;border-radius:7px}
+.fkcap:disabled{opacity:.4}
+.fkghostbtn,.fkskip{background:#241a33;color:#cbb9e8;border:none;border-radius:10px;padding:9px 14px;font-size:13px;font-weight:700;cursor:pointer;min-width:92px}
+.fkskip{background:transparent;color:#8b7ea8;text-decoration:underline}
+.fkcalib{text-align:center;font-size:11px;color:#6b5b86;padding:0 0 calc(8px + env(safe-area-inset-bottom));cursor:pointer}
+.fkcalib.on{color:#6ee7b7;font-weight:800}
+.fkanalyze{position:absolute;inset:0;background:#0b0713;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;z-index:5}
+.fkanalyze.hidden{display:none}
+.fkring{width:150px;height:150px;border-radius:50%;border:1px solid rgba(167,139,250,.25);display:flex;align-items:center;justify-content:center;position:relative;box-shadow:0 0 40px rgba(124,58,237,.25) inset}
+.fkpct{font-size:44px;font-weight:800}
+.fkanalabel{font-size:13px;font-weight:800;letter-spacing:.14em;color:#a78bfa}
+.fkanasub{font-size:14px;font-weight:700}
+.fkresult{position:absolute;inset:0;background:#0b0713;overflow:auto;padding:calc(14px + env(safe-area-inset-top)) 16px calc(20px + env(safe-area-inset-bottom));z-index:6}
+.fkresult.hidden{display:none}
+.fkresult .authbadge{font-size:16px}
+.fkcalibpanel{position:absolute;inset:0;background:#0b0713;overflow:auto;padding:calc(12px + env(safe-area-inset-top)) 16px calc(20px + env(safe-area-inset-bottom));z-index:6}
+.fkcalibpanel.hidden{display:none}
+.fkcalh{font-weight:800;font-size:16px;margin:2px 0 4px}
+.fkcalsub{font-size:12px;color:#9c8fb8;line-height:1.45;margin-bottom:12px}
+.fkcalrow{display:flex;align-items:center;gap:10px;background:#160f22;border:1px solid #2a2038;border-radius:12px;padding:10px 12px;margin-bottom:8px}
+.fkcalrow .cinfo{flex:1;min-width:0}
+.fkcalrow .clab{font-weight:800;font-size:14px}
+.fkcalrow .chint{font-size:11px;color:#8b7ea8}
+.fkcalrow .ccount{font-size:12px;font-weight:800;color:#6ee7b7;white-space:nowrap}
+.fkcalrow .cbtn{background:#7c3aed;color:#fff;border:none;border-radius:9px;padding:8px 12px;font-weight:800;font-size:13px;cursor:pointer;white-space:nowrap}
+.fkcalrow.enough{border-color:#10b981}
+.fkcalprog{height:5px;background:#241a33;border-radius:3px;overflow:hidden;margin-top:6px}
+.fkcalprog>i{display:block;height:100%;background:#10b981}
+.fkcaldata{margin-top:10px;background:#120c1c;border:1px solid #241a33;border-radius:10px;padding:10px 12px;font-size:11.5px;color:#b6a8d4;line-height:1.6}
+.fkcalfoot{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px}
 </style>
 
 <script>
@@ -3854,7 +3951,7 @@ async function homeBriefing(){
   }catch(e){ box.innerHTML='<div class="txt" style="color:var(--muted);font-size:13px">Erreur, réessaie.</div><button class="hbriefbtn" onclick="homeBriefing()">Réessayer</button>'; }
 }
 document.getElementById('modeSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMode(b.dataset.m);});
-const APP_VERSION='Version b72 · 30/08';
+const APP_VERSION='Version b77 · 30/08';
 { const nv=document.getElementById('navVersion'); if(nv) nv.textContent=APP_VERSION; }
 document.getElementById('mktSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMarket(b.dataset.k);});
 const CATARRS=["catColors","catCats","catRarities","catTreats","catProvs"];
@@ -4568,6 +4665,36 @@ function scanLookupManual(){ const raw=(document.getElementById('scanCode').valu
 
 // ---------- Authenticité (détection de fausse carte) ----------
 const AUTH_IMG={front:null,back:null};
+// Référence couleur du dos authentique (WB-normalisée via le logo blanc)
+const BACK_REF={purple_rb:0.51, gold_br:0.66};
+// Contrôle couleur du dos : recalibre par le logo blanc, mesure violet + or, compare à la référence
+function backColorCheck(dataURL){ return new Promise((resolve)=>{
+  const im=new Image();
+  im.onload=function(){ try{
+    const MW=520, sc=Math.min(1,MW/im.width);
+    const cv=document.createElement('canvas'); cv.width=Math.round(im.width*sc); cv.height=Math.round(im.height*sc);
+    const cx=cv.getContext('2d'); cx.drawImage(im,0,0,cv.width,cv.height);
+    const d=cx.getImageData(0,0,cv.width,cv.height).data;
+    let wr=0,wg=0,wb=0,wn=0;
+    for(let i=0;i<d.length;i+=4){ const R=d[i],G=d[i+1],B=d[i+2],mn=Math.min(R,G,B),mx=Math.max(R,G,B); if(mn>170&&(mx-mn)<42){wr+=R;wg+=G;wb+=B;wn++;} }
+    if(wn<25){ resolve({status:'na',note:'Dos non reconnu (logo blanc introuvable).'}); return; }
+    const gr=Math.max(0.5,Math.min(2.5,255/(wr/wn))), gg=Math.max(0.5,Math.min(2.5,255/(wg/wn))), gb=Math.max(0.5,Math.min(2.5,255/(wb/wn)));
+    let pr=0,pg=0,pb=0,pn=0, ar=0,ag=0,ab=0,an=0;
+    for(let i=0;i<d.length;i+=4){
+      const R=d[i]*gr, G=d[i+1]*gg, B=d[i+2]*gb;
+      if(B>G&&B>R&&B>40&&B<215){ pr+=R;pg+=G;pb+=B;pn++; }
+      else if(R>150&&G>110&&R>=G&&G>B&&(R-B)>28){ ar+=R;ag+=G;ab+=B;an++; }
+    }
+    if(pn<60||an<40){ resolve({status:'na',note:'Zones violet/or insuffisantes sur la photo.'}); return; }
+    const purple_rb=(pr/pn)/(pb/pn), gold_br=(ab/an)/(ar/an);
+    const flags=[];
+    if(purple_rb<0.45) flags.push('violet trop bleu/vert (R/B '+purple_rb.toFixed(2)+' vs ~'+BACK_REF.purple_rb.toFixed(2)+' attendu)');
+    if(gold_br>0.75) flags.push('or délavé (B/R '+gold_br.toFixed(2)+' vs ~'+BACK_REF.gold_br.toFixed(2)+' attendu)');
+    resolve({status: flags.length?'concern':'ok', purple_rb, gold_br, flags});
+  }catch(e){ resolve({status:'na',note:'Analyse couleur impossible.'}); } };
+  im.onerror=function(){ resolve({status:'na',note:'Image illisible.'}); };
+  im.src=dataURL;
+}); }
 function authToggle(){ const b=document.getElementById('authBody'); const ch=document.getElementById('authChev'); const open=b.style.display==='none'; b.style.display=open?'':'none'; if(ch)ch.innerHTML=open?'&#9652;':'&#9662;';
   if(open && !AUTH_IMG.front && window.__lastScanFront){ AUTH_IMG.front=window.__lastScanFront; const im=document.getElementById('authFrontImg'); im.src=AUTH_IMG.front; im.style.display='block'; } }
 function fileToDataURL(file,maxw){ return new Promise((res,rej)=>{ const url=URL.createObjectURL(file); const im=new Image(); im.onload=()=>{ const sc=Math.min(1,maxw/im.width); const cv=document.createElement('canvas'); cv.width=Math.round(im.width*sc); cv.height=Math.round(im.height*sc); cv.getContext('2d').drawImage(im,0,0,cv.width,cv.height); URL.revokeObjectURL(url); res(cv.toDataURL('image/jpeg',0.82)); }; im.onerror=rej; im.src=url; }); }
@@ -4583,10 +4710,15 @@ async function authRun(){
     const top=window.__lastScanTop;
     if(top){ if(top.card_number)body.card_number=top.card_number; if(top.language)body.language=top.language; if(top.rarity)body.rarity=top.rarity; if(top.image_url)body.ref_url=top.image_url; }
     else if(window.__lastScanCode){ body.card_number=window.__lastScanCode; }
+    let colorRes=null; if(AUTH_IMG.back){ try{ colorRes=await backColorCheck(AUTH_IMG.back); }catch(e){} }
     const r=await fetch(SB+'/functions/v1/card-authenticate',{method:'POST',headers:{'Content-Type':'application/json',apikey:ANON,Authorization:'Bearer '+ANON},body:JSON.stringify(body)});
     const j=await r.json();
-    if(j&&j.rate_limited){ res.innerHTML='<div class="authneeds">&#9203; Limite gratuite de l\'IA atteinte. Réessaie dans '+(j.retry_after||30)+'&nbsp;s.</div>'; return; }
-    if(j&&j.result){ authRender(j.result); } else { res.innerHTML='<div class="authneeds">Analyse impossible pour le moment. Réessaie.</div>'; }
+    if(j&&j.rate_limited){
+      if(colorRes){ authRender({verdict:colorRes.status==='concern'?'suspect':'inconclusive',doubt_score:colorRes.status==='concern'?0.72:0.2,__color:colorRes,checks:{},caveat:'IA saturée — résultat basé sur la mesure couleur du dos uniquement.'},res); return; }
+      res.innerHTML='<div class="authneeds">&#9203; Limite gratuite de l\'IA atteinte. Réessaie dans '+(j.retry_after||30)+'&nbsp;s.</div>'; return; }
+    let rr=(j&&j.result)?j.result:null;
+    if(colorRes){ if(!rr) rr={verdict:'inconclusive',doubt_score:0.2,checks:{}}; rr.__color=colorRes; if(colorRes.status==='concern'){ rr.verdict='suspect'; rr.doubt_score=Math.max(Number(rr.doubt_score)||0,0.72); } }
+    if(rr){ authRender(rr,res); } else { res.innerHTML='<div class="authneeds">Analyse impossible pour le moment. Réessaie.</div>'; }
   }catch(e){ res.innerHTML='<div class="authneeds">Erreur réseau. Réessaie.</div>'; }
   finally{ go.disabled=false; go.textContent=old; }
 }
@@ -4599,6 +4731,10 @@ function authRender(r,target){
   const sc=(typeof r.doubt_score==='number')?Math.round(r.doubt_score*100):null;
   const showPct=(v==='suspect'||v==='likely_fake')&&sc!=null;
   let h='<div class="authbadge '+meta[0]+'">'+meta[1]+(showPct?(' &middot; risque '+sc+'%'):'')+'</div>';
+  if(r.__color){ const c=r.__color;
+    if(c.status==='concern'){ h+='<div class="authflags"><b>&#128308; Contr&ocirc;le couleur du dos (mesur&eacute;, calibr&eacute; via le logo blanc) : teinte ANORMALE</b><br>&bull; '+c.flags.map(x=>esc(x)).join('<br>&bull; ')+'</div>'; }
+    else if(c.status==='ok'){ h+='<div class="authchk"><span class="cdot na"></span><span class="ck">Dos mesur&eacute;</span><span>Couleur dans la norme sur cette photo (violet R/B '+c.purple_rb.toFixed(2)+', or B/R '+c.gold_br.toFixed(2)+') &mdash; ne prouve PAS l\'authenticit&eacute; ; pour &ecirc;tre s&ucirc;r, photographie-la &agrave; c&ocirc;t&eacute; d\'une vraie.</span></div>'; }
+  }
   const CK={foil:'Foil',delamination:'D&eacute;collement',surface:'Surface',print_clarity:'Impression',text:'Texte',back_color:'Dos (couleur)',cut:'D&eacute;coupe',stamp:'Tampon',texture:'Texture'};
   if(r.checks){ for(const k of Object.keys(CK)){ const c=r.checks[k]; if(!c)continue; const st=(c.status||'na'); h+='<div class="authchk"><span class="cdot '+st+'"></span><span class="ck">'+CK[k]+'</span><span>'+esc(c.note||'')+'</span></div>'; } }
   if(Array.isArray(r.differences)&&r.differences.length){ h+='<div class="authflags" style="background:#fffbeb;border-color:#fde68a;color:#92400e"><b>&Eacute;carts vs image officielle Bandai :</b><br>&bull; '+r.differences.map(x=>esc(x)).join('<br>&bull; ')+'</div>'; }
@@ -4920,6 +5056,311 @@ document.querySelectorAll('.dtabs button').forEach(b=>b.addEventListener("click"
 setMode('accueil');
 load();
 loadProductValue();
+</script>
+
+<script>
+/* ============================================================
+   Détecteur de faux — capture guidée standardisée (façon zones universelles)
+   Zones : RECTO (carte entière) · BANDAI (ligne © …BANDAI) · EMBOSS (tampon ONE PIECE) · DOS (logo ⊗ONE)
+   L'échelle est verrouillée par le cadre (l'utilisateur remplit le cadre) + flash + pochette retirée.
+   On mesure localement (couleur du dos, netteté du micro-texte) et on croise avec l'IA. On ALERTE, on ne certifie pas.
+   ============================================================ */
+const Fake = (function(){
+  const GHOST_SVG = "data:image/svg+xml;utf8,"+encodeURIComponent(
+    "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='38' fill='none' stroke='white' stroke-width='6'/><line x1='24' y1='24' x2='76' y2='76' stroke='white' stroke-width='6'/><line x1='76' y1='24' x2='24' y2='76' stroke='white' stroke-width='6'/></svg>");
+  const STEPS = [
+    {key:'recto', lab:'RECTO', ar:63/88, frac:0.9, torch:false,
+     tip:"Retire d'abord la pochette / le top-loader — les mesures sont bien plus précises. Tiens la carte par les bords.",
+     instr:"Carte entière, bien à plat et nette. Toute la carte dans le cadre.", label:"Carte entière"},
+    {key:'bandai', lab:'BANDAI', ar:4.4, frac:0.94, torch:true,
+     tip:"Flash activé. Vise la petite ligne « © … BANDAI » imprimée sur un bord de la carte.",
+     instr:"Rapproche-toi jusqu'à ce que la ligne « © … BANDAI » remplisse le cadre, droite et nette.", label:"Ligne © BANDAI"},
+    {key:'stamp', lab:'STAMP', ar:1, frac:0.5, torch:true, skip:true,
+     tip:"Facultatif — si la carte n'a PAS de stamp, appuie sur « Ignorer ». Sinon incline légèrement pour révéler le relief.",
+     instr:"Gros plan sur le stamp : tampon embossé « ONE PIECE » (bas gauche) OU stamp doré/argenté de tournoi/promo (Winner, Finalist, event). Incline + flash.", label:"Stamp / tampon"},
+    {key:'dos', lab:'DOS', ar:1, frac:0.55, torch:true, ghost:true,
+     tip:"Très près : le logo ⊗ONE aussi gros que le repère, points d'impression visibles.",
+     instr:"Retourne la carte. Rapproche jusqu'à ce que le logo ⊗ONE remplisse le repère.", label:"Logo ⊗ONE (dos)"}
+  ];
+  let idx=0, stream=null, track=null, torchOn=false, shots={}, metrics={}, calibMode=false, calibCat=null, busy=false;
+  const CATS=[
+    {key:'common', lab:'Commune / non-holo', hint:'C · UC'},
+    {key:'holo',   lab:'Holo (R / SR)',      hint:'R · SR'},
+    {key:'sec',    lab:'Secrète / Spéciale', hint:'SEC · SP'},
+    {key:'leader', lab:'Leader',             hint:'L'},
+    {key:'manga',  lab:'Manga / Alt-art',    hint:'manga · alt'},
+    {key:'promo',  lab:'Promo / Tournoi',    hint:'P · stamp'}
+  ];
+  const CAL_TARGET=5;
+  function inferCat(top){ if(!top) return null; const r=String(top.rarity||'').toUpperCase(); const v=String(top.variant||top.variant_label||'').toLowerCase();
+    if(/manga|alt/.test(v)) return 'manga';
+    if(r==='L') return 'leader';
+    if(r==='SEC'||r==='SP') return 'sec';
+    if(r==='SR'||r==='R'||r==='TR') return 'holo';
+    if(r==='C'||r==='UC') return 'common';
+    if(r==='PR'||r==='P'||/promo/.test(v)) return 'promo';
+    return null; }
+
+  const $ = id => document.getElementById(id);
+  const stage=()=>$('fkStage'), video=()=>$('fkVideo'), frame=()=>$('fkFrame');
+
+  function open(){
+    try{ if(typeof stopAuto==='function') stopAuto(); if(typeof stopCam==='function') stopCam(); }catch(e){}
+    idx=0; shots={}; metrics={}; busy=false; calibMode=false; calibCat=null;
+    $('fkResult').classList.add('hidden'); $('fkResult').innerHTML='';
+    $('fkCalibPanel').classList.add('hidden');
+    $('fkStage').style.display='';
+    $('fkAnalyze').classList.add('hidden'); $('fkBottom').style.display='';
+    $('fkOverlay').classList.remove('hidden');
+    $('fkCalib').style.display='';
+    renderSteps(); startCam();
+  }
+  function close(){ stopCam(); $('fkOverlay').classList.add('hidden'); }
+
+  async function startCam(){
+    stopCam();
+    try{
+      stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'},width:{ideal:3840},height:{ideal:2160}}});
+      const v=video(); v.srcObject=stream; await v.play();
+      track=stream.getVideoTracks()[0];
+      layoutStep();
+    }catch(e){
+      $('fkTip').innerHTML="Caméra indisponible ici. Ouvre le détecteur depuis ton téléphone (Chrome/Safari), pochette retirée.";
+    }
+  }
+  function stopCam(){ torchOn=false; $('fkTorch').classList.remove('on'); if(stream){ try{ stream.getTracks().forEach(t=>t.stop()); }catch(e){} stream=null; track=null; } }
+
+  async function applyTorch(on){
+    if(!track) return false;
+    try{ await track.applyConstraints({advanced:[{torch:on}]}); torchOn=on; $('fkTorch').classList.toggle('on',on); return true; }
+    catch(e){ return false; }
+  }
+  function toggleTorch(){ applyTorch(!torchOn); }
+
+  function renderSteps(){
+    const wrap=$('fkSteps'); wrap.innerHTML='';
+    STEPS.forEach((s,i)=>{
+      const st=document.createElement('div'); st.className='fkstep'+(i<idx?' done':'')+(i===idx?' active':'');
+      st.innerHTML="<div class='fkdot'>"+(i<idx?'✓':(i+1))+"</div><div class='fklab'>"+s.lab+"</div>";
+      wrap.appendChild(st);
+      if(i<STEPS.length-1){ const b=document.createElement('div'); b.className='fkbar'+(i<idx?' done':''); wrap.appendChild(b); }
+    });
+  }
+  function layoutStep(){
+    const s=STEPS[idx]; if(!s) return;
+    renderSteps();
+    $('fkTip').textContent=s.tip||'';
+    $('fkInstr').textContent=s.instr||'';
+    $('fkShot').style.display='none';
+    $('fkSkip').style.display=s.skip?'':'none';
+    $('fkRetry').style.visibility='hidden';
+    layoutFrame(s);
+    const g=$('fkGhost');
+    if(s.ghost){ g.src=GHOST_SVG; g.style.display='block'; positionGhost(); } else { g.style.display='none'; }
+    $('fkFrameLabel').textContent=s.label||'';
+    applyTorch(!!s.torch);
+  }
+  function layoutFrame(s){
+    const st=stage().getBoundingClientRect(); const W=st.width,H=st.height; if(!W||!H) return;
+    let fw,fh;
+    if(s.ar>=1){ fw=Math.min(W*0.92,(s.frac||0.9)*W); fh=fw/s.ar; if(fh>H*0.9){fh=H*0.9;fw=fh*s.ar;} }
+    else { fh=(s.frac||0.9)*H; fw=fh*s.ar; if(fw>W*0.92){fw=W*0.92;fh=fw/s.ar;} }
+    const f=frame(); f.style.width=fw+'px'; f.style.height=fh+'px'; f.style.left=((W-fw)/2)+'px'; f.style.top=((H-fh)/2)+'px';
+  }
+  function positionGhost(){
+    const f=frame().getBoundingClientRect(), st=stage().getBoundingClientRect();
+    const sz=Math.min(f.width,f.height)*0.82;
+    const g=$('fkGhost'); g.style.width=sz+'px'; g.style.height=sz+'px';
+    g.style.left=((st.width-sz)/2)+'px'; g.style.top=((st.height-sz)/2)+'px';
+  }
+
+  function coverCrop(outW){
+    const v=video(); const sw=v.videoWidth, sh=v.videoHeight; if(!sw) return null;
+    const br=stage().getBoundingClientRect(), fr=frame().getBoundingClientRect();
+    const sc=Math.max(br.width/sw, br.height/sh);
+    const offX=(br.width-sw*sc)/2, offY=(br.height-sh*sc)/2;
+    let sx=((fr.left-br.left)-offX)/sc, sy=((fr.top-br.top)-offY)/sc, sW=fr.width/sc, sH=fr.height/sc;
+    sx=Math.max(0,Math.min(sw-2,sx)); sy=Math.max(0,Math.min(sh-2,sy));
+    sW=Math.max(2,Math.min(sw-sx,sW)); sH=Math.max(2,Math.min(sh-sy,sH));
+    const k=Math.min(1,outW/sW); const o=document.createElement('canvas');
+    o.width=Math.round(sW*k); o.height=Math.round(sH*k);
+    o.getContext('2d').drawImage(v, sx,sy,sW,sH, 0,0,o.width,o.height);
+    return o;
+  }
+
+  async function capture(){
+    if(busy) return; const s=STEPS[idx]; if(!s) return;
+    const cv=coverCrop(s.key==='recto'?900:1200);
+    if(!cv){ $('fkInstr').textContent="Caméra pas prête, réessaie."; return; }
+    const url=cv.toDataURL('image/jpeg',0.9);
+    shots[s.key]=url;
+    const sh=$('fkShot'); sh.src=url; sh.style.display='block';
+    $('fkRetry').style.visibility='visible';
+    // brief confirm then advance
+    setTimeout(next, 550);
+  }
+  function retry(){ const s=STEPS[idx]; if(s) delete shots[s.key]; $('fkShot').style.display='none'; $('fkRetry').style.visibility='hidden'; }
+  function skip(){ const s=STEPS[idx]; if(s) delete shots[s.key]; next(true); }
+  function next(skipped){
+    idx++;
+    if(idx>=STEPS.length){ analyze(); return; }
+    layoutStep();
+  }
+
+  // ---------- mesures locales ----------
+  function microMetrics(dataURL){ return new Promise(res=>{ const im=new Image(); im.onload=()=>{ try{
+    const MW=760, sc=Math.min(1,MW/im.width); const cv=document.createElement('canvas'); cv.width=Math.round(im.width*sc); cv.height=Math.round(im.height*sc);
+    const cx=cv.getContext('2d'); cx.drawImage(im,0,0,cv.width,cv.height);
+    const w=cv.width,h=cv.height,d=cx.getImageData(0,0,w,h).data; const g=new Float32Array(w*h);
+    for(let i=0,j=0;i<d.length;i+=4,j++) g[j]=0.299*d[i]+0.587*d[i+1]+0.114*d[i+2];
+    let m=0; for(let k=0;k<g.length;k++)m+=g[k]; m/=g.length; let vv=0; for(let k=0;k<g.length;k++){const t=g[k]-m;vv+=t*t;} const sd=Math.sqrt(vv/g.length)||1;
+    let lap=0,n=0; for(let y=1;y<h-1;y++)for(let x=1;x<w-1;x++){ const c=g[y*w+x]; const L=4*c-g[y*w+x-1]-g[y*w+x+1]-g[(y-1)*w+x]-g[(y+1)*w+x]; lap+=L*L; n++; }
+    res({crisp:Number((Math.sqrt(lap/Math.max(1,n))/sd).toFixed(3)), sd:Number(sd.toFixed(1))});
+  }catch(e){ res(null); } }; im.onerror=()=>res(null); im.src=dataURL; }); }
+
+  // ---- calibration v2 : enregistrements par carte, taggés par catégorie/variante ----
+  function loadCalib(){ try{ const c=JSON.parse(localStorage.getItem('fk_calib_v2')||'{}'); if(!Array.isArray(c.cards))c.cards=[]; return c; }catch(e){ return {cards:[]}; } }
+  function saveCalib(c){ try{ localStorage.setItem('fk_calib_v2',JSON.stringify(c)); }catch(e){} }
+  function addRecord(rec){ const c=loadCalib(); c.cards.push(rec); if(c.cards.length>400)c.cards=c.cards.slice(-400); saveCalib(c); return c.cards.length; }
+  function catCount(cat){ return loadCalib().cards.filter(r=>r.cat===cat).length; }
+  function fieldVals(field,cat){ return loadCalib().cards.filter(r=>(!cat||r.cat===cat)&&r[field]!=null&&!isNaN(r[field])).map(r=>Number(r[field])); }
+  function stat(arr){ if(!arr||arr.length<3) return null; const m=arr.reduce((a,b)=>a+b,0)/arr.length; const sd=Math.sqrt(arr.reduce((a,b)=>a+(b-m)*(b-m),0)/arr.length); return {m,sd,n:arr.length}; }
+  function statFor(field,cat){ return stat(fieldVals(field,cat)) || stat(fieldVals(field,null)); } // per-catégorie, sinon universel
+
+  function openCalib(){ stopCam(); calibMode=false;
+    $('fkStage').style.display='none'; $('fkAnalyze').classList.add('hidden'); $('fkResult').classList.add('hidden');
+    $('fkBottom').style.display='none'; $('fkCalib').style.display='none';
+    renderCalibPanel(); $('fkCalibPanel').classList.remove('hidden'); }
+  function renderCalibPanel(){
+    const c=loadCalib(); const total=c.cards.length;
+    let rows='';
+    CATS.forEach(cat=>{ const n=catCount(cat.key); const pct=Math.min(100,Math.round(n/CAL_TARGET*100)); const ok=n>=CAL_TARGET;
+      rows+="<div class='fkcalrow"+(ok?' enough':'')+"'><div class='cinfo'><div class='clab'>"+cat.lab+(ok?' ✅':'')+"</div><div class='chint'>"+cat.hint+"</div>"+
+        "<div class='fkcalprog'><i style='width:"+pct+"%'></i></div></div>"+
+        "<div class='ccount'>"+n+"/"+CAL_TARGET+"</div>"+
+        "<button class='cbtn' onclick=\"Fake.startCalib('"+cat.key+"')\">+ Ajouter</button></div>"; });
+    // données mesurées
+    const fmt=(field,cat)=>{ const s=statFor(field,cat); return s?(s.m.toFixed(2)+" ±"+s.sd.toFixed(2)+" (n"+s.n+")"):"—"; };
+    let data="<b>Référence mesurée (toutes cartes)</b><br>Netteté recto : "+fmt('recto',null)+"<br>Netteté BANDAI : "+fmt('bandai',null)+"<br>Netteté stamp : "+fmt('stamp',null)+"<br>Netteté dos ⊗ONE : "+fmt('dos',null)+"<br>Dos violet R/B : "+fmt('purple_rb',null)+" · or B/R : "+fmt('gold_br',null);
+    $('fkCalibPanel').innerHTML=
+      "<div class='fkcalh'>🎯 Calibration — cartes authentiques</div>"+
+      "<div class='fkcalsub'>Passe <b>4–5 vraies cartes par type</b> (le plus de variantes possible). Chaque carte passe par la capture guidée (recto · BANDAI · stamp · dos) et alimente la référence. Le verdict « micro-texte » s'active dès 3 cartes d'un type ; sinon la référence universelle sert de secours.</div>"+
+      rows+
+      "<div class='fkcaldata'>"+data+"<br><span style='color:#7c6b96'>Total calibré : "+total+" carte(s).</span></div>"+
+      "<div class='fkcalfoot'><button class='fkghostbtn' onclick=\"Fake.open()\">← Retour au détecteur</button>"+
+      (total?"<button class='fkghostbtn' onclick=\"Fake.resetCalib()\">Réinitialiser</button>":"")+"</div>";
+  }
+  function startCalib(cat){ calibMode=true; calibCat=cat;
+    idx=0; shots={}; metrics={}; busy=false;
+    $('fkCalibPanel').classList.add('hidden'); $('fkResult').classList.add('hidden'); $('fkAnalyze').classList.add('hidden');
+    $('fkStage').style.display=''; $('fkBottom').style.display=''; $('fkCalib').style.display='none';
+    $('fkOverlay').classList.remove('hidden'); renderSteps(); startCam(); }
+  function resetCalib(){ try{ localStorage.removeItem('fk_calib_v2'); }catch(e){} renderCalibPanel(); }
+
+  // ---------- analyse ----------
+  async function analyze(){
+    busy=true; stopCam();
+    $('fkBottom').style.display='none';
+    const an=$('fkAnalyze'); an.classList.remove('hidden');
+    const sub=$('fkAnaSub'), pct=$('fkPct');
+    let p=0; const labs=["Alignement des zones…","Mesure du micro-texte…","Contrôle couleur du dos…","Comparaison à la référence…","Analyse IA…"];
+    const anim=setInterval(()=>{ p=Math.min(90,p+Math.random()*11); pct.textContent=Math.round(p)+'%'; sub.textContent=labs[Math.min(labs.length-1,Math.floor(p/20))]; },260);
+
+    // mesures locales
+    metrics={};
+    if(shots.recto){ metrics.recto=await microMetrics(shots.recto); }
+    if(shots.bandai){ metrics.bandai=await microMetrics(shots.bandai); }
+    if(shots.stamp){ metrics.stamp=await microMetrics(shots.stamp); }
+    if(shots.dos){ metrics.dos=await microMetrics(shots.dos); }
+    let colorRes=null;
+    if(shots.dos && typeof backColorCheck==='function'){ try{ colorRes=await backColorCheck(shots.dos); }catch(e){} }
+
+    // mode calibration : on enregistre un relevé taggé et on retourne au tableau
+    if(calibMode){
+      const rec={ ts:Date.now(), cat:calibCat||'autre',
+        lang:(typeof window!=='undefined'&&window.__lastScanTop)?window.__lastScanTop.language:null,
+        recto: metrics.recto?metrics.recto.crisp:null,
+        bandai: metrics.bandai?metrics.bandai.crisp:null,
+        stamp: metrics.stamp?metrics.stamp.crisp:null,
+        dos: metrics.dos?metrics.dos.crisp:null,
+        purple_rb: colorRes?colorRes.purple_rb:null,
+        gold_br: colorRes?colorRes.gold_br:null };
+      const total=addRecord(rec); const cnt=catCount(calibCat||'autre');
+      clearInterval(anim); pct.textContent='100%';
+      setTimeout(()=>renderResult({__calibsaved:true,__cat:calibCat,__cnt:cnt,__total:total}), 300);
+      busy=false; return;
+    }
+
+    // appel IA (zones)
+    let rr=null;
+    try{
+      const body={};
+      if(shots.recto) body.front_b64=shots.recto;
+      if(shots.dos) body.back_b64=shots.dos;
+      if(shots.bandai) body.bandai_b64=shots.bandai;
+      if(shots.stamp) body.stamp_b64=shots.stamp;
+      const top=(typeof window!=='undefined')?window.__lastScanTop:null;
+      if(top){ if(top.card_number)body.card_number=top.card_number; if(top.rarity)body.rarity=top.rarity; if(top.language)body.language=top.language; if(top.image_url)body.ref_url=top.image_url; }
+      const r=await fetch(SB+'/functions/v1/card-authenticate',{method:'POST',headers:{'Content-Type':'application/json',apikey:ANON,Authorization:'Bearer '+ANON},body:JSON.stringify(body)});
+      const j=await r.json();
+      if(j&&j.rate_limited){ rr={verdict:'inconclusive',doubt_score:0.2,checks:{},caveat:"IA saturée — résultat basé sur les mesures locales seulement."}; }
+      else rr=(j&&j.result)?j.result:null;
+    }catch(e){}
+    if(!rr) rr={verdict:'inconclusive',doubt_score:0.2,checks:{}};
+
+    // couleur du dos
+    if(colorRes){ rr.__color=colorRes; if(colorRes.status==='concern'){ rr.verdict='suspect'; rr.doubt_score=Math.max(Number(rr.doubt_score)||0,0.72); } }
+
+    // micro-texte vs calibration (par catégorie si dispo, sinon universel)
+    const flags=rr.red_flags?rr.red_flags.slice():[];
+    const cat=inferCat((typeof window!=='undefined')?window.__lastScanTop:null);
+    const evalCrisp=(measured,field,zone)=>{
+      if(measured==null) return; const s=statFor(field,cat); if(!s||s.n<4) return; // ≥4 vraies cartes requises
+      // conservateur (ne jamais accuser une vraie) : nettement sous la moyenne ET statistiquement bas
+      const lo=Math.min(s.m-2.5*s.sd, s.m*0.75);
+      if(measured<lo){ flags.push("micro-texte "+zone+" nettement plus flou que les vraies cartes"+(cat?(" ["+cat+"]"):"")+" — netteté "+measured.toFixed(2)+" vs ~"+s.m.toFixed(2)); }
+    };
+    if(metrics.recto) evalCrisp(metrics.recto.crisp, 'recto', "recto");
+    if(metrics.bandai) evalCrisp(metrics.bandai.crisp, 'bandai', "BANDAI");
+    if(metrics.dos) evalCrisp(metrics.dos.crisp, 'dos', "dos ⊗ONE");
+    if(flags.length>(rr.red_flags?rr.red_flags.length:0)){ rr.red_flags=flags; if(rr.verdict!=='suspect'){ rr.verdict='suspect'; rr.doubt_score=Math.max(Number(rr.doubt_score)||0,0.7); } }
+    else rr.red_flags=flags;
+
+    rr.__metrics=metrics;
+    clearInterval(anim); pct.textContent='100%';
+    setTimeout(()=>renderResult(rr), 350);
+    busy=false;
+  }
+
+  function renderResult(rr){
+    $('fkAnalyze').classList.add('hidden');
+    const box=$('fkResult'); box.classList.remove('hidden');
+    let extra="";
+    if(rr.__calibsaved){
+      const catLab=(CATS.find(c=>c.key===rr.__cat)||{}).lab||'Autre';
+      const need=Math.max(0,CAL_TARGET-(rr.__cnt||0));
+      box.innerHTML="<div class='authbadge doubt'>✔ Carte authentique enregistrée</div>"+
+        "<div style='font-size:13px;line-height:1.55'>Type <b>"+catLab+"</b> : <b>"+(rr.__cnt||0)+"</b> carte(s) calibrée(s)"+(need>0?(" — encore <b>"+need+"</b> pour l'objectif de "+CAL_TARGET):" — <b>objectif atteint</b> ✅")+".<br>Total toutes catégories : "+(rr.__total||0)+".</div>"+
+        "<div class='fkcalfoot'><button class='fkghostbtn' onclick=\"Fake.startCalib('"+(rr.__cat||'autre')+"')\">+ Une autre "+catLab+"</button><button class='fkghostbtn' onclick=\"Fake.openCalib()\">Tableau de calibration</button></div>";
+      return;
+    }
+    // réutilise le rendu d'authRender si dispo
+    let html="";
+    try{ if(typeof authRender==='function'){ const tmp=document.createElement('div'); authRender(rr,tmp); html=tmp.innerHTML; } }catch(e){}
+    if(!html){ const v=rr.verdict||'na'; html="<div class='authbadge "+(v==='suspect'?'fake':(v==='na'?'na':'doubt'))+"'>"+(v==='suspect'?'🚩 Signes de fausse carte':'⚠️ Rien de flagrant — NON certifiable')+"</div>"; }
+    // annexe mesures
+    if(rr.__metrics){ const mr=rr.__metrics.recto, mb=rr.__metrics.bandai, ms=rr.__metrics.stamp, md=rr.__metrics.dos;
+      const calibrated=loadCalib().cards.length>=3;
+      extra="<div style='margin-top:12px;font-size:11.5px;color:#9c8fb8'>Mesures (netteté micro-texte) : "+
+        (mr?("recto "+mr.crisp):"recto —")+" · "+(mb?("BANDAI "+mb.crisp):"BANDAI —")+" · "+(ms?("stamp "+ms.crisp):"stamp —")+" · "+(md?("dos "+md.crisp):"dos —")+
+        (calibrated?"":" · <i>calibre des vraies cartes (bouton Calibration) pour activer le verdict micro-texte</i>")+"</div>"; }
+    box.innerHTML=html+extra+
+      "<div style='margin-top:18px;display:flex;gap:10px'><button class='fkghostbtn' onclick=\"Fake.open()\">Nouvelle carte</button><button class='fkghostbtn' onclick=\"Fake.close()\">Fermer</button></div>";
+  }
+
+  window.addEventListener('resize',()=>{ if(!$('fkOverlay').classList.contains('hidden')){ layoutFrame(STEPS[idx]||STEPS[0]); if((STEPS[idx]||{}).ghost) positionGhost(); } });
+  return {open,close,capture,retry,skip,toggleTorch,openCalib,startCalib,resetCalib};
+})();
 </script>
 </body>
 </html>
