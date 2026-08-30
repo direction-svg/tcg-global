@@ -3951,7 +3951,7 @@ async function homeBriefing(){
   }catch(e){ box.innerHTML='<div class="txt" style="color:var(--muted);font-size:13px">Erreur, réessaie.</div><button class="hbriefbtn" onclick="homeBriefing()">Réessayer</button>'; }
 }
 document.getElementById('modeSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMode(b.dataset.m);});
-const APP_VERSION='Version b78 · 30/08';
+const APP_VERSION='Version b79 · 30/08';
 { const nv=document.getElementById('navVersion'); if(nv) nv.textContent=APP_VERSION; }
 document.getElementById('mktSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMarket(b.dataset.k);});
 const CATARRS=["catColors","catCats","catRarities","catTreats","catProvs"];
@@ -5260,6 +5260,33 @@ const Fake = (function(){
     $('fkOverlay').classList.remove('hidden'); renderSteps(); startCam(); }
   function resetCalib(){ try{ localStorage.removeItem('fk_calib_v2'); }catch(e){} renderCalibPanel(); }
 
+  // ---- persistance des photos dans la base (pour ré-analyse IA ultérieure) ----
+  function shrink(dataURL,maxw,q){ return new Promise(res=>{ if(!dataURL){res(null);return;} const im=new Image(); im.onload=()=>{ try{ const sc=Math.min(1,maxw/im.width); const cv=document.createElement('canvas'); cv.width=Math.round(im.width*sc); cv.height=Math.round(im.height*sc); cv.getContext('2d').drawImage(im,0,0,cv.width,cv.height); res(cv.toDataURL('image/jpeg',q)); }catch(e){ res(dataURL); } }; im.onerror=()=>res(dataURL); im.src=dataURL; }); }
+  async function persistCapture(mode, rr, colorRes){
+    try{
+      const top=(typeof window!=='undefined')?window.__lastScanTop:null;
+      const cat = (mode==='calibration') ? (calibCat||'autre') : (inferCat(top)||null);
+      const row={ mode:mode, category:cat,
+        card_number: top?top.card_number:null, language: top?top.language:null,
+        img_recto: await shrink(shots.recto,760,0.72),
+        img_bandai: await shrink(shots.bandai,900,0.74),
+        img_stamp: await shrink(shots.stamp,900,0.74),
+        img_backfull: await shrink(shots.backfull,760,0.72),
+        img_logo: await shrink(shots.logo,900,0.74),
+        m_recto: metrics.recto?metrics.recto.crisp:null,
+        m_bandai: metrics.bandai?metrics.bandai.crisp:null,
+        m_stamp: metrics.stamp?metrics.stamp.crisp:null,
+        m_logo: metrics.dos?metrics.dos.crisp:null,
+        purple_rb: (colorRes&&colorRes.purple_rb!=null)?colorRes.purple_rb:null,
+        gold_br: (colorRes&&colorRes.gold_br!=null)?colorRes.gold_br:null,
+        verdict: rr?rr.verdict:null,
+        doubt_score: rr?(Number(rr.doubt_score)||null):null,
+        device: (navigator.userAgent||'').slice(0,120) };
+      const r=await fetch(SB+'/rest/v1/auth_capture',{method:'POST',headers:{apikey:ANON,Authorization:'Bearer '+ANON,'Content-Type':'application/json',Prefer:'return=minimal'},body:JSON.stringify(row)});
+      return r.ok;
+    }catch(e){ return false; }
+  }
+
   // ---------- analyse ----------
   async function analyze(){
     busy=true; stopCam();
@@ -5289,8 +5316,9 @@ const Fake = (function(){
         purple_rb: colorRes?colorRes.purple_rb:null,
         gold_br: colorRes?colorRes.gold_br:null };
       const total=addRecord(rec); const cnt=catCount(calibCat||'autre');
+      const saved=await persistCapture('calibration', null, colorRes);
       clearInterval(anim); pct.textContent='100%';
-      setTimeout(()=>renderResult({__calibsaved:true,__cat:calibCat,__cnt:cnt,__total:total}), 300);
+      setTimeout(()=>renderResult({__calibsaved:true,__cat:calibCat,__cnt:cnt,__total:total,__cloud:saved}), 300);
       busy=false; return;
     }
 
@@ -5330,6 +5358,7 @@ const Fake = (function(){
     else rr.red_flags=flags;
 
     rr.__metrics=metrics;
+    persistCapture('detection', rr, colorRes); // archive la capture dans la base (ré-analyse IA ultérieure)
     clearInterval(anim); pct.textContent='100%';
     setTimeout(()=>renderResult(rr), 350);
     busy=false;
@@ -5343,7 +5372,7 @@ const Fake = (function(){
       const catLab=(CATS.find(c=>c.key===rr.__cat)||{}).lab||'Autre';
       const need=Math.max(0,CAL_TARGET-(rr.__cnt||0));
       box.innerHTML="<div class='authbadge doubt'>✔ Carte authentique enregistrée</div>"+
-        "<div style='font-size:13px;line-height:1.55'>Type <b>"+catLab+"</b> : <b>"+(rr.__cnt||0)+"</b> carte(s) calibrée(s)"+(need>0?(" — encore <b>"+need+"</b> pour l'objectif de "+CAL_TARGET):" — <b>objectif atteint</b> ✅")+".<br>Total toutes catégories : "+(rr.__total||0)+".</div>"+
+        "<div style='font-size:13px;line-height:1.55'>Type <b>"+catLab+"</b> : <b>"+(rr.__cnt||0)+"</b> carte(s) calibrée(s)"+(need>0?(" — encore <b>"+need+"</b> pour l'objectif de "+CAL_TARGET):" — <b>objectif atteint</b> ✅")+".<br>Total toutes catégories : "+(rr.__total||0)+".<br>"+(rr.__cloud?"📁 Photos + mesures <b>enregistrées dans la base</b> (ré-analyse IA possible plus tard).":"⚠️ Photos non envoyées à la base (réseau ?) — mesures gardées localement.")+"</div>"+
         "<div class='fkcalfoot'><button class='fkghostbtn' onclick=\"Fake.startCalib('"+(rr.__cat||'autre')+"')\">+ Une autre "+catLab+"</button><button class='fkghostbtn' onclick=\"Fake.openCalib()\">Tableau de calibration</button></div>";
       return;
     }
