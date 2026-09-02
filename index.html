@@ -784,6 +784,7 @@ body{-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
 .mkflag{font-weight:800}
 </style>
 <script>/* thème : nuit par défaut, choix mémorisé — posé avant le rendu pour éviter le flash */try{var _tcgTheme=localStorage.getItem('tcg-theme');if(_tcgTheme!=='light')document.documentElement.classList.add('dark');}catch(e){document.documentElement.classList.add('dark');}</script>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&display=swap">
 </head>
 <body>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
@@ -1071,6 +1072,7 @@ body{-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
     <button class="fkskip" id="fkSkip" onclick="Fake.skip()">Ignorer &rarr;</button>
   </div>
   <div class="fkcalib" id="fkCalib" onclick="Fake.openCalib()">&#127919; Calibration &mdash; cartes authentiques (par type)</div>
+  <div class="fkcalib" id="fkCompare" onclick="Fake.openCompare()">&#127912; Comparer 2 dos c&ocirc;te-&agrave;-c&ocirc;te (vraie + suspecte)</div>
 </div>
 
 <button id="scanFab" class="scanfab hidden" aria-label="Scanner une carte">&#128247;</button>
@@ -1158,6 +1160,25 @@ body{-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
 .fkcalprog>i{display:block;height:100%;background:#10b981}
 .fkcaldata{margin-top:10px;background:#120c1c;border:1px solid #241a33;border-radius:10px;padding:10px 12px;font-size:11.5px;color:#b6a8d4;line-height:1.6}
 .fkcalfoot{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px}
+
+/* ===== Harmonisation cartes (b83) ===== */
+.grid .card .meta{display:flex;flex-direction:column;gap:6px;padding:9px 10px 10px}
+.grid .card .nm{font-size:12.5px;letter-spacing:-.01em;margin:0}
+.tagrow{display:flex;align-items:center;gap:6px;min-height:18px;overflow:hidden}
+.tagrow .code{font-family:'DM Mono',ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;color:var(--muted);letter-spacing:.01em;flex:none}
+.tp{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:2px 8px;border-radius:999px;font-weight:700;font-size:10.5px;line-height:1.55;background:var(--chip);border:1px solid var(--line);color:var(--ink);opacity:.94}
+.tp-p{border-color:transparent;background:rgba(193,147,56,.16);color:var(--accent)}
+.valrow{display:flex;align-items:baseline;justify-content:space-between;gap:8px}
+.grid .card .val{font-size:16px;font-weight:900;font-variant-numeric:tabular-nums;letter-spacing:-.01em;margin:0}
+.varp{font-weight:800;font-size:11.5px;font-variant-numeric:tabular-nums;white-space:nowrap;padding:2px 7px;border-radius:999px;display:inline-flex;align-items:center;gap:3px}
+.varp .perd{opacity:.6;font-weight:700}
+.varp.up{color:#0f9d6b;background:rgba(15,157,107,.13)}
+.varp.dn{color:#d8524a;background:rgba(216,82,74,.13)}
+.varp.fl{color:var(--muted);background:rgba(139,144,156,.13)}
+.grid .card .foot{border-top:1px solid var(--line);padding-top:6px;margin-top:0}
+.grid .card .foot .cgauge{margin-top:0;font-size:9.5px}
+.grade{display:inline-flex;align-items:center;gap:3px;background:rgba(20,22,28,.66);border:1px solid rgba(193,147,56,.55);color:var(--gold);font-weight:800;font-size:10px;padding:2px 7px;border-radius:999px;-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px)}
+.list .r .varp{margin-left:6px}
 </style>
 
 <script>
@@ -1361,6 +1382,17 @@ function confGauge(c){
   let bars=''; for(let i=0;i<3;i++) bars+='<i'+(i<n?' style="background:'+k.c+'"':'')+'></i>';
   return '<span class="cgauge" title="Fiabilité du prix : '+esc(k.t)+'"><span class="cgbars">'+bars+'</span><span>'+esc(word)+'</span></span>';
 }
+// Puce de variation ~7 jours (repli 30 j) selon le marché affiché. Vert = hausse, rouge = baisse.
+function varBadge(c){
+  const v=c&&c._var; if(!v) return '';
+  const k = MKT==='JP'?'jp_var7':(MKT==='EU'?'eu_var7':'us_var7');
+  let p=v[k], per='7 j';
+  if(p==null){ const k30=MKT==='JP'?'jp_var30':(MKT==='EU'?'eu_var30':'us_var30'); p=v[k30]; per='30 j'; }
+  if(p==null) return '';
+  p=+p; const up=p>0.05, dn=p<-0.05;
+  const cls=up?'up':(dn?'dn':'fl'), ar=up?'▲':(dn?'▼':'▬');
+  return '<span class="varp '+cls+'" title="Variation sur '+per+'">'+ar+' '+(p>0?'+':'')+p.toFixed(1).replace('.',',')+' % <span style="opacity:.6;font-weight:700">'+per+'</span></span>';
+}
 const CONF_COL={ok:'#059669',warn:'#f59e0b',bad:'#ef4444',none:'#94a3b8'};
 function confLegend(){
   const rows=[['ok','solide : Cardrush (JP), PriceCharting (US), ≥5 offres (EU) ou prix manuel'],['warn','indicatif : PriceCharting agrégé, valeur d’import, cote ancienne ou repli'],['bad','fragile : 1 seule offre, ou prix partagé entre variantes à confirmer'],['none','pas de cote live — estimation figée']];
@@ -1437,6 +1469,13 @@ async function loadMarketVals(){
     if(Array.isArray(mm2)){ const map2={}; mm2.forEach(x=>{ map2[x.item_id]=x; });
       DATA.forEach(c=>{ const x=map2[c.item_id]; if(x){ c._jpsrc=x.jp_src; c._jpdays=x.jp_days; c._jpconf=x.jp_conf; c._ussrc=x.us_src; c._usdays=x.us_days; } });
     }
+  }catch(e){}
+  // 4) VARIATION 7j / 30j (best-effort) — par printing_id, via la vue app_card_variation.
+  try{
+    let vv=[],vf=0,vs=1000;
+    while(true){ const r=await fetch(SB+'/rest/v1/app_card_variation?select=printing_id,jp_var7,jp_var30,eu_var7,eu_var30,us_var7,us_var30&limit='+vs+'&offset='+vf,{headers:{apikey:ANON,Authorization:'Bearer '+ANON}}); const b=await r.json(); if(!Array.isArray(b))break; vv=vv.concat(b); if(b.length<vs)break; vf+=vs; }
+    const vmap={}; vv.forEach(x=>{ vmap[x.printing_id]=x; });
+    DATA.forEach(c=>{ const x=vmap[c.printing_id]; if(x) c._var=x; });
   }catch(e){}
 }
 // Rafraîchit le prix marché (JP/EU/US) d'UN seul item — après un changement de variante, sinon le prix affiché reste celui de l'ancienne variante.
@@ -1728,12 +1767,12 @@ function render(){
       const g=c.is_graded?'<span class="grade">'+(c.grading_company||"")+' '+(c.grade!=null?String(c.grade).replace(/\.0$/,''):'')+'</span>':'<span></span>';
       const q=(c.quantity>1)?'<span class="qty">x'+c.quantity+'</span>':'';
       return '<div class="card" data-id="'+c.item_id+'"'+confFrame(c)+'><div class="imgwrap">'+imgTag(c)+'<div class="badges">'+g+'</div><span class="flag">'+(FLAG[c.language]||"")+'</span>'+q+photoBadge(c)+pendingBadge(c)+(c.reverify?'<span class="rvdot" title="À revérifier (authenticité)"></span>':'')+'</div>'+
-      '<div class="meta"><p class="nm">'+esc(c.card_name||"")+'</p><div class="sub"><span>'+esc(c.card_number||"")+'</span>'+descTags(c)+'</div><div class="val">'+eur(val(c))+'</div>'+confGauge(c)+'</div></div>';
+      '<div class="meta"><p class="nm">'+esc(c.card_name||"")+'</p><div class="tagrow"><span class="code">'+esc(c.card_number||"")+'</span>'+descTags(c)+'</div><div class="valrow"><div class="val">'+eur(val(c))+'</div>'+varBadge(c)+'</div><div class="foot">'+confGauge(c)+'</div></div></div>';
     }).join("")+'</div>';
   } else {
     stage.className="list"; stage.innerHTML=a.map(c=>{
       const g=c.is_graded?'<span class="grade">'+(c.grading_company||"")+' '+(c.grade!=null?String(c.grade).replace(/\.0$/,''):'')+'</span>':'';
-      return '<div class="row" data-id="'+c.item_id+'"><div class="lthumb"'+confFrame(c)+'>'+imgTag(c)+photoBadge(c)+pendingBadge(c)+'</div><div><p class="nm">'+(c.reverify?'<span class="rvdot rvinline" title="À revérifier (authenticité)"></span>':'')+esc(c.card_name||"")+'</p><div class="sub"><span>'+(FLAG[c.language]||"")+'</span><span>'+esc(c.card_number||"")+'</span>'+descTags(c)+' '+g+'</div></div><div class="r"><div class="val">'+eur(val(c))+'</div>'+confGauge(c)+(c.quantity>1?'<div class="sub">x'+c.quantity+'</div>':'')+'</div></div>';
+      return '<div class="row" data-id="'+c.item_id+'"><div class="lthumb"'+confFrame(c)+'>'+imgTag(c)+photoBadge(c)+pendingBadge(c)+'</div><div><p class="nm">'+(c.reverify?'<span class="rvdot rvinline" title="À revérifier (authenticité)"></span>':'')+esc(c.card_name||"")+'</p><div class="sub"><span>'+(FLAG[c.language]||"")+'</span><span>'+esc(c.card_number||"")+'</span>'+descTags(c)+' '+g+'</div></div><div class="r"><div class="val">'+eur(val(c))+'</div>'+varBadge(c)+confGauge(c)+(c.quantity>1?'<div class="sub">x'+c.quantity+'</div>':'')+'</div></div>';
     }).join("");
   }
 }
@@ -3951,7 +3990,7 @@ async function homeBriefing(){
   }catch(e){ box.innerHTML='<div class="txt" style="color:var(--muted);font-size:13px">Erreur, réessaie.</div><button class="hbriefbtn" onclick="homeBriefing()">Réessayer</button>'; }
 }
 document.getElementById('modeSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMode(b.dataset.m);});
-const APP_VERSION='Version b79 · 30/08';
+const APP_VERSION='Version b83 · 02/09';
 { const nv=document.getElementById('navVersion'); if(nv) nv.textContent=APP_VERSION; }
 document.getElementById('mktSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMarket(b.dataset.k);});
 const CATARRS=["catColors","catCats","catRarities","catTreats","catProvs"];
@@ -4202,9 +4241,9 @@ function provNice(c){ return (c&&c.origin&&c.origin!=='STANDARD')?(ORIGIN_LABELS
 function descTags(c){
   let s='';
   const vl=(c.variant_label&&String(c.variant_label).toLowerCase()!=='normal')?c.variant_label:'';
-  if(vl) s+='<span class="tp" style="background:#f3ecdc;color:#8a6a2a;font-weight:800">'+esc(vl)+'</span>';
+  if(vl) s+='<span class="tp">'+esc(vl)+'</span>';
   const pv=provNice(c);
-  if(pv) s+='<span class="tp" style="background:#fef3c7;color:#92400e;font-weight:800">'+esc(pv)+'</span>';
+  if(pv) s+='<span class="tp tp-p">'+esc(pv)+'</span>';
   return s;
 }
 const OMARKETS=[["JP","Japon"],["CN","Chinois"],["EN","Anglais"],["FR","Français"]];
@@ -4724,21 +4763,34 @@ async function authRun(){
 }
 function authRender(r,target){
   const res=target||document.getElementById('authResult');
-  const v=r.verdict||'na';
-  const LBL={suspect:['fake','&#128681; Signes de fausse carte'],inconclusive:['doubt','&#9888;&#65039; Rien d\'&eacute;vident vu &mdash; NON certifiable'],na:['na','&#8505;&#65039; Analyse impossible sur cette photo'],
-             likely_fake:['fake','&#128681; Signes de fausse carte'],doubt:['doubt','&#9888;&#65039; Rien d\'&eacute;vident vu &mdash; NON certifiable'],likely_genuine:['doubt','&#9888;&#65039; Rien d\'&eacute;vident vu &mdash; NON certifiable']};
+  // Filet de sécurité "jamais rater" : tout signal concret (red flag, écart, couleur anormale, case "concern")
+  // fait passer le verdict au ROUGE, même si l'IA a répondu "inconclusive".
+  let anyConcern = (Array.isArray(r.red_flags)&&r.red_flags.length>0) || (Array.isArray(r.differences)&&r.differences.length>0) || (r.__color&&r.__color.status==='concern');
+  if(r.checks){ for(const k in r.checks){ const c=r.checks[k]; if(c&&c.status==='concern'){ anyConcern=true; break; } } }
+  let v=r.verdict||'na';
+  if(anyConcern && v!=='suspect' && v!=='likely_fake'){ v='suspect'; if(typeof r.doubt_score!=='number'||r.doubt_score<0.6) r.doubt_score=0.6; }
+  const LBL={suspect:['fake','&#128681; Signes de fausse carte'],inconclusive:['doubt','&#9888;&#65039; Non v&eacute;rifi&eacute; &mdash; aucune preuve (PAS un feu vert)'],na:['na','&#8505;&#65039; Non &eacute;valuable sur ces photos'],
+             likely_fake:['fake','&#128681; Signes de fausse carte'],doubt:['doubt','&#9888;&#65039; Non v&eacute;rifi&eacute; &mdash; aucune preuve (PAS un feu vert)'],likely_genuine:['doubt','&#9888;&#65039; Non v&eacute;rifi&eacute; &mdash; aucune preuve (PAS un feu vert)']};
   const meta=LBL[v]||LBL.na;
   const sc=(typeof r.doubt_score==='number')?Math.round(r.doubt_score*100):null;
   const showPct=(v==='suspect'||v==='likely_fake')&&sc!=null;
   let h='<div class="authbadge '+meta[0]+'">'+meta[1]+(showPct?(' &middot; risque '+sc+'%'):'')+'</div>';
   if(r.__color){ const c=r.__color;
     if(c.status==='concern'){ h+='<div class="authflags"><b>&#128308; Contr&ocirc;le couleur du dos (mesur&eacute;, calibr&eacute; via le logo blanc) : teinte ANORMALE</b><br>&bull; '+c.flags.map(x=>esc(x)).join('<br>&bull; ')+'</div>'; }
-    else if(c.status==='ok'){ h+='<div class="authchk"><span class="cdot na"></span><span class="ck">Dos mesur&eacute;</span><span>Couleur dans la norme sur cette photo (violet R/B '+c.purple_rb.toFixed(2)+', or B/R '+c.gold_br.toFixed(2)+') &mdash; ne prouve PAS l\'authenticit&eacute; ; pour &ecirc;tre s&ucirc;r, photographie-la &agrave; c&ocirc;t&eacute; d\'une vraie.</span></div>'; }
+    else if(c.status==='ok'){ h+='<div class="authchk"><span class="cdot na"></span><span class="ck">Dos mesur&eacute;</span><span>Couleur non discriminante sur cette photo (violet R/B '+c.purple_rb.toFixed(2)+', or B/R '+c.gold_br.toFixed(2)+') &mdash; ne prouve RIEN. La couleur sur une seule photo n\'est pas fiable ; compare c&ocirc;te-&agrave;-c&ocirc;te avec une vraie.</span></div>'; }
   }
-  const CK={foil:'Foil',delamination:'D&eacute;collement',surface:'Surface',print_clarity:'Impression',text:'Texte',back_color:'Dos (couleur)',cut:'D&eacute;coupe',stamp:'Tampon',texture:'Texture'};
-  if(r.checks){ for(const k of Object.keys(CK)){ const c=r.checks[k]; if(!c)continue; const st=(c.status||'na'); h+='<div class="authchk"><span class="cdot '+st+'"></span><span class="ck">'+CK[k]+'</span><span>'+esc(c.note||'')+'</span></div>'; } }
+  // On n'affiche QUE les doutes et les zones non évaluables — JAMAIS un « conforme » vert rassurant.
+  const CK={foil:'Foil',delamination:'D&eacute;collement / bord',edge:'Bord / tranche',surface:'Surface',print_clarity:'Impression',text:'Texte',bandai_line:'Ligne BANDAI',back_color:'Dos (couleur)',cut:'D&eacute;coupe',stamp:'Tampon',texture:'Texture'};
+  if(r.checks){ let anyConcern=false;
+    for(const k of Object.keys(CK)){ const c=r.checks[k]; if(!c)continue; const st=(c.status||'na'); if(st==='ok')continue; if(st==='concern')anyConcern=true;
+      h+='<div class="authchk"><span class="cdot '+(st==='concern'?'concern':'na')+'"></span><span class="ck">'+CK[k]+'</span><span>'+esc(c.note||'')+'</span></div>'; }
+  }
   if(Array.isArray(r.differences)&&r.differences.length){ h+='<div class="authflags" style="background:#fffbeb;border-color:#fde68a;color:#92400e"><b>&Eacute;carts vs image officielle Bandai :</b><br>&bull; '+r.differences.map(x=>esc(x)).join('<br>&bull; ')+'</div>'; }
   if(Array.isArray(r.red_flags)&&r.red_flags.length){ h+='<div class="authflags"><b>Points d\'alerte :</b><br>&bull; '+r.red_flags.map(x=>esc(x)).join('<br>&bull; ')+'</div>'; }
+  // Rappel contrôle physique : tant qu'on n'a pas de signal clair, ce n'est PAS un feu vert.
+  if(v!=='suspect'&&v!=='likely_fake'){
+    h+='<div class="authflags" style="background:#fff7ed;border-color:#fed7aa;color:#9a3412"><b>&#9888;&#65039; Ceci n\'est PAS une validation.</b> L\'analyse photo ne peut pas certifier une carte. V&eacute;rifie en main, surtout pour un sticker-foil : passe l\'ongle sur les <b>bords/coins</b> (foil qui se soul&egrave;ve, l&egrave;vre de sticker), regarde la carte <b>en biais &agrave; la lumi&egrave;re</b> (le foil doit suivre le dessin, pas recouvrir toute la carte), teste le <b>poids et la pliure</b>, et compare c&ocirc;te-&agrave;-c&ocirc;te avec une vraie.</div>';
+  }
   if(Array.isArray(r.needs)&&r.needs.length){ h+='<div class="authneeds">Pour mieux juger : '+r.needs.map(x=>esc(x)).join(', ')+'.</div>'; }
   if(r.caveat){ h+='<div class="authcav">'+esc(r.caveat)+'</div>'; }
   res.innerHTML=h;
@@ -5083,9 +5135,12 @@ const Fake = (function(){
      instr:"Tout le dos dans le cadre, bien à plat : sert à mesurer la couleur du logo et du fond.", label:"Dos entier"},
     {key:'logo', lab:'LOGO', ar:1, frac:0.55, torch:true, ghost:true,
      tip:"Maintenant très près : le logo ⊗ONE aussi gros que le repère, points d'impression visibles.",
-     instr:"Rapproche jusqu'à ce que le logo ⊗ONE remplisse le repère.", label:"Logo ⊗ONE (macro)"}
+     instr:"Rapproche jusqu'à ce que le logo ⊗ONE remplisse le repère.", label:"Logo ⊗ONE (macro)"},
+    {key:'edge', lab:'BORD', ar:2.4, frac:0.92, torch:true, skip:true,
+     tip:"Important pour les stickers-foil : cherche une lèvre de sticker ou un foil qui se soulève au bord.",
+     instr:"Gros plan sur un COIN / le BORD de la carte, légèrement incliné : on cherche un foil qui se décolle, une lèvre de sticker ou un bord effiloché.", label:"Coin / bord (anti-sticker)"}
   ];
-  let idx=0, stream=null, track=null, torchOn=false, shots={}, metrics={}, calibMode=false, calibCat=null, busy=false;
+  let idx=0, stream=null, track=null, torchOn=false, shots={}, metrics={}, calibMode=false, calibCat=null, compareMode=false, busy=false;
   const CATS=[
     {key:'common', lab:'Commune / non-holo', hint:'C · UC'},
     {key:'holo',   lab:'Holo (R / SR)',      hint:'R · SR'},
@@ -5115,7 +5170,8 @@ const Fake = (function(){
     $('fkStage').style.display='';
     $('fkAnalyze').classList.add('hidden'); $('fkBottom').style.display='';
     $('fkOverlay').classList.remove('hidden');
-    $('fkCalib').style.display='';
+    $('fkCalib').style.display=''; $('fkCompare').style.display='';
+    compareMode=false;
     renderSteps(); startCam();
   }
   function close(){ stopCam(); $('fkOverlay').classList.add('hidden'); }
@@ -5192,7 +5248,11 @@ const Fake = (function(){
   }
 
   async function capture(){
-    if(busy) return; const s=STEPS[idx]; if(!s) return;
+    if(busy) return;
+    if(compareMode){ const cv=coverCrop(1500); if(!cv){ $('fkInstr').textContent="Caméra pas prête, réessaie."; return; }
+      const url=cv.toDataURL('image/jpeg',0.92); const sh=$('fkShot'); sh.src=url; sh.style.display='block';
+      compareBacks(url); return; }
+    const s=STEPS[idx]; if(!s) return;
     const cv=coverCrop(s.key==='recto'?900:1200);
     if(!cv){ $('fkInstr').textContent="Caméra pas prête, réessaie."; return; }
     const url=cv.toDataURL('image/jpeg',0.9);
@@ -5260,6 +5320,68 @@ const Fake = (function(){
     $('fkOverlay').classList.remove('hidden'); renderSteps(); startCam(); }
   function resetCalib(){ try{ localStorage.removeItem('fk_calib_v2'); }catch(e){} renderCalibPanel(); }
 
+  // ---- Comparaison de 2 dos côte-à-côte (reproduit l'œil : même photo, même lumière) ----
+  function openCompare(){
+    try{ if(typeof stopAuto==='function') stopAuto(); if(typeof stopCam==='function') stopCam(); }catch(e){}
+    compareMode=true; calibMode=false; idx=0; shots={}; busy=false;
+    $('fkResult').classList.add('hidden'); $('fkResult').innerHTML='';
+    $('fkCalibPanel').classList.add('hidden'); $('fkAnalyze').classList.add('hidden');
+    $('fkStage').style.display=''; $('fkBottom').style.display=''; $('fkCalib').style.display='none';
+    $('fkOverlay').classList.remove('hidden'); $('fkGhost').style.display='none';
+    $('fkSteps').innerHTML=''; $('fkSkip').style.display='none'; $('fkRetry').style.visibility='hidden'; $('fkShot').style.display='none';
+    $('fkTip').textContent="Une VRAIE carte + la SUSPECTE, dos visibles, CÔTE À CÔTE, même lumière, sans flash. Une seule photo.";
+    $('fkInstr').textContent="Les DEUX dos dans le cadre (gauche + droite), bien à plat.";
+    $('fkFrameLabel').textContent="2 dos côte à côte";
+    layoutFrame({ar:1.5,frac:0.96}); applyTorch(false);
+  }
+  function measureHalf(d,w,h,x0,x1){
+    let wr=0,wg=0,wb=0,wn=0;
+    for(let y=0;y<h;y++)for(let x=x0;x<x1;x++){ const i=(y*w+x)*4; const R=d[i],G=d[i+1],B=d[i+2],mn=Math.min(R,G,B),mx=Math.max(R,G,B); if(mn>168&&(mx-mn)<44){wr+=R;wg+=G;wb+=B;wn++;} }
+    if(wn<12) return null;
+    const gr=Math.max(0.5,Math.min(2.5,255/(wr/wn))), gg=Math.max(0.5,Math.min(2.5,255/(wg/wn))), gb=Math.max(0.5,Math.min(2.5,255/(wb/wn)));
+    let pr=0,pg=0,pb=0,pn=0, ar=0,ag=0,ab=0,an=0;
+    for(let y=0;y<h;y++)for(let x=x0;x<x1;x++){ const i=(y*w+x)*4; const R=d[i]*gr,G=d[i+1]*gg,B=d[i+2]*gb;
+      if(B>G&&B>R&&B>40&&B<215){ pr+=R;pg+=G;pb+=B;pn++; }
+      else if(R>150&&G>110&&R>=G&&G>B&&(R-B)>28){ ar+=R;ag+=G;ab+=B;an++; } }
+    if(pn<40||an<20) return {weak:true,pn,an};
+    return { purple_rb:(pr/pn)/(pb/pn), gold_br:(ab/an)/(ar/an),
+      purple:{R:pr/pn,G:pg/pn,B:pb/pn}, gold:{R:ar/an,G:ag/an,B:ab/an} };
+  }
+  function compareBacks(dataURL){
+    const res=$('fkResult'); $('fkAnalyze').classList.add('hidden');
+    const im=new Image(); im.onload=function(){ try{
+      const MW=900, sc=Math.min(1,MW/im.width); const cv=document.createElement('canvas'); cv.width=Math.round(im.width*sc); cv.height=Math.round(im.height*sc);
+      const cx=cv.getContext('2d'); cx.drawImage(im,0,0,cv.width,cv.height);
+      const w=cv.width,h=cv.height,d=cx.getImageData(0,0,w,h).data;
+      const gap=Math.round(w*0.04);
+      const L=measureHalf(d,w,h,0,Math.round(w/2)-gap), R=measureHalf(d,w,h,Math.round(w/2)+gap,w);
+      compareMode=false; $('fkStage').style.display='none';
+      res.classList.remove('hidden');
+      if(!L||!R||L.weak||R.weak){ res.innerHTML="<div class='authbadge na'>ℹ️ Photo insuffisante</div><div style='font-size:13px;line-height:1.5'>Je n'ai pas bien vu les DEUX dos (violet + logo). Reprends : les deux cartes bien à plat, dos visibles, remplissant le cadre, lumière neutre.</div>"+cmpBtns(); return; }
+      const dP=L.purple_rb-R.purple_rb, dG=L.gold_br-R.gold_br;
+      const dE=(a,b)=>Math.round(Math.sqrt((a.R-b.R)**2+(a.G-b.G)**2+(a.B-b.B)**2));
+      const dEpurple=dE(L.purple,R.purple), dEgold=dE(L.gold,R.gold);
+      const bluer = dP<0?'gauche':'droite';           // R/B plus bas = plus bleu
+      const palerGold = dG<0?'droite':'gauche';        // B/R plus haut = or plus délavé/froid
+      const different = Math.abs(dP)>0.05 || Math.abs(dG)>0.06 || dEpurple>26 || dEgold>26;
+      let h2='';
+      if(different){
+        h2="<div class='authbadge fake'>🚩 Les deux dos SONT DIFFÉRENTS</div>"+
+           "<div style='font-size:13px;line-height:1.55'>Sous la même lumière, les deux dos n'ont pas la même couleur — c'est un <b>fort signe de fausse</b> (un côté n'est pas un vrai dos Bandai).<br>"+
+           "&bull; Fond violet/bleu : côté <b>"+bluer+"</b> plus bleu (R/B "+L.purple_rb.toFixed(2)+" vs "+R.purple_rb.toFixed(2)+", ΔE "+dEpurple+")<br>"+
+           "&bull; Logo doré : côté <b>"+palerGold+"</b> plus pâle/froid (B/R "+L.gold_br.toFixed(2)+" vs "+R.gold_br.toFixed(2)+", ΔE "+dEgold+")</div>"+
+           "<div class='authflags' style='margin-top:10px'><b>Confirme :</b> le côté qui diffère de ta VRAIE carte est la fausse.</div>";
+      } else {
+        h2="<div class='authbadge doubt'>⚖️ Dos très proches sur cette photo</div>"+
+           "<div style='font-size:13px;line-height:1.55'>Écart de couleur faible entre les deux dos (violet ΔE "+dEpurple+", or ΔE "+dEgold+"). Ça ne prouve pas l'authenticité — mais la couleur du dos, ici, ne les sépare pas. Vérifie les autres points (bord/sticker, impression) et le toucher en main.</div>";
+      }
+      res.innerHTML=h2+"<div style='margin-top:8px;font-size:11px;color:#7c6b96'>Gauche : violet R/B "+L.purple_rb.toFixed(2)+", or B/R "+L.gold_br.toFixed(2)+" · Droite : violet R/B "+R.purple_rb.toFixed(2)+", or B/R "+R.gold_br.toFixed(2)+"</div>"+cmpBtns();
+    }catch(e){ compareMode=false; res.classList.remove('hidden'); res.innerHTML="<div class='authbadge na'>Analyse impossible</div>"+cmpBtns(); } };
+    im.onerror=function(){ compareMode=false; res.classList.remove('hidden'); res.innerHTML="<div class='authbadge na'>Image illisible</div>"+cmpBtns(); };
+    im.src=dataURL;
+  }
+  function cmpBtns(){ return "<div class='fkcalfoot'><button class='fkghostbtn' onclick=\"Fake.openCompare()\">Refaire la comparaison</button><button class='fkghostbtn' onclick=\"Fake.open()\">Retour au détecteur</button><button class='fkghostbtn' onclick=\"Fake.close()\">Fermer</button></div>"; }
+
   // ---- persistance des photos dans la base (pour ré-analyse IA ultérieure) ----
   function shrink(dataURL,maxw,q){ return new Promise(res=>{ if(!dataURL){res(null);return;} const im=new Image(); im.onload=()=>{ try{ const sc=Math.min(1,maxw/im.width); const cv=document.createElement('canvas'); cv.width=Math.round(im.width*sc); cv.height=Math.round(im.height*sc); cv.getContext('2d').drawImage(im,0,0,cv.width,cv.height); res(cv.toDataURL('image/jpeg',q)); }catch(e){ res(dataURL); } }; im.onerror=()=>res(dataURL); im.src=dataURL; }); }
   async function persistCapture(mode, rr, colorRes){
@@ -5273,6 +5395,7 @@ const Fake = (function(){
         img_stamp: await shrink(shots.stamp,900,0.74),
         img_backfull: await shrink(shots.backfull,760,0.72),
         img_logo: await shrink(shots.logo,900,0.74),
+        img_edge: await shrink(shots.edge,900,0.74),
         m_recto: metrics.recto?metrics.recto.crisp:null,
         m_bandai: metrics.bandai?metrics.bandai.crisp:null,
         m_stamp: metrics.stamp?metrics.stamp.crisp:null,
@@ -5330,6 +5453,7 @@ const Fake = (function(){
       if(shots.backfull) body.back_b64=shots.backfull;
       if(shots.bandai) body.bandai_b64=shots.bandai;
       if(shots.stamp) body.stamp_b64=shots.stamp;
+      if(shots.edge) body.edge_b64=shots.edge;
       const top=(typeof window!=='undefined')?window.__lastScanTop:null;
       if(top){ if(top.card_number)body.card_number=top.card_number; if(top.rarity)body.rarity=top.rarity; if(top.language)body.language=top.language; if(top.image_url)body.ref_url=top.image_url; }
       const r=await fetch(SB+'/functions/v1/card-authenticate',{method:'POST',headers:{'Content-Type':'application/json',apikey:ANON,Authorization:'Bearer '+ANON},body:JSON.stringify(body)});
@@ -5391,7 +5515,7 @@ const Fake = (function(){
   }
 
   window.addEventListener('resize',()=>{ if(!$('fkOverlay').classList.contains('hidden')){ layoutFrame(STEPS[idx]||STEPS[0]); if((STEPS[idx]||{}).ghost) positionGhost(); } });
-  return {open,close,capture,retry,skip,toggleTorch,openCalib,startCalib,resetCalib};
+  return {open,close,capture,retry,skip,toggleTorch,openCalib,startCalib,resetCalib,openCompare};
 })();
 </script>
 </body>
