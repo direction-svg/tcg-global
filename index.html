@@ -1164,13 +1164,13 @@ body{-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
 /* ===== Harmonisation cartes (b83) ===== */
 .grid .card .meta{display:flex;flex-direction:column;gap:6px;padding:9px 10px 10px}
 .grid .card .nm{font-size:12.5px;letter-spacing:-.01em;margin:0}
-.tagrow{display:flex;align-items:center;gap:6px;min-height:18px;overflow:hidden}
+.tagrow{display:flex;align-items:center;gap:6px;min-height:18px;flex-wrap:wrap;row-gap:3px}
 .tagrow .code{font-family:'DM Mono',ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;color:var(--muted);letter-spacing:.01em;flex:none}
 .tp{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:2px 8px;border-radius:999px;font-weight:700;font-size:10.5px;line-height:1.55;background:var(--chip);border:1px solid var(--line);color:var(--ink);opacity:.94}
 .tp-p{border-color:transparent;background:rgba(193,147,56,.16);color:var(--accent)}
-.valrow{display:flex;align-items:baseline;justify-content:space-between;gap:8px}
-.grid .card .val{font-size:16px;font-weight:900;font-variant-numeric:tabular-nums;letter-spacing:-.01em;margin:0}
-.varp{font-weight:800;font-size:11.5px;font-variant-numeric:tabular-nums;white-space:nowrap;padding:2px 7px;border-radius:999px;display:inline-flex;align-items:center;gap:3px}
+.valrow{display:flex;align-items:baseline;justify-content:space-between;gap:6px;flex-wrap:wrap;row-gap:3px}
+.grid .card .val{font-size:16px;font-weight:900;font-variant-numeric:tabular-nums;letter-spacing:-.01em;margin:0;white-space:nowrap}
+.varp{font-weight:800;font-size:11px;font-variant-numeric:tabular-nums;white-space:nowrap;padding:2px 7px;border-radius:999px;display:inline-flex;align-items:center;gap:3px;flex:none}
 .varp .perd{opacity:.6;font-weight:700}
 .varp.up{color:#0f9d6b;background:rgba(15,157,107,.13)}
 .varp.dn{color:#d8524a;background:rgba(216,82,74,.13)}
