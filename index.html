@@ -1200,16 +1200,20 @@ function vNice(v){ if(!v) return "Normale"; v=String(v).toLowerCase(); if(VMAP[v
 function isArtVariant(v){ v=String(v||'').toLowerCase(); return v!=='normal' && v!==''; }
 // DEUX axes distincts : le TRAITEMENT (fini/style d'illustration) et la PROVENANCE (produit/collection d'origine).
 // La taxonomie brute (variant + variant_label) mélange les deux (ex. "jolly_roger_prb01" = traitement Jolly Roger, provenance Premium Booster).
-const TREAT_LABELS={normal:"Normale",gold:"Gold",foil:"Foil",parallel:"Parallèle",alt_art:"Alt-Art",manga:"Manga",full_art:"Full Art",jolly_roger:"Jolly Roger",textured:"Textured",sp:"SP",other:"Autre"};
-const TREAT_ORDER=["normal","gold","foil","parallel","alt_art","manga","full_art","jolly_roger","textured","sp","other"];
+const TREAT_LABELS={normal:"Normale",gold:"Gold",foil:"Foil",parallel:"Parallèle",alt_art:"Alt-Art",manga:"Manga",manga_art:"Parallèle manga-art",super_parallel:"Super Parallèle",full_art:"Full Art",jolly_roger:"Jolly Roger",textured:"Textured",sp:"SP",other:"Autre"};
+const TREAT_ORDER=["normal","gold","foil","parallel","alt_art","manga","manga_art","super_parallel","full_art","jolly_roger","textured","sp","other"];
 function treatmentFamily(c){
   const v=String(c&&c.variant||'').toLowerCase();
   const lab=String(c&&c.variant_label||'').toLowerCase();
   const nm=String((c&&(c.card_name||c.name))||'').toLowerCase();
+  const num=String((c&&(c.card_number||c.number))||'').toUpperCase();
   const s=v+' '+lab+' '+String(c&&c.card_type||'').toLowerCase();
+  // Super Parallèle « Super Crew » (fond équipage pirate) : cartes phares EB04-061 Luffy & OP17-118 Xebec.
+  if((num==='EB04-061'||num==='OP17-118') && v && v!=='normal') return 'super_parallel';
   // gold = finition. Dans variant/label, ou en parenthèse dans le nom (DON : "… (Gold)").
   if(/\bgold\b/.test(s) || /\([^)]*\bgold\b[^)]*\)/.test(nm)) return 'gold';
   if(lab==='foil') return 'foil';                                  // label de finition autoritaire (DON)
+  if(s.includes('manga') && s.includes('parallel')) return 'manga_art'; // parallèle à dessin manga (ex OP17-037), PAS un vrai manga
   if(s.includes('manga')) return 'manga';
   if(v.includes('jolly_roger')||s.includes('jolly roger')) return 'jolly_roger';
   if(v.includes('textured')||s.includes('textured')) return 'textured';
@@ -1417,7 +1421,7 @@ function cdPriceBlock(c){
     h+='<div class="dt" style="font-size:11.5px;margin:6px 0 2px">Cote gradée : <b>—</b> (pas encore de vente gradée)</div>';
   }
   h+='<div class="dt" style="font-size:11px;margin:6px 0 4px">'+['JP','EU','US'].map(function(k){var lk=k.toLowerCase();var v=(k==='EU')?(c.mk_eu!=null?c.mk_eu:c.eu_eur):c['disp_'+lk];var grd=(k==='JP')?(c.mk_jp==null&&c.jp_g!=null):((k==='US')?(c.mk_us==null&&c.us_g!=null):false);var on=k===MKT;return (on?'<b style="color:#7a5b1e">':'<span>')+k+' '+(v!=null?eur0(v):'—')+(grd&&v!=null?'*':'')+(on?'</b>':'</span>');}).join(' · ')+(((c.mk_jp==null&&c.jp_g!=null)||(c.mk_us==null&&c.us_g!=null))?' <span style="opacity:.7">(* cote gradée)</span>':'')+'</div><div class="pxloading">…</div>';
-  return h;
+  return '<div style="margin:0 14px">'+h+'</div>';
 }
 function esc(s){ return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
 function setMarket(k){
@@ -3990,7 +3994,7 @@ async function homeBriefing(){
   }catch(e){ box.innerHTML='<div class="txt" style="color:var(--muted);font-size:13px">Erreur, réessaie.</div><button class="hbriefbtn" onclick="homeBriefing()">Réessayer</button>'; }
 }
 document.getElementById('modeSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMode(b.dataset.m);});
-const APP_VERSION='Version b83 · 02/09';
+const APP_VERSION='Version b86 · 03/09';
 { const nv=document.getElementById('navVersion'); if(nv) nv.textContent=APP_VERSION; }
 document.getElementById('mktSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMarket(b.dataset.k);});
 const CATARRS=["catColors","catCats","catRarities","catTreats","catProvs"];
@@ -4950,10 +4954,11 @@ const VARIANT_FR={alternate_art:'Alternate Art',special_alternate_art:'Alternate
 const MKSRC={JP:'Cardrush · Japon',EU:'CardTrader · Europe',US:'PriceCharting · US'};
 function mktBlock(c){
   if(c.is_graded){
-    return '<div style="margin:8px 0;padding:10px 13px;border-radius:10px;background:#f3ecdc;border:1px solid #e6d6ad;display:flex;justify-content:space-between;align-items:center">'+
+    return '<div style="margin:8px 14px">'+
+      '<div style="padding:10px 13px;border-radius:10px;background:#f3ecdc;border:1px solid #e6d6ad;display:flex;justify-content:space-between;align-items:center">'+
       '<span style="font-size:12.5px;font-weight:800;color:#7a5b1e">Valeur '+(c.grading_company||'PSA')+' '+(c.grade!=null?String(c.grade).replace(/\.0$/,''):'')+' (cote gradée)</span>'+
       '<b style="font-size:16px;color:#7a5b1e">'+eur(val(c))+'</b></div>'+
-      '<div class="dt" style="font-size:10.5px;margin:2px 2px 4px;line-height:1.4">Une carte gradée a <b>une seule cote</b> (estimation '+(c.grading_company||'PSA')+'), pas un prix par marché — on n\'affiche donc pas 3 marchés identiques.</div>';
+      '<div class="dt" style="font-size:10.5px;margin:2px 2px 4px;line-height:1.4">Une carte gradée a <b>une seule cote</b> (estimation '+(c.grading_company||'PSA')+'), pas un prix par marché — on n\'affiche donc pas 3 marchés identiques.</div></div>';
   }
   const rows=['JP','EU','US'].map(function(k){
     const v=c['_'+k.toLowerCase()]; const on=(k===MKT);
@@ -4964,7 +4969,7 @@ function mktBlock(c){
   }).join('');
   const k=priceConf(c);
   const chip=k?('<div style="margin:6px 2px 2px;font-size:11.5px;font-weight:700;display:flex;align-items:center;gap:6px;color:'+k.c+'"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:'+k.c+'"></span>'+esc(k.t)+'</div>'):'';
-  return '<div style="margin:8px 0">'+rows+chip+'</div>';
+  return '<div style="margin:8px 14px">'+rows+chip+'</div>';
 }
 function variantNice(c){
   if(c.variant_label && String(c.variant_label).trim() && String(c.variant_label).toLowerCase()!=='normal') return esc(c.variant_label);
