@@ -1211,6 +1211,8 @@ function treatmentFamily(c){
   const s=v+' '+lab+' '+String(c&&c.card_type||'').toLowerCase();
   // Super Parallèle : rareté "Super Alternate Art" / "Super Parallèle" (ex OP17-118 Xebec, EB04-061).
   if(s.includes('super') && /alternate|parall/.test(s)) return 'super_parallel';
+  // SP Gold / SP Silver / SP Foil : ce sont des SP (avant le test gold, sinon "SP Gold" partirait en Gold).
+  if(/^sp_/.test(v) || /^sp /.test(lab)) return 'sp';
   // gold = finition. Dans variant/label, ou en parenthèse dans le nom (DON : "… (Gold)").
   if(/\bgold\b/.test(s) || /\([^)]*\bgold\b[^)]*\)/.test(nm)) return 'gold';
   if(lab==='foil') return 'foil';                                  // label de finition autoritaire (DON)
@@ -1269,7 +1271,7 @@ function setFamily(code){ const s=String(code||'').toUpperCase().trim(); if(!s) 
   return pre;
 }
 function setFamRank(fam){ const m=String(fam).match(/^([A-Z]+)(\d+)?/); const g=({OP:0,EB:1,PRB:2,ST:3})[m?m[1]:'']; return [(g==null?8:g), m?m[1]:'zz', (m&&m[2])?+m[2]:999]; }
-const DEF={q:"",lang:"all",color:"all",type:"all",prov:"all",cat:"all",rarity:"all",character:"all",grade:"all",set:"all",minVal:0,imgf:"all",authf:"all",recvf:"all",pricef:"all",variant:"all",achatPeriod:"all",openRatio:null,openLiquid:false,gapView:"mine",tgtLang:"JP",tgtBudget:0,sort:"val_desc",view:"grid",mode:"accueil",catLang:"all",catQuery:"",catLangs:[],catColors:[],catCats:[],catRarities:[],catTypes:[],catTreats:[],catProvs:[],catSets:[],catSort:"price_desc",catGroup:true,setLang:"JP",prodLang:"JP"};
+const DEF={q:"",lang:"all",color:"all",type:"all",prov:"all",cat:"all",rarity:"all",character:"all",grade:"all",set:"all",minVal:0,imgf:"all",authf:"all",recvf:"all",pricef:"all",variant:"all",achatPeriod:"all",openRatio:null,openLiquid:false,gapView:"mine",tgtLang:"JP",tgtBudget:0,sort:"val_desc",view:"grid",mode:"accueil",catLang:"all",catQuery:"",catLangs:[],catColors:[],catCats:[],catRarities:[],catTypes:[],catTreats:[],catProvs:[],catSets:[],catSort:"price_desc",catGroup:true,catView:"grid",setLang:"JP",prodLang:"JP"};
 let PROD_VALUE=0;
 // Barre du haut : portefeuille détaillé (total = cartes + scellés), même valeur live que l'accueil
 function portfolioMini(){
@@ -3997,7 +3999,7 @@ async function homeBriefing(){
   }catch(e){ box.innerHTML='<div class="txt" style="color:var(--muted);font-size:13px">Erreur, réessaie.</div><button class="hbriefbtn" onclick="homeBriefing()">Réessayer</button>'; }
 }
 document.getElementById('modeSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMode(b.dataset.m);});
-const APP_VERSION='Version b91 · 03/09';
+const APP_VERSION='Version b93 · 03/09';
 { const nv=document.getElementById('navVersion'); if(nv) nv.textContent=APP_VERSION; }
 document.getElementById('mktSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMarket(b.dataset.k);});
 const CATARRS=["catColors","catCats","catRarities","catTreats","catProvs","catSets"];
@@ -4031,6 +4033,11 @@ function buildCatLangRow(){
   g.innerHTML=(state.catGroup?"◱ ":"▦ ")+"Grouper par carte";
   g.onclick=()=>{ state.catGroup=!state.catGroup; buildCatLangRow(); renderCatalog(CATROWS, CATLASTMORE); };
   row.appendChild(g);
+  // Bascule affichage vignettes / liste (comme la collection)
+  const vv=document.createElement('div'); vv.className="chip"; vv.style.marginLeft="6px";
+  vv.innerHTML=(state.catView==='list'?"☰ Liste":"▦ Vignettes");
+  vv.onclick=()=>{ state.catView=(state.catView==='list'?'grid':'list'); buildCatLangRow(); renderCatalog(CATROWS, CATLASTMORE); };
+  row.appendChild(vv);
 }
 function buildCatFilterModal(){
   const colorOpts=[["all","Toutes"]].concat(COLORS.map(c=>[c,'<span style="width:11px;height:11px;border-radius:50%;background:'+(COLOR_HEX[c]||"#888")+';display:inline-block"></span> '+c]));
@@ -4129,16 +4136,29 @@ function renderCatalog(rows, hasMore){
     display=rows.map((c,i)=>Object.assign({}, c, {_idx:i, _n:1, _grpOwned:c.owned}));
   }
   document.getElementById('countLine').textContent=display.length+" carte"+(display.length>1?"s":"")+(state.catGroup&&display.length<rows.length?(" ("+rows.length+" versions)"):"")+(hasMore?" · défile puis « Charger plus »":"");
-  const grid='<div class="grid">'+display.map(c=>{
-    const pcu=PCIMG[c.printing_id]; const eff=pcu||c.image_url; const vfy=c.img_verify&&!pcu;
-    const img=vfy?('<div class="vfy"><span class="vt">🔍</span>Photo à vérifier</div>'):(eff?('<img loading="lazy" referrerpolicy="no-referrer" src="'+esc(eff)+'" onerror="this.remove()">'):('<div class="vfy vfywait"><span class="vt">⏳</span>En attente d\'image<br><span style="font-weight:700;font-size:10px;opacity:.85">'+esc(c.card_number||"")+'</span></div>'));
-    const owned=c._grpOwned;
-    const badge=owned?'<span class="owntag own">✓ Possédée</span>':'<span class="owntag no">Non possédée</span>';
-    const vtag=(c._n>1)?('<span class="verstag">'+c._n+' versions</span>'):'';
-    const cpx=catMkPrice(c); const gtag=catGradedTag(c); const px=(cpx!=null)?('<span class="pxg">'+eur(cpx)+(gtag?(' <span style="font-size:9px;background:#b08528;color:#fff;padding:1px 4px;border-radius:5px;font-weight:800;vertical-align:middle">'+esc(gtag)+'</span>'):'')+'</span>'):'';
-    return '<div class="card" data-idx="'+c._idx+'"><div class="imgwrap">'+img+'<span class="flag">'+(FLAG[c.language]||"")+'</span>'+vtag+(px?'<div class="pxcorner">'+px+'</div>':'')+'</div><div class="meta"><p class="nm">'+esc(c.name||"")+'</p><div class="sub"><span>'+esc(c.card_number||"")+'</span>'+(c._n>1?'':descTags(c))+'</div>'+badge+'</div></div>';
-  }).join("")+'</div>';
-  stage.innerHTML=grid+(hasMore?'<div class="loadmore"><button onclick="fetchCatalog(true)">Charger plus</button></div>':'');
+  const loadmore=(hasMore?'<div class="loadmore"><button onclick="fetchCatalog(true)">Charger plus</button></div>':'');
+  if(state.catView==='list'){
+    stage.className='list';
+    stage.innerHTML=display.map(c=>{
+      const pcu=PCIMG[c.printing_id]; const eff=pcu||c.image_url; const vfy=c.img_verify&&!pcu;
+      const img=vfy?('<div class="vfy"><span class="vt">🔍</span></div>'):(eff?('<img loading="lazy" referrerpolicy="no-referrer" src="'+esc(eff)+'" onerror="this.remove()">'):('<div class="vfy vfywait"><span class="vt">⏳</span></div>'));
+      const owned=c._grpOwned; const cpx=catMkPrice(c); const gtag=catGradedTag(c);
+      const vtag=(c._n>1)?('<span class="verstag">'+c._n+' versions</span>'):'';
+      return '<div class="row" data-idx="'+c._idx+'"><div class="lthumb">'+img+'<span class="flag">'+(FLAG[c.language]||"")+'</span></div><div><p class="nm">'+esc(c.name||"")+'</p><div class="sub"><span>'+esc(c.card_number||"")+'</span>'+(c._n>1?vtag:descTags(c))+(owned?' <span class="owntag own">✓ Possédée</span>':'')+'</div></div><div class="r"><div class="val">'+(cpx!=null?eur(cpx):'—')+'</div>'+(gtag?'<div class="sub"><span class="verstag">'+esc(gtag)+'</span></div>':'')+'</div></div>';
+    }).join("")+loadmore;
+  } else {
+    stage.className='';
+    const grid='<div class="grid">'+display.map(c=>{
+      const pcu=PCIMG[c.printing_id]; const eff=pcu||c.image_url; const vfy=c.img_verify&&!pcu;
+      const img=vfy?('<div class="vfy"><span class="vt">🔍</span>Photo à vérifier</div>'):(eff?('<img loading="lazy" referrerpolicy="no-referrer" src="'+esc(eff)+'" onerror="this.remove()">'):('<div class="vfy vfywait"><span class="vt">⏳</span>En attente d\'image<br><span style="font-weight:700;font-size:10px;opacity:.85">'+esc(c.card_number||"")+'</span></div>'));
+      const owned=c._grpOwned;
+      const badge=owned?'<span class="owntag own">✓ Possédée</span>':'<span class="owntag no">Non possédée</span>';
+      const vtag=(c._n>1)?('<span class="verstag">'+c._n+' versions</span>'):'';
+      const cpx=catMkPrice(c); const gtag=catGradedTag(c); const px=(cpx!=null)?('<span class="pxg">'+eur(cpx)+(gtag?(' <span style="font-size:9px;background:#b08528;color:#fff;padding:1px 4px;border-radius:5px;font-weight:800;vertical-align:middle">'+esc(gtag)+'</span>'):'')+'</span>'):'';
+      return '<div class="card" data-idx="'+c._idx+'"><div class="imgwrap">'+img+'<span class="flag">'+(FLAG[c.language]||"")+'</span>'+vtag+(px?'<div class="pxcorner">'+px+'</div>':'')+'</div><div class="meta"><p class="nm">'+esc(c.name||"")+'</p><div class="sub"><span>'+esc(c.card_number||"")+'</span>'+(c._n>1?'':descTags(c))+'</div>'+badge+'</div></div>';
+    }).join("")+'</div>';
+    stage.innerHTML=grid+loadmore;
+  }
 }
 let OPROWS=[];
 let OWNEDROWS=[];
