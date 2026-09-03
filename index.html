@@ -883,7 +883,7 @@ body{-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
   <div class="sheet fsheet">
     <div class="fbar"><b>Filtres</b><button class="x" id="fclose">&times;</button></div>
     <div class="fsec"><h5>Langue</h5><div class="chipwrap" id="mLang"></div></div>
-    <div class="fsec"><h5>Set / collection</h5><div class="chipwrap" id="mSet"></div></div>
+    <div class="fsec"><h5>Set / collection</h5><select id="mSet"><option value="all">Tous les sets</option></select></div>
     <div class="fsec"><h5>Couleur</h5><div class="chipwrap" id="mColor"></div></div>
     <div class="fsec"><h5>Cat&eacute;gorie</h5><div class="chipwrap" id="mCat"></div></div>
     <div class="fsec"><h5>Traitement (artwork)</h5><div class="chipwrap" id="mType"></div></div>
@@ -935,6 +935,7 @@ body{-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
     <div class="fsec"><h5>Raret&eacute;</h5><div class="chipwrap" id="cmRarity"></div></div>
     <div class="fsec"><h5>Traitement (artwork)</h5><div class="chipwrap" id="cmTreat"></div></div>
     <div class="fsec"><h5>Collection / Provenance</h5><div class="chipwrap" id="cmProv"></div></div>
+    <div class="fsec"><h5>Set / &Eacute;dition</h5><select id="cmSet"><option value="all">Tous les sets</option></select></div>
     <div class="ffoot"><button class="reset" id="cfreset">R&eacute;initialiser</button><button class="apply" id="cfapply">Voir les cartes</button></div>
   </div>
 </div>
@@ -1200,20 +1201,20 @@ function vNice(v){ if(!v) return "Normale"; v=String(v).toLowerCase(); if(VMAP[v
 function isArtVariant(v){ v=String(v||'').toLowerCase(); return v!=='normal' && v!==''; }
 // DEUX axes distincts : le TRAITEMENT (fini/style d'illustration) et la PROVENANCE (produit/collection d'origine).
 // La taxonomie brute (variant + variant_label) mélange les deux (ex. "jolly_roger_prb01" = traitement Jolly Roger, provenance Premium Booster).
-const TREAT_LABELS={normal:"Normale",gold:"Gold",foil:"Foil",parallel:"Parallèle",alt_art:"Alt-Art",manga:"Manga",manga_art:"Parallèle manga-art",super_parallel:"Super Parallèle",full_art:"Full Art",jolly_roger:"Jolly Roger",textured:"Textured",sp:"SP",other:"Autre"};
-const TREAT_ORDER=["normal","gold","foil","parallel","alt_art","manga","manga_art","super_parallel","full_art","jolly_roger","textured","sp","other"];
+const TREAT_LABELS={normal:"Normale",gold:"Gold",foil:"Foil",parallel:"Parallèle",alt_art:"Alt-Art",manga:"Manga",super_parallel:"Super Parallèle",full_art:"Full Art",jolly_roger:"Jolly Roger",textured:"Textured",sp:"SP",other:"Autre"};
+const TREAT_ORDER=["normal","gold","foil","parallel","alt_art","manga","super_parallel","full_art","jolly_roger","textured","sp","other"];
 function treatmentFamily(c){
   const v=String(c&&c.variant||'').toLowerCase();
   const lab=String(c&&c.variant_label||'').toLowerCase();
   const nm=String((c&&(c.card_name||c.name))||'').toLowerCase();
   const num=String((c&&(c.card_number||c.number))||'').toUpperCase();
   const s=v+' '+lab+' '+String(c&&c.card_type||'').toLowerCase();
-  // Super Parallèle « Super Crew » (fond équipage pirate) : cartes phares EB04-061 Luffy & OP17-118 Xebec.
-  if((num==='EB04-061'||num==='OP17-118') && v && v!=='normal') return 'super_parallel';
+  // Super Parallèle : rareté "Super Alternate Art" / "Super Parallèle" (ex OP17-118 Xebec, EB04-061).
+  if(s.includes('super') && /alternate|parall/.test(s)) return 'super_parallel';
   // gold = finition. Dans variant/label, ou en parenthèse dans le nom (DON : "… (Gold)").
   if(/\bgold\b/.test(s) || /\([^)]*\bgold\b[^)]*\)/.test(nm)) return 'gold';
   if(lab==='foil') return 'foil';                                  // label de finition autoritaire (DON)
-  if(s.includes('manga') && s.includes('parallel')) return 'manga_art'; // parallèle à dessin manga (ex OP17-037), PAS un vrai manga
+  if(s.includes('manga') && s.includes('parallel')) return 'parallel'; // parallèle à dessin manga (ex OP17-037), PAS un vrai manga
   if(s.includes('manga')) return 'manga';
   if(v.includes('jolly_roger')||s.includes('jolly roger')) return 'jolly_roger';
   if(v.includes('textured')||s.includes('textured')) return 'textured';
@@ -1244,7 +1245,7 @@ function provenanceFamily(c){
 }
 function variantFamily(c){ return treatmentFamily(c); }   // compat
 function rarNice(r){ if(!r) return ""; const m=String(r).match(/([A-Za-z]{1,4})/); const code=m?m[1].toUpperCase():String(r); return RAR_LABELS[code]||code; }
-const RAR_ORDER=["L","C","UC","R","SR","SEC","TR","PR","SP"];
+const RAR_ORDER=["SEC","L","SR","R","UC","C","PR","TR"];
 const COLORS=["Red","Green","Blue","Purple","Black","Yellow"];
 const COLOR_HEX={Red:"#d64545",Green:"#2f9e57",Blue:"#2f6fed",Purple:"#8b57d6",Black:"#33384a",Yellow:"#e0a53b"};
 const TYPE_ORDER=["normal","alternate_art","sp","manga","full_art","textured_foil","jolly_roger_foil","promo","tournament"];
@@ -1268,7 +1269,7 @@ function setFamily(code){ const s=String(code||'').toUpperCase().trim(); if(!s) 
   return pre;
 }
 function setFamRank(fam){ const m=String(fam).match(/^([A-Z]+)(\d+)?/); const g=({OP:0,EB:1,PRB:2,ST:3})[m?m[1]:'']; return [(g==null?8:g), m?m[1]:'zz', (m&&m[2])?+m[2]:999]; }
-const DEF={q:"",lang:"all",color:"all",type:"all",prov:"all",cat:"all",rarity:"all",character:"all",grade:"all",set:"all",minVal:0,imgf:"all",authf:"all",recvf:"all",pricef:"all",variant:"all",achatPeriod:"all",openRatio:null,openLiquid:false,gapView:"mine",tgtLang:"JP",tgtBudget:0,sort:"val_desc",view:"grid",mode:"accueil",catLang:"all",catQuery:"",catLangs:[],catColors:[],catCats:[],catRarities:[],catTypes:[],catTreats:[],catProvs:[],catSort:"price_desc",catGroup:true,setLang:"JP",prodLang:"JP"};
+const DEF={q:"",lang:"all",color:"all",type:"all",prov:"all",cat:"all",rarity:"all",character:"all",grade:"all",set:"all",minVal:0,imgf:"all",authf:"all",recvf:"all",pricef:"all",variant:"all",achatPeriod:"all",openRatio:null,openLiquid:false,gapView:"mine",tgtLang:"JP",tgtBudget:0,sort:"val_desc",view:"grid",mode:"accueil",catLang:"all",catQuery:"",catLangs:[],catColors:[],catCats:[],catRarities:[],catTypes:[],catTreats:[],catProvs:[],catSets:[],catSort:"price_desc",catGroup:true,setLang:"JP",prodLang:"JP"};
 let PROD_VALUE=0;
 // Barre du haut : portefeuille détaillé (total = cartes + scellés), même valeur live que l'accueil
 function portfolioMini(){
@@ -1279,7 +1280,7 @@ function portfolioMini(){
 }
 const CATLANGS=[["all","Toutes"],["JP","Japonais"],["EN","Anglais"]];
 const CATCATS=[["all","Toutes catégories"],["LEADER","Leader"],["CHARACTER","Personnage"],["EVENT","Event"],["STAGE","Stage"],["DON","DON!!"]];
-const CATRARS=[["all","Toutes raretés"],["L","Leader"],["C","Common"],["UC","Uncommon"],["R","Rare"],["SR","Super Rare"],["SEC","Secret Rare"],["TR","Treasure Rare"],["SP","Special"],["P","Promo"]];
+const CATRARS=[["all","Toutes raretés"],["SEC","Secret Rare"],["L","Leader"],["SR","Super Rare"],["R","Rare"],["UC","Uncommon"],["C","Common"],["PR","Promo"],["TR","Treasure Rare"]];
 const CATTYPES=[["all","Tous types"],["STANDARD","Standard"],["PROMO","Promo"],["BATTLE_EVENT","Battleship"],["PREMIUM_COLLECTION","Premium Collection"],["TOURNAMENT","Tournoi"],["PRODUCT_EXCLUSIVE","Exclusivité produit"]];
 const CATSORTS=[["num","Numéro"],["name","Nom (A→Z)"],["lang","Langue"],["price_desc","Prix décroissant (cher → bas)"],["price_asc","Prix croissant (bas → cher)"]];
 const SRC_LABELS={PRICECHARTING:"PriceCharting",TCGPLAYER:"TCGplayer",CARDMARKET:"Cardmarket",MANUAL:"Manuel (toi)",CARDRUSH:"Cardrush (JP)"};
@@ -1569,11 +1570,13 @@ function buildFilterModal(){
   LANGS.forEach(([code,label])=>{ const n=code==="all"?DATA.length:(code==="autre"?autreN:(lc[code]||0)); if(code!=="all"&&!n)return;
     mL.appendChild(makeChip(((code==="all"||code==="autre")?"":FLAG[code]+" ")+label,n,state.lang===code,()=>{state.lang=code;afterFilter()})); });
 
-  const sf={}; DATA.forEach(c=>{ const f=setFamily(c.set_code); sf[f]=(sf[f]||0)+1; });
-  const mS=document.getElementById("mSet"); if(mS){ mS.innerHTML="";
-    mS.appendChild(makeChip("Tous",DATA.length,state.set==="all"||!state.set,()=>{state.set="all";afterFilter()}));
-    Object.keys(sf).sort((a,b)=>{ const ra=setFamRank(a),rb=setFamRank(b); return ra[0]-rb[0]||(ra[1]<rb[1]?-1:ra[1]>rb[1]?1:0)||ra[2]-rb[2]; })
-      .forEach(f=>{ mS.appendChild(makeChip(f,sf[f],state.set===f,()=>{state.set=f;afterFilter()})); }); }
+  const sf={}; DATA.forEach(c=>{ const f=setFamily(c.card_number); sf[f]=(sf[f]||0)+1; });
+  const mS=document.getElementById("mSet"); if(mS){
+    const fams=Object.keys(sf).filter(f=>f&&f!=='—').sort((a,b)=>{ const ra=setFamRank(a),rb=setFamRank(b); return ra[0]-rb[0]||(ra[1]<rb[1]?-1:ra[1]>rb[1]?1:0)||ra[2]-rb[2]; });
+    let h='<option value="all">Tous les sets ('+DATA.length+')</option>';
+    fams.forEach(f=>{ h+='<option value="'+esc(f)+'">'+esc(f)+' ('+sf[f]+')</option>'; });
+    mS.innerHTML=h; mS.value=state.set||'all';
+  }
 
   const colc={}; DATA.forEach(c=>{ if(c.color) c.color.split(";").forEach(x=>colc[x]=(colc[x]||0)+1); });
   const mC=document.getElementById("mColor"); mC.innerHTML="";
@@ -1702,7 +1705,7 @@ function apply(){
   if(state.pricef==="noprice") a=a.filter(c=>{const k=priceConf(c);return k&&k.lvl==='none';});
   else if(state.pricef==="doubt") a=a.filter(c=>{const k=priceConf(c);return k&&(k.lvl==='warn'||k.lvl==='bad');});
   if(state.q){const q=state.q.toLowerCase();a=a.filter(c=>(c.card_name||"").toLowerCase().includes(q)||(c.card_number||"").toLowerCase().includes(q));}
-  if(state.set&&state.set!=='all') a=a.filter(c=>setFamily(c.set_code)===state.set);
+  if(state.set&&state.set!=='all') a=a.filter(c=>setFamily(c.card_number)===state.set);
   const s=state.sort;
   a.sort((x,y)=> s==="val_asc"?val(x)-val(y): s==="name"?(x.card_name||"").localeCompare(y.card_name||""): s==="num"?(x.card_number||"").localeCompare(y.card_number||""): s==="qty"?(y.quantity||1)-(x.quantity||1): s==="achat"?((achatKey(y)).localeCompare(achatKey(x))||val(y)-val(x)): s==="set"?(setKeyC(x.set_code).localeCompare(setKeyC(y.set_code))||(x.card_number||"").localeCompare(y.card_number||"")): val(y)-val(x));
   COLLIST=a;
@@ -3994,21 +3997,21 @@ async function homeBriefing(){
   }catch(e){ box.innerHTML='<div class="txt" style="color:var(--muted);font-size:13px">Erreur, réessaie.</div><button class="hbriefbtn" onclick="homeBriefing()">Réessayer</button>'; }
 }
 document.getElementById('modeSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMode(b.dataset.m);});
-const APP_VERSION='Version b86 · 03/09';
+const APP_VERSION='Version b91 · 03/09';
 { const nv=document.getElementById('navVersion'); if(nv) nv.textContent=APP_VERSION; }
 document.getElementById('mktSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMarket(b.dataset.k);});
-const CATARRS=["catColors","catCats","catRarities","catTreats","catProvs"];
+const CATARRS=["catColors","catCats","catRarities","catTreats","catProvs","catSets"];
 function toggleCat(key,code){ if(code==="all"){ state[key]=[]; } else { const a=state[key]; state[key]=a.includes(code)?a.filter(x=>x!==code):a.concat([code]); } }
-function catActiveCount(){ return state.catColors.length+state.catCats.length+state.catRarities.length+state.catTreats.length+state.catProvs.length; }
+function catActiveCount(){ return state.catColors.length+state.catCats.length+state.catRarities.length+state.catTreats.length+state.catProvs.length+state.catSets.length; }
 // Facettes variantes (traitement + provenance) : familles réellement présentes, avec compteurs.
 // Se remplit tout seul quand une nouvelle variante entre au catalogue.
-let CATFACETS={treat:{},prov:{}};
+let CATFACETS={treat:{},prov:{},set:{}};
 async function loadCatFacets(){
   try{
     const r=await fetch(SB+"/rest/v1/app_catalog_facets?select=kind,fam,n",{headers:{apikey:ANON,Authorization:"Bearer "+ANON}});
     const rows=await r.json(); if(!Array.isArray(rows)) return;
-    const t={},p={}; rows.forEach(x=>{ if(x.kind==='treat')t[x.fam]=x.n; else if(x.kind==='prov')p[x.fam]=x.n; });
-    CATFACETS={treat:t,prov:p};
+    const t={},p={},se={}; rows.forEach(x=>{ if(x.kind==='treat')t[x.fam]=x.n; else if(x.kind==='prov')p[x.fam]=x.n; else if(x.kind==='set')se[x.fam]=x.n; });
+    CATFACETS={treat:t,prov:p,set:se};
     if(!document.getElementById('cfmodal').classList.contains('hidden')) buildCatFilterModal();
   }catch(e){}
 }
@@ -4045,6 +4048,15 @@ function buildCatFilterModal(){
     // familles présentes hors ordre connu (nouvelles variantes) : on les sort quand même
     Object.keys(counts||{}).forEach(fam=>{ if(order.includes(fam)||!counts[fam]) return; box.appendChild(makeChip((labels[fam]||fam),counts[fam],state[key].includes(fam),()=>{ toggleCat(key,fam); buildCatFilterModal(); syncCatBadge(); fetchCatalog(); })); });
   });
+  // Axe Set / Édition en menu déroulant : mêmes familles normalisées que la collection (setFamily), triées par rang.
+  const sbox=document.getElementById("cmSet");
+  if(sbox){
+    const fams=Object.keys(CATFACETS.set||{}).filter(f=>f&&f!=='-'&&f!=='—').sort((a,b)=>{ const ra=setFamRank(a),rb=setFamRank(b); return ra[0]-rb[0]||(ra[1]<rb[1]?-1:ra[1]>rb[1]?1:0)||ra[2]-rb[2]; });
+    let h='<option value="all">Tous les sets</option>';
+    fams.forEach(fam=>{ h+='<option value="'+esc(fam)+'">'+esc(fam)+' ('+CATFACETS.set[fam]+')</option>'; });
+    sbox.innerHTML=h; sbox.value=state.catSets[0]||'all';
+    sbox.onchange=()=>{ const v=sbox.value; state.catSets=(v==='all'?[]:[v]); syncCatBadge(); fetchCatalog(); };
+  }
 }
 function openCatFilters(){ buildCatFilterModal(); document.getElementById("cfmodal").classList.remove("hidden"); }
 function closeCatFilters(){ document.getElementById("cfmodal").classList.add("hidden"); }
@@ -4061,7 +4073,7 @@ let CATACC=[]; const CATPAGE=120;
 async function fetchCatalog(append){
   const stage=document.getElementById('stage');
   const term=(state.catQuery||"").replace(/[%*(),]/g," ").trim();
-  const noFilters=!term && !state.catLangs.length && !state.catCats.length && !state.catRarities.length && !state.catTreats.length && !state.catProvs.length && !state.catColors.length;
+  const noFilters=!term && !state.catLangs.length && !state.catCats.length && !state.catRarities.length && !state.catTreats.length && !state.catProvs.length && !state.catColors.length && !state.catSets.length;
   if(!append){ state.catOffset=0; CATACC=[]; stage.className=""; stage.innerHTML='<div class="loading">Recherche…</div>'; }
   // Le tri prix suit le marché sélectionné (JP/EU/US) — même colonne que le prix affiché, sinon l'ordre paraît aléatoire.
   const mkcol=(MKT==='EU'?'mk_eu':'disp_'+(MKT_FIELD[MKT]?MKT.toLowerCase():'jp'));
@@ -4079,6 +4091,7 @@ async function fetchCatalog(append){
   if(state.catRarities.length) url+="&rarity=in.("+state.catRarities.join(",")+")";
   if(state.catTreats.length) url+="&treatment_family=in.("+state.catTreats.join(",")+")";
   if(state.catProvs.length) url+="&provenance_family=in.("+state.catProvs.join(",")+")";
+  if(state.catSets.length) url+="&set_family=in.("+state.catSets.join(",")+")";
   const groups=[];
   if(state.catColors.length) groups.push("or("+state.catColors.map(c=>"color.ilike.*"+c+"*").join(",")+")");
   if(term){ const pat="*"+encodeURIComponent(term)+"*"; groups.push("or(card_number.ilike."+pat+",name.ilike."+pat+")"); }
@@ -4805,6 +4818,7 @@ document.getElementById("filterBtn").addEventListener("click",()=>{ state.mode==
 document.getElementById("fclose").addEventListener("click",closeFilters);
 document.getElementById("fapply").addEventListener("click",closeFilters);
 document.getElementById("freset").addEventListener("click",resetFilters);
+document.getElementById("mSet").addEventListener("change",e=>{state.set=e.target.value;afterFilter()});
 document.getElementById("mChar").addEventListener("change",e=>{state.character=e.target.value;afterFilter()});
 document.getElementById("mVariant").addEventListener("change",e=>{state.variant=e.target.value;afterFilter()});
 document.getElementById("viewBtn").addEventListener("click",()=>{ state.view=state.view==="grid"?"list":"grid"; document.getElementById("viewBtn").innerHTML=state.view==="grid"?"▦":"☰"; render(); });
