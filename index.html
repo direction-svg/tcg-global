@@ -1230,19 +1230,21 @@ function treatmentFamily(c){
 }
 // PROVENANCE / collection d'origine (indépendant du traitement)
 const PROV_LABELS={base:"Set principal",premium_booster:"Premium Booster",promo:"Promo",tournament:"Tournoi / Event",special_product:"Produit spécial",jump:"Jump / Magazine",anniversary:"Anniversaire",ope_day:"One Piece Day",serial:"Serial",other:"Autre"};
-const PROV_ORDER=["base","premium_booster","promo","tournament","special_product","jump","anniversary","ope_day","serial","other"];
+const PROV_ORDER=["base","premium_booster","promo","tournament","special_product","anniversary","serial","other"];
 function provenanceFamily(c){
   const v=String(c&&c.variant||'').toLowerCase();
   const lab=String(c&&c.variant_label||'').toLowerCase();
+  const num=String(c&&(c.card_number||c.number)||'').toUpperCase();
+  const nm=String((c&&(c.card_name||c.name))||'').toLowerCase();
   const s=v+' '+lab;
-  if(s.includes('one piece day')||/ope?_?day/.test(v)) return 'ope_day';
-  if(/jump|magazine/.test(s)) return 'jump';
-  if(s.includes('anniversary')||s.includes('anniv')) return 'anniversary';
-  if(/championship|tournament|flagship|battle|cup|winner|3[_-]on[_-]3/.test(s)) return 'tournament';
-  if(/leader collection|storage box|best[_ ]selection|gift|mini[_-]?tin|base shop|let'?s get started|get_campaign/.test(s)) return 'special_product';
+  if(/anniversary|anniv/.test(s)) return 'anniversary';
+  if(/championship|tournament|flagship|standard battle|regional|offline|online regional|sealed battle|treasure cup|pirates league|store championship|store tournament|store 2[_ -]on[_ -]2|3[_-]on[_-]3|champion|finalist|participant|top prize|top player|winner|winner pack|participation/.test(s)) return 'tournament';
+  if(/leader collection|storage box|best[_ ]selection|admirable collection|premium card collection|premium collection|gift collection|gift|mini[_-]?tin|tin pack|base shop|let'?s get started|get_campaign|illustration box|welcome pack|encore pack|dash pack|starter deck|ultra deck|odyssey|special goods|treasure booster|treasure chest|treasure cruise|sound loader|demo|battle deck|leader pack|finale set/.test(s)) return 'special_product';
   if(v.includes('prb')||/prb-?0?\d/.test(s)) return 'premium_booster';
-  if(v.includes('serial')||/#\d/.test(lab)) return 'serial';
-  if(/promo|promotion|playmat|wanted|live[_ ]action|asia|daz|standard battle|reprint/.test(s)) return 'promo';
+  if(v.includes('serial')||/#\d|serial/.test(lab)) return 'serial';
+  if(/promo|promotion|jump|magazine|one piece day|op[_ ]?day|playmat|wanted|live[_ ]action|reprint|campaign|event|7[_ -]?eleven|fest|judge|convention|anime expo|gen con|red bull|dodgers|mos burger|college basketball|bvb|new year|pirates party|release event|pre-?release|super pre|round 1|jumbo|oversized|comic|film red|retail|store|asia|daz|weekly|v jump|saikyo|spc/.test(s)) return 'promo';
+  if(/^P-|^DON-LG/.test(num)) return 'promo';
+  if(/^DON/.test(num) && !(nm==='don!!' && lab==='')) return 'promo';   // DON spéciaux (Gold perso, foil premium, Rainbow…) = promo ; DON!! de jeu = base
   return 'base';                 // set principal (normale + alt-art de série, etc.)
 }
 function variantFamily(c){ return treatmentFamily(c); }   // compat
@@ -3999,7 +4001,7 @@ async function homeBriefing(){
   }catch(e){ box.innerHTML='<div class="txt" style="color:var(--muted);font-size:13px">Erreur, réessaie.</div><button class="hbriefbtn" onclick="homeBriefing()">Réessayer</button>'; }
 }
 document.getElementById('modeSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMode(b.dataset.m);});
-const APP_VERSION='Version b93 · 03/09';
+const APP_VERSION='Version b97 · 03/09';
 { const nv=document.getElementById('navVersion'); if(nv) nv.textContent=APP_VERSION; }
 document.getElementById('mktSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMarket(b.dataset.k);});
 const CATARRS=["catColors","catCats","catRarities","catTreats","catProvs","catSets"];
@@ -4273,7 +4275,7 @@ function renderOps(){
 }
 const ORIGIN_LABELS={STANDARD:"Standard",PROMO:"Promo",BATTLE_EVENT:"Battleship",PREMIUM_COLLECTION:"Premium Collection",TOURNAMENT:"Tournoi",PRODUCT_EXCLUSIVE:"Exclusivité produit",OTHER:"Autre source"};
 // Provenance lisible (n'affiche rien pour les cartes standard). Utilisé partout : collection, catalogue, fiches.
-function provNice(c){ return (c&&c.origin&&c.origin!=='STANDARD')?(ORIGIN_LABELS[c.origin]||c.origin):''; }
+function provNice(c){ const f=provenanceFamily(c); return (f&&f!=='base')?(PROV_LABELS[f]||f):''; }
 // Étiquettes descriptives d'une carte (variante + provenance) — mêmes chips partout.
 function descTags(c){
   let s='';
@@ -4328,7 +4330,7 @@ function renderCatDetail(){
       drow("Nom", esc(c.name))+drow("Numéro de carte", esc(c.card_number))+
       drow("Rareté", RAR_LABELS[c.rarity]||c.rarity||"—")+
       drow("Rareté de l’œuvre", '<b>'+variantNice(c)+'</b>')+
-      drow("Type", c.origin?(ORIGIN_LABELS[c.origin]||c.origin):"")+
+      drow("Provenance", (PROV_LABELS[provenanceFamily(c)]||provenanceFamily(c)))+
       drow("Catégorie", CAT_LABELS[c.category]||c.category)+
       drow("Set / Édition", esc((c.set_code||"")+(c.set_name?(" — "+c.set_name):"")))+
       drow("Langue", (FLAG[c.language]||"")+' '+(LANG_LABELS[c.language]||c.language));
@@ -5044,7 +5046,7 @@ function renderDetail(){ const c=detailCard; if(!c)return; const body=document.g
       drow("Rareté", RAR_LABELS[c.rarity]||c.rarity||"—")+
       drow("Rareté de l’œuvre", '<b>'+artwork+'</b>')+
       drow("Type d’illustration", typ)+
-      drow("Provenance", c.origin?(ORIGIN_LABELS[c.origin]||c.origin):"")+
+      drow("Provenance", (PROV_LABELS[provenanceFamily(c)]||provenanceFamily(c)))+
       drow("Catégorie", CAT_LABELS[c.category]||c.category)+
       drow("Couleur", (c.color||"").split(";").filter(Boolean).join(" / "))+
       drow("Set / Édition", esc((c.set_code||"")+(c.set_name?(" — "+c.set_name):"")))+
@@ -5086,7 +5088,7 @@ function renderDetail(){ const c=detailCard; if(!c)return; const body=document.g
           '<div class="dt" style="font-size:11px;line-height:1.4">La carte quittera ta collection et sa plus-value réalisée (prix − frais − coût payé) ira dans « Ventes ». Coût pris en compte : '+(c.acquired_price!=null?eur0(c.acquired_price):'0 € (tirage de caisse)')+'.</div>'+
         '</div></details>';
   } else {
-    body.innerHTML=drow("Nom", esc(c.card_name))+drow("Numéro", esc(c.card_number))+drow("Variante", '<b>'+variantNice(c)+'</b>')+drow("Provenance", c.origin?(ORIGIN_LABELS[c.origin]||c.origin):"")+drow("Rareté", RAR_LABELS[c.rarity]||c.rarity)+drow("Set / Édition", esc((c.set_code||"")+(c.set_name?(" — "+c.set_name):"")))+drow("Catégorie", CAT_LABELS[c.category]||c.category)+drow("Type d’illustration", TYPE_LABELS[c.card_type]||c.card_type)+drow("Couleur", (c.color||"").split(";").join(" / "))+drow("Langue", LANG_LABELS[c.language]||c.language);
+    body.innerHTML=drow("Nom", esc(c.card_name))+drow("Numéro", esc(c.card_number))+drow("Variante", '<b>'+variantNice(c)+'</b>')+drow("Provenance", (PROV_LABELS[provenanceFamily(c)]||provenanceFamily(c)))+drow("Rareté", RAR_LABELS[c.rarity]||c.rarity)+drow("Set / Édition", esc((c.set_code||"")+(c.set_name?(" — "+c.set_name):"")))+drow("Catégorie", CAT_LABELS[c.category]||c.category)+drow("Type d’illustration", TYPE_LABELS[c.card_type]||c.card_type)+drow("Couleur", (c.color||"").split(";").join(" / "))+drow("Langue", LANG_LABELS[c.language]||c.language);
   }
 }
 async function clearReverify(){
