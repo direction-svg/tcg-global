@@ -839,6 +839,7 @@ body{-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
     <div class="navgrp">Ma collection</div>
     <button data-m="collection">Collection</button>
     <button data-m="catalog">Catalogue</button>
+    <button data-m="objectifs">Objectifs</button>
     <button data-m="sets">Sets</button>
     <button data-m="products">Produits scellés</button>
     <div class="navgrp">Décisions d'investisseur</div>
@@ -1002,6 +1003,26 @@ body{-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
     <div style="padding:14px 16px calc(20px + env(safe-area-inset-bottom));display:flex;gap:8px">
       <button class="buybtn ghost" onclick="confirmBuy(false)">Ajouter sans détail</button>
       <button class="buybtn" onclick="confirmBuy(true)">Ajouter</button>
+    </div>
+  </div>
+</div>
+
+<div id="goalSheet" class="overlay hidden">
+  <div class="sheet ssheet">
+    <div class="fbar"><b>Nouvel objectif</b><button class="x" onclick="closeGoalSheet()">&times;</button></div>
+    <div style="padding:2px 16px 4px">
+      <div class="buylab">Sur quoi porte l’objectif ?</div>
+      <div id="goalAxis" class="buysrc"></div>
+      <div id="goalValWrap" style="margin-top:14px"></div>
+      <div class="buylab" style="margin-top:16px">Langue</div>
+      <div id="goalLang" class="buysrc"></div>
+      <div class="buylab" style="margin-top:16px">Nom de l’objectif</div>
+      <input id="goalName" class="buyinput" placeholder="ex : Boa Hancock" oninput="onGoalNameEdit()">
+      <div id="goalPreview" class="dt" style="margin-top:10px;font-size:12.5px"></div>
+    </div>
+    <div style="padding:14px 16px calc(20px + env(safe-area-inset-bottom));display:flex;gap:8px">
+      <button class="buybtn ghost" onclick="closeGoalSheet()">Annuler</button>
+      <button class="buybtn" onclick="createGoal()">Créer l’objectif</button>
     </div>
   </div>
 </div>
@@ -1831,7 +1852,7 @@ function secNav(items){ items=(items||[]).filter(it=>it && (it.always || it.n==n
 function jumpSec(id){ const el=document.getElementById('sec-'+id); if(el) el.scrollIntoView({behavior:'smooth',block:'start'}); }
 function pgSection(id,label,inner,color){ return '<div class="pgsec" id="sec-'+id+'">'+(label?('<div class="pgsec-h"'+(color?(' style="color:'+color+'"'):'')+'>'+esc(label)+'</div>'):'')+inner+'</div>'; }
 function pgSortSel(sorts,cur,onchange){ return '<select class="pgsort" onchange="'+onchange+'">'+sorts.map(s=>'<option value="'+s[0]+'"'+(cur===s[0]?' selected':'')+'>'+esc(s[1])+'</option>').join('')+'</select>'; }
-const NAV_TITLES={accueil:'Accueil',collection:'Collection',catalog:'Catalogue',sets:'Sets',products:'Produits scellés',cibler:'À cibler',conviction:'Conviction',ops:'Opportunités',ecarts:'Écarts JP/EN',offre:'Offre & reprint',risque:'Risque',track:'Track record',agenda:'Agenda',achats:'Achats',ventes:'Ventes',mouv:'Mouvements',gradation:'Gradation',gradeia:'Gradation IA',preachat:'Avant d\'acheter',ouvrir:'Ouvrir ?',sante:'Santé des données',live:'Live'};
+const NAV_TITLES={accueil:'Accueil',collection:'Collection',catalog:'Catalogue',objectifs:'Objectifs',sets:'Sets',products:'Produits scellés',cibler:'À cibler',conviction:'Conviction',ops:'Opportunités',ecarts:'Écarts JP/EN',offre:'Offre & reprint',risque:'Risque',track:'Track record',agenda:'Agenda',achats:'Achats',ventes:'Ventes',mouv:'Mouvements',gradation:'Gradation',gradeia:'Gradation IA',preachat:'Avant d\'acheter',ouvrir:'Ouvrir ?',sante:'Santé des données',live:'Live'};
 // ---- Pages regroupées : un onglet de menu, plusieurs sous-pages ----
 const PARENTS={
   portefeuille:{label:'Portefeuille',tabs:[['conviction','Conviction'],['risque','Risque']]},
@@ -1857,14 +1878,14 @@ function setMode(m){
   { const pt=document.getElementById('pageTitle'); if(pt) pt.textContent=(m==='accueil'?'':(parentKey?PARENTS[parentKey].label:(NAV_TITLES[m]||''))); }
   { const st=document.getElementById('stage'); if(st) st.scrollTop=0; }
   closeNav();
-  const home=m==="accueil", cat=m==="catalog", ops=m==="ops", sets=m==="sets", prods=m==="products", live=m==="live", ia=m==="ia", achats=m==="achats", grad=m==="gradation", gradeia=m==="gradeia", preachat=m==="preachat", sante=m==="sante", ouvrir=m==="ouvrir", ventes=m==="ventes", mouv=m==="mouv", conv=m==="conviction", ecarts=m==="ecarts", offre=m==="offre", agenda=m==="agenda", risque=m==="risque", cibler=m==="cibler", track=m==="track";
+  const home=m==="accueil", cat=m==="catalog", ops=m==="ops", sets=m==="sets", prods=m==="products", live=m==="live", ia=m==="ia", achats=m==="achats", grad=m==="gradation", gradeia=m==="gradeia", preachat=m==="preachat", sante=m==="sante", ouvrir=m==="ouvrir", ventes=m==="ventes", mouv=m==="mouv", conv=m==="conviction", ecarts=m==="ecarts", offre=m==="offre", agenda=m==="agenda", risque=m==="risque", cibler=m==="cibler", track=m==="track", objectifs=m==="objectifs";
   if(!live) stopLive();
   document.getElementById('catLangRow').classList.toggle('hidden',!cat);
   document.getElementById('catFilters').classList.add('hidden');
-  document.getElementById('viewBtn').classList.toggle('hidden',home||cat||ops||sets||prods||live||ia||achats||grad||gradeia||preachat||sante||ouvrir||ventes||mouv||conv||ecarts||offre||agenda||risque||cibler||track);
-  document.getElementById('filterBtn').classList.toggle('hidden',home||ops||sets||prods||live||ia||achats||grad||gradeia||preachat||sante||ouvrir||ventes||mouv||conv||ecarts||offre||agenda||risque||cibler||track);
-  document.getElementById('sortBtn').classList.toggle('hidden',home||ops||sets||prods||live||ia||achats||grad||gradeia||preachat||sante||ouvrir||ventes||mouv||conv||ecarts||offre||agenda||risque||cibler||track);
-  document.querySelector('.search').classList.toggle('hidden',home||sets||prods||live||ia||achats||grad||gradeia||preachat||sante||ouvrir||risque);
+  document.getElementById('viewBtn').classList.toggle('hidden',home||cat||ops||sets||prods||live||ia||achats||grad||gradeia||preachat||sante||ouvrir||ventes||mouv||conv||ecarts||offre||agenda||risque||cibler||track||objectifs);
+  document.getElementById('filterBtn').classList.toggle('hidden',home||ops||sets||prods||live||ia||achats||grad||gradeia||preachat||sante||ouvrir||ventes||mouv||conv||ecarts||offre||agenda||risque||cibler||track||objectifs);
+  document.getElementById('sortBtn').classList.toggle('hidden',home||ops||sets||prods||live||ia||achats||grad||gradeia||preachat||sante||ouvrir||ventes||mouv||conv||ecarts||offre||agenda||risque||cibler||track||objectifs);
+  document.querySelector('.search').classList.toggle('hidden',home||sets||prods||live||ia||achats||grad||gradeia||preachat||sante||ouvrir||risque||objectifs);
   document.getElementById('scanFab').classList.toggle('hidden',!(m==='collection'||m==='catalog'));
   const vfr=document.getElementById('valFilterRow'); if(vfr){ if(m==='collection'){ vfr.style.display='block'; buildValRow(); } else { vfr.style.display='none'; } }
   // recherche : réinitialisée à chaque changement de page ; placeholder adapté
@@ -1896,6 +1917,7 @@ function setMode(m){
   else if(risque){ document.getElementById('countLine').textContent=''; renderRisque(); }
   else if(cibler){ document.getElementById('countLine').textContent=''; fetchTargets(); }
   else if(track){ document.getElementById('countLine').textContent=''; fetchTrack(); }
+  else if(objectifs){ document.getElementById('countLine').textContent=''; renderObjectifs(); }
   else { syncBadge(); document.getElementById('countLine').textContent=''; render(); loadBriefing(); }
 }
 // ---------- Santé des données ----------
@@ -4001,7 +4023,7 @@ async function homeBriefing(){
   }catch(e){ box.innerHTML='<div class="txt" style="color:var(--muted);font-size:13px">Erreur, réessaie.</div><button class="hbriefbtn" onclick="homeBriefing()">Réessayer</button>'; }
 }
 document.getElementById('modeSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMode(b.dataset.m);});
-const APP_VERSION='Version b101 · 04/09';
+const APP_VERSION='Version b102 · 04/09';
 { const nv=document.getElementById('navVersion'); if(nv) nv.textContent=APP_VERSION; }
 document.getElementById('mktSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMarket(b.dataset.k);});
 const CATARRS=["catColors","catCats","catRarities","catTreats","catProvs","catSets"];
@@ -5228,6 +5250,121 @@ async function priceSave(id){
     try{ if(typeof saveCollCache==='function') saveCollCache(); }catch(_){}
   }catch(e){ alert('Impossible de mettre à jour le prix. Réessaie.'); }
 }
+// ---------- Objectifs de collection ----------
+let GOALS=[], GOALDETAIL=null;
+const GOAL_LANGS=[['JP','🇯🇵 Japon'],['EN','🇺🇸 Anglais'],['CN','🇨🇳 Chinois'],['ALL','🌐 Toutes']];
+const GOAL_TRAITS=['manga','sp','super_parallel','alt_art','parallel','full_art','gold','foil','textured','jolly_roger'];
+function goalParams(g){
+  let p='';
+  if(g.language && g.language!=='ALL') p+='&language=eq.'+encodeURIComponent(g.language);
+  if(g.kind==='personnage') p+='&name=ilike.'+encodeURIComponent('%'+g.value+'%');
+  else if(g.kind==='set') p+='&set_family=eq.'+encodeURIComponent(g.value);
+  else if(g.kind==='traitement') p+='&treatment_family=eq.'+encodeURIComponent(g.value);
+  else if(g.kind==='rarete') p+='&rarity=eq.'+encodeURIComponent(g.value);
+  return p;
+}
+function goalPx(r){ if(r.price_eur!=null) return Number(r.price_eur); if(r.jp_eur!=null) return Number(r.jp_eur); if(r.eu_eur!=null) return Number(r.eu_eur); if(r.us_eur!=null) return Number(r.us_eur); return null; }
+async function goalRows(g){
+  const url=SB+'/rest/v1/app_catalog_priced?select=printing_id,card_number,name,variant,variant_label,rarity,set_code,set_name,language,color,category,owned,jp_eur,eu_eur,us_eur,price_eur,price_source,image_url,treatment_family&limit=3000'+goalParams(g);
+  try{ const r=await fetch(url,{headers:{apikey:ANON,Authorization:'Bearer '+ANON}}); const j=await r.json(); return Array.isArray(j)?j:[]; }catch(e){ return []; }
+}
+function goalKindLabel(g){ return g.kind==='personnage'?('Personnage · '+g.value):(g.kind==='set'?('Set · '+g.value):(g.kind==='traitement'?('Famille · '+(TREAT_LABELS[g.value]||g.value)):('Rareté · '+(RAR_LABELS[g.value]||g.value)))); }
+function goalFlag(l){ return l==='JP'?'🇯🇵':(l==='EN'?'🇺🇸':(l==='CN'?'🇨🇳':'🌐')); }
+async function renderObjectifs(){
+  const st=document.getElementById('stage');
+  st.innerHTML='<div style="padding:6px 2px 2px"><button onclick="openNewGoal()" style="width:100%;border:1px dashed var(--accent);background:rgba(193,147,56,.08);color:var(--accent);font-weight:800;padding:13px;border-radius:12px;cursor:pointer;font-size:14px">＋ Nouvel objectif</button></div><div id="goalList" style="margin-top:12px"></div>';
+  try{ const r=await fetch(SB+'/rest/v1/app_goals?select=*&order=sort_order,created_at',{headers:{apikey:ANON,Authorization:'Bearer '+ANON}}); const j=await r.json(); GOALS=Array.isArray(j)?j:[]; }catch(e){ GOALS=[]; }
+  const box=document.getElementById('goalList'); if(!box) return;
+  if(!GOALS.length){ box.innerHTML='<div class="dt" style="padding:14px;text-align:center;font-size:13px">Aucun objectif pour l’instant. Crée-en un pour suivre une série à compléter (un personnage, un set, une famille…) — la progression et les cartes à chasser se mettent à jour toutes seules à chaque sortie.</div>'; return; }
+  box.innerHTML=GOALS.map(function(g,i){ return '<div id="goalCard'+i+'" style="border:1px solid var(--line);background:var(--panel);border-radius:14px;padding:14px;margin-bottom:10px">'+
+    '<div style="display:flex;align-items:flex-start;gap:8px"><div style="flex:1;min-width:0;cursor:pointer" onclick="openGoalDetail(\''+esc(g.id)+'\')"><div style="font-weight:800;font-size:15px">'+goalFlag(g.language)+' '+esc(g.name)+'</div><div class="dt" style="font-size:11.5px;margin-top:1px">'+esc(goalKindLabel(g))+'</div></div>'+
+    '<button onclick="deleteGoal(\''+esc(g.id)+'\')" title="Supprimer" style="border:0;background:transparent;color:var(--muted);font-size:17px;cursor:pointer;padding:2px 4px">🗑</button></div>'+
+    '<div id="goalProg'+i+'" class="dt" style="margin-top:10px;font-size:12.5px">Calcul…</div></div>'; }).join('');
+  GOALS.forEach(function(g,i){ computeGoalCard(g,i); });
+}
+async function computeGoalCard(g,i){
+  const rows=await goalRows(g);
+  const total=rows.length, owned=rows.filter(r=>r.owned).length, missing=total-owned;
+  const remain=rows.filter(r=>!r.owned).reduce((s,r)=>s+(goalPx(r)||0),0);
+  const pct= total? Math.round(owned/total*100):0;
+  const el=document.getElementById('goalProg'+i); if(!el) return;
+  el.innerHTML='<div style="display:flex;justify-content:space-between;align-items:baseline"><span style="font-weight:800;color:var(--ink);font-size:14px">'+owned+' / '+total+'</span><span style="color:var(--accent);font-weight:800">'+pct+'%</span></div>'+
+    '<div style="height:9px;border-radius:6px;background:rgba(148,163,184,.18);overflow:hidden;margin:7px 0 6px"><i style="display:block;height:100%;width:'+pct+'%;background:linear-gradient(90deg,var(--accent),#3fae70)"></i></div>'+
+    '<div style="display:flex;justify-content:space-between"><span>'+(missing>0?('👉 '+missing+' à trouver'):'✅ Complet !')+'</span>'+(missing>0&&remain>0?('<span>reste ≈ '+eur0(remain)+'</span>'):'')+'</div>';
+}
+async function openGoalDetail(id){
+  const g=GOALS.find(x=>String(x.id)===String(id)); if(!g) return;
+  const st=document.getElementById('stage');
+  st.innerHTML='<div style="padding:2px"><button onclick="setMode(\'objectifs\')" style="border:0;background:transparent;color:var(--accent);font-weight:800;cursor:pointer;font-size:14px;padding:4px 0">‹ Objectifs</button><div style="font-weight:800;font-size:17px;margin-top:2px">'+goalFlag(g.language)+' '+esc(g.name)+'</div><div class="dt" style="font-size:12px">'+esc(goalKindLabel(g))+'</div><div id="goalDetBody" style="margin-top:12px"><div class="dt" style="padding:12px">Calcul…</div></div></div>';
+  const rows=await goalRows(g);
+  const owned=rows.filter(r=>r.owned), miss=rows.filter(r=>!r.owned);
+  miss.sort((a,b)=>(goalPx(b)||0)-(goalPx(a)||0));
+  GOALDETAIL=rows;
+  const total=rows.length, pct=total?Math.round(owned.length/total*100):0;
+  const remain=miss.reduce((s,r)=>s+(goalPx(r)||0),0);
+  const head='<div style="border:1px solid var(--line);background:var(--panel);border-radius:14px;padding:14px;margin-bottom:12px"><div style="display:flex;justify-content:space-between;align-items:baseline"><span style="font-weight:800;font-size:16px">'+owned.length+' / '+total+' possédées</span><span style="color:var(--accent);font-weight:800">'+pct+'%</span></div><div style="height:10px;border-radius:6px;background:rgba(148,163,184,.18);overflow:hidden;margin:8px 0 6px"><i style="display:block;height:100%;width:'+pct+'%;background:linear-gradient(90deg,var(--accent),#3fae70)"></i></div><div class="dt">'+(miss.length>0?(miss.length+' cartes à chasser · reste ≈ '+eur0(remain)):'🎉 Objectif complet !')+'</div></div>';
+  const list = miss.length? ('<div style="font-weight:800;font-size:13px;margin:4px 0 8px">À chasser ('+miss.length+')</div>'+miss.map(function(r,k){ const px=goalPx(r); const img=r.image_url?('<img referrerpolicy="no-referrer" src="'+esc(r.image_url)+'" style="width:34px;height:47px;object-fit:cover;border-radius:4px" onerror="this.remove()">'):'<div style="width:34px;height:47px;border-radius:4px;background:rgba(148,163,184,.15)"></div>'; return '<div onclick="openGoalCard('+k+')" style="display:flex;align-items:center;gap:10px;padding:8px;border:1px solid var(--line);border-radius:10px;margin-bottom:6px;cursor:pointer">'+img+'<div style="flex:1;min-width:0"><div style="font-weight:700;font-size:13px">'+esc(r.card_number||'')+'</div><div class="dt" style="font-size:11px">'+esc(r.variant_label||TREAT_LABELS[r.treatment_family]||'Normale')+'</div></div><div style="font-weight:800;font-size:13px;color:var(--accent);white-space:nowrap">'+(px!=null?eur0(px):'—')+'</div></div>'; }).join('')) : '';
+  const ownedList = owned.length? ('<div style="font-weight:800;font-size:13px;margin:16px 0 8px;color:var(--muted)">Déjà possédées ('+owned.length+')</div>'+owned.map(function(r){ return '<div class="dt" style="display:flex;justify-content:space-between;padding:5px 8px;font-size:12px"><span>✓ '+esc(r.card_number||'')+' · '+esc(r.variant_label||TREAT_LABELS[r.treatment_family]||'Normale')+'</span></div>'; }).join('')) : '';
+  const b=document.getElementById('goalDetBody'); if(b) b.innerHTML=head+list+ownedList;
+}
+function openGoalCard(k){ const miss=(GOALDETAIL||[]).filter(r=>!r.owned); miss.sort((a,b)=>(goalPx(b)||0)-(goalPx(a)||0)); const r=miss[k]; if(r && typeof openCatDetail==='function') openCatDetail(r); }
+async function deleteGoal(id){
+  if(!confirm('Supprimer cet objectif ? (tes cartes ne sont pas touchées)')) return;
+  try{ await fetch(SB+'/rest/v1/rpc/goal_delete',{method:'POST',headers:{apikey:ANON,Authorization:'Bearer '+ANON,'Content-Type':'application/json'},body:JSON.stringify({p_id:id})}); }catch(e){}
+  renderObjectifs();
+}
+// --- Nouvel objectif (sheet) ---
+let NEWGOAL=null, GOALSETS=[];
+const GOAL_AXES=[['personnage','Un personnage'],['set','Un set'],['traitement','Une famille'],['rarete','Une rareté']];
+async function openNewGoal(){
+  NEWGOAL={kind:null,value:null,language:'JP'};
+  document.getElementById('goalAxis').innerHTML=GOAL_AXES.map(a=>'<div class="chip" data-k="'+a[0]+'" onclick="pickGoalAxis(this)">'+a[1]+'</div>').join('');
+  document.getElementById('goalLang').innerHTML=GOAL_LANGS.map(l=>'<div class="chip'+(l[0]==='JP'?' on':'')+'" data-l="'+l[0]+'" onclick="pickGoalLang(this)">'+l[1]+'</div>').join('');
+  document.getElementById('goalValWrap').innerHTML='';
+  document.getElementById('goalName').value='';
+  document.getElementById('goalPreview').innerHTML='';
+  try{ const r=await fetch(SB+'/rest/v1/app_goal_sets?select=set_family,language&order=set_family',{headers:{apikey:ANON,Authorization:'Bearer '+ANON}}); const j=await r.json(); GOALSETS=Array.isArray(j)?j:[]; }catch(e){ GOALSETS=[]; }
+  document.getElementById('goalSheet').classList.remove('hidden');
+}
+function closeGoalSheet(){ document.getElementById('goalSheet').classList.add('hidden'); NEWGOAL=null; }
+function pickGoalLang(el){ document.querySelectorAll('#goalLang .chip').forEach(c=>c.classList.remove('on')); el.classList.add('on'); if(NEWGOAL)NEWGOAL.language=el.getAttribute('data-l'); if(NEWGOAL&&NEWGOAL.kind==='set') renderGoalVal(); goalPreview(); }
+function pickGoalAxis(el){ document.querySelectorAll('#goalAxis .chip').forEach(c=>c.classList.remove('on')); el.classList.add('on'); if(NEWGOAL){ NEWGOAL.kind=el.getAttribute('data-k'); NEWGOAL.value=null; } renderGoalVal(); goalPreview(); }
+function renderGoalVal(){
+  const w=document.getElementById('goalValWrap'); if(!w||!NEWGOAL||!NEWGOAL.kind){ if(w)w.innerHTML=''; return; }
+  if(NEWGOAL.kind==='personnage'){
+    w.innerHTML='<div class="buylab">Nom du personnage</div><input id="gvText" class="buyinput" placeholder="ex : Boa Hancock" oninput="onGoalText()"><div class="dt" style="font-size:11px;margin-top:4px">Astuce : « Boa Hancock » cible bien elle seule (pas ses sœurs Marigold/Sandersonia).</div>';
+  } else if(NEWGOAL.kind==='set'){
+    const L=NEWGOAL.language; const sets=[...new Set(GOALSETS.filter(s=>L==='ALL'||s.language===L).map(s=>s.set_family))].sort();
+    w.innerHTML='<div class="buylab">Set</div><select id="gvSel" onchange="onGoalSel()" class="buyinput"><option value="">— choisir —</option>'+sets.map(s=>'<option value="'+esc(s)+'">'+esc(s)+'</option>').join('')+'</select>';
+  } else if(NEWGOAL.kind==='traitement'){
+    w.innerHTML='<div class="buylab">Famille de traitement</div><select id="gvSel" onchange="onGoalSel()" class="buyinput"><option value="">— choisir —</option>'+GOAL_TRAITS.map(t=>'<option value="'+t+'">'+esc(TREAT_LABELS[t]||t)+'</option>').join('')+'</select>';
+  } else if(NEWGOAL.kind==='rarete'){
+    w.innerHTML='<div class="buylab">Rareté</div><select id="gvSel" onchange="onGoalSel()" class="buyinput"><option value="">— choisir —</option>'+RAR_ORDER.map(t=>'<option value="'+t+'">'+esc(RAR_LABELS[t]||t)+'</option>').join('')+'</select>';
+  }
+}
+function onGoalText(){ const v=document.getElementById('gvText'); if(NEWGOAL){ NEWGOAL.value=v?v.value.trim():''; } autoGoalName(); goalPreview(); }
+function onGoalSel(){ const v=document.getElementById('gvSel'); if(NEWGOAL){ NEWGOAL.value=v?v.value:''; } autoGoalName(); goalPreview(); }
+function autoGoalName(){ const n=document.getElementById('goalName'); if(!n||!NEWGOAL||!NEWGOAL.value) return; if(n.value.trim()==='' || n.dataset.auto==='1'){ let lbl=NEWGOAL.kind==='traitement'?(TREAT_LABELS[NEWGOAL.value]||NEWGOAL.value):(NEWGOAL.kind==='rarete'?(RAR_LABELS[NEWGOAL.value]||NEWGOAL.value):NEWGOAL.value); n.value=lbl; n.dataset.auto='1'; } }
+async function goalPreview(){
+  const box=document.getElementById('goalPreview'); if(!box||!NEWGOAL) return;
+  if(!NEWGOAL.kind||!NEWGOAL.value){ box.innerHTML=''; return; }
+  box.innerHTML='<span style="color:var(--muted)">Aperçu…</span>';
+  const rows=await goalRows(NEWGOAL); if(!NEWGOAL) return;
+  const total=rows.length, owned=rows.filter(r=>r.owned).length;
+  box.innerHTML= total? ('<b>'+total+'</b> cartes correspondent · tu en as déjà <b>'+owned+'</b> → <b>'+(total-owned)+'</b> à chasser.') : '<span style="color:var(--muted)">Aucune carte trouvée pour ce critère — vérifie le nom.</span>';
+}
+async function createGoal(){
+  if(!NEWGOAL||!NEWGOAL.kind){ alert('Choisis un axe (personnage, set…).'); return; }
+  if(!NEWGOAL.value){ alert('Choisis ou saisis la valeur de l’objectif.'); return; }
+  const nm=document.getElementById('goalName'); let name=nm?nm.value.trim():''; if(!name) name=String(NEWGOAL.value);
+  try{
+    const r=await fetch(SB+'/rest/v1/rpc/goal_create',{method:'POST',headers:{apikey:ANON,Authorization:'Bearer '+ANON,'Content-Type':'application/json'},body:JSON.stringify({p_name:name,p_kind:NEWGOAL.kind,p_value:NEWGOAL.value,p_language:NEWGOAL.language})});
+    if(!r.ok) throw 0;
+    closeGoalSheet(); renderObjectifs();
+  }catch(e){ alert('Impossible de créer l’objectif. Réessaie.'); }
+}
+document.getElementById('goalSheet').addEventListener('click',e=>{ if(e.target.id==='goalSheet') closeGoalSheet(); });
+function onGoalNameEdit(){ const n=document.getElementById('goalName'); if(n) n.dataset.auto='0'; }
 function findCard(id){ return DATA.find(c=>String(c.item_id)===String(id)); }
 document.getElementById("stage").addEventListener("click",e=>{
   if(state.mode==="ops"){ const eo=e.target.closest("[data-own]"); if(eo){ openCatDetail(OWNEDROWS[+eo.getAttribute("data-own")]); return; } const el=e.target.closest("[data-op]"); if(el){ openCatDetail(OPROWS[+el.getAttribute("data-op")]); return; } const ef=e.target.closest("[data-ownf]"); if(ef){ openCatDetail(OWNEDROWS_F[+ef.getAttribute("data-ownf")]); return; } const eg=e.target.closest("[data-opf]"); if(eg){ openCatDetail(OPROWS_F[+eg.getAttribute("data-opf")]); return; } return; }
