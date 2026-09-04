@@ -4001,7 +4001,7 @@ async function homeBriefing(){
   }catch(e){ box.innerHTML='<div class="txt" style="color:var(--muted);font-size:13px">Erreur, réessaie.</div><button class="hbriefbtn" onclick="homeBriefing()">Réessayer</button>'; }
 }
 document.getElementById('modeSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMode(b.dataset.m);});
-const APP_VERSION='Version b97 · 03/09';
+const APP_VERSION='Version b99 · 04/09';
 { const nv=document.getElementById('navVersion'); if(nv) nv.textContent=APP_VERSION; }
 document.getElementById('mktSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMarket(b.dataset.k);});
 const CATARRS=["catColors","catCats","catRarities","catTreats","catProvs","catSets"];
@@ -5074,6 +5074,25 @@ function renderDetail(){ const c=detailCard; if(!c)return; const body=document.g
       (c.reverify?'<div style="margin:8px 0;padding:10px 12px;border:1px solid #fecaca;background:#fef2f2;border-radius:10px;font-size:13px;color:#991b1b">🔴 <b>À revérifier — authenticité.</b> Carte à contrôler (test de la tranche / lumière / comparaison avec une vraie). <button onclick=\'clearReverify()\' style="border:0;background:#ef4444;color:#fff;font-weight:800;padding:4px 10px;border-radius:8px;cursor:pointer;margin-left:4px">✓ Vérifiée (authentique)</button></div>':'')+
       '<div class="qtybox"><span class="s">Possédé :</span> <span class="b">'+(c.quantity||1)+'</span></div>'+
       drow("Acheté chez", achFrom)+drow("Date d’achat", achDate)+drow("Prix payé", achPrice)+drow("État", g)+
+      '<details class="pxdet" style="margin-top:10px"'+(c.is_graded?'':'')+'>'+
+        '<summary><span style="font-weight:800">🏅 Modifier l’état / gradation</span></summary>'+
+        '<div class="pxbody" style="padding-top:12px;display:flex;flex-direction:column;gap:9px">'+
+          '<div style="display:flex;gap:8px">'+
+            '<button type="button" id="geBrute" onclick="geMode(false)" style="flex:1;padding:9px;border-radius:9px;border:1px solid '+(!c.is_graded?'var(--accent)':'var(--line)')+';background:'+(!c.is_graded?'rgba(193,147,56,.13)':'var(--panel)')+';color:var(--ink);font-weight:800;cursor:pointer">Brute</button>'+
+            '<button type="button" id="geGradee" onclick="geMode(true)" style="flex:1;padding:9px;border-radius:9px;border:1px solid '+(c.is_graded?'var(--accent)':'var(--line)')+';background:'+(c.is_graded?'rgba(193,147,56,.13)':'var(--panel)')+';color:var(--ink);font-weight:800;cursor:pointer">Gradée</button>'+
+          '</div>'+
+          '<div id="geBox" style="display:'+(c.is_graded?'block':'none')+'">'+
+            '<div class="dt" style="margin-top:2px">Société de gradation</div>'+
+            '<div id="geCo" class="buysrc">'+GRADE_COS.map(function(s){return '<div class="chip'+((c.grading_company===s)?' on':'')+'" data-co="'+s+'" onclick="gePickCo(this)">'+s+'</div>';}).join('')+'</div>'+
+            '<div class="dt" style="margin-top:10px">Note</div>'+
+            '<div id="geGr" class="buysrc">'+GRADE_VALS.map(function(s){return '<div class="chip'+((c.grade!=null&&parseFloat(c.grade)===parseFloat(s))?' on':'')+'" data-g="'+s+'" onclick="gePickGr(this)">'+s+'</div>';}).join('')+'</div>'+
+            '<div class="dt" style="margin-top:10px">N° de certification <span style="color:var(--muted);font-weight:600">— optionnel</span></div>'+
+            '<input id="geCert" class="buyinput" value="'+esc(c.cert_number||'')+'" placeholder="ex : 165624968" oninput="gePreview()">'+
+            '<div id="geVal" style="margin-top:8px;font-size:12.5px"></div>'+
+          '</div>'+
+          '<button onclick="gradeSave(\''+esc(c.item_id)+'\')" style="border:0;background:#a67c27;color:#fff;font-weight:800;padding:10px;border-radius:9px;cursor:pointer">✓ Enregistrer l’état</button>'+
+          '<div class="dt" style="font-size:11px;line-height:1.4">Passe la carte en gradée (PSA, BGS, CGC, SGC…), choisis la note et, si tu l’as, le n° de certificat. La valeur se recalcule automatiquement sur la cote gradée (et l’estimation exacte PSA si tu mets le certificat).</div>'+
+        '</div></details>'+
       '<details class="pxdet" style="margin-top:10px"><summary><span style="font-weight:800">💶 Vendre cette carte</span></summary>'+
         '<div class="pxbody" style="padding-top:12px;display:flex;flex-direction:column;gap:8px">'+
           '<div style="display:flex;gap:8px;flex-wrap:wrap">'+
@@ -5086,6 +5105,12 @@ function renderDetail(){ const c=detailCard; if(!c)return; const body=document.g
           '</div>'+
           '<button onclick="sellCard(\''+esc(c.item_id)+'\')" style="border:0;background:#059669;color:#fff;font-weight:800;padding:10px;border-radius:9px;cursor:pointer">✓ Enregistrer la vente</button>'+
           '<div class="dt" style="font-size:11px;line-height:1.4">La carte quittera ta collection et sa plus-value réalisée (prix − frais − coût payé) ira dans « Ventes ». Coût pris en compte : '+(c.acquired_price!=null?eur0(c.acquired_price):'0 € (tirage de caisse)')+'.</div>'+
+        '</div></details>'+
+      '<details class="pxdet" style="margin-top:8px">'+
+        '<summary><span style="font-weight:800;color:#b91c1c">🗑 Supprimer cette carte (erreur)</span></summary>'+
+        '<div class="pxbody" style="padding-top:12px;display:flex;flex-direction:column;gap:8px">'+
+          '<div class="dt" style="font-size:12px;line-height:1.5">À utiliser quand cette ligne est une <b>erreur</b> (mauvaise carte / variante, doublon, carte que tu ne possèdes pas). La carte est <b>archivée</b> (récupérable), mais elle disparaît de ta collection et de ta valeur totale. Pour une vente, utilise plutôt « 💶 Vendre ».</div>'+
+          '<button onclick="deleteItem(\''+esc(c.item_id)+'\')" style="border:0;background:#dc2626;color:#fff;font-weight:800;padding:10px;border-radius:9px;cursor:pointer">🗑 Supprimer de ma collection</button>'+
         '</div></details>';
   } else {
     body.innerHTML=drow("Nom", esc(c.card_name))+drow("Numéro", esc(c.card_number))+drow("Variante", '<b>'+variantNice(c)+'</b>')+drow("Provenance", (PROV_LABELS[provenanceFamily(c)]||provenanceFamily(c)))+drow("Rareté", RAR_LABELS[c.rarity]||c.rarity)+drow("Set / Édition", esc((c.set_code||"")+(c.set_name?(" — "+c.set_name):"")))+drow("Catégorie", CAT_LABELS[c.category]||c.category)+drow("Type d’illustration", TYPE_LABELS[c.card_type]||c.card_type)+drow("Couleur", (c.color||"").split(";").join(" / "))+drow("Langue", LANG_LABELS[c.language]||c.language);
@@ -5108,6 +5133,74 @@ async function confirmReceipt(){
     PENDING.delete(c.item_id);
     renderDetail(); if(typeof buildValRow==='function')buildValRow(); render();
   }catch(e){ alert('Impossible de confirmer la réception.'); }
+}
+async function deleteItem(id){
+  const c=detailCard||findCard(id); if(!c)return;
+  const label=(c.card_name||'')+' · '+(c.card_number||'')+(c.variant_label?(' · '+c.variant_label):'');
+  if(!confirm('Supprimer définitivement cette carte de ta collection ?\n\n'+label+'\n\nElle sera archivée (récupérable sur demande), mais elle disparaît de ta collection et de ta valeur totale.')) return;
+  try{
+    const r=await fetch(SB+'/rest/v1/rpc/collection_delete_item',{method:'POST',headers:{apikey:ANON,Authorization:'Bearer '+ANON,'Content-Type':'application/json'},body:JSON.stringify({p_item:c.item_id,p_reason:'supprime depuis app (erreur)'})});
+    if(!r.ok)throw 0;
+    let ok=true; try{ ok=await r.json(); }catch(_){}
+    if(ok===false)throw 0;
+    const i=Array.isArray(DATA)?DATA.findIndex(x=>String(x.item_id)===String(c.item_id)):-1; if(i>=0)DATA.splice(i,1);
+    try{ PENDING.delete(c.item_id); }catch(_){}
+    closeDetail();
+    if(typeof buildValRow==='function')buildValRow();
+    render();
+  }catch(e){ alert('Suppression impossible. Réessaie dans un instant.'); }
+}
+let GEDIT=null;
+function geEnsure(){
+  const c=detailCard; if(!c) return null;
+  if(!GEDIT || GEDIT.item!==c.item_id){
+    GEDIT={item:c.item_id, pid:c.printing_id||null, graded:!!c.is_graded,
+      company:c.is_graded?(c.grading_company||null):null,
+      grade:(c.is_graded&&c.grade!=null)?parseFloat(c.grade):null};
+  }
+  return GEDIT;
+}
+function geMode(on){ geEnsure(); if(!GEDIT)return; GEDIT.graded=on;
+  const br=document.getElementById('geBrute'), gr=document.getElementById('geGradee'), bx=document.getElementById('geBox');
+  if(br){ br.style.borderColor=on?'var(--line)':'var(--accent)'; br.style.background=on?'var(--panel)':'rgba(193,147,56,.13)'; }
+  if(gr){ gr.style.borderColor=on?'var(--accent)':'var(--line)'; gr.style.background=on?'rgba(193,147,56,.13)':'var(--panel)'; }
+  if(bx) bx.style.display=on?'block':'none';
+  gePreview();
+}
+function gePickCo(el){ geEnsure(); if(!GEDIT)return; document.querySelectorAll('#geCo .chip').forEach(c=>c.classList.remove('on')); el.classList.add('on'); GEDIT.company=el.getAttribute('data-co'); gePreview(); }
+function gePickGr(el){ geEnsure(); if(!GEDIT)return; document.querySelectorAll('#geGr .chip').forEach(c=>c.classList.remove('on')); el.classList.add('on'); GEDIT.grade=parseFloat(el.getAttribute('data-g')); gePreview(); }
+async function gePreview(){
+  const box=document.getElementById('geVal'); if(!box) return; geEnsure(); if(!GEDIT){ box.innerHTML=''; return; }
+  if(!GEDIT.graded){ box.innerHTML=''; return; }
+  if(!GEDIT.company||GEDIT.grade==null){ box.innerHTML='<span style="color:var(--muted)">Choisis la société et la note.</span>'; return; }
+  if(!GEDIT.pid){ box.innerHTML='<span style="color:var(--muted)">La valeur sera recalculée après enregistrement.</span>'; return; }
+  const co=GEDIT.company, gd=GEDIT.grade;
+  box.innerHTML='<span style="color:var(--muted)">Recherche de la cote…</span>';
+  try{
+    const r=await fetch(SB+'/rest/v1/app_price_ladder?printing_id=eq.'+encodeURIComponent(GEDIT.pid)+'&grading_company=eq.'+encodeURIComponent(co)+'&grade=eq.'+gd+'&select=price_eur,market&order=price_eur.desc',{headers:{apikey:ANON,Authorization:'Bearer '+ANON}});
+    const j=await r.json();
+    if(!GEDIT||GEDIT.company!==co||GEDIT.grade!==gd) return;
+    if(Array.isArray(j)&&j[0]&&j[0].price_eur!=null) box.innerHTML='<div style="color:#7a5b1e;font-weight:800">Cote '+esc(co)+' '+gd+' ≈ '+eur(j[0].price_eur)+' <span style="color:var(--muted);font-weight:600;font-size:11px">('+esc(j[0].market||'')+')</span></div>';
+    else box.innerHTML='<span style="color:var(--muted)">Pas de cote de ventes pour cette note — valeur estimée après enregistrement.</span>';
+  }catch(e){ box.innerHTML='<span style="color:var(--muted)">Valeur recalculée après enregistrement.</span>'; }
+}
+async function gradeSave(id){
+  geEnsure(); const c=detailCard; if(!c||!GEDIT)return;
+  if(GEDIT.graded && (!GEDIT.company||GEDIT.grade==null)){ alert('Choisis la société et la note.'); return; }
+  const certEl=document.getElementById('geCert'); const cert=certEl?String(certEl.value||'').trim():'';
+  try{
+    const r=await fetch(SB+'/rest/v1/rpc/set_item_grade',{method:'POST',headers:{apikey:ANON,Authorization:'Bearer '+ANON,'Content-Type':'application/json'},body:JSON.stringify({p_item:c.item_id,p_graded:!!GEDIT.graded,p_company:GEDIT.graded?GEDIT.company:null,p_grade:GEDIT.graded?GEDIT.grade:null,p_cert:GEDIT.graded?(cert||null):null})});
+    const t=await r.text(); let j=null; try{ j=JSON.parse(t); }catch(_){}
+    if(!r.ok) throw new Error((j&&(j.message||j.hint))||'Erreur');
+    c.is_graded=!!GEDIT.graded; c.grading_company=GEDIT.graded?GEDIT.company:null; c.grade=GEDIT.graded?GEDIT.grade:null; c.cert_number=GEDIT.graded?(cert||null):null;
+    try{
+      const rv=await fetch(SB+'/rest/v1/app_collection?item_id=eq.'+encodeURIComponent(c.item_id)+'&select=market_value_eur,live_value_eur,seed_value_eur,price_source,price_asof,is_graded,grade,grading_company,cert_number&limit=1',{headers:{apikey:ANON,Authorization:'Bearer '+ANON}});
+      const jv=await rv.json(); if(Array.isArray(jv)&&jv[0]) Object.assign(c,jv[0]);
+    }catch(_){}
+    const d=Array.isArray(DATA)?DATA.find(x=>String(x.item_id)===String(c.item_id)):null; if(d) Object.assign(d,{is_graded:c.is_graded,grading_company:c.grading_company,grade:c.grade,cert_number:c.cert_number,market_value_eur:c.market_value_eur,live_value_eur:c.live_value_eur,seed_value_eur:c.seed_value_eur,price_source:c.price_source,price_asof:c.price_asof});
+    GEDIT=null;
+    renderDetail(); if(typeof buildValRow==='function')buildValRow(); render();
+  }catch(e){ alert((e&&e.message)?e.message:'Impossible de mettre à jour l’état.'); }
 }
 function findCard(id){ return DATA.find(c=>String(c.item_id)===String(id)); }
 document.getElementById("stage").addEventListener("click",e=>{
