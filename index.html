@@ -4023,7 +4023,7 @@ async function homeBriefing(){
   }catch(e){ box.innerHTML='<div class="txt" style="color:var(--muted);font-size:13px">Erreur, réessaie.</div><button class="hbriefbtn" onclick="homeBriefing()">Réessayer</button>'; }
 }
 document.getElementById('modeSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMode(b.dataset.m);});
-const APP_VERSION='Version b102 · 04/09';
+const APP_VERSION='Version b104 · 04/09';
 { const nv=document.getElementById('navVersion'); if(nv) nv.textContent=APP_VERSION; }
 document.getElementById('mktSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMarket(b.dataset.k);});
 const CATARRS=["catColors","catCats","catRarities","catTreats","catProvs","catSets"];
@@ -5288,26 +5288,101 @@ async function computeGoalCard(g,i){
   const remain=rows.filter(r=>!r.owned).reduce((s,r)=>s+(goalPx(r)||0),0);
   const pct= total? Math.round(owned/total*100):0;
   const el=document.getElementById('goalProg'+i); if(!el) return;
-  el.innerHTML='<div style="display:flex;justify-content:space-between;align-items:baseline"><span style="font-weight:800;color:var(--ink);font-size:14px">'+owned+' / '+total+'</span><span style="color:var(--accent);font-weight:800">'+pct+'%</span></div>'+
-    '<div style="height:9px;border-radius:6px;background:rgba(148,163,184,.18);overflow:hidden;margin:7px 0 6px"><i style="display:block;height:100%;width:'+pct+'%;background:linear-gradient(90deg,var(--accent),#3fae70)"></i></div>'+
-    '<div style="display:flex;justify-content:space-between"><span>'+(missing>0?('👉 '+missing+' à trouver'):'✅ Complet !')+'</span>'+(missing>0&&remain>0?('<span>reste ≈ '+eur0(remain)+'</span>'):'')+'</div>';
+  el.innerHTML='<div style="display:flex;justify-content:space-between;align-items:baseline"><span style="font-weight:800;color:var(--ink);font-size:14px">'+owned+' / '+total+' <span class="dt" style="font-weight:600;font-size:11.5px">possédées</span></span><span style="color:var(--accent);font-weight:800">'+pct+'%</span></div>'+
+    '<div style="height:9px;border-radius:6px;background:rgba(148,163,184,.18);overflow:hidden;margin:7px 0 7px"><i style="display:block;height:100%;width:'+pct+'%;background:linear-gradient(90deg,var(--accent),#3fae70)"></i></div>'+
+    '<div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px"><span style="font-weight:700;font-size:12.5px">'+goalMotiv(pct,missing)+'</span>'+(missing>0&&remain>0?('<span class="dt" style="font-size:11.5px;white-space:nowrap">≈ '+eur0(remain)+'</span>'):'')+'</div>';
+}
+let GOAL_CUR=null, GOAL_VIEW=[];
+const GV={view:'grid',sort:'missing',filter:'all'};
+const GV_SORTS=[['missing','À chasser d’abord'],['owned','Possédées d’abord'],['price_desc','Prix ↓'],['price_asc','Prix ↑'],['num','Numéro']];
+function goalImgUrl(r){ return (typeof PCIMG!=='undefined'&&PCIMG&&PCIMG[r.printing_id])||r.image_url||''; }
+function goalImg(r){ const u=goalImgUrl(r); return u?('<img referrerpolicy="no-referrer" src="'+esc(u)+'" onerror="this.remove()">'):''; }
+function goalMotiv(pct,missing){
+  if(missing===0) return '🎉 Objectif complet — bravo !';
+  if(pct>=90) return '🔥 Dernière ligne droite — plus que '+missing+' !';
+  if(pct>=75) return '💪 Bientôt fini — encore '+missing+' cartes.';
+  if(pct>=50) return '⚡ Plus de la moitié ! Encore '+missing+'.';
+  if(pct>=25) return '📈 En bonne voie — '+missing+' à trouver.';
+  return '🚀 C’est parti — '+missing+' cartes à chasser.';
 }
 async function openGoalDetail(id){
   const g=GOALS.find(x=>String(x.id)===String(id)); if(!g) return;
+  GOAL_CUR=g;
   const st=document.getElementById('stage');
-  st.innerHTML='<div style="padding:2px"><button onclick="setMode(\'objectifs\')" style="border:0;background:transparent;color:var(--accent);font-weight:800;cursor:pointer;font-size:14px;padding:4px 0">‹ Objectifs</button><div style="font-weight:800;font-size:17px;margin-top:2px">'+goalFlag(g.language)+' '+esc(g.name)+'</div><div class="dt" style="font-size:12px">'+esc(goalKindLabel(g))+'</div><div id="goalDetBody" style="margin-top:12px"><div class="dt" style="padding:12px">Calcul…</div></div></div>';
-  const rows=await goalRows(g);
-  const owned=rows.filter(r=>r.owned), miss=rows.filter(r=>!r.owned);
-  miss.sort((a,b)=>(goalPx(b)||0)-(goalPx(a)||0));
-  GOALDETAIL=rows;
-  const total=rows.length, pct=total?Math.round(owned.length/total*100):0;
-  const remain=miss.reduce((s,r)=>s+(goalPx(r)||0),0);
-  const head='<div style="border:1px solid var(--line);background:var(--panel);border-radius:14px;padding:14px;margin-bottom:12px"><div style="display:flex;justify-content:space-between;align-items:baseline"><span style="font-weight:800;font-size:16px">'+owned.length+' / '+total+' possédées</span><span style="color:var(--accent);font-weight:800">'+pct+'%</span></div><div style="height:10px;border-radius:6px;background:rgba(148,163,184,.18);overflow:hidden;margin:8px 0 6px"><i style="display:block;height:100%;width:'+pct+'%;background:linear-gradient(90deg,var(--accent),#3fae70)"></i></div><div class="dt">'+(miss.length>0?(miss.length+' cartes à chasser · reste ≈ '+eur0(remain)):'🎉 Objectif complet !')+'</div></div>';
-  const list = miss.length? ('<div style="font-weight:800;font-size:13px;margin:4px 0 8px">À chasser ('+miss.length+')</div>'+miss.map(function(r,k){ const px=goalPx(r); const img=r.image_url?('<img referrerpolicy="no-referrer" src="'+esc(r.image_url)+'" style="width:34px;height:47px;object-fit:cover;border-radius:4px" onerror="this.remove()">'):'<div style="width:34px;height:47px;border-radius:4px;background:rgba(148,163,184,.15)"></div>'; return '<div onclick="openGoalCard('+k+')" style="display:flex;align-items:center;gap:10px;padding:8px;border:1px solid var(--line);border-radius:10px;margin-bottom:6px;cursor:pointer">'+img+'<div style="flex:1;min-width:0"><div style="font-weight:700;font-size:13px">'+esc(r.card_number||'')+'</div><div class="dt" style="font-size:11px">'+esc(r.variant_label||TREAT_LABELS[r.treatment_family]||'Normale')+'</div></div><div style="font-weight:800;font-size:13px;color:var(--accent);white-space:nowrap">'+(px!=null?eur0(px):'—')+'</div></div>'; }).join('')) : '';
-  const ownedList = owned.length? ('<div style="font-weight:800;font-size:13px;margin:16px 0 8px;color:var(--muted)">Déjà possédées ('+owned.length+')</div>'+owned.map(function(r){ return '<div class="dt" style="display:flex;justify-content:space-between;padding:5px 8px;font-size:12px"><span>✓ '+esc(r.card_number||'')+' · '+esc(r.variant_label||TREAT_LABELS[r.treatment_family]||'Normale')+'</span></div>'; }).join('')) : '';
-  const b=document.getElementById('goalDetBody'); if(b) b.innerHTML=head+list+ownedList;
+  st.innerHTML='<div style="padding:2px"><button onclick="setMode(\'objectifs\')" style="border:0;background:transparent;color:var(--accent);font-weight:800;cursor:pointer;font-size:14px;padding:4px 0">‹ Objectifs</button><div id="goalHead" style="margin-top:8px"></div><div id="goalDetWrap"><div class="dt" style="padding:12px">Calcul…</div></div></div>';
+  const rows=await goalRows(g); GOALDETAIL=rows;
+  const owned=rows.filter(r=>r.owned).length, total=rows.length, missing=total-owned, pct=total?Math.round(owned/total*100):0;
+  const missRows=rows.filter(r=>!r.owned);
+  const remain=missRows.reduce((s,r)=>s+(goalPx(r)||0),0);
+  const cheap=missRows.filter(r=>goalPx(r)!=null&&goalPx(r)>0).sort((a,b)=>goalPx(a)-goalPx(b))[0];
+  const ringC='conic-gradient(var(--accent) '+(pct*3.6)+'deg, rgba(148,163,184,.18) 0deg)';
+  let head='<div style="border:1px solid var(--line);background:linear-gradient(180deg,var(--panel),rgba(193,147,56,.05));border-radius:16px;padding:16px;margin-top:6px">'+
+    '<div style="display:flex;align-items:center;gap:14px">'+
+      '<div style="width:70px;height:70px;border-radius:50%;background:'+ringC+';flex:none;display:flex;align-items:center;justify-content:center"><div style="width:54px;height:54px;border-radius:50%;background:var(--panel);display:flex;flex-direction:column;align-items:center;justify-content:center"><div style="font-weight:900;font-size:18px;line-height:1">'+pct+'%</div></div></div>'+
+      '<div style="flex:1;min-width:0"><div style="font-weight:800;font-size:17px">'+goalFlag(g.language)+' '+esc(g.name)+'</div><div class="dt" style="font-size:12px;margin-top:1px">'+esc(goalKindLabel(g))+'</div><div style="font-weight:800;font-size:14px;margin-top:5px">'+owned+' / '+total+' <span class="dt" style="font-weight:600;font-size:12px">possédées</span></div></div>'+
+    '</div>'+
+    '<div style="margin-top:12px;font-weight:800;font-size:13.5px">'+goalMotiv(pct,missing)+'</div>'+
+    (missing>0&&remain>0?'<div class="dt" style="font-size:12px;margin-top:2px">Reste ≈ '+eur0(remain)+' pour compléter</div>':'');
+  if(cheap){ head+='<div onclick="openGoalCardByPid(\''+esc(cheap.printing_id)+'\')" style="display:flex;align-items:center;gap:11px;margin-top:12px;padding:9px;border:1px solid var(--accent);border-radius:12px;background:rgba(193,147,56,.09);cursor:pointer">'+
+    '<div style="width:38px;height:52px;border-radius:5px;overflow:hidden;flex:none;background:rgba(148,163,184,.15)">'+goalImg(cheap)+'</div>'+
+    '<div style="flex:1;min-width:0"><div style="font-weight:800;font-size:11px;color:var(--accent);text-transform:uppercase;letter-spacing:.3px">Prochaine cible facile</div><div style="font-weight:700;font-size:13px">'+esc(cheap.card_number||'')+' · '+esc(cheap.variant_label||TREAT_LABELS[cheap.treatment_family]||'Normale')+'</div></div>'+
+    '<div style="font-weight:800;color:var(--accent);white-space:nowrap">'+eur0(goalPx(cheap))+'</div></div>'; }
+  head+='</div>';
+  const h=document.getElementById('goalHead'); if(h) h.innerHTML=head;
+  renderGoalDetailBody();
 }
-function openGoalCard(k){ const miss=(GOALDETAIL||[]).filter(r=>!r.owned); miss.sort((a,b)=>(goalPx(b)||0)-(goalPx(a)||0)); const r=miss[k]; if(r && typeof openCatDetail==='function') openCatDetail(r); }
+function goalViewArray(){
+  let a=(GOALDETAIL||[]).slice();
+  if(GV.filter==='missing') a=a.filter(r=>!r.owned);
+  else if(GV.filter==='owned') a=a.filter(r=>r.owned);
+  const px=r=>goalPx(r)||0;
+  if(GV.sort==='missing') a.sort((x,y)=>((x.owned?1:0)-(y.owned?1:0))||(px(y)-px(x)));
+  else if(GV.sort==='owned') a.sort((x,y)=>((y.owned?1:0)-(x.owned?1:0))||(px(y)-px(x)));
+  else if(GV.sort==='price_desc') a.sort((x,y)=>px(y)-px(x));
+  else if(GV.sort==='price_asc') a.sort((x,y)=>px(x)-px(y));
+  else if(GV.sort==='num') a.sort((x,y)=>String(x.card_number||'').localeCompare(String(y.card_number||'')));
+  return a;
+}
+function setGV(k,v){ GV[k]=v; renderGoalDetailBody(); }
+function renderGoalDetailBody(){
+  const wrap=document.getElementById('goalDetWrap'); if(!wrap) return;
+  GOAL_VIEW=goalViewArray();
+  const chip=(k,v,lbl)=>'<div class="chip'+(GV[k]===v?' on':'')+'" onclick="setGV(\''+k+'\',\''+v+'\')">'+lbl+'</div>';
+  const bar='<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin:14px 0 10px">'+
+    chip('filter','all','Toutes')+chip('filter','missing','À chasser')+chip('filter','owned','Possédées')+
+    '<select onchange="setGV(\'sort\',this.value)" style="margin-left:auto;padding:6px 8px;border:1px solid var(--line);border-radius:8px;background:var(--panel);color:var(--ink);font-weight:700;font-size:12px">'+GV_SORTS.map(s=>'<option value="'+s[0]+'"'+(GV.sort===s[0]?' selected':'')+'>'+s[1]+'</option>').join('')+'</select>'+
+    '<button onclick="setGV(\'view\',\'grid\')" style="border:1px solid '+(GV.view==='grid'?'var(--accent)':'var(--line)')+';background:var(--panel);color:var(--ink);border-radius:8px;padding:6px 9px;cursor:pointer;font-size:14px">▦</button>'+
+    '<button onclick="setGV(\'view\',\'list\')" style="border:1px solid '+(GV.view==='list'?'var(--accent)':'var(--line)')+';background:var(--panel);color:var(--ink);border-radius:8px;padding:6px 9px;cursor:pointer;font-size:14px">☰</button>'+
+  '</div>';
+  const arr=GOAL_VIEW;
+  if(!arr.length){ wrap.innerHTML=bar+'<div class="dt" style="padding:14px;text-align:center">Aucune carte pour ce filtre.</div>'; return; }
+  const otag=r=>'<span class="owntag '+(r.owned?'own':'no')+'">'+(r.owned?'✓ Possédée':'Non possédée')+'</span>';
+  const vlabel=r=>esc(r.variant_label||TREAT_LABELS[r.treatment_family]||'Normale');
+  const chk=r=>r.owned?'<div style="position:absolute;top:6px;left:6px;z-index:2;background:#3fae70;color:#fff;font-weight:900;font-size:12px;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 4px rgba(0,0,0,.3)">✓</div>':'';
+  let body;
+  if(GV.view==='grid'){
+    body='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:11px">'+arr.map(function(r,k){ const px=goalPx(r); return '<div class="card" onclick="openGoalCard('+k+')" style="'+(r.owned?'opacity:.62;':'')+'position:relative">'+
+      '<div class="imgwrap">'+chk(r)+goalImg(r)+(px!=null?'<div class="pxcorner">'+eur0(px)+'</div>':'')+'</div>'+
+      '<div class="meta"><p class="nm">'+esc(r.card_number||'')+'</p><div class="sub"><span>'+vlabel(r)+'</span></div>'+
+        (r.owned?'':('<button onclick="goalQuickAdd(\''+esc(r.printing_id)+'\',event)" style="margin-top:6px;width:100%;border:0;background:var(--accent);color:#1a1204;font-weight:800;font-size:12px;padding:6px;border-radius:8px;cursor:pointer">＋ J’ai obtenu</button>'))+
+      '</div>'+
+    '</div>'; }).join('')+'</div>';
+  } else {
+    body=arr.map(function(r,k){ const px=goalPx(r); return '<div class="row" style="'+(r.owned?'opacity:.62':'')+'"><div class="lthumb" onclick="openGoalCard('+k+')" style="position:relative">'+chk(r)+goalImg(r)+'</div><div style="flex:1;min-width:0" onclick="openGoalCard('+k+')"><p class="nm">'+esc(r.card_number||'')+'</p><div class="sub"><span>'+vlabel(r)+'</span> '+otag(r)+'</div></div><div class="r" style="display:flex;flex-direction:column;align-items:flex-end;gap:5px"><div class="val">'+(px!=null?eur0(px):'—')+'</div>'+(r.owned?'':('<button onclick="goalQuickAdd(\''+esc(r.printing_id)+'\',event)" style="border:0;background:var(--accent);color:#1a1204;font-weight:800;font-size:11px;padding:5px 9px;border-radius:8px;cursor:pointer">＋ Obtenu</button>'))+'</div></div>'; }).join('');
+  }
+  wrap.innerHTML=bar+body;
+}
+function openGoalCard(k){ const r=GOAL_VIEW[k]; if(r && typeof openCatDetail==='function') openCatDetail(r); }
+function openGoalCardByPid(pid){ const r=(GOALDETAIL||[]).find(x=>String(x.printing_id)===String(pid)); if(r && typeof openCatDetail==='function') openCatDetail(r); }
+function goalQuickAdd(pid,ev){ if(ev){ ev.stopPropagation(); } if(!pid) return;
+  openBuySheet(pid,'',async function(price,from,graded){
+    try{
+      if(graded){ await fetch(SB+'/rest/v1/rpc/add_graded_to_collection',{method:'POST',headers:{apikey:ANON,Authorization:'Bearer '+ANON,'Content-Type':'application/json'},body:JSON.stringify({p_printing:pid,p_company:graded.company,p_grade:graded.grade,p_cert:graded.cert,p_price:price,p_from:from})}); }
+      else { await fetch(SB+'/rest/v1/rpc/add_to_collection',{method:'POST',headers:{apikey:ANON,Authorization:'Bearer '+ANON,'Content-Type':'application/json'},body:JSON.stringify({p_printing:pid,p_qty:1,p_price:price,p_from:from})}); }
+    }catch(e){ alert("Erreur lors de l'ajout."); return; }
+    if(GOAL_CUR) openGoalDetail(GOAL_CUR.id);
+  });
+}
 async function deleteGoal(id){
   if(!confirm('Supprimer cet objectif ? (tes cartes ne sont pas touchées)')) return;
   try{ await fetch(SB+'/rest/v1/rpc/goal_delete',{method:'POST',headers:{apikey:ANON,Authorization:'Bearer '+ANON,'Content-Type':'application/json'},body:JSON.stringify({p_id:id})}); }catch(e){}
