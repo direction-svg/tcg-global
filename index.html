@@ -1342,7 +1342,7 @@ let MKT='JP';
 const MKT_FIELD={JP:'_jp',EU:'_eu',US:'_us'};
 const MKT_LABEL={JP:'🇯🇵 Japon',EU:'🇪🇺 Europe',US:'🇺🇸 US'};
 function mkStrict(c){ const v=c[MKT_FIELD[MKT]]; return (v==null)?null:Number(v); }        // vrai prix marché (ou null)
-function mkEst(c){ const v=c[MKT_FIELD[MKT]]; if(v!=null) return Number(v); return c.market_value_eur==null?0:Number(c.market_value_eur); } // estimé (repli)
+function mkEst(c){ if(c&&c.is_graded){ return c.market_value_eur==null?0:Number(c.market_value_eur); } /* gradée = cote unique, jamais le prix brut par marché */ const v=c[MKT_FIELD[MKT]]; if(v!=null) return Number(v); return c.market_value_eur==null?0:Number(c.market_value_eur); } // estimé (repli)
 const val=c=> mkEst(c);   // toutes les listes/totaux suivent le marché choisi (estimé)
 // ---------- Fiabilité du prix (selon le marché affiché + profondeur d'offres) ----------
 function priceConf(c){
@@ -4001,7 +4001,7 @@ async function homeBriefing(){
   }catch(e){ box.innerHTML='<div class="txt" style="color:var(--muted);font-size:13px">Erreur, réessaie.</div><button class="hbriefbtn" onclick="homeBriefing()">Réessayer</button>'; }
 }
 document.getElementById('modeSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMode(b.dataset.m);});
-const APP_VERSION='Version b99 · 04/09';
+const APP_VERSION='Version b101 · 04/09';
 { const nv=document.getElementById('navVersion'); if(nv) nv.textContent=APP_VERSION; }
 document.getElementById('mktSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMarket(b.dataset.k);});
 const CATARRS=["catColors","catCats","catRarities","catTreats","catProvs","catSets"];
@@ -5093,6 +5093,13 @@ function renderDetail(){ const c=detailCard; if(!c)return; const body=document.g
           '<button onclick="gradeSave(\''+esc(c.item_id)+'\')" style="border:0;background:#a67c27;color:#fff;font-weight:800;padding:10px;border-radius:9px;cursor:pointer">✓ Enregistrer l’état</button>'+
           '<div class="dt" style="font-size:11px;line-height:1.4">Passe la carte en gradée (PSA, BGS, CGC, SGC…), choisis la note et, si tu l’as, le n° de certificat. La valeur se recalcule automatiquement sur la cote gradée (et l’estimation exacte PSA si tu mets le certificat).</div>'+
         '</div></details>'+
+      '<details class="pxdet" style="margin-top:8px"><summary><span style="font-weight:800">✏️ Modifier le prix payé</span></summary>'+
+        '<div class="pxbody" style="padding-top:12px;display:flex;flex-direction:column;gap:8px">'+
+          '<label class="dt" style="font-size:12px">Prix payé — tout compris (€)<input id="pePrice" inputmode="decimal" value="'+(c.acquired_price!=null?esc(String(c.acquired_price)):'')+'" placeholder="ex : 552,39" style="display:block;width:100%;margin-top:3px;padding:8px 9px;border:1px solid var(--line);border-radius:8px;background:var(--panel);color:var(--ink);font-weight:800"></label>'+
+          '<label class="dt" style="font-size:12px">Acheté chez<input id="peFrom" value="'+esc(c.acquired_from||'')+'" placeholder="ex : Whatnot" style="display:block;width:100%;margin-top:3px;padding:8px 9px;border:1px solid var(--line);border-radius:8px;background:var(--panel);color:var(--ink)"></label>'+
+          '<button onclick="priceSave(\''+esc(c.item_id)+'\')" style="border:0;background:#a67c27;color:#fff;font-weight:800;padding:10px;border-radius:9px;cursor:pointer">✓ Enregistrer le prix</button>'+
+          '<div class="dt" style="font-size:11px;line-height:1.4">Mets le prix <b>tout compris</b> (carte + TVA / douane / port), en euros — c’est ton coût réel, il sert à calculer ta plus-value. Laisse vide pour effacer.</div>'+
+        '</div></details>'+
       '<details class="pxdet" style="margin-top:10px"><summary><span style="font-weight:800">💶 Vendre cette carte</span></summary>'+
         '<div class="pxbody" style="padding-top:12px;display:flex;flex-direction:column;gap:8px">'+
           '<div style="display:flex;gap:8px;flex-wrap:wrap">'+
@@ -5148,6 +5155,7 @@ async function deleteItem(id){
     closeDetail();
     if(typeof buildValRow==='function')buildValRow();
     render();
+    try{ if(typeof saveCollCache==='function') saveCollCache(); }catch(_){}
   }catch(e){ alert('Suppression impossible. Réessaie dans un instant.'); }
 }
 let GEDIT=null;
@@ -5200,7 +5208,25 @@ async function gradeSave(id){
     const d=Array.isArray(DATA)?DATA.find(x=>String(x.item_id)===String(c.item_id)):null; if(d) Object.assign(d,{is_graded:c.is_graded,grading_company:c.grading_company,grade:c.grade,cert_number:c.cert_number,market_value_eur:c.market_value_eur,live_value_eur:c.live_value_eur,seed_value_eur:c.seed_value_eur,price_source:c.price_source,price_asof:c.price_asof});
     GEDIT=null;
     renderDetail(); if(typeof buildValRow==='function')buildValRow(); render();
+    try{ if(typeof saveCollCache==='function') saveCollCache(); }catch(_){}
   }catch(e){ alert((e&&e.message)?e.message:'Impossible de mettre à jour l’état.'); }
+}
+async function priceSave(id){
+  const c=detailCard||findCard(id); if(!c)return;
+  const pe=document.getElementById('pePrice'), fe=document.getElementById('peFrom');
+  const raw=pe?String(pe.value||'').replace(',','.').replace(/[^0-9.]/g,''):'';
+  const price = raw==='' ? null : parseFloat(raw);
+  if(raw!=='' && !(price>=0)){ alert('Prix invalide.'); return; }
+  const from = fe?String(fe.value||'').trim():'';
+  try{
+    const r=await fetch(SB+'/rest/v1/rpc/set_item_price',{method:'POST',headers:{apikey:ANON,Authorization:'Bearer '+ANON,'Content-Type':'application/json'},body:JSON.stringify({p_item:c.item_id,p_price:price,p_from:from||null})});
+    if(!r.ok)throw 0; let ok=true; try{ ok=await r.json(); }catch(_){}
+    if(ok===false)throw 0;
+    c.acquired_price=price; if(from) c.acquired_from=from;
+    const d=Array.isArray(DATA)?DATA.find(x=>String(x.item_id)===String(c.item_id)):null; if(d){ d.acquired_price=price; if(from)d.acquired_from=from; }
+    renderDetail(); if(typeof buildValRow==='function')buildValRow(); render();
+    try{ if(typeof saveCollCache==='function') saveCollCache(); }catch(_){}
+  }catch(e){ alert('Impossible de mettre à jour le prix. Réessaie.'); }
 }
 function findCard(id){ return DATA.find(c=>String(c.item_id)===String(id)); }
 document.getElementById("stage").addEventListener("click",e=>{
