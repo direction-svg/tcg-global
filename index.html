@@ -4023,7 +4023,7 @@ async function homeBriefing(){
   }catch(e){ box.innerHTML='<div class="txt" style="color:var(--muted);font-size:13px">Erreur, réessaie.</div><button class="hbriefbtn" onclick="homeBriefing()">Réessayer</button>'; }
 }
 document.getElementById('modeSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMode(b.dataset.m);});
-const APP_VERSION='Version b109 · 05/09';
+const APP_VERSION='Version b110 · 05/09';
 { const nv=document.getElementById('navVersion'); if(nv) nv.textContent=APP_VERSION; }
 document.getElementById('mktSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMarket(b.dataset.k);});
 const CATARRS=["catColors","catCats","catRarities","catTreats","catProvs","catSets"];
@@ -5273,10 +5273,15 @@ function goalDedup(rows){
   const jpNums=new Set(rows.filter(r=>r.language==='JP').map(r=>String(r.card_number||'')));
   return rows.filter(r=> r.language==='JP' || !jpNums.has(String(r.card_number||'')) || r.owned );
 }
+async function ensurePcImages(){
+  // Les images PriceCharting (art correct par variante) ne sont chargées que par le flux collection.
+  // Sur la page Objectifs on peut arriver avant : on garantit qu'elles sont là AVANT d'afficher.
+  try{ if(!PCIMG || !Object.keys(PCIMG).length){ await loadPcImages(); } }catch(e){}
+}
 async function goalRows(g){
   const lim=(g.language==='COMPLET'||g.language==='ALL')?6000:3000;
   const url=SB+'/rest/v1/app_catalog_priced?select=printing_id,card_number,name,variant,variant_label,rarity,set_code,set_name,language,color,category,owned,jp_eur,eu_eur,us_eur,price_eur,price_source,image_url,treatment_family&limit='+lim+goalParams(g);
-  try{ const r=await fetch(url,{headers:{apikey:ANON,Authorization:'Bearer '+ANON}}); const j=await r.json(); let rows=Array.isArray(j)?j:[]; if(g.language==='COMPLET') rows=goalDedup(rows); return rows; }catch(e){ return []; }
+  try{ await ensurePcImages(); const r=await fetch(url,{headers:{apikey:ANON,Authorization:'Bearer '+ANON}}); const j=await r.json(); let rows=Array.isArray(j)?j:[]; if(g.language==='COMPLET') rows=goalDedup(rows); return rows; }catch(e){ return []; }
 }
 function goalKindLabel(g){ return g.kind==='personnage'?('Personnage · '+g.value):(g.kind==='set'?('Set · '+g.value):(g.kind==='traitement'?('Famille · '+(TREAT_LABELS[g.value]||g.value)):('Rareté · '+(RAR_LABELS[g.value]||g.value)))); }
 function goalFlag(l){ return l==='JP'?'🇯🇵':(l==='EN'?'🇺🇸':(l==='CN'?'🇨🇳':(l==='COMPLET'?'🌍':'🌐'))); }
@@ -5305,7 +5310,21 @@ async function computeGoalCard(g,i){
 let GOAL_CUR=null, GOAL_VIEW=[];
 const GV={view:'grid',sort:'missing',filter:'all',showPrice:true,supplier:false};
 const GV_SORTS=[['missing','À chasser d’abord'],['owned','Possédées d’abord'],['price_desc','Prix ↓'],['price_asc','Prix ↑'],['num','Numéro']];
-function goalImgUrl(r){ return (typeof PCIMG!=='undefined'&&PCIMG&&PCIMG[r.printing_id])||r.image_url||''; }
+function goalImgUrl(r){
+  // 1) Priorité à l'image PriceCharting/officielle par variante (art correct).
+  const pc=(typeof PCIMG!=='undefined'&&PCIMG&&PCIMG[r.printing_id])||'';
+  if(pc) return pc;
+  // 2) Repli sur image_url — MAIS jamais l'art de BASE sur une variante alternative.
+  //    L'art de base = .../card-images/{NUMÉRO}.png (sans suffixe) : faux pour Ryuda/Sunohara/Judge/Alt Art…
+  //    Dans ce cas on préfère « photo à venir » (blanc) plutôt qu'une mauvaise image.
+  const u=r.image_url||'';
+  if(!u) return '';
+  if(isArtVariant(r.variant) && r.card_number){
+    const base='/card-images/'+r.card_number+'.png';
+    if(u.slice(-base.length).toLowerCase()===base.toLowerCase()) return '';
+  }
+  return u;
+}
 function goalImg(r){ const u=goalImgUrl(r); return u?('<img referrerpolicy="no-referrer" src="'+esc(u)+'" onerror="this.remove()">'):('<div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:6px;font-size:11px;font-weight:700;color:var(--muted);line-height:1.25">'+esc(r.card_number||'')+'<span style="font-weight:600;opacity:.8">photo à venir</span></div>'); }
 function goalMotiv(pct,missing){
   if(missing===0) return '🎉 Objectif complet — bravo !';
