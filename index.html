@@ -4023,7 +4023,7 @@ async function homeBriefing(){
   }catch(e){ box.innerHTML='<div class="txt" style="color:var(--muted);font-size:13px">Erreur, réessaie.</div><button class="hbriefbtn" onclick="homeBriefing()">Réessayer</button>'; }
 }
 document.getElementById('modeSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMode(b.dataset.m);});
-const APP_VERSION='Version b106 · 05/09';
+const APP_VERSION='Version b107 · 05/09';
 { const nv=document.getElementById('navVersion'); if(nv) nv.textContent=APP_VERSION; }
 document.getElementById('mktSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMarket(b.dataset.k);});
 const CATARRS=["catColors","catCats","catRarities","catTreats","catProvs","catSets"];
@@ -5269,12 +5269,15 @@ function goalPx(r){ if(r.price_eur!=null) return Number(r.price_eur); if(r.jp_eu
 function goalDedup(rows){
   const map=new Map();
   const rank=l=>l==='JP'?0:(l==='EN'?1:(l==='CN'?2:3));
-  rows.forEach(r=>{ const key=(r.card_number||'')+'|'+(r.variant||r.treatment_family||'');
+  // Clé « même carte » robuste inter-langues : numéro + famille de traitement + libellé normalisé
+  // (les slugs de variante diffèrent selon la langue : JP 'alternate_art_manga' vs EN 'manga').
+  const norm=s=>String(s||'').toLowerCase().replace(/foil/g,'').replace(/[^a-z0-9]/g,'');
+  rows.forEach(r=>{ const key=(r.card_number||'')+'|'+(r.treatment_family||r.variant||'')+'|'+norm(r.variant_label);
     let e=map.get(key);
-    if(!e){ map.set(key,{rep:r, owned:!!r.owned}); }
-    else { e.owned=e.owned||!!r.owned; if(rank(r.language)<rank(e.rep.language)) e.rep=r; }
+    if(!e){ map.set(key,{rep:r, owned:!!r.owned, img:r.image_url||null}); }
+    else { e.owned=e.owned||!!r.owned; if(!e.img && r.image_url) e.img=r.image_url; if(rank(r.language)<rank(e.rep.language)) e.rep=r; }
   });
-  return [...map.values()].map(e=>Object.assign({},e.rep,{owned:e.owned}));
+  return [...map.values()].map(e=>Object.assign({},e.rep,{owned:e.owned, image_url:(e.rep.image_url||e.img)}));
 }
 async function goalRows(g){
   const lim=(g.language==='COMPLET'||g.language==='ALL')?6000:3000;
