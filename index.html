@@ -4032,7 +4032,7 @@ async function homeBriefing(){
   }catch(e){ box.innerHTML='<div class="txt" style="color:var(--muted);font-size:13px">Erreur, réessaie.</div><button class="hbriefbtn" onclick="homeBriefing()">Réessayer</button>'; }
 }
 document.getElementById('modeSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMode(b.dataset.m);});
-const APP_VERSION='Version b113 · 05/09';
+const APP_VERSION='Version b114 · 05/09';
 { const nv=document.getElementById('navVersion'); if(nv) nv.textContent=APP_VERSION; }
 document.getElementById('mktSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMarket(b.dataset.k);});
 const CATARRS=["catColors","catCats","catRarities","catTreats","catProvs","catSets"];
@@ -4657,26 +4657,39 @@ async function startCam(){
 function stopCam(){ if(scanStream){ try{ scanStream.getTracks().forEach(t=>t.stop()); }catch(e){} scanStream=null; } }
 function closeScan(){ stopAuto(); stopCam(); document.getElementById('scanOverlay').classList.add('hidden'); }
 // ===== Importer un achat (photo reçu → Gemini → vérif humaine → record_purchase) =====
-let PUR_DRAFT=null;
-function openPurImport(){ try{ closeNav(); }catch(e){} const o=document.getElementById('purOverlay'); if(!o) return; o.classList.remove('hidden'); purStep1(); }
-function closePurImport(){ const o=document.getElementById('purOverlay'); if(o) o.classList.add('hidden'); PUR_DRAFT=null; }
+let PUR_DRAFT=null, PUR_IMGS=[];
+function openPurImport(){ try{ closeNav(); }catch(e){} PUR_IMGS=[]; PUR_DRAFT=null; const o=document.getElementById('purOverlay'); if(!o) return; o.classList.remove('hidden'); purStep1(); }
+function closePurImport(){ const o=document.getElementById('purOverlay'); if(o) o.classList.add('hidden'); PUR_DRAFT=null; PUR_IMGS=[]; }
 function purSetStatus(h){ const e=document.getElementById('purStatus'); if(e) e.innerHTML=h; }
 function purStep1(){
   const b=document.getElementById('purBody'); if(!b) return;
-  b.innerHTML='<div class="dt" style="font-size:13px;margin-bottom:14px">Prends ou choisis la capture d’écran du reçu (Whatnot, eBay…). Je lis le vendeur, les montants et la date — tu vérifies, et j’enregistre l’achat (ça alimente tes stats vendeurs).</div>'+
-    '<label style="display:block;border:1px dashed var(--accent);background:rgba(193,147,56,.07);color:var(--accent);font-weight:800;padding:24px 14px;border-radius:14px;text-align:center;cursor:pointer;font-size:14px">📷 Choisir / prendre une photo du reçu<input type="file" accept="image/*" style="display:none" onchange="purFile(this)"></label>'+
+  b.innerHTML='<div class="dt" style="font-size:13px;margin-bottom:14px">Ajoute la ou les captures du reçu (Whatnot, eBay…). Tu peux en mettre <b>plusieurs</b> si la carte et le prix/vendeur ne sont pas sur le même écran — je les combine.</div>'+
+    '<div id="purThumbs" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px"></div>'+
+    '<label style="display:block;border:1px dashed var(--accent);background:rgba(193,147,56,.07);color:var(--accent);font-weight:800;padding:20px 14px;border-radius:14px;text-align:center;cursor:pointer;font-size:14px">📷 Ajouter une photo<input type="file" accept="image/*" multiple style="display:none" onchange="purAddFiles(this)"></label>'+
+    '<button id="purGo" onclick="purAnalyzeAll()" disabled style="width:100%;margin-top:12px;border:0;background:var(--accent);color:#1a1204;font-weight:800;font-size:15px;padding:13px;border-radius:12px;cursor:pointer;opacity:.5">🔎 Analyser</button>'+
     '<div style="text-align:center;margin-top:10px"><button onclick="purReview({})" style="border:0;background:transparent;color:var(--muted);font-size:12.5px;text-decoration:underline;cursor:pointer">ou saisir à la main</button></div>'+
     '<div id="purStatus" class="dt" style="font-size:12.5px;margin-top:12px;text-align:center"></div>';
+  purRenderThumbs();
 }
-function purFile(inp){ const f=inp.files&&inp.files[0]; if(!f) return; const rd=new FileReader(); rd.onload=function(){ purAnalyze(rd.result); }; rd.readAsDataURL(f); }
-async function purAnalyze(dataUrl){
+function purAddFiles(inp){ const fs=inp.files; if(!fs||!fs.length) return; let left=fs.length; for(let i=0;i<fs.length;i++){ const rd=new FileReader(); rd.onload=function(){ if(PUR_IMGS.length<6) PUR_IMGS.push(rd.result); left--; if(left<=0) purRenderThumbs(); }; rd.onerror=function(){ left--; if(left<=0) purRenderThumbs(); }; rd.readAsDataURL(fs[i]); } inp.value=''; }
+function purRemoveImg(i){ PUR_IMGS.splice(i,1); purRenderThumbs(); }
+function purRenderThumbs(){
+  const t=document.getElementById('purThumbs'); if(t){ t.innerHTML=PUR_IMGS.map(function(src,i){ return '<div style="position:relative;width:58px;height:58px;border-radius:8px;overflow:hidden;border:1px solid var(--line)"><img src="'+src+'" style="width:100%;height:100%;object-fit:cover"><button onclick="purRemoveImg('+i+')" style="position:absolute;top:-6px;right:-6px;width:20px;height:20px;border-radius:50%;border:0;background:#e11d48;color:#fff;font-weight:900;font-size:12px;line-height:1;cursor:pointer">×</button></div>'; }).join(''); }
+  const g=document.getElementById('purGo'); if(g){ g.disabled=PUR_IMGS.length===0; g.style.opacity=PUR_IMGS.length===0?'.5':'1'; g.textContent='🔎 Analyser'+(PUR_IMGS.length?(' ('+PUR_IMGS.length+' photo'+(PUR_IMGS.length>1?'s':'')+')'):''); }
+}
+async function purAnalyzeAll(){
+  if(!PUR_IMGS.length){ purReview({}); return; }
+  const g=document.getElementById('purGo'); if(g){ g.disabled=true; g.textContent='🔎 Lecture IA…'; }
   purSetStatus('🔎 Lecture du reçu par l’IA…');
+  let j=null;
   try{
-    const r=await fetch(SB+'/functions/v1/purchase-ingest',{method:'POST',headers:{'Content-Type':'application/json',apikey:ANON,Authorization:'Bearer '+ANON},body:JSON.stringify({image_b64:dataUrl})});
-    const j=await r.json();
-    if(!j||!j.ok||!j.draft){ if(j&&j.rate_limited){ purSetStatus('⏳ Limite IA atteinte, réessaie dans '+(j.retry_after||30)+' s — ou saisis à la main.'); } else { purSetStatus('❌ Lecture impossible (capture peu nette ?). Tu peux saisir à la main ci-dessous.'); purReview({}); } return; }
-    PUR_DRAFT=j.draft; purReview(j.draft);
-  }catch(e){ purSetStatus('❌ Erreur réseau.'); }
+    const r=await fetch(SB+'/functions/v1/purchase-ingest',{method:'POST',headers:{'Content-Type':'application/json',apikey:ANON,Authorization:'Bearer '+ANON},body:JSON.stringify({images:PUR_IMGS})});
+    j=await r.json();
+  }catch(e){ j={ok:false,error:'network'}; }
+  if(j&&j.ok&&j.draft){ PUR_DRAFT=j.draft; purReview(j.draft); return; }
+  PUR_DRAFT=null; purReview({});
+  if(j&&j.rate_limited) purSetStatus('⏳ Limite IA atteinte — réessaie dans '+(j.retry_after||30)+' s, ou saisis à la main.');
+  else purSetStatus('❌ Lecture auto impossible ('+esc((j&&(j.error||''))||'inconnue')+'). Les champs sont vides — saisis-les à la main.');
 }
 function purEurCalc(){
   const fx=parseFloat(document.getElementById('purFx').value)||0.005382;
