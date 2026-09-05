@@ -853,6 +853,7 @@ body{-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
     <button data-m="track">Track record</button>
     <div class="navgrp">Suivi</div>
     <button data-m="achats">Bilan</button>
+    <button onclick="closeNav();openPurImport()" style="color:var(--accent);font-weight:800">➕ Importer un achat</button>
     <button data-m="mouv">Mouvements</button>
     <button data-m="ouvrir">Ouvrir&nbsp;?</button>
     <button data-m="sante">Santé des données</button>
@@ -877,6 +878,14 @@ body{-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
   <div class="chiprow" id="valFilterRow" style="display:none"></div>
   <div class="count" id="countLine"></div>
   <div id="stage"><div class="loading">Chargement de ta collection&hellip;</div></div>
+</div>
+
+<!-- Import d'un achat (photo) -->
+<div id="purOverlay" class="overlay hidden">
+  <div class="sheet ssheet" style="max-height:94vh;overflow-y:auto">
+    <div class="fbar"><b>&#10133; Importer un achat</b><button class="x" onclick="closePurImport()">&times;</button></div>
+    <div id="purBody" style="padding:12px 14px 40px"></div>
+  </div>
 </div>
 
 <!-- Modal filtres -->
@@ -1357,7 +1366,7 @@ let DATA=[], state=Object.assign({},DEF);
 let MKT_OVERLAY_OK=false; // true dès que les prix par marché (jp/eu/us) sont chargés depuis app_collection_market
 
 const eur=n=> (n==null?"—":(Number(n).toLocaleString("fr-FR",{minimumFractionDigits:2,maximumFractionDigits:2})+" €"));
-const eur0=n=> (n==null?"—":(Math.round(Number(n)).toLocaleString("fr-FR")+" €"));
+const eur0=n=> (n==null?"—":(Number(n)>0&&Math.round(Number(n))===0?"< 1 €":(Math.round(Number(n)).toLocaleString("fr-FR")+" €")));
 // ---------- Marché de valorisation (JP / EU / US) ----------
 let MKT='JP';
 const MKT_FIELD={JP:'_jp',EU:'_eu',US:'_us'};
@@ -4023,7 +4032,7 @@ async function homeBriefing(){
   }catch(e){ box.innerHTML='<div class="txt" style="color:var(--muted);font-size:13px">Erreur, réessaie.</div><button class="hbriefbtn" onclick="homeBriefing()">Réessayer</button>'; }
 }
 document.getElementById('modeSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMode(b.dataset.m);});
-const APP_VERSION='Version b111 · 05/09';
+const APP_VERSION='Version b113 · 05/09';
 { const nv=document.getElementById('navVersion'); if(nv) nv.textContent=APP_VERSION; }
 document.getElementById('mktSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMarket(b.dataset.k);});
 const CATARRS=["catColors","catCats","catRarities","catTreats","catProvs","catSets"];
@@ -4647,6 +4656,96 @@ async function startCam(){
 }
 function stopCam(){ if(scanStream){ try{ scanStream.getTracks().forEach(t=>t.stop()); }catch(e){} scanStream=null; } }
 function closeScan(){ stopAuto(); stopCam(); document.getElementById('scanOverlay').classList.add('hidden'); }
+// ===== Importer un achat (photo reçu → Gemini → vérif humaine → record_purchase) =====
+let PUR_DRAFT=null;
+function openPurImport(){ try{ closeNav(); }catch(e){} const o=document.getElementById('purOverlay'); if(!o) return; o.classList.remove('hidden'); purStep1(); }
+function closePurImport(){ const o=document.getElementById('purOverlay'); if(o) o.classList.add('hidden'); PUR_DRAFT=null; }
+function purSetStatus(h){ const e=document.getElementById('purStatus'); if(e) e.innerHTML=h; }
+function purStep1(){
+  const b=document.getElementById('purBody'); if(!b) return;
+  b.innerHTML='<div class="dt" style="font-size:13px;margin-bottom:14px">Prends ou choisis la capture d’écran du reçu (Whatnot, eBay…). Je lis le vendeur, les montants et la date — tu vérifies, et j’enregistre l’achat (ça alimente tes stats vendeurs).</div>'+
+    '<label style="display:block;border:1px dashed var(--accent);background:rgba(193,147,56,.07);color:var(--accent);font-weight:800;padding:24px 14px;border-radius:14px;text-align:center;cursor:pointer;font-size:14px">📷 Choisir / prendre une photo du reçu<input type="file" accept="image/*" style="display:none" onchange="purFile(this)"></label>'+
+    '<div style="text-align:center;margin-top:10px"><button onclick="purReview({})" style="border:0;background:transparent;color:var(--muted);font-size:12.5px;text-decoration:underline;cursor:pointer">ou saisir à la main</button></div>'+
+    '<div id="purStatus" class="dt" style="font-size:12.5px;margin-top:12px;text-align:center"></div>';
+}
+function purFile(inp){ const f=inp.files&&inp.files[0]; if(!f) return; const rd=new FileReader(); rd.onload=function(){ purAnalyze(rd.result); }; rd.readAsDataURL(f); }
+async function purAnalyze(dataUrl){
+  purSetStatus('🔎 Lecture du reçu par l’IA…');
+  try{
+    const r=await fetch(SB+'/functions/v1/purchase-ingest',{method:'POST',headers:{'Content-Type':'application/json',apikey:ANON,Authorization:'Bearer '+ANON},body:JSON.stringify({image_b64:dataUrl})});
+    const j=await r.json();
+    if(!j||!j.ok||!j.draft){ if(j&&j.rate_limited){ purSetStatus('⏳ Limite IA atteinte, réessaie dans '+(j.retry_after||30)+' s — ou saisis à la main.'); } else { purSetStatus('❌ Lecture impossible (capture peu nette ?). Tu peux saisir à la main ci-dessous.'); purReview({}); } return; }
+    PUR_DRAFT=j.draft; purReview(j.draft);
+  }catch(e){ purSetStatus('❌ Erreur réseau.'); }
+}
+function purEurCalc(){
+  const fx=parseFloat(document.getElementById('purFx').value)||0.005382;
+  const st=parseFloat(document.getElementById('purSub').value);
+  const tt=parseFloat(document.getElementById('purTot').value);
+  const se=document.getElementById('purSubEur'), te=document.getElementById('purTotEur');
+  if(se) se.textContent=isNaN(st)?'—':(Math.round(st*fx*100)/100).toLocaleString('fr-FR')+' €';
+  if(te) te.textContent=isNaN(tt)?'—':(Math.round(tt*fx*100)/100).toLocaleString('fr-FR')+' €';
+}
+function purReview(d){
+  d=d||{}; const b=document.getElementById('purBody'); if(!b) return;
+  const fx=d.fx||0.005382;
+  const cands=Array.isArray(d.candidates)?d.candidates:[];
+  const opts=['<option value="">— ne pas lier de carte —</option>'].concat(cands.map(function(c){ return '<option value="'+esc(c.printing_id)+'" data-mk="'+(c.price_eur!=null?c.price_eur:'')+'">'+((typeof FLAG!=='undefined'&&FLAG[c.language])||'')+' '+esc(c.variant_label||'Normale')+(c.owned?' ✓':'')+(c.price_eur!=null?(' · '+Math.round(c.price_eur)+' €'):'')+'</option>'; })).join('');
+  const lbl=function(t){ return '<div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);margin:11px 0 3px">'+t+'</div>'; };
+  const inp=function(id,val,ph,extra){ return '<input id="'+id+'" value="'+esc(val==null?'':String(val))+'" placeholder="'+ph+'" '+(extra||'')+' style="width:100%;padding:9px 10px;border:1px solid var(--line);border-radius:9px;background:var(--panel);color:var(--ink);font-size:14px;box-sizing:border-box">'; };
+  b.innerHTML=
+    '<div class="dt" style="font-size:12.5px;margin-bottom:6px">Vérifie et corrige si besoin, puis enregistre. 👇</div>'+
+    lbl('Vendeur (handle exact)')+inp('purSeller',d.seller,'ex. akisuketcg')+
+    '<div style="display:flex;gap:8px">'+
+      '<div style="flex:1">'+lbl('Plateforme')+inp('purPlat',d.platform||'whatnot','whatnot')+'</div>'+
+      '<div style="flex:1">'+lbl('Date')+inp('purDate',d.purchase_date,'AAAA-MM-JJ')+'</div>'+
+    '</div>'+
+    '<div style="display:flex;gap:8px">'+
+      '<div style="flex:1">'+lbl('Devise')+inp('purCur',d.currency||'JPY','JPY','oninput="purEurCalc()"')+'</div>'+
+      '<div style="flex:1">'+lbl('Taux → €')+inp('purFx',fx,'0.005382','inputmode="decimal" oninput="purEurCalc()"')+'</div>'+
+    '</div>'+
+    '<div style="display:flex;gap:8px">'+
+      '<div style="flex:1">'+lbl('Sous-total carte')+inp('purSub',d.subtotal_origin,'0','inputmode="decimal" oninput="purEurCalc()"')+'<div class="dt" style="font-size:12px;margin-top:2px">= <b id="purSubEur">—</b></div></div>'+
+      '<div style="flex:1">'+lbl('Total (tout compris)')+inp('purTot',d.total_origin,'0','inputmode="decimal" oninput="purEurCalc()"')+'<div class="dt" style="font-size:12px;margin-top:2px">= <b id="purTotEur">—</b></div></div>'+
+    '</div>'+
+    lbl('Article')+inp('purItem',d.item_name,'nom de la carte')+
+    lbl('Carte liée (variante)')+'<select id="purPid" style="width:100%;padding:9px 10px;border:1px solid var(--line);border-radius:9px;background:var(--panel);color:var(--ink);font-size:14px;box-sizing:border-box">'+opts+'</select>'+
+    (d.card_number?('<div class="dt" style="font-size:11.5px;margin-top:3px">Numéro lu : <b>'+esc(d.card_number)+'</b> — choisis la bonne variante ci-dessus.</div>'):'')+
+    '<label style="display:flex;align-items:center;gap:8px;margin-top:12px;font-size:13px;cursor:pointer"><input type="checkbox" id="purAddColl"> Ajouter aussi à ma collection</label>'+
+    '<button onclick="purSave()" style="width:100%;margin-top:16px;border:0;background:var(--accent);color:#1a1204;font-weight:800;font-size:15px;padding:13px;border-radius:12px;cursor:pointer">✓ Enregistrer l’achat</button>'+
+    '<div id="purStatus" class="dt" style="font-size:12.5px;margin-top:10px;text-align:center"></div>';
+  purEurCalc();
+}
+async function purSave(){
+  const g=function(id){ const e=document.getElementById(id); return e?e.value:''; };
+  const seller=(g('purSeller')||'').trim();
+  if(!seller){ purSetStatus('⚠️ Indique le vendeur (handle).'); return; }
+  const cur=(g('purCur')||'JPY').trim().toUpperCase();
+  const fx=parseFloat(g('purFx'))||0.005382;
+  const sub=parseFloat(g('purSub')); const tot=parseFloat(g('purTot'));
+  const sel=document.getElementById('purPid'); const pid=sel?sel.value:'';
+  const mkAttr=(sel&&sel.selectedOptions&&sel.selectedOptions[0])?sel.selectedOptions[0].getAttribute('data-mk'):'';
+  const body={
+    p_seller:seller, p_platform:(g('purPlat')||'whatnot').trim(),
+    p_date:(g('purDate')||'').trim()||null, p_currency:cur, p_fx:fx,
+    p_amount_origin:isNaN(tot)?null:tot,
+    p_amount_eur:isNaN(tot)?null:Math.round(tot*fx*100)/100,
+    p_subtotal_eur:isNaN(sub)?null:Math.round(sub*fx*100)/100,
+    p_item_name:(g('purItem')||'').trim()||null,
+    p_reference:(g('purItem')||'').trim()||null,
+    p_printing_id:pid||null,
+    p_market_eur:(mkAttr!==''&&mkAttr!=null)?Number(mkAttr):null,
+    p_order_no:(PUR_DRAFT&&PUR_DRAFT.order_number)||null,
+    p_add_to_collection:!!(document.getElementById('purAddColl')&&document.getElementById('purAddColl').checked)
+  };
+  purSetStatus('💾 Enregistrement…');
+  try{
+    const r=await fetch(SB+'/rest/v1/rpc/record_purchase',{method:'POST',headers:{'Content-Type':'application/json',apikey:ANON,Authorization:'Bearer '+ANON},body:JSON.stringify(body)});
+    if(!r.ok){ const t=await r.text(); purSetStatus('❌ Échec : '+esc(t.slice(0,140))); return; }
+    purSetStatus('✅ Achat enregistré — il alimente tes stats vendeurs.');
+    setTimeout(function(){ closePurImport(); try{ if(state.mode==='achats'&&typeof fetchAchats==='function') fetchAchats(); }catch(e){} },1200);
+  }catch(e){ purSetStatus('❌ Erreur réseau.'); }
+}
 // crop the centered card-shaped region (matches the on-screen frame: 88% height, 63/88 ratio, object-fit:cover)
 function cropCardRegion(v){
   const vw=v.videoWidth, vh=v.videoHeight; if(!vw||!vh) return null;
