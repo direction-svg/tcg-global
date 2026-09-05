@@ -4032,7 +4032,7 @@ async function homeBriefing(){
   }catch(e){ box.innerHTML='<div class="txt" style="color:var(--muted);font-size:13px">Erreur, réessaie.</div><button class="hbriefbtn" onclick="homeBriefing()">Réessayer</button>'; }
 }
 document.getElementById('modeSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMode(b.dataset.m);});
-const APP_VERSION='Version b114 · 05/09';
+const APP_VERSION='Version b116 · 05/09';
 { const nv=document.getElementById('navVersion'); if(nv) nv.textContent=APP_VERSION; }
 document.getElementById('mktSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMarket(b.dataset.k);});
 const CATARRS=["catColors","catCats","catRarities","catTreats","catProvs","catSets"];
@@ -4657,9 +4657,9 @@ async function startCam(){
 function stopCam(){ if(scanStream){ try{ scanStream.getTracks().forEach(t=>t.stop()); }catch(e){} scanStream=null; } }
 function closeScan(){ stopAuto(); stopCam(); document.getElementById('scanOverlay').classList.add('hidden'); }
 // ===== Importer un achat (photo reçu → Gemini → vérif humaine → record_purchase) =====
-let PUR_DRAFT=null, PUR_IMGS=[];
-function openPurImport(){ try{ closeNav(); }catch(e){} PUR_IMGS=[]; PUR_DRAFT=null; const o=document.getElementById('purOverlay'); if(!o) return; o.classList.remove('hidden'); purStep1(); }
-function closePurImport(){ const o=document.getElementById('purOverlay'); if(o) o.classList.add('hidden'); PUR_DRAFT=null; PUR_IMGS=[]; }
+let PUR_DRAFT=null, PUR_IMGS=[], PUR_SEL=null, PUR_FIND_T=null;
+function openPurImport(){ try{ closeNav(); }catch(e){} PUR_IMGS=[]; PUR_DRAFT=null; PUR_SEL=null; const o=document.getElementById('purOverlay'); if(!o) return; o.classList.remove('hidden'); purStep1(); }
+function closePurImport(){ const o=document.getElementById('purOverlay'); if(o) o.classList.add('hidden'); PUR_DRAFT=null; PUR_IMGS=[]; PUR_SEL=null; }
 function purSetStatus(h){ const e=document.getElementById('purStatus'); if(e) e.innerHTML=h; }
 function purStep1(){
   const b=document.getElementById('purBody'); if(!b) return;
@@ -4702,8 +4702,6 @@ function purEurCalc(){
 function purReview(d){
   d=d||{}; const b=document.getElementById('purBody'); if(!b) return;
   const fx=d.fx||0.005382;
-  const cands=Array.isArray(d.candidates)?d.candidates:[];
-  const opts=['<option value="">— ne pas lier de carte —</option>'].concat(cands.map(function(c){ return '<option value="'+esc(c.printing_id)+'" data-mk="'+(c.price_eur!=null?c.price_eur:'')+'">'+((typeof FLAG!=='undefined'&&FLAG[c.language])||'')+' '+esc(c.variant_label||'Normale')+(c.owned?' ✓':'')+(c.price_eur!=null?(' · '+Math.round(c.price_eur)+' €'):'')+'</option>'; })).join('');
   const lbl=function(t){ return '<div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);margin:11px 0 3px">'+t+'</div>'; };
   const inp=function(id,val,ph,extra){ return '<input id="'+id+'" value="'+esc(val==null?'':String(val))+'" placeholder="'+ph+'" '+(extra||'')+' style="width:100%;padding:9px 10px;border:1px solid var(--line);border-radius:9px;background:var(--panel);color:var(--ink);font-size:14px;box-sizing:border-box">'; };
   b.innerHTML=
@@ -4722,13 +4720,36 @@ function purReview(d){
       '<div style="flex:1">'+lbl('Total (tout compris)')+inp('purTot',d.total_origin,'0','inputmode="decimal" oninput="purEurCalc()"')+'<div class="dt" style="font-size:12px;margin-top:2px">= <b id="purTotEur">—</b></div></div>'+
     '</div>'+
     lbl('Article')+inp('purItem',d.item_name,'nom de la carte')+
-    lbl('Carte liée (variante)')+'<select id="purPid" style="width:100%;padding:9px 10px;border:1px solid var(--line);border-radius:9px;background:var(--panel);color:var(--ink);font-size:14px;box-sizing:border-box">'+opts+'</select>'+
-    (d.card_number?('<div class="dt" style="font-size:11.5px;margin-top:3px">Numéro lu : <b>'+esc(d.card_number)+'</b> — choisis la bonne variante ci-dessus.</div>'):'')+
+    lbl('Carte à lier — numéro (modifiable)')+
+    '<div style="display:flex;gap:8px"><input id="purCardNo" value="'+esc(d.card_number||'')+'" placeholder="ex : OP16-032" oninput="purCardNoChanged()" style="flex:1;padding:9px 10px;border:1px solid var(--line);border-radius:9px;background:var(--panel);color:var(--ink);font-size:14px;box-sizing:border-box"><button type="button" onclick="purFindCards()" style="border:1px solid var(--accent);background:rgba(193,147,56,.1);color:var(--accent);border-radius:9px;padding:0 14px;font-weight:800;cursor:pointer;font-size:15px">🔍</button></div>'+
+    '<div id="purCands" style="margin-top:8px"><div class="dt" style="font-size:12px">Entre/corrige le numéro puis touche la bonne carte ci-dessous.</div></div>'+
     '<label style="display:flex;align-items:center;gap:8px;margin-top:12px;font-size:13px;cursor:pointer"><input type="checkbox" id="purAddColl"> Ajouter aussi à ma collection</label>'+
     '<button onclick="purSave()" style="width:100%;margin-top:16px;border:0;background:var(--accent);color:#1a1204;font-weight:800;font-size:15px;padding:13px;border-radius:12px;cursor:pointer">✓ Enregistrer l’achat</button>'+
     '<div id="purStatus" class="dt" style="font-size:12.5px;margin-top:10px;text-align:center"></div>';
   purEurCalc();
+  if(d.card_number) purFindCards();
 }
+function purCardNoChanged(){ if(PUR_FIND_T) clearTimeout(PUR_FIND_T); PUR_SEL=null; PUR_FIND_T=setTimeout(purFindCards, 600); }
+async function purFindCards(){
+  const inp=document.getElementById('purCardNo'); const box=document.getElementById('purCands'); if(!box) return;
+  const no=((inp?inp.value:'')||'').trim().toUpperCase();
+  if(!no){ box.innerHTML='<div class="dt" style="font-size:12px">Aucune carte liée (facultatif).</div>'; PUR_SEL=null; return; }
+  box.innerHTML='<div class="dt" style="font-size:12px">Recherche…</div>';
+  let rows=[];
+  try{ await ensurePcImages(); const r=await fetch(SB+'/rest/v1/app_catalog_priced?card_number=eq.'+encodeURIComponent(no)+'&select=printing_id,card_number,name,variant_label,language,owned,price_eur,image_url&order=owned.desc,price_eur.desc.nullslast&limit=40',{headers:{apikey:ANON,Authorization:'Bearer '+ANON}}); rows=await r.json(); if(!Array.isArray(rows)) rows=[]; }catch(e){ rows=[]; }
+  if(!rows.length){ box.innerHTML='<div class="dt" style="font-size:12px">Aucune carte trouvée pour <b>'+esc(no)+'</b> — vérifie le numéro.</div>'; PUR_SEL=null; return; }
+  box.innerHTML='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(94px,1fr));gap:8px">'+rows.map(function(r){
+    const u=((typeof PCIMG!=='undefined'&&PCIMG&&PCIMG[r.printing_id])||r.image_url||'');
+    const img=u?('<img referrerpolicy="no-referrer" src="'+esc(u)+'" style="width:100%;aspect-ratio:5/7;object-fit:cover;display:block" onerror="this.style.visibility=\'hidden\'">'):('<div style="width:100%;aspect-ratio:5/7;display:flex;align-items:center;justify-content:center;font-size:9px;color:var(--muted);text-align:center;padding:4px">photo à venir</div>');
+    const px=(r.price_eur!=null)?(Math.round(r.price_eur)+' €'):'—';
+    return '<div class="purcand" data-pid="'+esc(r.printing_id)+'" data-mk="'+(r.price_eur!=null?r.price_eur:'')+'" onclick="purPickCard(this)" style="border:2px solid var(--line);border-radius:9px;overflow:hidden;cursor:pointer;background:var(--panel)">'+
+      '<div style="position:relative">'+img+(r.owned?'<span style="position:absolute;top:3px;left:3px;background:#3fae70;color:#fff;font-size:9px;font-weight:800;border-radius:10px;padding:1px 5px">✓</span>':'')+'</div>'+
+      '<div style="padding:4px 5px"><div style="font-size:10px;font-weight:700;line-height:1.15">'+((typeof FLAG!=='undefined'&&FLAG[r.language])||'')+' '+esc(r.variant_label||'Normale')+'</div><div style="font-size:10px;color:var(--accent);font-weight:800">'+px+'</div></div>'+
+    '</div>';
+  }).join('')+'</div><div class="dt" style="font-size:11px;margin-top:6px">Touche la bonne carte pour la lier (ou laisse sans sélection pour ne rien lier).</div>';
+  PUR_SEL=null;
+}
+function purPickCard(el){ try{ document.querySelectorAll('#purCands .purcand').forEach(function(c){ c.style.borderColor='var(--line)'; }); }catch(e){} el.style.borderColor='var(--accent)'; const mk=el.getAttribute('data-mk'); PUR_SEL={ pid:el.getAttribute('data-pid'), mk:(mk!==''&&mk!=null)?Number(mk):null }; }
 async function purSave(){
   const g=function(id){ const e=document.getElementById(id); return e?e.value:''; };
   const seller=(g('purSeller')||'').trim();
@@ -4736,8 +4757,6 @@ async function purSave(){
   const cur=(g('purCur')||'JPY').trim().toUpperCase();
   const fx=parseFloat(g('purFx'))||0.005382;
   const sub=parseFloat(g('purSub')); const tot=parseFloat(g('purTot'));
-  const sel=document.getElementById('purPid'); const pid=sel?sel.value:'';
-  const mkAttr=(sel&&sel.selectedOptions&&sel.selectedOptions[0])?sel.selectedOptions[0].getAttribute('data-mk'):'';
   const body={
     p_seller:seller, p_platform:(g('purPlat')||'whatnot').trim(),
     p_date:(g('purDate')||'').trim()||null, p_currency:cur, p_fx:fx,
@@ -4746,8 +4765,8 @@ async function purSave(){
     p_subtotal_eur:isNaN(sub)?null:Math.round(sub*fx*100)/100,
     p_item_name:(g('purItem')||'').trim()||null,
     p_reference:(g('purItem')||'').trim()||null,
-    p_printing_id:pid||null,
-    p_market_eur:(mkAttr!==''&&mkAttr!=null)?Number(mkAttr):null,
+    p_printing_id:(PUR_SEL&&PUR_SEL.pid)||null,
+    p_market_eur:(PUR_SEL&&PUR_SEL.mk!=null)?PUR_SEL.mk:null,
     p_order_no:(PUR_DRAFT&&PUR_DRAFT.order_number)||null,
     p_add_to_collection:!!(document.getElementById('purAddColl')&&document.getElementById('purAddColl').checked)
   };
@@ -5373,6 +5392,7 @@ function goalParams(g){
   else if(g.kind==='set') p+='&set_family=eq.'+encodeURIComponent(g.value);
   else if(g.kind==='traitement') p+='&treatment_family=eq.'+encodeURIComponent(g.value);
   else if(g.kind==='rarete') p+='&rarity=eq.'+encodeURIComponent(g.value);
+  else if(g.kind==='type') p+='&variant_label=ilike.'+encodeURIComponent('*'+g.value+'*');
   return p;
 }
 function goalPx(r){ if(r.price_eur!=null) return Number(r.price_eur); if(r.jp_eur!=null) return Number(r.jp_eur); if(r.eu_eur!=null) return Number(r.eu_eur); if(r.us_eur!=null) return Number(r.us_eur); return null; }
@@ -5395,7 +5415,7 @@ async function goalRows(g){
   const url=SB+'/rest/v1/app_catalog_priced?select=printing_id,card_number,name,variant,variant_label,rarity,set_code,set_name,language,color,category,owned,jp_eur,eu_eur,us_eur,price_eur,price_source,image_url,treatment_family&limit='+lim+goalParams(g);
   try{ await ensurePcImages(); const r=await fetch(url,{headers:{apikey:ANON,Authorization:'Bearer '+ANON}}); const j=await r.json(); let rows=Array.isArray(j)?j:[]; if(g.language==='COMPLET') rows=goalDedup(rows); return rows; }catch(e){ return []; }
 }
-function goalKindLabel(g){ return g.kind==='personnage'?('Personnage · '+g.value):(g.kind==='set'?('Set · '+g.value):(g.kind==='traitement'?('Famille · '+(TREAT_LABELS[g.value]||g.value)):('Rareté · '+(RAR_LABELS[g.value]||g.value)))); }
+function goalKindLabel(g){ return g.kind==='personnage'?('Personnage · '+g.value):(g.kind==='set'?('Set · '+g.value):(g.kind==='traitement'?('Famille · '+(TREAT_LABELS[g.value]||g.value)):(g.kind==='rarete'?('Rareté · '+(RAR_LABELS[g.value]||g.value)):('Type · '+((typeof GOAL_TYPE_LABEL!=='undefined'&&GOAL_TYPE_LABEL[g.value])||g.value))))); }
 function goalFlag(l){ return l==='JP'?'🇯🇵':(l==='EN'?'🇺🇸':(l==='CN'?'🇨🇳':(l==='COMPLET'?'🌍':'🌐'))); }
 async function renderObjectifs(){
   const st=document.getElementById('stage');
@@ -5555,7 +5575,9 @@ async function deleteGoal(id){
 }
 // --- Nouvel objectif (sheet) ---
 let NEWGOAL=null, GOALSETS=[];
-const GOAL_AXES=[['personnage','Un personnage'],['set','Un set'],['traitement','Une famille'],['rarete','Une rareté']];
+const GOAL_AXES=[['personnage','Un personnage'],['set','Un set'],['traitement','Une famille'],['rarete','Une rareté'],['type','Un type / provenance']];
+const GOAL_TYPES=[['flagship','Flagship / Battle'],['championship','Championship'],['winner','Winner'],['finalist','Finalist'],['participant','Participant'],['pirates league','Pirates League'],['judge','Judge'],['pre-release','Pré-release'],['anniversary','Anniversaire'],['one piece day','One Piece Day'],['promotion','Promotion Pack'],['serial','Serial']];
+const GOAL_TYPE_LABEL=Object.fromEntries(GOAL_TYPES.map(t=>[t[0],t[1]]));
 async function openNewGoal(){
   NEWGOAL={kind:null,value:null,language:'JP'};
   document.getElementById('goalAxis').innerHTML=GOAL_AXES.map(a=>'<div class="chip" data-k="'+a[0]+'" onclick="pickGoalAxis(this)">'+a[1]+'</div>').join('');
@@ -5580,11 +5602,13 @@ function renderGoalVal(){
     w.innerHTML='<div class="buylab">Famille de traitement</div><select id="gvSel" onchange="onGoalSel()" class="buyinput"><option value="">— choisir —</option>'+GOAL_TRAITS.map(t=>'<option value="'+t+'">'+esc(TREAT_LABELS[t]||t)+'</option>').join('')+'</select>';
   } else if(NEWGOAL.kind==='rarete'){
     w.innerHTML='<div class="buylab">Rareté</div><select id="gvSel" onchange="onGoalSel()" class="buyinput"><option value="">— choisir —</option>'+RAR_ORDER.map(t=>'<option value="'+t+'">'+esc(RAR_LABELS[t]||t)+'</option>').join('')+'</select>';
+  } else if(NEWGOAL.kind==='type'){
+    w.innerHTML='<div class="buylab">Type / provenance</div><select id="gvSel" onchange="onGoalSel()" class="buyinput"><option value="">— choisir —</option>'+GOAL_TYPES.map(t=>'<option value="'+esc(t[0])+'">'+esc(t[1])+'</option>').join('')+'</select><div class="dt" style="font-size:11px;margin-top:4px">Cible toutes les cartes dont le libellé contient ce type, toutes séries confondues (ex. Flagship, Championship…).</div>';
   }
 }
 function onGoalText(){ const v=document.getElementById('gvText'); if(NEWGOAL){ NEWGOAL.value=v?v.value.trim():''; } autoGoalName(); goalPreview(); }
 function onGoalSel(){ const v=document.getElementById('gvSel'); if(NEWGOAL){ NEWGOAL.value=v?v.value:''; } autoGoalName(); goalPreview(); }
-function autoGoalName(){ const n=document.getElementById('goalName'); if(!n||!NEWGOAL||!NEWGOAL.value) return; if(n.value.trim()==='' || n.dataset.auto==='1'){ let lbl=NEWGOAL.kind==='traitement'?(TREAT_LABELS[NEWGOAL.value]||NEWGOAL.value):(NEWGOAL.kind==='rarete'?(RAR_LABELS[NEWGOAL.value]||NEWGOAL.value):NEWGOAL.value); n.value=lbl; n.dataset.auto='1'; } }
+function autoGoalName(){ const n=document.getElementById('goalName'); if(!n||!NEWGOAL||!NEWGOAL.value) return; if(n.value.trim()==='' || n.dataset.auto==='1'){ let lbl=NEWGOAL.kind==='traitement'?(TREAT_LABELS[NEWGOAL.value]||NEWGOAL.value):(NEWGOAL.kind==='rarete'?(RAR_LABELS[NEWGOAL.value]||NEWGOAL.value):(NEWGOAL.kind==='type'?(GOAL_TYPE_LABEL[NEWGOAL.value]||NEWGOAL.value):NEWGOAL.value)); n.value=lbl; n.dataset.auto='1'; } }
 async function goalPreview(){
   const box=document.getElementById('goalPreview'); if(!box||!NEWGOAL) return;
   if(!NEWGOAL.kind||!NEWGOAL.value){ box.innerHTML=''; return; }
