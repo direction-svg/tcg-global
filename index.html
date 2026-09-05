@@ -4032,7 +4032,7 @@ async function homeBriefing(){
   }catch(e){ box.innerHTML='<div class="txt" style="color:var(--muted);font-size:13px">Erreur, réessaie.</div><button class="hbriefbtn" onclick="homeBriefing()">Réessayer</button>'; }
 }
 document.getElementById('modeSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMode(b.dataset.m);});
-const APP_VERSION='Version b116 · 05/09';
+const APP_VERSION='Version b118 · 05/09';
 { const nv=document.getElementById('navVersion'); if(nv) nv.textContent=APP_VERSION; }
 document.getElementById('mktSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMarket(b.dataset.k);});
 const CATARRS=["catColors","catCats","catRarities","catTreats","catProvs","catSets"];
@@ -4768,14 +4768,25 @@ async function purSave(){
     p_printing_id:(PUR_SEL&&PUR_SEL.pid)||null,
     p_market_eur:(PUR_SEL&&PUR_SEL.mk!=null)?PUR_SEL.mk:null,
     p_order_no:(PUR_DRAFT&&PUR_DRAFT.order_number)||null,
-    p_add_to_collection:!!(document.getElementById('purAddColl')&&document.getElementById('purAddColl').checked)
+    p_add_to_collection:false
   };
+  const addColl=!!(document.getElementById('purAddColl')&&document.getElementById('purAddColl').checked);
   purSetStatus('💾 Enregistrement…');
   try{
     const r=await fetch(SB+'/rest/v1/rpc/record_purchase',{method:'POST',headers:{'Content-Type':'application/json',apikey:ANON,Authorization:'Bearer '+ANON},body:JSON.stringify(body)});
     if(!r.ok){ const t=await r.text(); purSetStatus('❌ Échec : '+esc(t.slice(0,140))); return; }
-    purSetStatus('✅ Achat enregistré — il alimente tes stats vendeurs.');
-    setTimeout(function(){ closePurImport(); try{ if(state.mode==='achats'&&typeof fetchAchats==='function') fetchAchats(); }catch(e){} },1200);
+    let msg='✅ Achat enregistré — il alimente tes stats vendeurs.';
+    if(addColl){
+      if(!(PUR_SEL&&PUR_SEL.pid)){ msg='✅ Achat enregistré. ⚠️ Pour l’ajouter à ta collection, sélectionne d’abord la carte (touche une vignette).'; }
+      else{
+        try{
+          const rc=await fetch(SB+'/rest/v1/rpc/add_to_collection',{method:'POST',headers:{'Content-Type':'application/json',apikey:ANON,Authorization:'Bearer '+ANON},body:JSON.stringify({p_printing:PUR_SEL.pid,p_qty:1,p_price:body.p_amount_eur,p_from:seller})});
+          msg=rc.ok?'✅ Achat enregistré + carte ajoutée à ta collection.':'✅ Achat enregistré. ⚠️ Ajout à la collection échoué — réessaie.';
+        }catch(e){ msg='✅ Achat enregistré. ⚠️ Ajout collection : erreur réseau.'; }
+      }
+    }
+    purSetStatus(msg);
+    setTimeout(function(){ closePurImport(); try{ if(state.mode==='achats'&&typeof fetchAchats==='function') fetchAchats(); }catch(e){} },1500);
   }catch(e){ purSetStatus('❌ Erreur réseau.'); }
 }
 // crop the centered card-shaped region (matches the on-screen frame: 88% height, 63/88 ratio, object-fit:cover)
@@ -5392,7 +5403,7 @@ function goalParams(g){
   else if(g.kind==='set') p+='&set_family=eq.'+encodeURIComponent(g.value);
   else if(g.kind==='traitement') p+='&treatment_family=eq.'+encodeURIComponent(g.value);
   else if(g.kind==='rarete') p+='&rarity=eq.'+encodeURIComponent(g.value);
-  else if(g.kind==='type') p+='&variant_label=ilike.'+encodeURIComponent('*'+g.value+'*');
+  else if(g.kind==='type'){ const kws=(typeof GOAL_TYPE_KEYWORDS!=='undefined'&&GOAL_TYPE_KEYWORDS[g.value])||[g.value]; if(kws.length<=1) p+='&variant_label=ilike.'+encodeURIComponent('*'+(kws[0]||g.value)+'*'); else p+='&or=('+kws.map(function(k){ return 'variant_label.ilike.'+encodeURIComponent('*'+k+'*'); }).join(',')+')'; }
   return p;
 }
 function goalPx(r){ if(r.price_eur!=null) return Number(r.price_eur); if(r.jp_eur!=null) return Number(r.jp_eur); if(r.eu_eur!=null) return Number(r.eu_eur); if(r.us_eur!=null) return Number(r.us_eur); return null; }
@@ -5576,7 +5587,8 @@ async function deleteGoal(id){
 // --- Nouvel objectif (sheet) ---
 let NEWGOAL=null, GOALSETS=[];
 const GOAL_AXES=[['personnage','Un personnage'],['set','Un set'],['traitement','Une famille'],['rarete','Une rareté'],['type','Un type / provenance']];
-const GOAL_TYPES=[['flagship','Flagship / Battle'],['championship','Championship'],['winner','Winner'],['finalist','Finalist'],['participant','Participant'],['pirates league','Pirates League'],['judge','Judge'],['pre-release','Pré-release'],['anniversary','Anniversaire'],['one piece day','One Piece Day'],['promotion','Promotion Pack'],['serial','Serial']];
+const GOAL_TYPES=[['flagship','Flagship / Battle / Event'],['winner','Winner / Finalist'],['judge','Judge'],['pre-release','Pré-release'],['anniversary','Anniversaire'],['one piece day','One Piece Day'],['promotion','Promotion Pack'],['serial','Serial']];
+const GOAL_TYPE_KEYWORDS={flagship:['flagship','championship','offline regional','online regional','regional','standard battle','extra grand battle','sealed battle','battle winner','tournament promo','tournament prize','event prize','store championship','pirates league','top 8','top 32','finalist','grand battle'],winner:['winner','finalist','participant']};
 const GOAL_TYPE_LABEL=Object.fromEntries(GOAL_TYPES.map(t=>[t[0],t[1]]));
 async function openNewGoal(){
   NEWGOAL={kind:null,value:null,language:'JP'};
