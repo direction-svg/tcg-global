@@ -4023,7 +4023,7 @@ async function homeBriefing(){
   }catch(e){ box.innerHTML='<div class="txt" style="color:var(--muted);font-size:13px">Erreur, réessaie.</div><button class="hbriefbtn" onclick="homeBriefing()">Réessayer</button>'; }
 }
 document.getElementById('modeSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMode(b.dataset.m);});
-const APP_VERSION='Version b110 · 05/09';
+const APP_VERSION='Version b111 · 05/09';
 { const nv=document.getElementById('navVersion'); if(nv) nv.textContent=APP_VERSION; }
 document.getElementById('mktSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMarket(b.dataset.k);});
 const CATARRS=["catColors","catCats","catRarities","catTreats","catProvs","catSets"];
@@ -5308,7 +5308,7 @@ async function computeGoalCard(g,i){
     '<div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px"><span style="font-weight:700;font-size:12.5px">'+goalMotiv(pct,missing)+'</span>'+(missing>0&&remain>0?('<span class="dt" style="font-size:11.5px;white-space:nowrap">≈ '+eur0(remain)+'</span>'):'')+'</div>';
 }
 let GOAL_CUR=null, GOAL_VIEW=[];
-const GV={view:'grid',sort:'missing',filter:'all',showPrice:true,supplier:false};
+const GV={view:'grid',sort:'price_desc',filter:'all',showPrice:true,supplier:false};
 const GV_SORTS=[['missing','À chasser d’abord'],['owned','Possédées d’abord'],['price_desc','Prix ↓'],['price_asc','Prix ↑'],['num','Numéro']];
 function goalImgUrl(r){
   // 1) Priorité à l'image PriceCharting/officielle par variante (art correct).
