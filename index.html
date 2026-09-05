@@ -4032,7 +4032,7 @@ async function homeBriefing(){
   }catch(e){ box.innerHTML='<div class="txt" style="color:var(--muted);font-size:13px">Erreur, réessaie.</div><button class="hbriefbtn" onclick="homeBriefing()">Réessayer</button>'; }
 }
 document.getElementById('modeSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMode(b.dataset.m);});
-const APP_VERSION='Version b118 · 05/09';
+const APP_VERSION='Version b119 · 05/09';
 { const nv=document.getElementById('navVersion'); if(nv) nv.textContent=APP_VERSION; }
 document.getElementById('mktSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMarket(b.dataset.k);});
 const CATARRS=["catColors","catCats","catRarities","catTreats","catProvs","catSets"];
@@ -5587,8 +5587,8 @@ async function deleteGoal(id){
 // --- Nouvel objectif (sheet) ---
 let NEWGOAL=null, GOALSETS=[];
 const GOAL_AXES=[['personnage','Un personnage'],['set','Un set'],['traitement','Une famille'],['rarete','Une rareté'],['type','Un type / provenance']];
-const GOAL_TYPES=[['flagship','Flagship / Battle / Event'],['winner','Winner / Finalist'],['judge','Judge'],['pre-release','Pré-release'],['anniversary','Anniversaire'],['one piece day','One Piece Day'],['promotion','Promotion Pack'],['serial','Serial']];
-const GOAL_TYPE_KEYWORDS={flagship:['flagship','championship','offline regional','online regional','regional','standard battle','extra grand battle','sealed battle','battle winner','tournament promo','tournament prize','event prize','store championship','pirates league','top 8','top 32','finalist','grand battle'],winner:['winner','finalist','participant']};
+const GOAL_TYPES=[['flagship','Flagship Battle (strict)'],['tournament','Tournoi / Event (toutes)'],['winner','Winner / Finalist'],['judge','Judge'],['pre-release','Pré-release'],['anniversary','Anniversaire'],['one piece day','One Piece Day'],['promotion','Promotion Pack'],['serial','Serial']];
+const GOAL_TYPE_KEYWORDS={tournament:['flagship','championship','offline regional','online regional','regional','standard battle','extra grand battle','sealed battle','battle winner','tournament promo','tournament prize','event prize','store championship','pirates league','top 8','top 32','finalist','grand battle'],winner:['winner','finalist','participant']};
 const GOAL_TYPE_LABEL=Object.fromEntries(GOAL_TYPES.map(t=>[t[0],t[1]]));
 async function openNewGoal(){
   NEWGOAL={kind:null,value:null,language:'JP'};
