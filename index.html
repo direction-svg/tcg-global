@@ -4023,7 +4023,7 @@ async function homeBriefing(){
   }catch(e){ box.innerHTML='<div class="txt" style="color:var(--muted);font-size:13px">Erreur, réessaie.</div><button class="hbriefbtn" onclick="homeBriefing()">Réessayer</button>'; }
 }
 document.getElementById('modeSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMode(b.dataset.m);});
-const APP_VERSION='Version b104 · 04/09';
+const APP_VERSION='Version b106 · 05/09';
 { const nv=document.getElementById('navVersion'); if(nv) nv.textContent=APP_VERSION; }
 document.getElementById('mktSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMarket(b.dataset.k);});
 const CATARRS=["catColors","catCats","catRarities","catTreats","catProvs","catSets"];
@@ -5252,11 +5252,11 @@ async function priceSave(id){
 }
 // ---------- Objectifs de collection ----------
 let GOALS=[], GOALDETAIL=null;
-const GOAL_LANGS=[['JP','🇯🇵 Japon'],['EN','🇺🇸 Anglais'],['CN','🇨🇳 Chinois'],['ALL','🌐 Toutes']];
+const GOAL_LANGS=[['COMPLET','🌍 Tout (JP + exclusifs)'],['JP','🇯🇵 Japon'],['EN','🇺🇸 Anglais'],['CN','🇨🇳 Chinois']];
 const GOAL_TRAITS=['manga','sp','super_parallel','alt_art','parallel','full_art','gold','foil','textured','jolly_roger'];
 function goalParams(g){
   let p='';
-  if(g.language && g.language!=='ALL') p+='&language=eq.'+encodeURIComponent(g.language);
+  if(g.language && g.language!=='ALL' && g.language!=='COMPLET') p+='&language=eq.'+encodeURIComponent(g.language);
   if(g.kind==='personnage') p+='&name=ilike.'+encodeURIComponent('%'+g.value+'%');
   else if(g.kind==='set') p+='&set_family=eq.'+encodeURIComponent(g.value);
   else if(g.kind==='traitement') p+='&treatment_family=eq.'+encodeURIComponent(g.value);
@@ -5264,12 +5264,25 @@ function goalParams(g){
   return p;
 }
 function goalPx(r){ if(r.price_eur!=null) return Number(r.price_eur); if(r.jp_eur!=null) return Number(r.jp_eur); if(r.eu_eur!=null) return Number(r.eu_eur); if(r.us_eur!=null) return Number(r.us_eur); return null; }
+// Mode COMPLET : une seule ligne par carte unique (numéro+variante), JP prioritaire, + exclusifs des autres langues.
+// « Possédée » = possédée dans N'IMPORTE quelle langue (donc les chinoises comptent).
+function goalDedup(rows){
+  const map=new Map();
+  const rank=l=>l==='JP'?0:(l==='EN'?1:(l==='CN'?2:3));
+  rows.forEach(r=>{ const key=(r.card_number||'')+'|'+(r.variant||r.treatment_family||'');
+    let e=map.get(key);
+    if(!e){ map.set(key,{rep:r, owned:!!r.owned}); }
+    else { e.owned=e.owned||!!r.owned; if(rank(r.language)<rank(e.rep.language)) e.rep=r; }
+  });
+  return [...map.values()].map(e=>Object.assign({},e.rep,{owned:e.owned}));
+}
 async function goalRows(g){
-  const url=SB+'/rest/v1/app_catalog_priced?select=printing_id,card_number,name,variant,variant_label,rarity,set_code,set_name,language,color,category,owned,jp_eur,eu_eur,us_eur,price_eur,price_source,image_url,treatment_family&limit=3000'+goalParams(g);
-  try{ const r=await fetch(url,{headers:{apikey:ANON,Authorization:'Bearer '+ANON}}); const j=await r.json(); return Array.isArray(j)?j:[]; }catch(e){ return []; }
+  const lim=(g.language==='COMPLET'||g.language==='ALL')?6000:3000;
+  const url=SB+'/rest/v1/app_catalog_priced?select=printing_id,card_number,name,variant,variant_label,rarity,set_code,set_name,language,color,category,owned,jp_eur,eu_eur,us_eur,price_eur,price_source,image_url,treatment_family&limit='+lim+goalParams(g);
+  try{ const r=await fetch(url,{headers:{apikey:ANON,Authorization:'Bearer '+ANON}}); const j=await r.json(); let rows=Array.isArray(j)?j:[]; if(g.language==='COMPLET') rows=goalDedup(rows); return rows; }catch(e){ return []; }
 }
 function goalKindLabel(g){ return g.kind==='personnage'?('Personnage · '+g.value):(g.kind==='set'?('Set · '+g.value):(g.kind==='traitement'?('Famille · '+(TREAT_LABELS[g.value]||g.value)):('Rareté · '+(RAR_LABELS[g.value]||g.value)))); }
-function goalFlag(l){ return l==='JP'?'🇯🇵':(l==='EN'?'🇺🇸':(l==='CN'?'🇨🇳':'🌐')); }
+function goalFlag(l){ return l==='JP'?'🇯🇵':(l==='EN'?'🇺🇸':(l==='CN'?'🇨🇳':(l==='COMPLET'?'🌍':'🌐'))); }
 async function renderObjectifs(){
   const st=document.getElementById('stage');
   st.innerHTML='<div style="padding:6px 2px 2px"><button onclick="openNewGoal()" style="width:100%;border:1px dashed var(--accent);background:rgba(193,147,56,.08);color:var(--accent);font-weight:800;padding:13px;border-radius:12px;cursor:pointer;font-size:14px">＋ Nouvel objectif</button></div><div id="goalList" style="margin-top:12px"></div>';
@@ -5293,10 +5306,10 @@ async function computeGoalCard(g,i){
     '<div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px"><span style="font-weight:700;font-size:12.5px">'+goalMotiv(pct,missing)+'</span>'+(missing>0&&remain>0?('<span class="dt" style="font-size:11.5px;white-space:nowrap">≈ '+eur0(remain)+'</span>'):'')+'</div>';
 }
 let GOAL_CUR=null, GOAL_VIEW=[];
-const GV={view:'grid',sort:'missing',filter:'all'};
+const GV={view:'grid',sort:'missing',filter:'all',showPrice:true,supplier:false};
 const GV_SORTS=[['missing','À chasser d’abord'],['owned','Possédées d’abord'],['price_desc','Prix ↓'],['price_asc','Prix ↑'],['num','Numéro']];
 function goalImgUrl(r){ return (typeof PCIMG!=='undefined'&&PCIMG&&PCIMG[r.printing_id])||r.image_url||''; }
-function goalImg(r){ const u=goalImgUrl(r); return u?('<img referrerpolicy="no-referrer" src="'+esc(u)+'" onerror="this.remove()">'):''; }
+function goalImg(r){ const u=goalImgUrl(r); return u?('<img referrerpolicy="no-referrer" src="'+esc(u)+'" onerror="this.remove()">'):('<div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:6px;font-size:11px;font-weight:700;color:var(--muted);line-height:1.25">'+esc(r.card_number||'')+'<span style="font-weight:600;opacity:.8">photo à venir</span></div>'); }
 function goalMotiv(pct,missing){
   if(missing===0) return '🎉 Objectif complet — bravo !';
   if(pct>=90) return '🔥 Dernière ligne droite — plus que '+missing+' !';
@@ -5307,7 +5320,7 @@ function goalMotiv(pct,missing){
 }
 async function openGoalDetail(id){
   const g=GOALS.find(x=>String(x.id)===String(id)); if(!g) return;
-  GOAL_CUR=g;
+  GOAL_CUR=g; GV.supplier=false;
   const st=document.getElementById('stage');
   st.innerHTML='<div style="padding:2px"><button onclick="setMode(\'objectifs\')" style="border:0;background:transparent;color:var(--accent);font-weight:800;cursor:pointer;font-size:14px;padding:4px 0">‹ Objectifs</button><div id="goalHead" style="margin-top:8px"></div><div id="goalDetWrap"><div class="dt" style="padding:12px">Calcul…</div></div></div>';
   const rows=await goalRows(g); GOALDETAIL=rows;
@@ -5346,32 +5359,53 @@ function goalViewArray(){
 function setGV(k,v){ GV[k]=v; renderGoalDetailBody(); }
 function renderGoalDetailBody(){
   const wrap=document.getElementById('goalDetWrap'); if(!wrap) return;
-  GOAL_VIEW=goalViewArray();
-  const chip=(k,v,lbl)=>'<div class="chip'+(GV[k]===v?' on':'')+'" onclick="setGV(\''+k+'\',\''+v+'\')">'+lbl+'</div>';
-  const bar='<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin:14px 0 10px">'+
-    chip('filter','all','Toutes')+chip('filter','missing','À chasser')+chip('filter','owned','Possédées')+
-    '<select onchange="setGV(\'sort\',this.value)" style="margin-left:auto;padding:6px 8px;border:1px solid var(--line);border-radius:8px;background:var(--panel);color:var(--ink);font-weight:700;font-size:12px">'+GV_SORTS.map(s=>'<option value="'+s[0]+'"'+(GV.sort===s[0]?' selected':'')+'>'+s[1]+'</option>').join('')+'</select>'+
-    '<button onclick="setGV(\'view\',\'grid\')" style="border:1px solid '+(GV.view==='grid'?'var(--accent)':'var(--line)')+';background:var(--panel);color:var(--ink);border-radius:8px;padding:6px 9px;cursor:pointer;font-size:14px">▦</button>'+
-    '<button onclick="setGV(\'view\',\'list\')" style="border:1px solid '+(GV.view==='list'?'var(--accent)':'var(--line)')+';background:var(--panel);color:var(--ink);border-radius:8px;padding:6px 9px;cursor:pointer;font-size:14px">☰</button>'+
-  '</div>';
-  const arr=GOAL_VIEW;
-  if(!arr.length){ wrap.innerHTML=bar+'<div class="dt" style="padding:14px;text-align:center">Aucune carte pour ce filtre.</div>'; return; }
+  const complet=!!(GOAL_CUR&&GOAL_CUR.language==='COMPLET');
+  const vlabel=r=>((complet&&r.language&&typeof FLAG!=='undefined'&&FLAG[r.language])?(FLAG[r.language]+' '):'')+esc(r.variant_label||TREAT_LABELS[r.treatment_family]||'Normale');
+  const sup=GV.supplier;
+  { const gh=document.getElementById('goalHead'); if(gh) gh.style.display=sup?'none':''; }
+  let arr;
+  if(sup){ arr=(GOALDETAIL||[]).filter(r=>!r.owned).sort((x,y)=>(goalPx(y)||0)-(goalPx(x)||0)); }
+  else { arr=goalViewArray(); }
+  GOAL_VIEW=arr;
+  let bar;
+  if(sup){
+    bar='<div style="display:flex;align-items:center;gap:8px;margin:14px 0 4px"><div style="flex:1;font-weight:800;font-size:14px">📤 Liste fournisseur · '+arr.length+' cartes recherchées</div><button onclick="setGV(\'supplier\',false)" style="border:1px solid var(--line);background:var(--panel);color:var(--ink);border-radius:8px;padding:6px 11px;cursor:pointer;font-weight:700;font-size:12px">Quitter</button></div><div class="dt" style="font-size:11.5px;margin-bottom:12px">Vue épurée, sans prix — fais une capture d’écran et envoie-la à ton fournisseur.</div>';
+  } else {
+    const chip=(k,v,lbl)=>'<div class="chip'+(GV[k]===v?' on':'')+'" onclick="setGV(\''+k+'\',\''+v+'\')">'+lbl+'</div>';
+    const btn=(on,onclick,txt)=>'<button onclick="'+onclick+'" style="border:1px solid '+(on?'var(--accent)':'var(--line)')+';background:'+(on?'rgba(193,147,56,.12)':'var(--panel)')+';color:var(--ink);border-radius:8px;padding:6px 9px;cursor:pointer;font-size:13px;font-weight:700">'+txt+'</button>';
+    bar='<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin:14px 0 8px">'+
+      chip('filter','all','Toutes')+chip('filter','missing','À chasser')+chip('filter','owned','Possédées')+
+      '<select onchange="setGV(\'sort\',this.value)" style="margin-left:auto;padding:6px 8px;border:1px solid var(--line);border-radius:8px;background:var(--panel);color:var(--ink);font-weight:700;font-size:12px">'+GV_SORTS.map(s=>'<option value="'+s[0]+'"'+(GV.sort===s[0]?' selected':'')+'>'+s[1]+'</option>').join('')+'</select>'+
+      btn(GV.showPrice,"goalToggle('showPrice')",'💰')+
+      btn(GV.view==='grid',"setGV('view','grid')",'▦')+
+      btn(GV.view==='list',"setGV('view','list')",'☰')+
+    '</div>'+
+    '<div style="margin-bottom:10px"><button onclick="setGV(\'supplier\',true)" style="width:100%;border:1px solid var(--accent);background:rgba(193,147,56,.08);color:var(--accent);font-weight:800;padding:9px;border-radius:10px;cursor:pointer;font-size:13px">📤 Vue fournisseur (grand format, sans prix)</button></div>';
+  }
+  if(!arr.length){ wrap.innerHTML=bar+'<div class="dt" style="padding:14px;text-align:center">'+(sup?'Objectif complet — aucune carte à rechercher. 🎉':'Aucune carte pour ce filtre.')+'</div>'; return; }
   const otag=r=>'<span class="owntag '+(r.owned?'own':'no')+'">'+(r.owned?'✓ Possédée':'Non possédée')+'</span>';
-  const vlabel=r=>esc(r.variant_label||TREAT_LABELS[r.treatment_family]||'Normale');
   const chk=r=>r.owned?'<div style="position:absolute;top:6px;left:6px;z-index:2;background:#3fae70;color:#fff;font-weight:900;font-size:12px;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 4px rgba(0,0,0,.3)">✓</div>':'';
+  const showPx = GV.showPrice && !sup;
   let body;
-  if(GV.view==='grid'){
+  if(sup){
+    body='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(168px,1fr));gap:12px">'+arr.map(function(r,k){ return '<div class="card" onclick="openGoalCard('+k+')" style="position:relative">'+
+      '<div class="imgwrap">'+goalImg(r)+'</div>'+
+      '<div class="meta"><p class="nm">'+esc(r.card_number||'')+'</p><div class="sub"><span>'+vlabel(r)+'</span></div></div>'+
+    '</div>'; }).join('')+'</div>';
+  } else if(GV.view==='grid'){
     body='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:11px">'+arr.map(function(r,k){ const px=goalPx(r); return '<div class="card" onclick="openGoalCard('+k+')" style="'+(r.owned?'opacity:.62;':'')+'position:relative">'+
-      '<div class="imgwrap">'+chk(r)+goalImg(r)+(px!=null?'<div class="pxcorner">'+eur0(px)+'</div>':'')+'</div>'+
+      '<div class="imgwrap">'+chk(r)+goalImg(r)+'</div>'+
       '<div class="meta"><p class="nm">'+esc(r.card_number||'')+'</p><div class="sub"><span>'+vlabel(r)+'</span></div>'+
+        (showPx&&px!=null?'<div class="sub" style="font-weight:800;color:var(--accent);margin-top:1px">'+eur0(px)+'</div>':'')+
         (r.owned?'':('<button onclick="goalQuickAdd(\''+esc(r.printing_id)+'\',event)" style="margin-top:6px;width:100%;border:0;background:var(--accent);color:#1a1204;font-weight:800;font-size:12px;padding:6px;border-radius:8px;cursor:pointer">＋ J’ai obtenu</button>'))+
       '</div>'+
     '</div>'; }).join('')+'</div>';
   } else {
-    body=arr.map(function(r,k){ const px=goalPx(r); return '<div class="row" style="'+(r.owned?'opacity:.62':'')+'"><div class="lthumb" onclick="openGoalCard('+k+')" style="position:relative">'+chk(r)+goalImg(r)+'</div><div style="flex:1;min-width:0" onclick="openGoalCard('+k+')"><p class="nm">'+esc(r.card_number||'')+'</p><div class="sub"><span>'+vlabel(r)+'</span> '+otag(r)+'</div></div><div class="r" style="display:flex;flex-direction:column;align-items:flex-end;gap:5px"><div class="val">'+(px!=null?eur0(px):'—')+'</div>'+(r.owned?'':('<button onclick="goalQuickAdd(\''+esc(r.printing_id)+'\',event)" style="border:0;background:var(--accent);color:#1a1204;font-weight:800;font-size:11px;padding:5px 9px;border-radius:8px;cursor:pointer">＋ Obtenu</button>'))+'</div></div>'; }).join('');
+    body=arr.map(function(r,k){ const px=goalPx(r); return '<div class="row" style="'+(r.owned?'opacity:.62':'')+'"><div class="lthumb" onclick="openGoalCard('+k+')" style="position:relative">'+chk(r)+goalImg(r)+'</div><div style="flex:1;min-width:0" onclick="openGoalCard('+k+')"><p class="nm">'+esc(r.card_number||'')+'</p><div class="sub"><span>'+vlabel(r)+'</span> '+otag(r)+'</div></div><div class="r" style="display:flex;flex-direction:column;align-items:flex-end;gap:5px">'+(showPx?('<div class="val">'+(px!=null?eur0(px):'—')+'</div>'):'')+(r.owned?'':('<button onclick="goalQuickAdd(\''+esc(r.printing_id)+'\',event)" style="border:0;background:var(--accent);color:#1a1204;font-weight:800;font-size:11px;padding:5px 9px;border-radius:8px;cursor:pointer">＋ Obtenu</button>'))+'</div></div>'; }).join('');
   }
   wrap.innerHTML=bar+body;
 }
+function goalToggle(k){ GV[k]=!GV[k]; renderGoalDetailBody(); }
 function openGoalCard(k){ const r=GOAL_VIEW[k]; if(r && typeof openCatDetail==='function') openCatDetail(r); }
 function openGoalCardByPid(pid){ const r=(GOALDETAIL||[]).find(x=>String(x.printing_id)===String(pid)); if(r && typeof openCatDetail==='function') openCatDetail(r); }
 function goalQuickAdd(pid,ev){ if(ev){ ev.stopPropagation(); } if(!pid) return;
