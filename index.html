@@ -918,7 +918,7 @@ body{-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
 <!-- Fiche carte -->
 <div id="overlay" class="overlay hidden">
   <div class="sheet">
-    <div class="dhead"><button class="dclose" id="dclose">&times;</button><button id="dprev" title="Carte précédente" style="position:absolute;left:6px;top:50%;transform:translateY(-50%);z-index:5;width:38px;height:38px;border-radius:50%;border:none;background:rgba(0,0,0,.45);color:#fff;font-size:22px;font-weight:800;cursor:pointer;line-height:1">&lsaquo;</button><button id="dnext" title="Carte suivante" style="position:absolute;right:6px;top:50%;transform:translateY(-50%);z-index:5;width:38px;height:38px;border-radius:50%;border:none;background:rgba(0,0,0,.45);color:#fff;font-size:22px;font-weight:800;cursor:pointer;line-height:1">&rsaquo;</button><img id="dimg" referrerpolicy="no-referrer"><div id="dvfy" style="display:none;position:absolute;top:8px;left:8px;background:#f97316;color:#fff;font-weight:800;font-size:11px;padding:3px 9px;border-radius:9px;z-index:4">🔍 à vérifier</div></div>
+    <div class="dhead"><button class="dclose" id="dclose">&times;</button><button id="dprev" title="Carte précédente" style="position:absolute;left:6px;top:50%;transform:translateY(-50%);z-index:5;width:38px;height:38px;border-radius:50%;border:none;background:rgba(0,0,0,.45);color:#fff;font-size:22px;font-weight:800;cursor:pointer;line-height:1">&lsaquo;</button><button id="dnext" title="Carte suivante" style="position:absolute;right:6px;top:50%;transform:translateY(-50%);z-index:5;width:38px;height:38px;border-radius:50%;border:none;background:rgba(0,0,0,.45);color:#fff;font-size:22px;font-weight:800;cursor:pointer;line-height:1">&rsaquo;</button><img id="dimg" referrerpolicy="no-referrer"><div id="dvfy" style="display:none;position:absolute;top:8px;left:8px;background:#f97316;color:#fff;font-weight:800;font-size:11px;padding:3px 9px;border-radius:9px;z-index:4">🔍 à vérifier</div><button id="dphoto" onclick="pickOwnedPhoto()" title="Ajouter ma photo" style="position:absolute;bottom:8px;left:8px;z-index:6;border:none;background:rgba(0,0,0,.6);color:#fff;font-weight:800;font-size:12px;padding:6px 11px;border-radius:20px;cursor:pointer">📷 Ma photo</button><input id="dphotoinput" type="file" accept="image/*" style="display:none" onchange="onOwnedPhotoFile(this)"></div>
     <div class="dtabs"><button data-t="col" class="on">Collection</button><button data-t="tar">Tarifs</button><button data-t="det">D&eacute;tails</button></div>
     <div id="dbody"></div>
     <div id="dsrc" class="dprices"></div>
@@ -4032,7 +4032,7 @@ async function homeBriefing(){
   }catch(e){ box.innerHTML='<div class="txt" style="color:var(--muted);font-size:13px">Erreur, réessaie.</div><button class="hbriefbtn" onclick="homeBriefing()">Réessayer</button>'; }
 }
 document.getElementById('modeSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMode(b.dataset.m);});
-const APP_VERSION='Version b119 · 05/09';
+const APP_VERSION='Version b121 · 06/09';
 { const nv=document.getElementById('navVersion'); if(nv) nv.textContent=APP_VERSION; }
 document.getElementById('mktSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMarket(b.dataset.k);});
 const CATARRS=["catColors","catCats","catRarities","catTreats","catProvs","catSets"];
@@ -4614,12 +4614,13 @@ async function confirmBuy(withDetail){
 document.getElementById('buySheet').addEventListener('click',e=>{ if(e.target.id==='buySheet') closeBuySheet(); });
 function collAdd(pid,name){
   openBuySheet(pid,name,async(price,from,graded)=>{
+    if(!pid){ alert("Carte non identifiée (pas d’ID interne) — ajout impossible."); return; }
     const box=document.getElementById('cdcollact'); if(box) box.style.opacity=.5;
     try{
       if(graded){
         const r=await fetch(SB+'/rest/v1/rpc/add_graded_to_collection',{method:'POST',headers:{apikey:ANON,Authorization:"Bearer "+ANON,"Content-Type":"application/json"},body:JSON.stringify({p_printing:pid,p_company:graded.company,p_grade:graded.grade,p_cert:graded.cert,p_price:price,p_from:from})}); const j=await r.json(); if(!Array.isArray(j)) throw new Error(j&&j.message||''); if(box)box.style.opacity=1; markOwnedInGrid(pid,true);
       } else {
-        const r=await fetch(SB+'/rest/v1/rpc/add_to_collection',{method:'POST',headers:{apikey:ANON,Authorization:"Bearer "+ANON,"Content-Type":"application/json"},body:JSON.stringify({p_printing:pid,p_qty:1,p_price:price,p_from:from})}); const j=await r.json(); const q=(Array.isArray(j)&&j[0])?j[0].res_quantity:1; if(box)box.style.opacity=1; paintCollBtn(pid,q); markOwnedInGrid(pid,true);
+        const r=await fetch(SB+'/rest/v1/rpc/add_to_collection',{method:'POST',headers:{apikey:ANON,Authorization:"Bearer "+ANON,"Content-Type":"application/json"},body:JSON.stringify({p_printing:pid,p_qty:1,p_price:price,p_from:from})}); const j=await r.json().catch(function(){return null;}); if(!r.ok||!Array.isArray(j)||!j[0]) throw new Error((j&&(j.message||j.hint))?(j.message||j.hint):('Échec de l’ajout (HTTP '+r.status+').')); const q=j[0].res_quantity; if(box)box.style.opacity=1; paintCollBtn(pid,q); markOwnedInGrid(pid,true);
       }
     }
     catch(e){ if(box)box.style.opacity=1; alert((e&&e.message)?e.message:"Erreur lors de l'ajout."); }
@@ -4896,7 +4897,7 @@ async function scanLookup(code, det){
   try{ const b=document.getElementById('authBody'); if(b&&b.style.display==='none') authToggle(); }catch(e){}
 }
 async function addScanned(){ const top=window.__lastScanTop; if(!top||!top.printing_id){ openScannedFiche(); return; }
-  try{ const r=await fetch(SB+'/rest/v1/rpc/add_to_collection',{method:'POST',headers:{apikey:ANON,Authorization:'Bearer '+ANON,'Content-Type':'application/json'},body:JSON.stringify({p_printing:top.printing_id,p_qty:1,p_price:null,p_from:'scan'})}); await r.json();
+  try{ const r=await fetch(SB+'/rest/v1/rpc/add_to_collection',{method:'POST',headers:{apikey:ANON,Authorization:'Bearer '+ANON,'Content-Type':'application/json'},body:JSON.stringify({p_printing:top.printing_id,p_qty:1,p_price:null,p_from:'scan'})}); const j=await r.json().catch(function(){return null;}); if(!r.ok||!Array.isArray(j)||!j[0]) throw new Error((j&&(j.message||j.hint))||('HTTP '+r.status));
     try{ if(typeof markOwnedInGrid==='function') markOwnedInGrid(top.printing_id,true); }catch(e){}
     setScanStatus('&#9989; <b>'+esc(top.name||top.card_number)+'</b> ajout&eacute;e &agrave; ta collection.'+
       '<div class="authneeds" style="margin-top:6px">Mauvaise variante ? <a href="#" onclick="openScannedFiche();return false;">Ouvre la fiche</a> pour corriger.</div>');
@@ -5133,6 +5134,34 @@ async function validateCurrent(){
     const dv=document.getElementById("dvfy"); if(dv) dv.style.display="none";
     renderDetail(); if(typeof buildValRow==='function') buildValRow(); render();
   }catch(e){}
+}
+// ===== Ajouter ma photo (owned) : compression client → storage → set_owned_photo =====
+function pickOwnedPhoto(){ if(!detailCard) return; const i=document.getElementById('dphotoinput'); if(i){ i.value=''; i.click(); } }
+async function onOwnedPhotoFile(inp){
+  const f=inp&&inp.files&&inp.files[0]; if(!f||!detailCard) return;
+  const pid=detailCard.printing_id; if(!pid){ alert("Carte sans identifiant interne — impossible d’ajouter la photo."); return; }
+  const dimg=document.getElementById('dimg'); const dvfy=document.getElementById('dvfy');
+  try{
+    const dataUrl=await new Promise((res,rej)=>{ const rd=new FileReader(); rd.onload=()=>res(rd.result); rd.onerror=rej; rd.readAsDataURL(f); });
+    const img=await new Promise((res,rej)=>{ const im=new Image(); im.onload=()=>res(im); im.onerror=rej; im.src=dataUrl; });
+    const maxW=640; const sc=Math.min(1,maxW/(img.width||maxW)); const cw=Math.round((img.width||maxW)*sc), chp=Math.round((img.height||maxW)*sc);
+    const cv=document.createElement('canvas'); cv.width=cw; cv.height=chp; cv.getContext('2d').drawImage(img,0,0,cw,chp);
+    const blob=await new Promise((res)=>cv.toBlob(res,'image/jpeg',0.82));
+    if(dvfy){ dvfy.style.display='inline-block'; dvfy.textContent='⏳ envoi…'; }
+    const path='owned/'+pid+'-'+Date.now()+'.jpg';
+    const up=await fetch(SB+'/storage/v1/object/card-images/'+path,{method:'POST',headers:{apikey:ANON,Authorization:'Bearer '+ANON,'Content-Type':'image/jpeg','x-upsert':'true'},body:blob});
+    if(!up.ok){ const t=await up.text().catch(()=> ''); throw new Error('Upload '+up.status+' '+String(t).slice(0,140)); }
+    const pub=SB+'/storage/v1/object/public/card-images/'+path;
+    const rc=await fetch(SB+'/rest/v1/rpc/set_owned_photo',{method:'POST',headers:{apikey:ANON,Authorization:'Bearer '+ANON,'Content-Type':'application/json'},body:JSON.stringify({p_printing:pid,p_url:pub})});
+    if(!rc.ok){ const tt=await rc.text().catch(()=> ''); throw new Error('Enregistrement '+rc.status+' '+String(tt).slice(0,140)); }
+    detailCard.image_url=pub; detailCard.img_locked=true;
+    if(detailCard.item_id){ VERIFY.delete(detailCard.item_id); NEWPHOTO.delete(detailCard.item_id); }
+    if(dvfy) dvfy.style.display='none';
+    if(dimg){ dimg.src=pub; dimg.style.visibility='visible'; }
+    try{ if(PCIMG) PCIMG[pid]=pub; }catch(e){}
+    try{ const d=findCard(detailCard.item_id); if(d){ d.image_url=pub; d.img_locked=true; } }catch(e){}
+    try{ markOwnedInGrid(pid,true); }catch(e){}
+  }catch(e){ if(dvfy){ dvfy.style.display='inline-block'; dvfy.textContent='🔍 à vérifier'; } alert('Photo non enregistrée : '+((e&&e.message)||e)); }
 }
 function closeDetail(){ document.getElementById("overlay").classList.add("hidden"); }
 // Navigation carte suivante/précédente dans la fiche (sans fermer) — suit l'ordre affiché de la collection.
@@ -5573,9 +5602,12 @@ function openGoalCardByPid(pid){ const r=(GOALDETAIL||[]).find(x=>String(x.print
 function goalQuickAdd(pid,ev){ if(ev){ ev.stopPropagation(); } if(!pid) return;
   openBuySheet(pid,'',async function(price,from,graded){
     try{
-      if(graded){ await fetch(SB+'/rest/v1/rpc/add_graded_to_collection',{method:'POST',headers:{apikey:ANON,Authorization:'Bearer '+ANON,'Content-Type':'application/json'},body:JSON.stringify({p_printing:pid,p_company:graded.company,p_grade:graded.grade,p_cert:graded.cert,p_price:price,p_from:from})}); }
-      else { await fetch(SB+'/rest/v1/rpc/add_to_collection',{method:'POST',headers:{apikey:ANON,Authorization:'Bearer '+ANON,'Content-Type':'application/json'},body:JSON.stringify({p_printing:pid,p_qty:1,p_price:price,p_from:from})}); }
-    }catch(e){ alert("Erreur lors de l'ajout."); return; }
+      const ep=graded?'add_graded_to_collection':'add_to_collection';
+      const bd=graded?{p_printing:pid,p_company:graded.company,p_grade:graded.grade,p_cert:graded.cert,p_price:price,p_from:from}:{p_printing:pid,p_qty:1,p_price:price,p_from:from};
+      const r=await fetch(SB+'/rest/v1/rpc/'+ep,{method:'POST',headers:{apikey:ANON,Authorization:'Bearer '+ANON,'Content-Type':'application/json'},body:JSON.stringify(bd)});
+      const j=await r.json().catch(function(){return null;});
+      if(!r.ok||!Array.isArray(j)||!j[0]) throw new Error((j&&(j.message||j.hint))?(j.message||j.hint):('Échec de l’ajout (HTTP '+r.status+').'));
+    }catch(e){ alert((e&&e.message)?("Ajout échoué : "+e.message):"Erreur lors de l'ajout."); return; }
     if(GOAL_CUR) openGoalDetail(GOAL_CUR.id);
   });
 }
