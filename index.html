@@ -929,7 +929,7 @@ body{-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
 
 <div id="catOverlay" class="overlay hidden">
   <div class="sheet">
-    <div class="dhead"><button class="dclose" id="cdclose">&times;</button><img id="cdimg" referrerpolicy="no-referrer"><div id="cdvfy" class="vfy" style="display:none"><span class="vt">🔍</span>Photo à vérifier</div></div>
+    <div class="dhead"><button class="dclose" id="cdclose">&times;</button><img id="cdimg" referrerpolicy="no-referrer"><div id="cdvfy" class="vfy" style="display:none"><span class="vt">🔍</span>Photo à vérifier</div><button id="cdphoto" onclick="pickCatPhoto()" title="Ajouter ma photo" style="position:absolute;bottom:8px;left:8px;z-index:6;border:none;background:rgba(0,0,0,.6);color:#fff;font-weight:800;font-size:12px;padding:6px 11px;border-radius:20px;cursor:pointer">📷 Ma photo</button><input id="cdphotoinput" type="file" accept="image/*" style="display:none" onchange="onCatPhotoFile(this)"></div>
     <div class="dtabs" id="cdtabs"><button data-ct="col" class="on">Collection</button><button data-ct="tar">Tarifs</button><button data-ct="det">D&eacute;tails</button></div>
     <div id="cdbody"></div>
     <div id="cdprice" class="dprices"></div>
@@ -1898,7 +1898,7 @@ function setMode(m){
   document.getElementById('scanFab').classList.toggle('hidden',!(m==='collection'||m==='catalog'));
   const vfr=document.getElementById('valFilterRow'); if(vfr){ if(m==='collection'){ vfr.style.display='block'; buildValRow(); } else { vfr.style.display='none'; } }
   // recherche : réinitialisée à chaque changement de page ; placeholder adapté
-  state.pageQ=''; { const qi=document.getElementById('q'); if(qi && m!=='catalog' && m!=='collection') qi.value=''; }
+  state.pageQ=''; { const qi=document.getElementById('q'); if(qi){ if(m==='collection'){ state.q=''; qi.value=''; } else if(m!=='catalog'){ qi.value=''; } } }
   document.getElementById('q').placeholder=cat?"Chercher une carte (nom ou numéro), toutes langues…":(PAGE_Q_PH[m]||"Rechercher (nom ou numéro)…");
   const brief=document.getElementById('briefing'); if(brief){ brief.innerHTML=''; }
   // mini portfolio line: shown everywhere except the Accueil dashboard
@@ -4032,7 +4032,7 @@ async function homeBriefing(){
   }catch(e){ box.innerHTML='<div class="txt" style="color:var(--muted);font-size:13px">Erreur, réessaie.</div><button class="hbriefbtn" onclick="homeBriefing()">Réessayer</button>'; }
 }
 document.getElementById('modeSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMode(b.dataset.m);});
-const APP_VERSION='Version b121 · 06/09';
+const APP_VERSION='Version b124 · 06/09';
 { const nv=document.getElementById('navVersion'); if(nv) nv.textContent=APP_VERSION; }
 document.getElementById('mktSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMarket(b.dataset.k);});
 const CATARRS=["catColors","catCats","catRarities","catTreats","catProvs","catSets"];
@@ -4638,6 +4638,30 @@ function markOwnedInGrid(pid,owned){
     if(el){ el.className='owntag '+(owned?'own':'no'); el.textContent=owned?'✓ Possédée':'Non possédée'; }
   }});
 }
+// ===== Ajouter ma photo depuis le CATALOGUE =====
+function pickCatPhoto(){ if(!catDetailCard) return; const i=document.getElementById('cdphotoinput'); if(i){ i.value=''; i.click(); } }
+async function onCatPhotoFile(inp){
+  const f=inp&&inp.files&&inp.files[0]; if(!f||!catDetailCard) return;
+  const pid=catDetailCard.printing_id; if(!pid){ alert("Carte sans identifiant interne — impossible d’ajouter la photo."); return; }
+  const dimg=document.getElementById('cdimg'); const dvfy=document.getElementById('cdvfy');
+  try{
+    const dataUrl=await new Promise((res,rej)=>{ const rd=new FileReader(); rd.onload=()=>res(rd.result); rd.onerror=rej; rd.readAsDataURL(f); });
+    const img=await new Promise((res,rej)=>{ const im=new Image(); im.onload=()=>res(im); im.onerror=rej; im.src=dataUrl; });
+    const maxW=640; const sc=Math.min(1,maxW/(img.width||maxW)); const cw=Math.round((img.width||maxW)*sc), chp=Math.round((img.height||maxW)*sc);
+    const cv=document.createElement('canvas'); cv.width=cw; cv.height=chp; cv.getContext('2d').drawImage(img,0,0,cw,chp);
+    if(dvfy){ dvfy.style.display='grid'; dvfy.innerHTML='⏳ envoi…'; }
+    const b64=cv.toDataURL('image/jpeg',0.82);
+    const up=await fetch(SB+'/functions/v1/upload-photo',{method:'POST',headers:{apikey:ANON,Authorization:'Bearer '+ANON,'Content-Type':'application/json'},body:JSON.stringify({printing_id:pid,image_b64:b64})});
+    const uj=await up.json().catch(()=>null);
+    if(!up.ok||!uj||!uj.ok) throw new Error((uj&&uj.error)?uj.error:('Envoi '+up.status));
+    const pub=uj.url;
+    catDetailCard.image_url=pub; catDetailCard.img_verify=false; catDetailCard.img_locked=true;
+    if(dvfy) dvfy.style.display='none';
+    if(dimg){ dimg.src=pub; dimg.style.visibility='visible'; }
+    try{ if(PCIMG) PCIMG[pid]=pub; }catch(e){}
+    try{ if(Array.isArray(CATROWS)){ const r=CATROWS.find(x=>x.printing_id===pid); if(r){ r.image_url=pub; r.img_verify=false; r.img_locked=true; } } }catch(e){}
+  }catch(e){ if(dvfy){ dvfy.style.display='grid'; dvfy.innerHTML='<span class="vt">🔍</span>Photo à vérifier'; } alert('Photo non enregistrée : '+((e&&e.message)||e)); }
+}
 function closeCatDetail(){ document.getElementById("catOverlay").classList.add("hidden"); }
 // ---------- Scan de carte ----------
 let scanStream=null, scanBusy=false, autoTimer=null, autoPrev=null, autoStable=0, autoLastShot=0, autoContentTicks=0, autoTries=0, autoBackoffUntil=0;
@@ -5146,14 +5170,12 @@ async function onOwnedPhotoFile(inp){
     const img=await new Promise((res,rej)=>{ const im=new Image(); im.onload=()=>res(im); im.onerror=rej; im.src=dataUrl; });
     const maxW=640; const sc=Math.min(1,maxW/(img.width||maxW)); const cw=Math.round((img.width||maxW)*sc), chp=Math.round((img.height||maxW)*sc);
     const cv=document.createElement('canvas'); cv.width=cw; cv.height=chp; cv.getContext('2d').drawImage(img,0,0,cw,chp);
-    const blob=await new Promise((res)=>cv.toBlob(res,'image/jpeg',0.82));
     if(dvfy){ dvfy.style.display='inline-block'; dvfy.textContent='⏳ envoi…'; }
-    const path='owned/'+pid+'-'+Date.now()+'.jpg';
-    const up=await fetch(SB+'/storage/v1/object/card-images/'+path,{method:'POST',headers:{apikey:ANON,Authorization:'Bearer '+ANON,'Content-Type':'image/jpeg','x-upsert':'true'},body:blob});
-    if(!up.ok){ const t=await up.text().catch(()=> ''); throw new Error('Upload '+up.status+' '+String(t).slice(0,140)); }
-    const pub=SB+'/storage/v1/object/public/card-images/'+path;
-    const rc=await fetch(SB+'/rest/v1/rpc/set_owned_photo',{method:'POST',headers:{apikey:ANON,Authorization:'Bearer '+ANON,'Content-Type':'application/json'},body:JSON.stringify({p_printing:pid,p_url:pub})});
-    if(!rc.ok){ const tt=await rc.text().catch(()=> ''); throw new Error('Enregistrement '+rc.status+' '+String(tt).slice(0,140)); }
+    const b64=cv.toDataURL('image/jpeg',0.82);
+    const up=await fetch(SB+'/functions/v1/upload-photo',{method:'POST',headers:{apikey:ANON,Authorization:'Bearer '+ANON,'Content-Type':'application/json'},body:JSON.stringify({printing_id:pid,image_b64:b64})});
+    const uj=await up.json().catch(()=>null);
+    if(!up.ok||!uj||!uj.ok) throw new Error((uj&&uj.error)?uj.error:('Envoi '+up.status));
+    const pub=uj.url;
     detailCard.image_url=pub; detailCard.img_locked=true;
     if(detailCard.item_id){ VERIFY.delete(detailCard.item_id); NEWPHOTO.delete(detailCard.item_id); }
     if(dvfy) dvfy.style.display='none';
