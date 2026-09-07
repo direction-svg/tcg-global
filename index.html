@@ -4046,7 +4046,7 @@ async function homeBriefing(){
   }catch(e){ box.innerHTML='<div class="txt" style="color:var(--muted);font-size:13px">Erreur, réessaie.</div><button class="hbriefbtn" onclick="homeBriefing()">Réessayer</button>'; }
 }
 document.getElementById('modeSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMode(b.dataset.m);});
-const APP_VERSION='Version b125 · 07/09 — Premium';
+const APP_VERSION='Version b126 · 07/09 — Premium V2';
 { const nv=document.getElementById('navVersion'); if(nv) nv.textContent=APP_VERSION; }
 document.getElementById('mktSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMarket(b.dataset.k);});
 const CATARRS=["catColors","catCats","catRarities","catTreats","catProvs","catSets"];
@@ -5764,70 +5764,236 @@ document.querySelectorAll('.dtabs button').forEach(b=>b.addEventListener("click"
   fab.addEventListener('pointerdown',down);
 })();
 /* ====== PREMIUM MODULE (ADDITIF) ====== */
-/* ===== MODULE PREMIUM (additif — lit public.app_premium_* ; gaté par premium_collection_enabled) ===== */
-var PMX={tab:'overview',fam:'',lang:'',loaded:false,universe:[],missing:[],owned:[],reco:[],watch:[],budget:[]};
+/* ===== MODULE PREMIUM V2 (additif — lit public.app_premium_* ; gaté par premium_collection_enabled) =====
+   Onglets : Tableau de bord · Grails · À acheter · Ma collection · Surveillance.
+   Aucune écriture. Possession + prix liés au printing_id exact. Images = bucket card-images.        */
+var PMX={tab:'dash',loaded:false,universe:[],owned:[],missing:[],grails:[],reco:[],watch:[],
+  dashBud:'all', buyBud:'all',
+  colFam:'',colLang:'',colTier:'',colGrade:'',colPrice:'',colSort:'val',colQ:''};
+
 async function pmFetch(view,qs){ var r=await fetch(SB+'/rest/v1/'+view+'?'+qs,{headers:{apikey:ANON,Authorization:'Bearer '+ANON}}); if(!r.ok) throw new Error(view+' '+r.status); return r.json(); }
-function pmEur(v){ return (v===null||v===undefined)?'<span style="color:#e0685f">PRICE REVIEW</span>':(Number(v).toLocaleString('fr-FR',{maximumFractionDigits:0})+' €'); }
-function pmTier(t){ return '<b style="color:var(--gold,#e6c877)">'+esc(t||'')+'</b>'; }
-function pmGrade(r){ return r.owned_grade?('<span style="color:#3fb98a">'+esc((r.owned_company||'')+' '+r.owned_grade)+'</span>'):'<span style="color:var(--muted,#9aa0aa)">RAW</span>'; }
+function pmNum(v){ return (v===null||v===undefined)?null:Number(v); }
+function pmEur(v){ return (v===null||v===undefined)?'<span style="color:#e0685f;font-size:11px">PRICE REVIEW</span>':(Number(v).toLocaleString('fr-FR',{maximumFractionDigits:0})+' €'); }
+function pmTier(t){ var c=t==='S+'?'#e6c877':t==='S'?'#d9b44a':t==='A'?'#b9a06a':'#9aa0aa'; return '<b style="color:'+c+'">'+esc(t||'')+'</b>'; }
+function pmGradeTxt(r){ return r.owned_grade?((esc(r.owned_company||'')+' '+esc(String(r.owned_grade))).trim()):'RAW'; }
+function pmBadgeVar(r){ return r.other_variant_owned?' <span title="Une autre variante de cette carte est déjà dans ta collection" style="background:#2a2410;color:#e6c877;border:1px solid #4a3f1a;border-radius:6px;padding:1px 5px;font-size:9px;letter-spacing:.04em;white-space:nowrap">AUTRE VARIANTE POSSÉDÉE</span>':''; }
+function pmImg(r,sz){ sz=sz||44; var u=r.image_url; if(u){ return '<img src="'+esc(u)+'" loading="lazy" style="width:'+sz+'px;height:'+Math.round(sz*1.4)+'px;object-fit:cover;border-radius:5px;background:#0d0f13;border:1px solid #242a33" onerror="this.style.visibility=\'hidden\'">'; }
+  return '<div style="width:'+sz+'px;height:'+Math.round(sz*1.4)+'px;border-radius:5px;background:#0d0f13;border:1px dashed #2c333d;display:flex;align-items:center;justify-content:center;color:#3a424d;font-size:9px">n/a</div>'; }
+function pmDisamb(r){ /* zéro ambiguïté : CODE + perso + artwork + distribution/région + langue */
+  var bits=[]; if(r.variant_label)bits.push(esc(r.variant_label)); else if(r.variant)bits.push(esc(r.variant));
+  if(r.region && r.region!==r.language)bits.push('<span style="color:#8a909a">'+esc(r.region)+'</span>');
+  return bits.join(' · ')||'<span style="color:#5a616b">base</span>'; }
+
 async function pmLoad(){
   PMX.universe=await pmFetch('app_premium_universe','select=*&order=premium_score.desc&limit=4000');
-  PMX.missing=PMX.universe.filter(function(r){return !r.owned;});
   PMX.owned=PMX.universe.filter(function(r){return r.owned;});
-  PMX.reco=await pmFetch('app_premium_reco','select=*&order=rank.asc&limit=60');
+  PMX.missing=PMX.universe.filter(function(r){return !r.owned;});
+  PMX.grails=await pmFetch('app_premium_grails','select=*&order=rank.asc&limit=200');
+  PMX.reco=await pmFetch('app_premium_reco','select=*&order=rank.asc&limit=400');
   PMX.watch=await pmFetch('app_premium_watch','select=*');
-  PMX.budget=await pmFetch('app_premium_budget','select=*');
   PMX.loaded=true;
 }
-function pmKpi(n,l){ return '<div style="background:var(--panel,#14161c);border:1px solid var(--line,#242a33);border-radius:12px;padding:12px"><div style="font-size:20px;color:var(--gold,#e6c877);font-weight:700">'+n+'</div><div style="color:var(--muted,#9aa0aa);font-size:11px;text-transform:uppercase;letter-spacing:.06em">'+l+'</div></div>'; }
-function pmOverview(){
+
+/* ---------- helpers budget ---------- */
+function pmBudCap(k){ return k==='250'?250:k==='500'?500:k==='1000'?1000:k==='2500'?2500:null; }
+function pmBudChips(cur,cb){
+  var opts=[['all','Tous'],['250','< 250 €'],['500','< 500 €'],['1000','< 1 000 €'],['2500','< 2 500 €']];
+  return '<div style="display:flex;gap:6px;flex-wrap:wrap;margin:8px 0">'+opts.map(function(o){
+    var on=cur===o[0];
+    return '<button data-bud="'+o[0]+'" data-cb="'+cb+'" style="padding:5px 11px;border:1px solid '+(on?'#c19338':'#242a33')+';border-radius:8px;background:'+(on?'#2a2410':'#14161c')+';color:'+(on?'#e6c877':'#c9cdd4')+';cursor:pointer;font-size:12px">'+o[1]+'</button>';
+  }).join('')+'</div>';
+}
+
+/* ---------- KPI ---------- */
+function pmKpi(n,l,sub){ return '<div style="background:#14161c;border:1px solid #242a33;border-radius:12px;padding:12px 13px"><div style="font-size:21px;color:#e6c877;font-weight:700;line-height:1.1">'+n+'</div><div style="color:#9aa0aa;font-size:10.5px;text-transform:uppercase;letter-spacing:.06em;margin-top:3px">'+l+'</div>'+(sub?'<div style="color:#6a717c;font-size:10px;margin-top:2px">'+sub+'</div>':'')+'</div>'; }
+
+/* ---------- 1) TABLEAU DE BORD ---------- */
+function pmDash(){
   var val=PMX.owned.reduce(function(a,r){return a+(Number(r.owned_value_eur!=null?r.owned_value_eur:r.raw_market_eur)||0);},0);
-  var f=function(t){return PMX.universe.filter(function(r){return r.tier===t;}).length;};
-  var fo=function(t){return PMX.owned.filter(function(r){return r.tier===t;}).length;};
-  var pr=PMX.universe.filter(function(r){return r.price_review;}).length;
+  var splusOwn=PMX.owned.filter(function(r){return r.tier==='S+';}).length;
+  var grailsOwn=PMX.owned.filter(function(r){return r.premium_family==='Serial'||r.premium_family==='Flagship';}).length;
+  var jpPrem=PMX.owned.filter(function(r){return r.language==='JP';}).length;
   var prog=PMX.universe.length?Math.round(PMX.owned.length/PMX.universe.length*100):0;
-  var b=PMX.budget.map(function(r){return '<tr><td>'+esc(r.bucket)+'</td><td>'+pmEur(r.raw_sum_eur)+'</td><td style="color:#e0685f">'+esc(r.psa10_eur)+'</td></tr>';}).join('');
-  return '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:10px 0">'
-    +pmKpi(PMX.owned.length+' / '+PMX.universe.length,'Premium possédées / univers')
-    +pmKpi(prog+' %','Progression')+pmKpi(Math.round(val).toLocaleString('fr-FR')+' €','Valeur premium connue')
-    +pmKpi(fo('S+')+' / '+fo('S')+' / '+fo('A'),'S+/S/A possédées')
-    +pmKpi(f('S+')+' / '+f('S')+' / '+f('A'),'S+/S/A univers')+pmKpi(pr,'Price Review')+'</div>'
-    +'<p style="color:var(--muted,#9aa0aa);font-size:12px">PSA10 non chiffrable (non possédé) → PRICE REVIEW. CN/G3 = REVIEW. Recalculé en direct.</p>'
-    +'<div style="overflow-x:auto"><table class="pmtbl"><tr><th align="left">Palier</th><th align="left">RAW €</th><th align="left">PSA10</th></tr>'+b+'</table></div>';
+  var kpis='<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:6px 0 4px">'
+    +pmKpi(PMX.owned.length+' <span style="color:#6a717c;font-size:14px">/ '+PMX.universe.length+'</span>','Premium possédées','Progression '+prog+' %')
+    +pmKpi(Math.round(val).toLocaleString('fr-FR')+' €','Valeur premium connue','cert PSA + marché RAW')
+    +pmKpi(grailsOwn,'Grails possédés','Serial + Flagship')
+    +pmKpi(splusOwn,'S+ possédées','tier prestige max')
+    +pmKpi(jpPrem,'JP Premium','cœur du marché')
+    +'</div>';
+  /* Mes 5 prochains achats — buy_score, avec sélecteur budget */
+  var cap=pmBudCap(PMX.dashBud);
+  var pool=PMX.reco.filter(function(r){ return cap===null || (r.market_eur!=null && Number(r.market_eur)<cap); });
+  var five=pool.slice(0,5);
+  var rows=five.map(function(r,i){
+    return '<tr>'
+      +'<td style="color:#e6c877;font-weight:700">'+(i+1)+'</td>'
+      +'<td>'+pmImg(r,34)+'</td>'
+      +'<td><b>'+esc(r.card_number)+'</b><div style="color:#8a909a;font-size:11px">'+esc(r.character)+'</div></td>'
+      +'<td>'+pmDisamb(r)+' '+pmBadgeVar(r)+'</td>'
+      +'<td>'+esc(r.language)+'</td>'
+      +'<td>'+pmTier(r.tier)+'</td>'
+      +'<td style="text-align:right"><b style="color:#3fb98a">'+esc(String(r.buy_score))+'</b></td>'
+      +'<td style="text-align:right">'+pmEur(r.market_eur)+'</td>'
+      +'<td style="color:#9aa0aa;font-size:11px">'+esc(r.reason||'')+'</td>'
+      +'</tr>';
+  }).join('');
+  return kpis
+    +'<h3 style="margin:16px 0 2px;color:#f0ece2;font-size:15px;letter-spacing:.02em">Mes 5 prochains achats</h3>'
+    +'<p style="color:#6a717c;font-size:11px;margin:2px 0 0">Classés par <b style="color:#3fb98a">buy_score</b> (achat réaliste : importance × rareté × complétion famille × budget × fiabilité prix). Cible ≈ 90 % du marché RAW.</p>'
+    +pmBudChips(PMX.dashBud,'dashBud')
+    +'<div style="overflow-x:auto"><table class="pmtbl"><tr><th>#</th><th></th><th align="left">Code</th><th align="left">Variante</th><th>Lang</th><th>Tier</th><th style="text-align:right">Buy</th><th style="text-align:right">Marché</th><th align="left">Raison</th></tr>'
+    +(rows||'<tr><td colspan="9" style="color:#6a717c;padding:12px">Aucune reco sous ce budget.</td></tr>')+'</table></div>';
 }
-function pmRowsMissing(){
-  var rows=PMX.missing.slice().sort(function(x,y){return y.premium_score-x.premium_score||((y.raw_market_eur||0)-(x.raw_market_eur||0));}).slice(0,50);
-  return '<div style="overflow-x:auto"><table class="pmtbl"><tr><th align="left">Code</th><th align="left">Perso</th><th align="left">Variante</th><th>Lang</th><th>Famille</th><th>Tier</th><th>Score</th><th>RAW €</th><th>PSA10</th></tr>'
-    +rows.map(function(r){return '<tr><td>'+esc(r.card_number)+'</td><td>'+esc(r.character)+'</td><td>'+esc(r.variant_label)+'</td><td>'+esc(r.language)+'</td><td>'+esc(r.premium_family)+'</td><td>'+pmTier(r.tier)+'</td><td>'+esc(r.premium_score)+'</td><td>'+pmEur(r.raw_market_eur)+'</td><td style="color:#e0685f">REVIEW</td></tr>';}).join('')+'</table></div>';
+
+/* ---------- 2) GRAILS (prestige, non possédées) ---------- */
+function pmGrails(){
+  var rows=PMX.grails.slice(0,40);
+  var cards=rows.map(function(r){
+    return '<div style="display:flex;gap:11px;background:#14161c;border:1px solid #242a33;border-radius:12px;padding:11px">'
+      +pmImg(r,64)
+      +'<div style="flex:1;min-width:0">'
+        +'<div style="display:flex;justify-content:space-between;gap:8px;align-items:baseline">'
+          +'<b style="color:#f0ece2">'+esc(r.card_number)+'</b>'
+          +'<span style="color:#e6c877;font-weight:700;font-size:13px">'+pmEur(r.raw_market_eur)+'</span></div>'
+        +'<div style="color:#c9cdd4;font-size:12px;margin:1px 0">'+esc(r.character)+'</div>'
+        +'<div style="color:#8a909a;font-size:11px">'+pmDisamb(r)+'</div>'
+        +'<div style="display:flex;gap:6px;align-items:center;margin-top:5px;flex-wrap:wrap">'
+          +pmTier(r.tier)+'<span style="color:#6a717c;font-size:11px">score '+esc(String(r.premium_score))+'</span>'
+          +'<span style="color:#6a717c;font-size:11px">·</span><span style="color:#9aa0aa;font-size:11px">'+esc(r.grail_reason||r.premium_family||'')+'</span>'
+          +pmBadgeVar(r)+'</div>'
+      +'</div></div>';
+  }).join('');
+  return '<p style="color:#6a717c;font-size:11px;margin:2px 0 4px">Pièces de prestige (Serial, Flagship, Manga rares…) classées par <b style="color:#e6c877">premium_score</b> puis valeur. Liste distincte de « À acheter » (qui vise le meilleur achat réaliste).</p>'
+    +'<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:10px;margin-top:6px">'+cards+'</div>';
 }
-function pmRowsOwned(){
-  var rows=PMX.owned.filter(function(r){return (!PMX.fam||r.premium_family===PMX.fam)&&(!PMX.lang||r.language===PMX.lang);})
-    .sort(function(x,y){return y.premium_score-x.premium_score||((y.raw_market_eur||0)-(x.raw_market_eur||0));});
-  var fams=Array.from(new Set(PMX.owned.map(function(r){return r.premium_family;}))).sort();
-  var flt='<div style="display:flex;gap:6px;flex-wrap:wrap;margin:8px 0"><select id="pmFam" class="pmsel"><option value="">Toutes familles</option>'+fams.map(function(x){return '<option'+(x===PMX.fam?' selected':'')+'>'+esc(x)+'</option>';}).join('')+'</select><select id="pmLang" class="pmsel"><option value="">JP/EN/CN</option>'+['JP','EN','CN'].map(function(x){return '<option'+(x===PMX.lang?' selected':'')+'>'+x+'</option>';}).join('')+'</select></div>';
-  return flt+'<div style="overflow-x:auto"><table class="pmtbl"><tr><th align="left">Code</th><th align="left">Perso</th><th align="left">Variante</th><th>Lang</th><th>Famille</th><th>Tier</th><th>Grade</th><th>Valeur €</th></tr>'
-    +rows.map(function(r){return '<tr><td>'+esc(r.card_number)+'</td><td>'+esc(r.character)+'</td><td>'+esc(r.variant_label)+'</td><td>'+esc(r.language)+'</td><td>'+esc(r.premium_family)+'</td><td>'+pmTier(r.tier)+'</td><td>'+pmGrade(r)+'</td><td>'+pmEur(r.owned_value_eur!=null?r.owned_value_eur:r.raw_market_eur)+'</td></tr>';}).join('')+'</table></div>';
+
+/* ---------- 3) À ACHETER (buy_score) + budget ---------- */
+function pmBuy(){
+  var cap=pmBudCap(PMX.buyBud);
+  var rows=PMX.reco.filter(function(r){ return cap===null || (r.market_eur!=null && Number(r.market_eur)<cap); }).slice(0,60);
+  var body=rows.map(function(r){
+    return '<tr>'
+      +'<td style="color:#6a717c">'+esc(String(r.rank))+'</td>'
+      +'<td>'+pmImg(r,34)+'</td>'
+      +'<td><b>'+esc(r.card_number)+'</b><div style="color:#8a909a;font-size:11px">'+esc(r.character)+'</div></td>'
+      +'<td>'+pmDisamb(r)+' '+pmBadgeVar(r)+'</td>'
+      +'<td>'+esc(r.language)+'</td>'
+      +'<td>'+pmTier(r.tier)+'</td>'
+      +'<td style="text-align:right"><b style="color:#3fb98a">'+esc(String(r.buy_score))+'</b></td>'
+      +'<td style="text-align:right">'+pmEur(r.market_eur)+'</td>'
+      +'<td style="text-align:right;color:#e6c877">'+pmEur(r.target_buy_eur)+'</td>'
+      +'<td>'+esc(r.grade_reco||'RAW')+'</td>'
+      +'<td style="color:#9aa0aa;font-size:11px">'+esc(r.reason||'')+'</td>'
+      +'</tr>';
+  }).join('');
+  return '<p style="color:#6a717c;font-size:11px;margin:2px 0">Meilleur achat suivant, classé par <b style="color:#3fb98a">buy_score</b>. Cible ≈ 90 % du marché RAW observé (repère, pas prédiction). Grade conseillé : RAW (PSA10 non chiffrable).</p>'
+    +pmBudChips(PMX.buyBud,'buyBud')
+    +'<div style="overflow-x:auto"><table class="pmtbl"><tr><th>#</th><th></th><th align="left">Code</th><th align="left">Variante</th><th>Lang</th><th>Tier</th><th style="text-align:right">Buy</th><th style="text-align:right">Marché</th><th style="text-align:right">Cible</th><th>Grade</th><th align="left">Raison</th></tr>'
+    +(body||'<tr><td colspan="11" style="color:#6a717c;padding:12px">Aucune carte sous ce budget.</td></tr>')+'</table></div>';
 }
-function pmRowsReco(){
-  var rows=PMX.reco.slice(0,25);
-  return '<p style="color:var(--gold,#e6c877);font-size:12px">Cible ≈ 90 % du marché RAW observé (repère, pas prédiction). Grade conseillé : RAW (PSA10 non chiffrable).</p><div style="overflow-x:auto"><table class="pmtbl"><tr><th>#</th><th align="left">Code</th><th align="left">Perso</th><th align="left">Variante</th><th>Lang</th><th>Tier</th><th>Marché €</th><th>Cible €</th><th>Grade</th><th align="left">Raison</th></tr>'
-    +rows.map(function(r){return '<tr><td>'+esc(r.rank)+'</td><td>'+esc(r.card_number)+'</td><td>'+esc(r.character)+'</td><td>'+esc(r.variant_label)+'</td><td>'+esc(r.language)+'</td><td>'+pmTier(r.tier)+'</td><td>'+pmEur(r.market_eur)+'</td><td>'+pmEur(r.target_buy_eur)+'</td><td>'+esc(r.grade_reco)+'</td><td style="color:var(--muted,#9aa0aa)">'+esc(r.reason)+'</td></tr>';}).join('')+'</table></div>';
+
+/* ---------- 4) MA COLLECTION (filtres + recherche + tri) ---------- */
+function pmGradeKind(r){ if(!r.owned_grade) return 'RAW'; var c=(r.owned_company||'').toUpperCase(); return c||'GRADED'; }
+function pmColl(){
+  var fams=Array.from(new Set(PMX.owned.map(function(r){return r.premium_family;}))).filter(Boolean).sort();
+  var tiers=['S+','S','A','B','C'];
+  var grades=Array.from(new Set(PMX.owned.map(pmGradeKind))).sort();
+  var q=(PMX.colQ||'').toLowerCase();
+  var rows=PMX.owned.filter(function(r){
+    if(PMX.colFam && r.premium_family!==PMX.colFam) return false;
+    if(PMX.colLang && r.language!==PMX.colLang) return false;
+    if(PMX.colTier && r.tier!==PMX.colTier) return false;
+    if(PMX.colGrade && pmGradeKind(r)!==PMX.colGrade) return false;
+    if(PMX.colPrice==='priced' && r.raw_market_eur==null && r.owned_value_eur==null) return false;
+    if(PMX.colPrice==='review' && !(r.raw_market_eur==null && r.owned_value_eur==null)) return false;
+    if(q){ var hay=((r.card_number||'')+' '+(r.character||'')+' '+(r.variant_label||'')+' '+(r.premium_family||'')).toLowerCase(); if(hay.indexOf(q)<0) return false; }
+    return true;
+  });
+  var val=function(r){ return Number(r.owned_value_eur!=null?r.owned_value_eur:r.raw_market_eur)||0; };
+  rows.sort(function(x,y){
+    if(PMX.colSort==='val') return val(y)-val(x);
+    if(PMX.colSort==='score') return (y.premium_score-x.premium_score)||(val(y)-val(x));
+    if(PMX.colSort==='rarity') return String(x.premium_family||'').localeCompare(String(y.premium_family||''))||(y.premium_score-x.premium_score);
+    if(PMX.colSort==='date') return String(y.acquired_date||'').localeCompare(String(x.acquired_date||''));
+    return 0;
+  });
+  var sumVal=rows.reduce(function(a,r){return a+val(r);},0);
+  function sel(id,label,cur,opts){
+    return '<select id="'+id+'" class="pmsel"><option value="">'+label+'</option>'+opts.map(function(o){var v=Array.isArray(o)?o[0]:o,t=Array.isArray(o)?o[1]:o;return '<option value="'+esc(v)+'"'+(cur===v?' selected':'')+'>'+esc(t)+'</option>';}).join('')+'</select>';
+  }
+  var flt='<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:6px 0 8px">'
+    +'<input id="pmQ" class="pmsel" placeholder="Rechercher…" value="'+esc(PMX.colQ||'')+'" style="min-width:150px">'
+    +sel('pmLang','JP/EN/CN',PMX.colLang,['JP','EN','CN'])
+    +sel('pmFam','Toutes familles',PMX.colFam,fams)
+    +sel('pmTier','Tous tiers',PMX.colTier,tiers)
+    +sel('pmGrade','RAW / gradées',PMX.colGrade,grades)
+    +sel('pmPrice','Prix',PMX.colPrice,[['priced','Avec prix'],['review','PRICE REVIEW']])
+    +sel('pmSort','Trier par…',PMX.colSort,[['val','Valeur'],['score','Score'],['rarity','Rareté'],['date','Date acquisition']])
+    +'</div>';
+  var head='<div style="color:#9aa0aa;font-size:11px;margin-bottom:4px">'+rows.length+' cartes · valeur '+Math.round(sumVal).toLocaleString('fr-FR')+' €</div>';
+  var body=rows.map(function(r){
+    return '<tr>'
+      +'<td>'+pmImg(r,34)+'</td>'
+      +'<td><b>'+esc(r.card_number)+'</b><div style="color:#8a909a;font-size:11px">'+esc(r.character)+'</div></td>'
+      +'<td>'+pmDisamb(r)+' '+pmBadgeVar(r)+'</td>'
+      +'<td>'+esc(r.language)+'</td>'
+      +'<td>'+esc(r.premium_family||'')+'</td>'
+      +'<td>'+pmTier(r.tier)+'</td>'
+      +'<td>'+(r.owned_grade?'<span style="color:#3fb98a">'+esc(pmGradeTxt(r))+'</span>':'<span style="color:#9aa0aa">RAW</span>')+'</td>'
+      +'<td style="text-align:right">'+pmEur(r.owned_value_eur!=null?r.owned_value_eur:r.raw_market_eur)+'</td>'
+      +'<td style="color:#6a717c;font-size:11px">'+esc(r.acquired_date||'')+'</td>'
+      +'</tr>';
+  }).join('');
+  return flt+head+'<div style="overflow-x:auto"><table class="pmtbl"><tr><th></th><th align="left">Code</th><th align="left">Variante</th><th>Lang</th><th>Famille</th><th>Tier</th><th>Grade</th><th style="text-align:right">Valeur</th><th align="left">Acquis</th></tr>'
+    +(body||'<tr><td colspan="9" style="color:#6a717c;padding:12px">Aucune carte pour ces filtres.</td></tr>')+'</table></div>';
 }
-function pmRowsWatch(){
-  var rows=PMX.watch.filter(function(r){return r.watch_type!=='REVIEW';});
-  return '<div style="overflow-x:auto"><table class="pmtbl"><tr><th align="left">Code</th><th align="left">Perso</th><th align="left">Variante</th><th>Type</th><th>RAW €</th><th>Grade</th><th align="left">Raison</th></tr>'
-    +rows.map(function(r){return '<tr><td>'+esc(r.card_number)+'</td><td>'+esc(r.character)+'</td><td>'+esc(r.variant_label)+'</td><td>'+esc(r.watch_type)+'</td><td>'+pmEur(r.raw_market_eur)+'</td><td>'+(r.owned_grade?esc(r.owned_grade):'RAW')+'</td><td style="color:var(--muted,#9aa0aa)">'+esc(r.watch_reason)+'</td></tr>';}).join('')+'</table></div>';
+
+/* ---------- 5) SURVEILLANCE (buckets) ---------- */
+function pmWatch(){
+  var order=[['A_GRADER','À GRADER','#3fb98a','RAW de valeur — candidate au grading'],
+             ['SURVEILLER_PRIX','SURVEILLER LE PRIX','#e6c877','RAW de valeur — suivre le marché'],
+             ['PSA10_HOLD','PSA 10 — CONSERVER','#7db3ff','pièces gradées à garder'],
+             ['PRICE_REVIEW','PRICE REVIEW','#e0685f','sans prix fiable'],
+             ['DATA_REVIEW','DATA REVIEW','#c98a3f','données insuffisantes']];
+  var out=order.map(function(g){
+    var rows=PMX.watch.filter(function(r){return r.watch_type===g[0];})
+      .sort(function(x,y){return (Number(y.raw_market_eur)||0)-(Number(x.raw_market_eur)||0);});
+    if(!rows.length) return '';
+    var body=rows.slice(0,40).map(function(r){
+      return '<tr>'
+        +'<td>'+pmImg(r,30)+'</td>'
+        +'<td><b>'+esc(r.card_number)+'</b><div style="color:#8a909a;font-size:11px">'+esc(r.character)+'</div></td>'
+        +'<td>'+esc(r.variant_label||'')+'</td>'
+        +'<td>'+esc(r.language||'')+'</td>'
+        +'<td style="text-align:right">'+pmEur(r.raw_market_eur)+'</td>'
+        +'<td>'+(r.owned_grade?esc(pmGradeTxt(r)):'RAW')+'</td>'
+        +'<td style="color:#9aa0aa;font-size:11px">'+esc(r.watch_reason||'')+'</td>'
+        +'</tr>';
+    }).join('');
+    return '<div style="margin:10px 0 4px;display:flex;align-items:center;gap:8px"><span style="width:9px;height:9px;border-radius:50%;background:'+g[2]+'"></span><b style="color:#f0ece2;letter-spacing:.04em">'+g[1]+'</b><span style="color:#6a717c;font-size:11px">'+rows.length+' · '+g[3]+'</span></div>'
+      +'<div style="overflow-x:auto"><table class="pmtbl"><tr><th></th><th align="left">Code</th><th align="left">Variante</th><th>Lang</th><th style="text-align:right">RAW €</th><th>Grade</th><th align="left">Raison</th></tr>'+body+'</table></div>';
+  }).filter(Boolean).join('');
+  return '<p style="color:#6a717c;font-size:11px;margin:2px 0 2px">Cartes possédées, réparties par action. « À grader » = RAW ≥ 200 € (PSA10 non chiffrable → GRADING REVIEW). « Surveiller » = RAW ≥ 80 €.</p>'+(out||'<p style="color:#6a717c">Rien à surveiller.</p>');
 }
+
+/* ---------- navigation ---------- */
 function pmGo(t){ PMX.tab=t; pmPaint(); }
+function pmSetBud(field,val){ PMX[field]=val; pmPaint(); }
 function pmPaint(){
   var st=document.getElementById('stage'); if(!st) return;
-  var tabs=[['overview',"Vue d'ensemble"],['missing','Grails manquants'],['owned','Ma collection'],['reco','À acheter'],['watch','Surveillance']];
-  var nav='<div style="display:flex;gap:6px;flex-wrap:wrap;margin:10px 0">'+tabs.map(function(t){return '<button onclick="pmGo(\''+t[0]+'\')" style="padding:7px 12px;border:1px solid '+(PMX.tab===t[0]?'var(--accent,#c19338)':'var(--line,#242a33)')+';border-radius:9px;background:var(--panel,#14161c);color:'+(PMX.tab===t[0]?'var(--gold,#e6c877)':'var(--ink,#f0ece2)')+';cursor:pointer;font-size:13px">'+esc(t[1])+'</button>';}).join('')+'</div>';
-  var body=PMX.tab==='overview'?pmOverview():PMX.tab==='missing'?pmRowsMissing():PMX.tab==='owned'?pmRowsOwned():PMX.tab==='reco'?pmRowsReco():pmRowsWatch();
-  st.innerHTML='<style>.pmtbl{width:100%;border-collapse:collapse;font-size:13px}.pmtbl th{color:var(--muted,#9aa0aa);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.05em;padding:7px 8px;border-bottom:1px solid var(--line,#242a33)}.pmtbl td{padding:7px 8px;border-bottom:1px solid var(--line,#242a33)}.pmsel{background:var(--panel,#14161c);color:var(--ink,#f0ece2);border:1px solid var(--line,#242a33);border-radius:8px;padding:6px 8px;font-size:12px}</style>'+nav+'<div id="pmBody">'+body+'</div>';
-  var ff=document.getElementById('pmFam'), fl=document.getElementById('pmLang');
-  if(ff)ff.onchange=function(){PMX.fam=ff.value;pmPaint();};
-  if(fl)fl.onchange=function(){PMX.lang=fl.value;pmPaint();};
+  var tabs=[['dash','Tableau de bord'],['grails','Grails'],['acheter','À acheter'],['collection','Ma collection'],['surveillance','Surveillance']];
+  var nav='<div style="display:flex;gap:6px;flex-wrap:wrap;margin:10px 0">'+tabs.map(function(t){var on=PMX.tab===t[0];return '<button data-pmt="'+t[0]+'" style="padding:7px 13px;border:1px solid '+(on?'#c19338':'#242a33')+';border-radius:9px;background:'+(on?'#2a2410':'#14161c')+';color:'+(on?'#e6c877':'#f0ece2')+';cursor:pointer;font-size:13px">'+esc(t[1])+'</button>';}).join('')+'</div>';
+  var body=PMX.tab==='dash'?pmDash():PMX.tab==='grails'?pmGrails():PMX.tab==='acheter'?pmBuy():PMX.tab==='collection'?pmColl():pmWatch();
+  st.innerHTML='<style>.pmtbl{width:100%;border-collapse:collapse;font-size:13px}.pmtbl th{color:#9aa0aa;font-weight:600;font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;padding:7px 8px;border-bottom:1px solid #242a33;white-space:nowrap}.pmtbl td{padding:7px 8px;border-bottom:1px solid #1c2027;vertical-align:middle}.pmsel{background:#14161c;color:#f0ece2;border:1px solid #242a33;border-radius:8px;padding:6px 9px;font-size:12px}.pmsel::placeholder{color:#6a717c}</style>'
+    +'<div style="display:flex;align-items:baseline;gap:10px"><h2 style="letter-spacing:.14em;color:#e6c877;margin:0">💎 PREMIUM</h2><span style="color:#6a717c;font-size:11px">'+PMX.owned.length+' / '+PMX.universe.length+' possédées · recalculé en direct</span></div>'
+    +nav+'<div id="pmBody">'+body+'</div>';
+  /* wiring délégué */
+  Array.prototype.forEach.call(st.querySelectorAll('[data-pmt]'),function(b){b.onclick=function(){pmGo(b.getAttribute('data-pmt'));};});
+  Array.prototype.forEach.call(st.querySelectorAll('[data-bud]'),function(b){b.onclick=function(){pmSetBud(b.getAttribute('data-cb'),b.getAttribute('data-bud'));};});
+  var bind=function(id,field,ev){var e=document.getElementById(id);if(e){e[ev||'onchange']=function(){PMX[field]=e.value;pmPaint();};}};
+  bind('pmLang','colLang');bind('pmFam','colFam');bind('pmTier','colTier');bind('pmGrade','colGrade');bind('pmPrice','colPrice');bind('pmSort','colSort');
+  var qi=document.getElementById('pmQ'); if(qi){ qi.oninput=function(){PMX.colQ=qi.value;}; qi.onkeydown=function(e){if(e.key==='Enter'){PMX.colQ=qi.value;pmPaint();var n=document.getElementById('pmQ');if(n){n.focus();n.setSelectionRange(n.value.length,n.value.length);}}}; qi.onblur=function(){if(PMX.colQ!==qi.value){PMX.colQ=qi.value;pmPaint();}}; }
 }
 async function renderPremium(){
   var st=document.getElementById('stage'); if(!st) return; st.className='';
@@ -5843,7 +6009,6 @@ async function renderPremium(){
     if(on){ var b=document.getElementById('premiumNavBtn'),g=document.getElementById('premiumGrp'); if(b)b.style.display=''; if(g)g.style.display=''; }
   }catch(e){}
 })();
-
 /* ====== /PREMIUM MODULE ====== */
 setMode('accueil');
 load();
