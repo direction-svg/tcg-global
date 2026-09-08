@@ -4088,7 +4088,7 @@ async function homeBriefing(){
   }catch(e){ box.innerHTML='<div class="txt" style="color:var(--muted);font-size:13px">Erreur, réessaie.</div><button class="hbriefbtn" onclick="homeBriefing()">Réessayer</button>'; }
 }
 document.getElementById('modeSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMode(b.dataset.m);});
-const APP_VERSION='Version b128 · 12/08 — Mobile UX + Price Truth';
+const APP_VERSION='Version b129 · 12/08 — BOUNTY 4.0 (5 espaces · buy hub · Price Truth) · candidate';
 { const nv=document.getElementById('navVersion'); if(nv) nv.textContent=APP_VERSION; }
 document.getElementById('mktSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMarket(b.dataset.k);});
 const CATARRS=["catColors","catCats","catRarities","catTreats","catProvs","catSets"];
@@ -6633,6 +6633,189 @@ const Fake = (function(){
     if(m==='int_fam') return intFam();
     if(m==='int_alert') return intAlert();
   };
+})();
+</script>
+<script>
+/* ===================== BOUNTY 4.0 — NAV 5 ESPACES + ACCUEIL DÉCISIONNEL + BUY HUB =====================
+   Additif, flag-gated (localStorage 'bounty4_nav'). OFF => UX b128 intacte. Aucune liste hardcodée :
+   tout vient des vues du Passage A (app_buy_hub, app_intel_movements, app_price_truth, app_ops_health,
+   app_value_snapshot). Ne planifie/active rien. Lecture seule REST anon. */
+(function(){
+  var API=SB+'/rest/v1/', HDR={apikey:ANON,Authorization:'Bearer '+ANON};
+  function on(){ try{return localStorage.getItem('bounty4_nav')!=='0';}catch(e){return true;} } // défaut ON
+  function setOn(v){ try{localStorage.setItem('bounty4_nav', v?'1':'0');}catch(e){} }
+  function E(s){ return (s==null?'':String(s)).replace(/[&<>"']/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];}); }
+  function eur(v){ if(v==null||v==='')return '—'; var n=Math.round(+v); return n.toLocaleString('fr-FR')+' €'; }
+  function q(view,params){ return fetch(API+view+'?'+params,{headers:HDR}).then(function(r){ if(!r.ok) throw new Error(view+' '+r.status); return r.json(); }); }
+  var stage=function(){ return document.getElementById('stage'); };
+  var TCOL={'S+':'#c084fc','S':'#a67c27','A':'#4aa3ff','B':'#7a808c','C':'#9aa0aa'};
+  var PC={HIGH:'#059669',MEDIUM:'#a67c27',REVIEW:'#dc2626',LOW:'#dc2626'};
+  var FAM=[['all','Toutes'],['Manga','Manga'],['Serial','Serial'],['Flagship','Flagship'],['Winner','Winner'],['Championship','Championship'],['Anniversary','Anniversary'],['Treasure Cup','Treasure'],['SP','SP'],['Asia/ForAsia','Asia']];
+
+  /* ---- prix canonique : "582 € · RAW·JP·HIGH · maj 08/09 · 30j −6%" ou "PRIX À VÉRIFIER" ---- */
+  function priceLine(o){
+    if(o.disp_status==='PRICE_A_VERIFIER'||o.disp_price==null)
+      return '<span style="font:800 10px ui-monospace,monospace;color:#d97706;border:1px solid #d97706;border-radius:5px;padding:1px 6px">PRIX À VÉRIFIER</span>';
+    var basis=(o.disp_basis==='MARKET'?'MKT':(o.disp_basis||'RAW'));
+    var lang=(o.language||'').toUpperCase(), conf=o.disp_confidence||'';
+    var spec=basis+(lang?'·'+lang:'')+(conf?'·'+conf:'');
+    var maj=o.disp_captured_at?(' · maj '+new Date(o.disp_captured_at).toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit'})):'';
+    var mv=(o.disp_var_30d!=null)?(' · 30j '+(o.disp_var_30d>0?'+':'')+Math.round(o.disp_var_30d)+'%'):'';
+    return '<span style="font:900 12.5px ui-monospace,monospace">'+eur(o.disp_price)+'</span>'+
+      '<span style="width:6px;height:6px;border-radius:50%;display:inline-block;margin:0 5px;background:'+(PC[conf]||'#888')+'"></span>'+
+      '<span style="font:700 10px ui-monospace,monospace;color:var(--muted)">'+E(spec)+E(maj)+E(mv)+'</span>';
+  }
+  function thumb(u,w,h){ w=w||'100%'; var img=u?('<img loading="lazy" referrerpolicy="no-referrer" src="'+E(u)+'" onerror="this.style.visibility=\'hidden\'" style="width:100%;height:100%;object-fit:cover">'):'<span style="color:var(--muted);font-size:10px">pas d\'image</span>'; return '<div style="background:var(--bg);position:relative;display:flex;align-items:center;justify-content:center;'+(h?('width:'+w+';height:'+h+';flex:none;border-radius:6px;overflow:hidden'):'aspect-ratio:63/88')+'">'+img+'</div>'; }
+
+  /* ---- carte du hub À acheter (grille) ---- */
+  function buyCard(o){
+    return '<div style="background:var(--panel);border:1px solid var(--line);border-radius:12px;overflow:hidden;display:flex;flex-direction:column">'+
+      thumb(o.image_url)+
+      '<div style="padding:8px 9px 10px;display:flex;flex-direction:column;gap:3px;flex:1">'+
+        '<div class="nm" style="font:700 11px/1 ui-monospace,monospace;color:var(--muted)">'+(o.jp_priority?'🇯🇵 ':'')+E(o.card_number||'')+(o.region&&o.region!=='-'?' · '+E(o.region):'')+'</div>'+
+        '<div class="nm" style="font-weight:800;font-size:12.5px;line-height:1.2;max-height:2.4em;overflow:hidden">'+E(o.character||'')+'</div>'+
+        '<div class="sub" style="font-size:10.5px;color:var(--muted);max-height:2.3em;overflow:hidden">'+E(o.variant_label||'')+'</div>'+
+        '<div style="display:flex;align-items:center;gap:5px;margin-top:auto;padding-top:5px;flex-wrap:wrap">'+priceLine(o)+'</div>'+
+        '<div style="display:flex;align-items:center;gap:5px">'+
+          '<span style="font:800 10px ui-monospace,monospace;padding:1px 6px;border-radius:20px;border:1px solid var(--line);color:var(--accent)">buy '+(o.buy_score_adj!=null?o.buy_score_adj:'—')+'</span>'+
+          (o.tier?'<span style="font:800 10px ui-monospace,monospace;padding:1px 5px;border-radius:5px;background:'+(TCOL[o.tier]||'#888')+';color:#fff">'+E(o.tier)+'</span>':'')+
+          (o.is_grail?'<span style="font:800 9.5px ui-monospace,monospace;color:#c084fc">GRAIL</span>':'')+
+          (o.gap_completer?'<span style="font:800 9.5px ui-monospace,monospace;color:var(--muted)">GAP</span>':'')+
+        '</div></div></div>';
+  }
+  function buyRow(o){
+    return '<div style="display:flex;gap:10px;align-items:center;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:8px 11px">'+thumb(o.image_url,'34px','48px')+
+      '<div style="flex:1;min-width:0"><div style="font-weight:800;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+(o.jp_priority?'🇯🇵 ':'')+E(o.card_number||'')+(o.variant_label?' · '+E(o.variant_label):'')+'</div>'+
+      '<div style="font-size:11px;margin-top:2px;display:flex;align-items:center;flex-wrap:wrap;gap:3px">'+priceLine(o)+'</div></div>'+
+      '<div style="text-align:right;white-space:nowrap"><div style="font:800 11px ui-monospace,monospace;color:var(--accent)">buy '+(o.buy_score_adj!=null?o.buy_score_adj:'—')+'</div>'+(o.tier?'<div style="font:800 10px ui-monospace,monospace;color:'+(TCOL[o.tier]||'#888')+'">'+E(o.tier)+'</div>':'')+'</div></div>';
+  }
+
+  /* ---- ESPACE « À ACHETER » (app_buy_hub) ---- */
+  var BUY={fam:'all',flt:'all',vmode:(function(){try{return sessionStorage.getItem('int_vmode')||'grid';}catch(e){return 'grid';}})()};
+  function chip(id,opts,cur){ return '<div style="display:flex;gap:7px;overflow-x:auto;padding:2px 0 10px;scrollbar-width:none">'+opts.map(function(o){var s=o[0]===cur;return '<button data-id="'+id+'" data-v="'+o[0]+'" style="white-space:nowrap;padding:6px 11px;border-radius:16px;font-size:12.5px;font-weight:700;cursor:pointer;border:1px solid '+(s?'var(--accent)':'var(--line)')+';background:'+(s?'var(--accent)':'var(--panel)')+';color:'+(s?'#fff':'var(--muted)')+'">'+E(o[1])+'</button>';}).join('')+'</div>'; }
+  function vseg(){ return '<div class="vmodeseg" style="display:inline-flex;border:1px solid var(--line);border-radius:9px;overflow:hidden;margin:0 0 10px"><button data-vm="grid" class="'+(BUY.vmode==='grid'?'on':'')+'">▦ Grille</button><button data-vm="list" class="'+(BUY.vmode==='list'?'on':'')+'">☰ Liste</button></div>'; }
+  function renderBuyHub(){
+    var s=stage(); if(!s)return; s.className='';
+    s.innerHTML='<p style="color:var(--muted);font-size:11.5px;margin:2px 0 8px">Un seul hub d\'achat. Une carte = une impression physique exacte (printing_id). Prix = Price Truth, score confiance-ajusté. JP prioritaire.</p>'+
+      vseg()+
+      chip('flt',[['all','Best buy'],['jp','JP'],['grail','Grails'],['gap','Complète famille'],['b_lt100','< 100 €'],['b_100_300','100–300 €'],['b_gt300','> 300 €'],['fiable','Prix fiable']],BUY.flt)+
+      chip('fam',FAM,BUY.fam)+
+      '<div id="b4buyList"><div class="loading">…</div></div>';
+    loadBuy();
+  }
+  function loadBuy(){
+    var p='select=printing_id,card_number,character,variant_label,language,region,premium_family,tier,image_url,disp_price,disp_basis,disp_confidence,disp_status,disp_captured_at,disp_var_30d,buy_score_adj,gap_completer,jp_priority,is_grail&order=buy_score_adj.desc.nullslast&limit=120';
+    if(BUY.fam!=='all') p+='&premium_family=eq.'+encodeURIComponent(BUY.fam);
+    if(BUY.flt==='jp') p+='&jp_priority=is.true';
+    else if(BUY.flt==='grail') p+='&is_grail=is.true';
+    else if(BUY.flt==='gap') p+='&gap_completer=is.true';
+    else if(BUY.flt==='fiable') p+='&disp_confidence=in.(HIGH,MEDIUM)';
+    else if(BUY.flt==='b_lt100') p+='&disp_price=lt.100';
+    else if(BUY.flt==='b_100_300') p+='&disp_price=gte.100&disp_price=lte.300';
+    else if(BUY.flt==='b_gt300') p+='&disp_price=gt.300';
+    q('app_buy_hub',p).then(function(d){ var t=document.getElementById('b4buyList'); if(!t)return;
+      if(!d.length){ t.innerHTML='<div class="empty" style="padding:20px;text-align:center;color:var(--muted)">Aucune carte pour ce filtre.</div>'; return; }
+      if(BUY.vmode==='list'){ t.innerHTML='<div style="display:flex;flex-direction:column;gap:7px">'+d.map(buyRow).join('')+'</div>'; }
+      else { t.innerHTML='<div class="grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px">'+d.map(buyCard).join('')+'</div>'; }
+    }).catch(function(e){ var t=document.getElementById('b4buyList'); if(t)t.innerHTML='<div class="empty" style="padding:20px;color:#dc2626">Erreur: '+E(e.message)+'</div>'; });
+  }
+
+  /* ---- ACCUEIL DÉCISIONNEL (4 questions) ---- */
+  function sectionCard(title,go,goLbl,inner){
+    return '<div style="background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:12px 13px;margin-bottom:12px">'+
+      '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:9px"><div style="font-weight:900;font-size:14px;letter-spacing:-.01em">'+E(title)+'</div>'+
+      (go?'<button data-goto="'+go+'" style="font-size:11.5px;font-weight:800;color:var(--accent);background:none;border:0;cursor:pointer">'+E(goLbl||'Voir')+' →</button>':'')+'</div>'+inner+'</div>';
+  }
+  function miniRow(left,right){ return '<div style="display:flex;align-items:center;gap:9px;padding:6px 0;border-top:1px solid var(--line)">'+left+'<div style="margin-left:auto;text-align:right;white-space:nowrap">'+right+'</div></div>'; }
+  function renderHome4(){
+    var s=stage(); if(!s)return; s.className='';
+    s.innerHTML='<div id="b4home"><div class="loading">…</div></div>';
+    var box=document.getElementById('b4home');
+    Promise.allSettled([
+      q('app_intel_movements','select=card_number,character,variant_label,language,now_eur,pct_30d,price_basis,image_url&now_eur=gte.40&pct_30d=not.is.null&order=pct_30d.desc&limit=6'),
+      q('app_buy_hub','select=card_number,character,variant_label,language,region,premium_family,tier,image_url,disp_price,disp_basis,disp_confidence,disp_status,disp_captured_at,disp_var_30d,buy_score_adj,jp_priority,is_grail,gap_completer&jp_priority=is.true&order=buy_score_adj.desc.nullslast&limit=6'),
+      q('app_value_snapshot','select=day,total_eur,cards_eur,products_eur&order=day.desc&limit=2'),
+      q('app_ops_health','select=key,value,detail&category=eq.backlog')
+    ]).then(function(res){
+      if(!box)return;
+      var mov=res[0].value||[], buy=res[1].value||[], snap=res[2].value||[], back=res[3].value||[];
+      // 1) Ce qui a changé
+      var chg=mov.length? mov.map(function(o){ var up=(o.pct_30d>=0);
+        return miniRow(thumb(o.image_url,'28px','40px')+'<div style="min-width:0"><div style="font:700 11px ui-monospace,monospace;color:var(--muted)">'+E(o.card_number||'')+'</div><div style="font-size:12px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:150px">'+E(o.character||'')+'</div></div>',
+          '<div style="font:900 12.5px ui-monospace,monospace">'+eur(o.now_eur)+'</div><div style="font:800 11px ui-monospace,monospace;color:'+(up?'#059669':'#dc2626')+'">'+(up?'▲ +':'▼ ')+Math.round(o.pct_30d)+'%</div>'); }).join('') : '<div style="color:var(--muted);font-size:12px;padding:6px 0">Rien de notable sur 30 j.</div>';
+      // 2) Que devrais-je acheter
+      var buyInner=buy.length? '<div class="grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:9px">'+buy.map(buyCard).join('')+'</div>' : '<div style="color:var(--muted);font-size:12px;padding:6px 0">Aucune reco JP prioritaire.</div>';
+      // 3) Ma collection
+      var last=snap[0]||{}, prev=snap[1]||{}, dc=(+last.cards_eur||0)-(+prev.cards_eur||0), base=(+prev.cards_eur||0), pc=base?dc/base*100:0, up=dc>=0;
+      var colInner='<div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap"><div style="font:900 24px ui-monospace,monospace">'+eur(last.total_eur)+'</div>'+
+        (prev.cards_eur!=null?'<div style="font:800 13px ui-monospace,monospace;color:'+(up?'#059669':'#dc2626')+'">'+(up?'▲ +':'▼ ')+eur(Math.abs(dc))+' ('+(up?'+':'')+pc.toFixed(1).replace('.',',')+' %) cartes</div>':'')+'</div>'+
+        '<div style="font-size:11px;color:var(--muted);margin-top:4px">Cartes '+eur(last.cards_eur)+' · Scellés '+eur(last.products_eur)+'</div>';
+      // 4) Ce qui nécessite attention
+      var bk={}; back.forEach(function(b){ bk[b.key]=+b.value; });
+      var att=[['price_A_VERIFIER','Prix à vérifier','buy'],['price_PRICE_REVIEW','Prix en revue','buy'],['image_WRONG_ART','Images non conformes','marche'],['image_REVIEW','Images ambiguës','marche']];
+      var attInner=att.map(function(a){ var n=bk[a[0]]||0; return '<div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-top:1px solid var(--line)"><span style="font-size:12.5px">'+E(a[1])+'</span><span style="font:900 13px ui-monospace,monospace;color:'+(n>0?'#d97706':'var(--muted)')+'">'+n+'</span></div>'; }).join('');
+      box.innerHTML=
+        sectionCard('🟢 Que devrais-je acheter ?','buy','Hub À acheter',buyInner)+
+        sectionCard('📈 Qu\'est-ce qui a changé ?','marche','Marché',chg)+
+        sectionCard('💰 Ma collection','collection','Collection',colInner)+
+        sectionCard('⚠︎ À vérifier','buy','Détails',attInner);
+    });
+  }
+
+  /* ---- NAV 5 ESPACES ---- */
+  var SPACES=[['home','🏠 Accueil'],['collection','📚 Collection'],['buy','🎯 À acheter'],['marche','📈 Marché'],['suivi','🧾 Suivi']];
+  var SECOND=[['catalog','Catalogue'],['sets','Sets'],['objectifs','Objectifs'],['products','Produits scellés'],['ecarts','Écarts JP/EN'],['offre','Catalyseurs'],['int_fam','Familles'],['ops','Gradation'],['gradeia','Gradation IA'],['conviction','Portefeuille'],['premium','💎 Premium'],['live','Live'],['sante','Santé des données']];
+  var DELEG={collection:'collection',marche:'int_move',suivi:'achats'};
+  var b4active='home';
+  function navBtn(m,lbl,active){ return '<button data-b4="'+m+'" style="display:block;width:100%;text-align:left;padding:10px 14px;border:0;background:'+(active?'var(--chip)':'transparent')+';color:'+(active?'var(--ink)':'var(--muted)')+';font-weight:'+(active?'800':'700')+';font-size:13.5px;cursor:pointer;border-radius:9px">'+lbl+'</button>'; }
+  function buildNav(){
+    var nav=document.getElementById('modeSeg'); if(!nav)return;
+    var h='<div class="navgrp">BOUNTY 4.0</div>'+SPACES.map(function(x){return navBtn(x[0],x[1],x[0]===b4active);}).join('')+
+      '<div class="navgrp" style="margin-top:8px">Autres outils</div>'+SECOND.map(function(x){return navBtn(x[0],x[1],false);}).join('')+
+      '<button data-b4="__revert" style="margin-top:14px;display:block;width:100%;text-align:left;padding:9px 14px;border:1px solid var(--line);background:var(--panel);color:var(--muted);font-weight:700;font-size:12px;cursor:pointer;border-radius:9px">↺ Revenir à l\'ancienne nav (b128)</button>'+
+      '<div id="navVersion" style="margin-top:14px;padding:8px 12px 4px;font-size:11px;color:var(--muted);opacity:.8">'+E(typeof APP_VERSION!=='undefined'?APP_VERSION:'')+'</div>';
+    nav.innerHTML=h;
+    nav.addEventListener('click',function(ev){ var b=ev.target.closest('[data-b4]'); if(!b)return; var m=b.getAttribute('data-b4');
+      if(m==='__revert'){ setOn(false); location.reload(); return; }
+      go(m);
+    });
+  }
+  function markNav(m){ var nav=document.getElementById('modeSeg'); if(!nav)return; Array.prototype.forEach.call(nav.querySelectorAll('[data-b4]'),function(b){ var a=b.getAttribute('data-b4')===m; b.style.background=a?'var(--chip)':'transparent'; b.style.color=a?'var(--ink)':'var(--muted)'; b.style.fontWeight=a?'800':'700'; }); }
+  function go(m){
+    try{ var d=document.getElementById('modeSeg'), sc=document.getElementById('navScrim'); if(d)d.classList.remove('open'); if(sc)sc.classList.remove('open'); }catch(e){}
+    if(m==='home'){ b4active='home'; markNav('home'); if(window.state)state.mode='b4_home'; setTitle(''); hideTools(); renderHome4(); return; }
+    if(m==='buy'){ b4active='buy'; markNav('buy'); if(window.state)state.mode='b4_buy'; setTitle('À acheter'); hideTools(); renderBuyHub(); return; }
+    // espaces délégués + outils secondaires => modes existants
+    var target=DELEG[m]||m; b4active=(m in DELEG)?m:'';
+    markNav(b4active);
+    if(typeof setMode==='function') setMode(target);
+  }
+  function setTitle(t){ var pt=document.getElementById('pageTitle'); if(pt)pt.textContent=t; var st=document.getElementById('subTabs'); if(st){ st.style.display='none'; st.innerHTML=''; } }
+  function hideTools(){ ['viewBtn','filterBtn','sortBtn','scanFab'].forEach(function(id){var e=document.getElementById(id); if(e)e.classList.add('hidden');}); var sr=document.querySelector('.search'); if(sr)sr.classList.add('hidden'); }
+
+  /* délégation clics chips + segments + boutons "voir" (accueil) */
+  document.addEventListener('click',function(ev){
+    if(!on())return;
+    var seg=ev.target.closest('.vmodeseg [data-vm]');
+    if(seg){ var vm=seg.getAttribute('data-vm'); BUY.vmode=vm; try{sessionStorage.setItem('int_vmode',vm);}catch(e){} var segp=seg.parentNode; if(segp)Array.prototype.forEach.call(segp.children,function(b){b.className=(b.getAttribute('data-vm')===vm?'on':'');}); if(b4active==='buy')loadBuy(); return; }
+    var ch=ev.target.closest('#stage [data-id][data-v]');
+    if(ch){ var id=ch.getAttribute('data-id'), v=ch.getAttribute('data-v'); if(id==='fam')BUY.fam=v; else if(id==='flt')BUY.flt=v; var par=ch.parentNode; if(par)Array.prototype.forEach.call(par.children,function(b){var s=b===ch; b.style.borderColor=s?'var(--accent)':'var(--line)'; b.style.background=s?'var(--accent)':'var(--panel)'; b.style.color=s?'#fff':'var(--muted)';}); loadBuy(); return; }
+    var gt=ev.target.closest('[data-goto]');
+    if(gt){ go(gt.getAttribute('data-goto')); return; }
+  });
+
+  /* boot : si flag ON, remplace la nav et ouvre l'accueil décisionnel.
+     Le boot b128 appelle setMode('accueil') de façon synchrone au démarrage : on passe APRÈS lui,
+     puis on ré-assère l'accueil décisionnel si b128 a repris la main (course de rendu). */
+  function boot(){ if(!on())return; buildNav(); go('home');
+    var tries=0; var iv=setInterval(function(){ tries++;
+      if(!on()){ clearInterval(iv); return; }
+      if(b4active==='home' && !document.getElementById('b4home')){ go('home'); }
+      if(tries>=6) clearInterval(iv);
+    },400);
+  }
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',function(){setTimeout(boot,250);});
+  else setTimeout(boot,250);
 })();
 </script>
 </body>
