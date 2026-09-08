@@ -782,6 +782,34 @@ body{-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
 .mkc td.g{text-align:right;color:var(--pos);font-weight:800;white-space:nowrap}
 .mkc .none{color:var(--muted);font-weight:600}
 .mkflag{font-weight:800}
+/* === BOUNTY V3 — MOBILE UX (téléphone uniquement, additif, desktop inchangé) === */
+@media(max-width:520px){
+  /* Grilles cartes : 3 par ligne, vignettes compactes */
+  .grid{grid-template-columns:repeat(3,1fr)!important;gap:8px!important}
+  .card .nm,.nm{font-size:11px!important;line-height:1.15!important}
+  .card .sub,.sub{font-size:9.5px!important}
+  .card .meta,.meta{font-size:9px!important}
+  /* Grilles à styles inline (Intelligence repeat(2,1fr), Premium Grails/KPIs) */
+  [style*="repeat(2,1fr)"]{grid-template-columns:repeat(3,1fr)!important;gap:8px!important}
+  [style*="repeat(2, 1fr)"]{grid-template-columns:repeat(3,1fr)!important;gap:8px!important}
+  [style*="minmax(280px"]{grid-template-columns:repeat(2,1fr)!important;gap:8px!important}
+  [style*="minmax(184px"]{grid-template-columns:repeat(3,1fr)!important;gap:8px!important}
+  [style*="minmax(150px"]{grid-template-columns:repeat(3,1fr)!important;gap:6px!important}
+  /* Vue liste compacte (téléphone) : ligne dense */
+  .lrow{padding:7px 9px!important}
+  .lrow .lnm{font-size:12px!important}
+  .lrow .lsub{font-size:10px!important}
+  /* Sélecteur Grille/Liste bien visible et tactile */
+  #viewBtn,.vmodeseg button{min-height:34px}
+  /* Segment de vue Intelligence */
+  .vmodeseg{display:inline-flex;border:1px solid var(--line);border-radius:9px;overflow:hidden;margin:0 0 10px}
+  .vmodeseg button{background:var(--panel);color:var(--muted);border:0;padding:6px 12px;font-size:12px;font-weight:800;cursor:pointer}
+  .vmodeseg button.on{background:var(--chip);color:var(--ink)}
+}
+/* Segment de vue Intelligence — visible aussi desktop si présent */
+.vmodeseg{display:inline-flex;border:1px solid var(--line);border-radius:9px;overflow:hidden;margin:0 0 12px}
+.vmodeseg button{background:var(--panel);color:var(--muted);border:0;padding:6px 14px;font-size:12.5px;font-weight:800;cursor:pointer;outline:none}
+.vmodeseg button.on{background:var(--chip);color:var(--ink)}
 </style>
 <script>/* thème : nuit par défaut, choix mémorisé — posé avant le rendu pour éviter le flash */try{var _tcgTheme=localStorage.getItem('tcg-theme');if(_tcgTheme!=='light')document.documentElement.classList.add('dark');}catch(e){document.documentElement.classList.add('dark');}</script>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&display=swap">
@@ -4060,7 +4088,7 @@ async function homeBriefing(){
   }catch(e){ box.innerHTML='<div class="txt" style="color:var(--muted);font-size:13px">Erreur, réessaie.</div><button class="hbriefbtn" onclick="homeBriefing()">Réessayer</button>'; }
 }
 document.getElementById('modeSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMode(b.dataset.m);});
-const APP_VERSION='Version b127 · 08/09 — Premium V2 + Intelligence · patch perf';
+const APP_VERSION='Version b128 · 12/08 — Mobile UX + Price Truth';
 { const nv=document.getElementById('navVersion'); if(nv) nv.textContent=APP_VERSION; }
 document.getElementById('mktSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMarket(b.dataset.k);});
 const CATARRS=["catColors","catCats","catRarities","catTreats","catProvs","catSets"];
@@ -6443,6 +6471,13 @@ const Fake = (function(){
   var API=SB+'/rest/v1/', HDR={apikey:ANON,Authorization:'Bearer '+ANON};
   var TCOL={'S+':'#c084fc','S':'#a67c27','A':'#4aa3ff','B':'#7a808c','C':'#9aa0aa'};
   var IST={new:{fam:'all'},opp:{f:'all'},move:{k:'pct_30d',dir:'desc'}};
+  var _vmode='grid'; try{var _vm=sessionStorage.getItem('int_vmode'); if(_vm==='grid'||_vm==='list') _vmode=_vm;}catch(e){}
+  function vmodeSeg(){ return '<div class="vmodeseg" role="tablist">'+
+      '<button data-vm="grid" class="'+(_vmode==='grid'?'on':'')+'" onclick="__intVmode(\'grid\')">▦ Grille</button>'+
+      '<button data-vm="list" class="'+(_vmode==='list'?'on':'')+'" onclick="__intVmode(\'list\')">☰ Liste</button></div>'; }
+  window.__intVmode=function(m){ if(m!==_vmode){ _vmode=m; try{sessionStorage.setItem('int_vmode',m);}catch(e){} }
+    var seg=document.querySelector('.vmodeseg'); if(seg) Array.prototype.forEach.call(seg.children,function(b){ b.className=(b.getAttribute('data-vm')===m?'on':''); });
+    if(document.getElementById('__pgNew')) loadNew(); else if(document.getElementById('__pgOpp')) loadOpp(); };
   function iq(view,params){ return fetch(API+view+'?'+params,{headers:HDR}).then(function(r){ if(!r.ok) throw new Error(view+' '+r.status); return r.json(); }); }
   var _seq=0, _cache={};
   function iqc(view,params,tok,cb){ var key=view+'?'+params;
@@ -6450,6 +6485,18 @@ const Fake = (function(){
     iq(view,params).then(function(d){ _cache[key]=d; if(tok===_seq) cb(d); }).catch(function(e){ if(tok===_seq) intErr(e); }); }
   function money(v){ return v==null?'—':eur0(v); }
   function pctTxt(v){ return v==null?'':((v>0?'+':'')+v+'%'); }
+  // Badge Price Truth : "582 € · RAW·JP·HIGH · 30j −6%" ou "PRIX À VÉRIFIER"
+  var PTCOL={HIGH:'#059669',MEDIUM:'#a67c27',REVIEW:'#dc2626',LOW:'#dc2626'};
+  function ptBadge(o){
+    if(o.price_status==='PRICE_A_VERIFIER'||o.display_price==null)
+      return '<span style="font:800 9.5px ui-monospace,monospace;color:#d97706;border:1px solid #d97706;border-radius:5px;padding:1px 5px">PRIX À VÉRIFIER</span>';
+    var basis=(o.price_basis==='MARKET'?'MKT':(o.price_basis||'RAW'));
+    var lang=(o.language||'').toUpperCase(); var conf=o.price_confidence||'';
+    var spec=basis+(lang?'·'+lang:'')+(conf?'·'+conf:'');
+    var mv=(o.pct_30d!=null)?(' · 30j '+pctTxt(o.pct_30d)):'';
+    return '<span style="font:700 9.5px ui-monospace,monospace;color:var(--muted)">'+esc(spec)+'</span>'+
+      (conf?'<span style="width:6px;height:6px;border-radius:50%;display:inline-block;margin-left:4px;background:'+(PTCOL[conf]||'#888')+'"></span>':'')+
+      '<span style="font:700 9.5px ui-monospace,monospace;color:var(--muted)">'+mv+'</span>'; }
   function thumb(u,w){ w=w||34; var img=u?('<img loading="lazy" referrerpolicy="no-referrer" src="'+esc(u)+'" onerror="this.style.visibility=\'hidden\'" style="width:100%;height:100%;object-fit:cover">'):''; return '<div style="width:'+w+'px;height:'+Math.round(w*1.4)+'px;border-radius:6px;overflow:hidden;background:var(--bg);flex:none">'+img+'</div>'; }
   function tierPill(t){ return t?('<span style="font:800 10px/1 ui-monospace,monospace;padding:2px 5px;border-radius:5px;background:'+(TCOL[t]||'#888')+';color:#fff">'+t+'</span>'):''; }
   function chipRow(id,opts,cur){ return '<div style="display:flex;gap:7px;overflow-x:auto;padding:2px 0 10px;-ms-overflow-style:none;scrollbar-width:none">'+opts.map(function(o){var on=o[0]===cur; return '<button data-v="'+o[0]+'" onclick="__intChip(\''+id+'\',this)" style="white-space:nowrap;padding:6px 11px;border-radius:16px;font-size:12.5px;font-weight:700;cursor:pointer;border:1px solid '+(on?'var(--accent)':'var(--line)')+';background:'+(on?'var(--accent)':'var(--panel)')+';color:'+(on?'#fff':'var(--muted)')+'">'+esc(o[1])+'</button>';}).join('')+'</div>'; }
@@ -6471,6 +6518,7 @@ const Fake = (function(){
         '<div style="display:flex;align-items:center;gap:6px;margin-top:auto;padding-top:5px">'+
           '<span style="font-weight:900">'+money(o.eur)+'</span>'+
           (o.rightPill||'')+'</div>'+
+        (o.ptLine?'<div style="display:flex;align-items:center;gap:3px;flex-wrap:wrap;margin-top:2px">'+o.ptLine+'</div>':'')+
       '</div></div>';
   }
   function listRow(o){
@@ -6482,7 +6530,8 @@ const Fake = (function(){
 
   // ---- New & Rare ----
   function intNew(){ var s=document.getElementById('stage'); s.className='';
-    s.innerHTML='<p style="color:var(--muted);font-size:11.5px;margin:2px 0 8px">Nouveautés & raretés distinctives non possédées. « pas de cote » = fraîchement identifiée.</p>'+
+    s.innerHTML='<span id="__pgNew" hidden></span><p style="color:var(--muted);font-size:11.5px;margin:2px 0 8px">Nouveautés & raretés distinctives non possédées. « pas de cote » = fraîchement identifiée.</p>'+
+      vmodeSeg()+
       chipRow('newf',[['all','Toutes'],['Serial','Serial'],['Flagship','Flagship'],['Manga','Manga'],['Winner','Winner'],['Top/Champion','Championship'],['Anniversary','Anniversary'],['SP','SP'],['Asia/ForAsia','Asia'],['Treasure Cup','Treasure']],IST.new.fam)+'<div id="intList"><div class="loading">…</div></div>';
     loadNew();
   }
@@ -6490,24 +6539,38 @@ const Fake = (function(){
     if(IST.new.fam!=='all') p+='&premium_family=eq.'+encodeURIComponent(IST.new.fam);
     var tok=_seq;
     iqc('app_intel_new_rare',p,tok,function(d){ var t=document.getElementById('intList'); if(!t)return;
-      t.innerHTML=d.length?gridCards(d,function(o){ o.eur=o.raw_market_eur; o.badge=o.discovered?null:'NEW'; o.rightPill='<span style="margin-left:auto;font:700 10px ui-monospace,monospace;color:var(--muted)">'+(o.discovered?esc(o.discovered):'nouvelle')+'</span>'; return bigCard(o); }):'<div class="empty">Aucune carte pour ce filtre.</div>';
+      if(!d.length){ t.innerHTML='<div class="empty">Aucune carte pour ce filtre.</div>'; return; }
+      if(_vmode==='list'){ t.innerHTML='<div style="display:flex;flex-direction:column;gap:7px">'+d.map(function(o){
+          o.b=esc(o.character||'')+(o.region&&o.region!=='-'?' · '+esc(o.region):'')+(o.tier?' · '+o.tier:'');
+          o.right='<div style="font-weight:900;font-size:13.5px">'+money(o.raw_market_eur)+'</div><div style="font:700 10px ui-monospace,monospace;color:var(--muted)">'+(o.discovered?esc(o.discovered):'nouvelle')+'</div>';
+          return listRow(o); }).join('')+'</div>'; return; }
+      t.innerHTML=gridCards(d,function(o){ o.eur=o.raw_market_eur; o.badge=o.discovered?null:'NEW'; o.rightPill='<span style="margin-left:auto;font:700 10px ui-monospace,monospace;color:var(--muted)">'+(o.discovered?esc(o.discovered):'nouvelle')+'</span>'; return bigCard(o); });
     }); }
 
   // ---- Opportunités ----
   function intOpp(){ var s=document.getElementById('stage'); s.className='';
-    s.innerHTML='<p style="color:var(--muted);font-size:11.5px;margin:2px 0 8px">Meilleur achat réaliste (buy_score), JP prioritaire. Aucune décote ni rendement inventé.</p>'+
+    s.innerHTML='<span id="__pgOpp" hidden></span><p style="color:var(--muted);font-size:11.5px;margin:2px 0 8px">Meilleur achat réaliste (buy_score), JP prioritaire. Aucune décote ni rendement inventé.</p>'+
+      vmodeSeg()+
       chipRow('oppf',[['all','Best buy'],['dip','En baisse'],['jp','JP'],['gap','Complète famille']],IST.opp.f)+'<div id="intList"><div class="loading">…</div></div>';
     loadOpp();
   }
-  function loadOpp(){ var p='select=card_number,character,variant_label,language,region,market_eur,buy_score,image_url,tier,gap_completer,jp_priority,pct_30d,reason&market_eur=not.is.null&limit=80';
-    if(IST.opp.f==='dip') p+='&pct_30d=lte.-10&order=pct_30d.asc'; else p+='&order=buy_score.desc,market_eur.asc';
+  function loadOpp(){ var p='select=card_number,character,variant_label,language,region,market_eur,buy_score,buy_score_adj,image_url,tier,gap_completer,jp_priority,pct_30d,reason,display_price,price_basis,price_confidence,price_status&market_eur=not.is.null&limit=80';
+    if(IST.opp.f==='dip') p+='&pct_30d=lte.-10&order=pct_30d.asc'; else p+='&order=buy_score_adj.desc,market_eur.asc';
     if(IST.opp.f==='jp') p+='&jp_priority=is.true';
     if(IST.opp.f==='gap') p+='&gap_completer=is.true';
     var tok=_seq;
     iqc('app_intel_opportunities',p,tok,function(d){ var t=document.getElementById('intList'); if(!t)return;
-      t.innerHTML=d.length?gridCards(d,function(o){ o.eur=o.market_eur;
-        o.rightPill='<span style="margin-left:auto;font:800 10px ui-monospace,monospace;padding:2px 6px;border-radius:20px;border:1px solid var(--line);color:var(--accent)">buy '+o.buy_score+'</span>'+(o.pct_30d!=null?'<span style="font:800 10px ui-monospace,monospace;color:'+(o.pct_30d>=0?'#059669':'#dc2626')+'">'+pctTxt(o.pct_30d)+'</span>':'');
-        o.badge=o.gap_completer?'GAP':null; return bigCard(o); }):'<div class="empty">Aucune carte.</div>';
+      if(!d.length){ t.innerHTML='<div class="empty">Aucune carte.</div>'; return; }
+      if(_vmode==='list'){ t.innerHTML='<div style="display:flex;flex-direction:column;gap:7px">'+d.map(function(o){
+          var bs=(o.buy_score_adj!=null?o.buy_score_adj:o.buy_score);
+          o.b=ptBadge(o);
+          o.right='<div style="font-weight:900;font-size:13.5px">'+money(o.display_price!=null?o.display_price:o.market_eur)+'</div><div style="display:flex;gap:5px;justify-content:flex-end;align-items:center"><span style="font:800 10px ui-monospace,monospace;color:var(--accent)">buy '+bs+'</span></div>';
+          return listRow(o); }).join('')+'</div>'; return; }
+      t.innerHTML=gridCards(d,function(o){ o.eur=(o.display_price!=null?o.display_price:o.market_eur);
+        var bs=(o.buy_score_adj!=null?o.buy_score_adj:o.buy_score);
+        o.rightPill='<span style="margin-left:auto;font:800 10px ui-monospace,monospace;padding:2px 6px;border-radius:20px;border:1px solid var(--line);color:var(--accent)">buy '+bs+'</span>';
+        o.ptLine=ptBadge(o);
+        o.badge=o.gap_completer?'GAP':null; return bigCard(o); });
     }); }
 
   // ---- Mouvements ----
