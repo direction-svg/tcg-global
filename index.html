@@ -4060,7 +4060,7 @@ async function homeBriefing(){
   }catch(e){ box.innerHTML='<div class="txt" style="color:var(--muted);font-size:13px">Erreur, réessaie.</div><button class="hbriefbtn" onclick="homeBriefing()">Réessayer</button>'; }
 }
 document.getElementById('modeSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMode(b.dataset.m);});
-const APP_VERSION='Version b127 · 08/09 — Premium V2 + Intelligence';
+const APP_VERSION='Version b127 · 08/09 — Premium V2 + Intelligence · patch perf';
 { const nv=document.getElementById('navVersion'); if(nv) nv.textContent=APP_VERSION; }
 document.getElementById('mktSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMarket(b.dataset.k);});
 const CATARRS=["catColors","catCats","catRarities","catTreats","catProvs","catSets"];
@@ -6444,12 +6444,18 @@ const Fake = (function(){
   var TCOL={'S+':'#c084fc','S':'#a67c27','A':'#4aa3ff','B':'#7a808c','C':'#9aa0aa'};
   var IST={new:{fam:'all'},opp:{f:'all'},move:{k:'pct_30d',dir:'desc'}};
   function iq(view,params){ return fetch(API+view+'?'+params,{headers:HDR}).then(function(r){ if(!r.ok) throw new Error(view+' '+r.status); return r.json(); }); }
+  var _seq=0, _cache={};
+  function iqc(view,params,tok,cb){ var key=view+'?'+params;
+    if(_cache[key]!==undefined){ if(tok===_seq) cb(_cache[key]); return; }
+    iq(view,params).then(function(d){ _cache[key]=d; if(tok===_seq) cb(d); }).catch(function(e){ if(tok===_seq) intErr(e); }); }
   function money(v){ return v==null?'—':eur0(v); }
   function pctTxt(v){ return v==null?'':((v>0?'+':'')+v+'%'); }
   function thumb(u,w){ w=w||34; var img=u?('<img loading="lazy" referrerpolicy="no-referrer" src="'+esc(u)+'" onerror="this.style.visibility=\'hidden\'" style="width:100%;height:100%;object-fit:cover">'):''; return '<div style="width:'+w+'px;height:'+Math.round(w*1.4)+'px;border-radius:6px;overflow:hidden;background:var(--bg);flex:none">'+img+'</div>'; }
   function tierPill(t){ return t?('<span style="font:800 10px/1 ui-monospace,monospace;padding:2px 5px;border-radius:5px;background:'+(TCOL[t]||'#888')+';color:#fff">'+t+'</span>'):''; }
   function chipRow(id,opts,cur){ return '<div style="display:flex;gap:7px;overflow-x:auto;padding:2px 0 10px;-ms-overflow-style:none;scrollbar-width:none">'+opts.map(function(o){var on=o[0]===cur; return '<button data-v="'+o[0]+'" onclick="__intChip(\''+id+'\',this)" style="white-space:nowrap;padding:6px 11px;border-radius:16px;font-size:12.5px;font-weight:700;cursor:pointer;border:1px solid '+(on?'var(--accent)':'var(--line)')+';background:'+(on?'var(--accent)':'var(--panel)')+';color:'+(on?'#fff':'var(--muted)')+'">'+esc(o[1])+'</button>';}).join('')+'</div>'; }
-  window.__intChip=function(id,btn){ var v=btn.getAttribute('data-v'); if(id==='newf'){IST.new.fam=v; loadNew();} else if(id==='oppf'){IST.opp.f=v; loadOpp();} else if(id==='movef'){var p=v.split('.'); IST.move.k=p[0]; IST.move.dir=p[1]; loadMove();} };
+  window.__intChip=function(id,btn){ var v=btn.getAttribute('data-v'); _seq++;
+    var par=btn.parentNode; if(par) Array.prototype.forEach.call(par.children,function(b){ var on=b===btn; b.style.borderColor=on?'var(--accent)':'var(--line)'; b.style.background=on?'var(--accent)':'var(--panel)'; b.style.color=on?'#fff':'var(--muted)'; });
+    if(id==='newf'){IST.new.fam=v; loadNew();} else if(id==='oppf'){IST.opp.f=v; loadOpp();} else if(id==='movef'){var q=v.split('.'); IST.move.k=q[0]; IST.move.dir=q[1]; loadMove();} };
 
   function gridCards(items,mapper){ return '<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px">'+items.map(mapper).join('')+'</div>'; }
   function bigCard(o){
@@ -6482,9 +6488,10 @@ const Fake = (function(){
   }
   function loadNew(){ var p='select=card_number,character,variant_label,language,region,premium_family,premium_score,raw_market_eur,image_url,tier,discovered,status&status=eq.NEW%20MISSING&premium_score=gte.55&order=discovered.desc.nullsfirst,premium_score.desc&limit=60';
     if(IST.new.fam!=='all') p+='&premium_family=eq.'+encodeURIComponent(IST.new.fam);
-    iq('app_intel_new_rare',p).then(function(d){ var t=document.getElementById('intList'); if(!t)return;
+    var tok=_seq;
+    iqc('app_intel_new_rare',p,tok,function(d){ var t=document.getElementById('intList'); if(!t)return;
       t.innerHTML=d.length?gridCards(d,function(o){ o.eur=o.raw_market_eur; o.badge=o.discovered?null:'NEW'; o.rightPill='<span style="margin-left:auto;font:700 10px ui-monospace,monospace;color:var(--muted)">'+(o.discovered?esc(o.discovered):'nouvelle')+'</span>'; return bigCard(o); }):'<div class="empty">Aucune carte pour ce filtre.</div>';
-    }).catch(intErr); }
+    }); }
 
   // ---- Opportunités ----
   function intOpp(){ var s=document.getElementById('stage'); s.className='';
@@ -6496,11 +6503,12 @@ const Fake = (function(){
     if(IST.opp.f==='dip') p+='&pct_30d=lte.-10&order=pct_30d.asc'; else p+='&order=buy_score.desc,market_eur.asc';
     if(IST.opp.f==='jp') p+='&jp_priority=is.true';
     if(IST.opp.f==='gap') p+='&gap_completer=is.true';
-    iq('app_intel_opportunities',p).then(function(d){ var t=document.getElementById('intList'); if(!t)return;
+    var tok=_seq;
+    iqc('app_intel_opportunities',p,tok,function(d){ var t=document.getElementById('intList'); if(!t)return;
       t.innerHTML=d.length?gridCards(d,function(o){ o.eur=o.market_eur;
         o.rightPill='<span style="margin-left:auto;font:800 10px ui-monospace,monospace;padding:2px 6px;border-radius:20px;border:1px solid var(--line);color:var(--accent)">buy '+o.buy_score+'</span>'+(o.pct_30d!=null?'<span style="font:800 10px ui-monospace,monospace;color:'+(o.pct_30d>=0?'#059669':'#dc2626')+'">'+pctTxt(o.pct_30d)+'</span>':'');
         o.badge=o.gap_completer?'GAP':null; return bigCard(o); }):'<div class="empty">Aucune carte.</div>';
-    }).catch(intErr); }
+    }); }
 
   // ---- Mouvements ----
   function intMove(){ var s=document.getElementById('stage'); s.className='';
@@ -6511,17 +6519,19 @@ const Fake = (function(){
   function loadMove(){ var col=IST.move.k, dir=IST.move.dir;
     var p='select=card_number,character,variant_label,language,now_eur,pct_7d,pct_30d,price_basis,owned,image_url,tier&now_eur=gte.40&'+col+'=not.is.null&order='+col+'.'+dir+'&limit=50';
     if(dir==='desc') p+='&'+col+'=lte.400';
-    iq('app_intel_movements',p).then(function(d){ var t=document.getElementById('intList'); if(!t)return;
+    var tok=_seq;
+    iqc('app_intel_movements',p,tok,function(d){ var t=document.getElementById('intList'); if(!t)return;
       t.innerHTML=d.length?('<div style="display:flex;flex-direction:column;gap:7px">'+d.map(function(o){ var v=col==='pct_7d'?o.pct_7d:o.pct_30d; var up=v>=0;
         o.b=o.price_basis+' · '+(o.tier||'')+(o.owned?' · possédée':''); o.variant_label=o.variant_label;
         o.right='<div style="font-weight:900;font-size:13.5px">'+money(o.now_eur)+'</div><div style="font-size:11px;font-weight:800;color:'+(up?'#059669':'#dc2626')+'">'+(up?'▲ ':'▼ ')+pctTxt(v)+'</div>';
         return listRow(o); }).join('')+'</div>'):'<div class="empty">Aucun mouvement.</div>';
-    }).catch(intErr); }
+    }); }
 
   // ---- Familles ----
   function intFam(){ var s=document.getElementById('stage'); s.className='';
     s.innerHTML='<p style="color:var(--muted);font-size:11.5px;margin:2px 0 8px">Familles premium où tu es déjà engagé, avec la meilleure carte manquante. Variantes physiques non fusionnées.</p><div id="intList"><div class="loading">…</div></div>';
-    iq('app_intel_families','select=*&order=owned_value.desc.nullslast').then(function(d){ var t=document.getElementById('intList'); if(!t)return;
+    var tok=_seq;
+    iqc('app_intel_families','select=*&order=owned_value.desc.nullslast',tok,function(d){ var t=document.getElementById('intList'); if(!t)return;
       t.innerHTML=d.map(function(f){ var pc=Math.min(100,+f.pct_owned||0);
         var nb=f.next_best_card?('<div style="display:flex;gap:9px;align-items:center;margin-top:9px;padding-top:9px;border-top:1px dashed var(--line)">'+thumb(f.next_best_image,30)+
           '<div style="flex:1;min-width:0"><div style="font-size:10px;text-transform:uppercase;letter-spacing:.4px;color:var(--muted)">Next best missing</div>'+
@@ -6532,12 +6542,14 @@ const Fake = (function(){
           '<span style="color:var(--muted);font:700 12px ui-monospace,monospace">'+f.owned_cnt+'/'+f.identified+' · '+money(f.owned_value)+'</span></div>'+
           '<div style="height:6px;border-radius:5px;background:var(--bg);overflow:hidden;margin-top:7px"><i style="display:block;height:100%;width:'+pc+'%;background:var(--accent)"></i></div>'+nb+'</div>';
       }).join('');
-    }).catch(intErr); }
+    }); }
 
   // ---- Alertes (READ ONLY / DÉSACTIVÉ) ----
   function intAlert(){ var s=document.getElementById('stage'); s.className='';
     s.innerHTML='<div class="loading">…</div>';
-    Promise.all([iq('app_watch_alert_rules','select=*'),iq('app_watch_alert_candidates','select=rule_key,card_number,variant_label,language,detail,ref_eur,owned&limit=60')]).then(function(res){
+    var tok=_seq, ck='__alerts';
+    var pr=_cache[ck]!==undefined?Promise.resolve(_cache[ck]):Promise.all([iq('app_watch_alert_rules','select=*'),iq('app_watch_alert_candidates','select=rule_key,card_number,variant_label,language,detail,ref_eur,owned&limit=60')]);
+    pr.then(function(res){ _cache[ck]=res; if(tok!==_seq) return;
       var rules=res[0], cand=res[1], byRule={}; cand.forEach(function(c){(byRule[c.rule_key]=byRule[c.rule_key]||[]).push(c);});
       var h='<div style="background:var(--panel);border:1px solid var(--line);border-left:3px solid #f0a63a;border-radius:10px;padding:10px 12px;margin-bottom:10px;font-size:12px;color:var(--muted)">Architecture d\'alertes — <b style="color:var(--ink)">toutes DÉSACTIVÉES</b>. Aucune notification n\'est envoyée. Aperçu en lecture seule des déclenchements potentiels.</div>';
       h+=rules.map(function(r){ return '<div style="display:flex;align-items:center;gap:10px;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px;margin-bottom:7px">'+
@@ -6547,11 +6559,11 @@ const Fake = (function(){
       h+='<div style="font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);margin:16px 2px 8px">Aperçu des déclenchements actuels</div>';
       h+=cand.slice(0,25).map(function(c){ return '<div style="background:var(--panel);border:1px solid var(--line);border-left:3px solid #f0a63a;border-radius:10px;padding:9px 11px;margin-bottom:7px"><b>'+(FLAG[c.language]||'')+' '+esc(c.card_number)+'</b> · '+esc(c.variant_label||'')+'<br><span style="font-size:11px;color:var(--muted)">'+esc(c.detail)+' · '+money(c.ref_eur)+(c.owned?' · possédée':'')+'</span></div>'; }).join('');
       var t=document.getElementById('stage'); if(t) t.innerHTML=h;
-    }).catch(intErr); }
+    }).catch(function(e){ if(tok===_seq) intErr(e); }); }
 
   function intErr(e){ var s=document.getElementById('stage'); if(s) s.innerHTML='<div class="empty">Erreur de chargement Intelligence : '+esc(e.message||e)+'</div>'; }
 
-  window.renderIntel=function(m){ var s=document.getElementById('stage'); if(s){ s.className=''; s.innerHTML='<div class="loading">…</div>'; }
+  window.renderIntel=function(m){ _seq++; var s=document.getElementById('stage'); if(s){ s.className=''; s.innerHTML='<div class="loading">…</div>'; }
     if(m==='int_new') return intNew();
     if(m==='int_opp') return intOpp();
     if(m==='int_move') return intMove();
