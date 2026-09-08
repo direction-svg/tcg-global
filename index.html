@@ -4088,7 +4088,7 @@ async function homeBriefing(){
   }catch(e){ box.innerHTML='<div class="txt" style="color:var(--muted);font-size:13px">Erreur, réessaie.</div><button class="hbriefbtn" onclick="homeBriefing()">Réessayer</button>'; }
 }
 document.getElementById('modeSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMode(b.dataset.m);});
-const APP_VERSION='Version b129 · 12/08 — BOUNTY 4.0 (5 espaces · buy hub · Price Truth) · candidate';
+const APP_VERSION='Version b130 · 12/08 — Price Truth sur fiche (fix états) · candidate';
 { const nv=document.getElementById('navVersion'); if(nv) nv.textContent=APP_VERSION; }
 document.getElementById('mktSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMarket(b.dataset.k);});
 const CATARRS=["catColors","catCats","catRarities","catTreats","catProvs","catSets"];
@@ -5149,22 +5149,26 @@ async function loadPrints(number){
     if(!detailCard || detailCard.card_number!==number) return;
     let imgs=await ri.json(); if(!Array.isArray(imgs)) imgs=[]; imgs=imgs.filter(p=>p.jp_image_url);
     let vars=await rv.json(); if(!Array.isArray(vars)) vars=[];
+    await ptwGet(vars.map(function(v){return v.printing_id;}).concat([detailCard.printing_id]));
     const curV=vars.find(v=>String(v.printing_id)===String(detailCard.printing_id));
     const vlabel=curV?curV.label:(detailCard.variant_label||detailCard.variant||"—");
-    const vprice=curV&&curV.price_eur!=null?eur(curV.price_eur):eur(val(detailCard));
+    const _vpt=PTW[detailCard.printing_id];
+    const vprice=ptwReliable(_vpt)?(eur(_vpt.display_price)+' · '+_ptwBasis(_vpt.price_kind)+'·'+(_vpt.price_confidence||'')):'PRIX À VÉRIFIER';
     const cur=detailCard.art_suffix;
     const imgItems=imgs.map(p=>{
       const img='<img referrerpolicy="no-referrer" src="'+esc(p.jp_image_url)+'" onerror="this.remove()">';
       const on=(cur!=null && cur===p.suffix)?' sel':'';
       const prov=p.provenance||p.label||(p.suffix?p.suffix:'Normale');
       const rar=p.rarity?'<span class="rar">'+esc(p.rarity)+'</span>':'';
-      const px=p.price_eur!=null?'<span class="px">'+eur(p.price_eur)+'</span>':'';
-      const pl='<div class="pl">'+rar+'<span class="prv">'+esc(prov)+'</span>'+px+'</div>';
+      const pl='<div class="pl">'+rar+'<span class="prv">'+esc(prov)+'</span></div>';
       return '<div class="pcard'+on+'" data-suf="'+esc(p.suffix)+'" data-img="'+esc(p.jp_image_url)+'"><div class="pi">'+img+'</div>'+pl+'</div>';
     }).join("");
     const vItems=vars.map(v=>{
       const on=(String(v.printing_id)===String(detailCard.printing_id))?' on':'';
-      return '<div class="vrow'+on+'" data-pid="'+esc(v.printing_id)+'" data-price="'+esc(v.price_eur==null?'':v.price_eur)+'"><span>'+esc(v.label)+'</span><b>'+(v.price_eur!=null?eur(v.price_eur):'—')+'</b></div>';
+      const o=PTW[v.printing_id]; const rel=ptwReliable(o);
+      const pxtxt=rel?eur(o.display_price):'à vérifier';
+      const pxstyle=rel?'':' style="color:#d97706;font-size:12px"';
+      return '<div class="vrow'+on+'" data-pid="'+esc(v.printing_id)+'" data-price="'+(rel?o.display_price:'')+'"><span>'+esc(v.label)+'</span><b'+pxstyle+'>'+pxtxt+'</b></div>';
     }).join("");
     let html='<div class="dprints">';
     if(imgs.length){
@@ -5295,7 +5299,41 @@ function convDetailChip(c){
     '<div style="flex:1;min-width:0"><div style="font-weight:800;font-size:12.5px;color:'+b.c+'">'+b.ic+' Conviction — '+esc(b.t.split(' — ')[0].split(' (')[0])+'</div>'+
     '<div class="dt" style="font-size:11px;margin-top:2px">Rareté '+x.rar_score+' · Liquidité '+x.liq_score+' · Valeur '+x.val_score+' · Momentum '+Math.round(convMomBar(x.mom_pct))+'</div></div></div>';
 }
+/* ===== b130 : Price Truth canonique sur la fiche (par printing_id EXACT, jamais par card_number) ===== */
+/* États explicites : 'LOADING' (en cours), objet (FOUND), 'ABSENT' (aucune ligne renvoyée), 'ERROR' (HTTP KO).
+   Jamais de spinner permanent ; ABSENT/ERROR ⇒ PRIX À VÉRIFIER. */
+var PTW={};
+function _ptwBasis(k){ return k==='MARKET'?'MKT':(k==='PRICECHARTING_RAW'?'RAW':(k==='PRICECHARTING_GENERIC'?'GEN':(k||'—'))); }
+// Fiable = ligne trouvée (objet), avec un prix, et statut/confiance métier réels non-review.
+function ptwReliable(o){ return !!(o && typeof o==='object'
+  && o.display_price!=null
+  && o.price_status!=='PRICE_A_VERIFIER' && o.price_status!=='PRICE_REVIEW'
+  && o.price_confidence!=='REVIEW'); }
+function ptwGet(pids){ pids=(pids||[]).filter(function(p){return p && PTW[p]===undefined;});
+  pids.forEach(function(p){ PTW[p]='LOADING'; });
+  if(!pids.length) return Promise.resolve();
+  var url=SB+'/rest/v1/app_price_truth_wide?printing_id=in.('+pids.map(encodeURIComponent).join(',')+')&select=printing_id,display_price,price_kind,market,price_confidence,price_status,captured_at,language';
+  return fetch(url,{headers:{apikey:ANON,Authorization:'Bearer '+ANON}})
+    .then(function(r){ if(!r.ok) throw new Error('http '+r.status); return r.json(); })
+    .then(function(a){ var seen={};
+      if(Array.isArray(a)) a.forEach(function(o){ if(o&&o.printing_id){ PTW[o.printing_id]=o; seen[o.printing_id]=1; } });
+      pids.forEach(function(p){ if(!seen[p]) PTW[p]='ABSENT'; }); })     // demandé mais non renvoyé ⇒ ABSENT
+    .catch(function(){ pids.forEach(function(p){ if(PTW[p]==='LOADING') PTW[p]='ERROR'; }); }); // HTTP KO ⇒ ERROR
+}
+function _ptwCard(bstyle,big,sub){ return '<div class="dval" style="margin-bottom:6px"><div class="b"'+bstyle+'>'+big+'</div><div class="s">'+sub+'</div></div>'; }
+function ptwHeadlineHtml(pid,label,qty){
+  var o=PTW[pid];
+  if(o===undefined||o==='LOADING') return _ptwCard(' style="opacity:.45"','…',esc(label));
+  if(o==='ABSENT') return _ptwCard(' style="color:#d97706;font-size:21px"','PRIX À VÉRIFIER',esc(label)+' — pas de cote fiable');
+  if(o==='ERROR')  return _ptwCard(' style="color:#d97706;font-size:21px"','PRIX À VÉRIFIER',esc(label)+' — chargement impossible');
+  if(!ptwReliable(o)) return _ptwCard(' style="color:#d97706;font-size:21px"','PRIX À VÉRIFIER',esc(label)+' — '+((o.price_status==='PRICE_REVIEW'||o.price_confidence==='REVIEW')?'cote en revue':'pas de cote fiable'));
+  var maj=o.captured_at?(' · maj '+new Date(o.captured_at).toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit'})):'';
+  var basis=_ptwBasis(o.price_kind)+'·'+(o.market||o.language||'')+'·'+(o.price_confidence||'');
+  var tot=(qty>1)?(' · total '+eur(o.display_price*qty)):'';
+  return _ptwCard('',eur(o.display_price),esc(label)+tot+' · '+esc(basis)+maj);
+}
 function renderDetail(){ const c=detailCard; if(!c)return; const body=document.getElementById("dbody");
+  if(c.printing_id && PTW[c.printing_id]===undefined){ ptwGet([c.printing_id]).then(function(){ if(detailCard&&detailCard.printing_id===c.printing_id) renderDetail(); }); }
   // Onglets fiche (façon Logia) : Collection = ta possession · Tarifs = les prix/sources · Détails = la carte.
   // Les blocs asynchrones (#dsrc sources, #dladder cote gradée, #dprints variantes) restent peuplés
   // par openDetail ; on ne fait que les montrer/masquer selon l'onglet — rien n'est cassé.
@@ -5305,7 +5343,9 @@ function renderDetail(){ const c=detailCard; if(!c)return; const body=document.g
   show('dprints', detailTab==='det');
   if(detailTab==="tar"){
     // Prix par marché (JP/EU/US) + jauge de fiabilité, puis le détail des sources (#dsrc) et la cote gradée (#dladder) juste en dessous.
-    body.innerHTML='<div class="dval" style="margin-bottom:6px"><div class="b">'+eur(val(c))+'</div><div class="s">valeur retenue'+((c.quantity||1)>1?(' · total '+eur(val(c)*(c.quantity||1))):'')+'</div></div>'+mktBlock(c);
+    body.innerHTML=ptwHeadlineHtml(c.printing_id,'valeur retenue',(c.quantity||1))+
+      '<div class="s" style="margin:2px 2px 6px;opacity:.7">Valeur canonique Price Truth (par impression exacte). Cotes brutes par marché ci-dessous — indicatives.</div>'+
+      mktBlock(c);
     return;
   }
   if(detailTab==="det"){
@@ -5338,7 +5378,8 @@ function renderDetail(){ const c=detailCard; if(!c)return; const body=document.g
     if(lv!=null && sd!=null && Math.abs(Number(lv)-Number(sd))/Math.max(Number(sd),1) > 0.15){
       cmp='<div class="s" style="margin-top:1px;opacity:.75">Réf. import Logia : '+eur(sd)+'</div>';
     }
-    body.innerHTML='<div class="dval"><div class="b">'+eur(val(c))+'</div><div class="s">valeur marchande'+((c.quantity||1)>1?(' · total '+eur(val(c)*(c.quantity||1))):'')+'</div>'+srcline+cmp+'</div>'+
+    body.innerHTML=ptwHeadlineHtml(c.printing_id,'valeur marchande',(c.quantity||1))+
+      (cmp?('<div style="margin:-2px 2px 6px">'+cmp+'</div>'):'')+
       convDetailChip(c)+
       (PENDING.has(c.item_id)?'<div style="margin:8px 0;padding:10px 12px;border:1px solid #dcc48a;background:#f3ecdc;border-radius:10px;font-size:13px;color:#7a5b1e">📦 <b>&Agrave; r&eacute;ceptionner.</b> Carte command&eacute;e, en attente de r&eacute;ception. V&eacute;rifie &agrave; l\'arriv&eacute;e qu\'elle est conforme et sans dommage, puis <button onclick=\'confirmReceipt()\' style="border:0;background:#a67c27;color:#fff;font-weight:800;padding:4px 10px;border-radius:8px;cursor:pointer;margin-left:4px">&#10003; Confirmer la r&eacute;ception</button></div>':'')+
       (NEWPHOTO.has(c.item_id)?'<div style="margin:8px 0;padding:10px 12px;border:1px solid #dcc48a;background:#f3ecdc;border-radius:10px;font-size:13px;color:#a67c27">🆕 <b>Nouvelle photo reçue — à valider.</b> Une illustration vient d\'arriver pour cette carte. Tape la bonne ci-dessous pour la valider, ou <button onclick=\'validateCurrent()\' style="border:0;background:#a67c27;color:#fff;font-weight:800;padding:4px 10px;border-radius:8px;cursor:pointer">✓ Valider cette photo</button></div>':(VERIFY.has(c.item_id)?'<div style="margin:8px 0;padding:10px 12px;border:1px solid #fdba74;background:#fff7ed;border-radius:10px;font-size:13px;color:#9a3412">🔍 <b>Photo à vérifier.</b> Tape la bonne illustration ci-dessous pour la valider, ou <button onclick=\'validateCurrent()\' style="border:0;background:#f97316;color:#fff;font-weight:800;padding:4px 10px;border-radius:8px;cursor:pointer">✓ Valider cette photo</button></div>':''))+
