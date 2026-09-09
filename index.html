@@ -1455,6 +1455,7 @@ function priceConf(c){
     if(gs==='CERT_VALUE')   return Object.assign({t:'Gradée · estimation PSA (certificat)',word:'Gradée'},mk.ok);
     if(gs==='OWNED_MARKET') return Object.assign({t:'Gradée · cote marché '+((c.grading_company||'')+' '+(c.grade!=null?String(c.grade).replace(/\.0$/,''):'')).trim(),word:'Gradée'},mk.ok);
     if(gs==='GRADED_PROXY') return Object.assign({t:'Gradée · proxy BGS/CGC/SGC (pas PSA)',word:'Gradée (proxy)'},mk.warn);
+    if(gs==='GRADED_ESTIMATE') return Object.assign({t:'Gradée · estimée d’après cartes gradées comparables (valeur proche, pas de cote de la société possédée)',word:'Gradée (estimée)'},mk.warn);
     return Object.assign({t:'Gradée · cote fiable indisponible — à chiffrer',word:'À chiffrer'},mk.none); // REVIEW
   }
   if(dispReliable(c)){
@@ -4147,7 +4148,7 @@ async function homeBriefing(){
   }catch(e){ box.innerHTML='<div class="txt" style="color:var(--muted);font-size:13px">Erreur, réessaie.</div><button class="hbriefbtn" onclick="homeBriefing()">Réessayer</button>'; }
 }
 document.getElementById('modeSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMode(b.dataset.m);});
-const APP_VERSION='Version b134 · 09/09 — valeur gradée hiérarchie stricte (cert/owned/proxy/à chiffrer) · import achat photo restauré';
+const APP_VERSION='Version b134 · 09/09 — valeur gradée stricte + PSA10 marché + NOVA estimée (valeur proche) · à chiffrer jamais RAW · import achat photo';
 { const nv=document.getElementById('navVersion'); if(nv) nv.textContent=APP_VERSION; }
 document.getElementById('mktSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMarket(b.dataset.k);});
 const CATARRS=["catColors","catCats","catRarities","catTreats","catProvs","catSets"];
@@ -5401,6 +5402,7 @@ function _gradedSrcLabel(gs,c){
   if(gs==='CERT_VALUE')   return 'estimation PSA (certificat)';
   if(gs==='OWNED_MARKET') return 'cote marché '+((c.grading_company||'')+' '+(c.grade!=null?String(c.grade).replace(/\.0$/,''):'')).trim();
   if(gs==='GRADED_PROXY') return 'proxy BGS/CGC/SGC (≈ grade 10, pas PSA)';
+  if(gs==='GRADED_ESTIMATE') return 'estimation d’après cartes gradées comparables (valeur proche)';
   return 'à chiffrer';
 }
 function gradedHeadlineHtml(c){
@@ -5412,7 +5414,10 @@ function gradedHeadlineHtml(c){
   }
   var src=_gradedSrcLabel(c.graded_source,c);
   var tot=((c.quantity||1)>1)?(' · total '+eur(Number(c.graded_value_eur)*(c.quantity||1))):'';
-  return _ptwCard('',eur(Number(c.graded_value_eur)),'valeur retenue · '+esc(g)+(cm?(' · '+esc(cm)):'')+tot+' · source : '+esc(src))+rawLine;
+  var isEst=(c.graded_source==='GRADED_PROXY'||c.graded_source==='GRADED_ESTIMATE');
+  var estLine=isEst?('<div class="s" style="margin-top:2px;color:#b45309;font-weight:700">≈ Valeur estimée par une cote proche (pas de cote de la société possédée)</div>'):'';
+  var estPrefix=isEst?'≈ ':'';
+  return _ptwCard('',estPrefix+eur(Number(c.graded_value_eur)),'valeur retenue · '+esc(g)+(cm?(' · '+esc(cm)):'')+tot+' · source : '+esc(src))+estLine+rawLine;
 }
 function renderDetail(){ const c=detailCard; if(!c)return; const body=document.getElementById("dbody");
   if(c.printing_id && PTW[c.printing_id]===undefined){ ptwGet([c.printing_id]).then(function(){ if(detailCard&&detailCard.printing_id===c.printing_id) renderDetail(); }); }
@@ -5461,7 +5466,7 @@ function renderDetail(){ const c=detailCard; if(!c)return; const body=document.g
     if(lv!=null && sd!=null && Math.abs(Number(lv)-Number(sd))/Math.max(Number(sd),1) > 0.15){
       cmp='<div class="s" style="margin-top:1px;opacity:.75">Réf. import Logia : '+eur(sd)+'</div>';
     }
-    body.innerHTML=ptwHeadlineHtml(c.printing_id,'valeur marchande',(c.quantity||1))+
+    body.innerHTML=(c.is_graded ? gradedHeadlineHtml(c) : ptwHeadlineHtml(c.printing_id,'valeur marchande',(c.quantity||1)))+
       (cmp?('<div style="margin:-2px 2px 6px">'+cmp+'</div>'):'')+
       convDetailChip(c)+
       (PENDING.has(c.item_id)?'<div style="margin:8px 0;padding:10px 12px;border:1px solid #dcc48a;background:#f3ecdc;border-radius:10px;font-size:13px;color:#7a5b1e">📦 <b>&Agrave; r&eacute;ceptionner.</b> Carte command&eacute;e, en attente de r&eacute;ception. V&eacute;rifie &agrave; l\'arriv&eacute;e qu\'elle est conforme et sans dommage, puis <button onclick=\'confirmReceipt()\' style="border:0;background:#a67c27;color:#fff;font-weight:800;padding:4px 10px;border-radius:8px;cursor:pointer;margin-left:4px">&#10003; Confirmer la r&eacute;ception</button></div>':'')+
