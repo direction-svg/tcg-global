@@ -4148,7 +4148,7 @@ async function homeBriefing(){
   }catch(e){ box.innerHTML='<div class="txt" style="color:var(--muted);font-size:13px">Erreur, réessaie.</div><button class="hbriefbtn" onclick="homeBriefing()">Réessayer</button>'; }
 }
 document.getElementById('modeSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMode(b.dataset.m);});
-const APP_VERSION='Version b134 · 09/09 — valeur gradée stricte + PSA10 marché + NOVA estimée (valeur proche) · à chiffrer jamais RAW · import achat photo';
+const APP_VERSION='Version b135 · 09/09 — multi-jeux (🍥 Naruto) + cockpit ✅ À valider (corrections prix/cote/image/variante) · valeur gradée stricte + PSA10 marché';
 { const nv=document.getElementById('navVersion'); if(nv) nv.textContent=APP_VERSION; }
 document.getElementById('mktSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMarket(b.dataset.k);});
 const CATARRS=["catColors","catCats","catRarities","catTreats","catProvs","catSets"];
@@ -6856,6 +6856,75 @@ const Fake = (function(){
     }).catch(function(e){ var t=document.getElementById('b4buyList'); if(t)t.innerHTML='<div class="empty" style="padding:20px;color:#dc2626">Erreur: '+E(e.message)+'</div>'; });
   }
 
+  /* ============ 🍥 NARUTO (jeu Bandai) — lit app_games_catalog, isolé de One Piece ============ */
+  function narutoCard(c){
+    return '<div style="background:var(--panel);border:1px solid var(--line);border-radius:12px;overflow:hidden;display:flex;flex-direction:column">'+
+      thumb(c.image_url)+
+      '<div style="padding:8px 9px 10px;display:flex;flex-direction:column;gap:3px;flex:1">'+
+        '<div style="font:700 11px/1 ui-monospace,monospace;color:var(--muted)">'+E(c.card_number||'')+(c.owned?' · <span style="color:#059669">possédée</span>':'')+'</div>'+
+        '<div style="font-weight:800;font-size:12.5px;line-height:1.2">'+E(c.name||'')+'</div>'+
+        '<div style="font-size:10.5px;color:var(--muted)">'+E(c.variant_label||c.set_name||'')+'</div>'+
+        '<div style="margin-top:auto;padding-top:6px">'+(c.price_eur!=null?('<span style="font:900 13px ui-monospace,monospace">'+eur(c.price_eur)+'</span>'):'<span style="font:800 10px ui-monospace,monospace;color:#d97706;border:1px solid #d97706;border-radius:5px;padding:1px 6px">À CHIFFRER</span>')+'</div>'+
+      '</div></div>';
+  }
+  function renderNaruto(){
+    var s=stage(); if(!s)return; s.className='';
+    s.innerHTML='<div style="background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:11px 13px;margin-bottom:12px"><div style="font-weight:900;font-size:15px">🍥 Naruto Card Game <span style="font-size:11px;color:var(--muted);font-weight:700">· Bandai</span></div><div style="font-size:12px;color:var(--muted);margin-top:4px">Le jeu officiel Bandai démarre : seules les promos existent à date (sortie complète 2027). Même moteur que One Piece — les cotes marché arriveront au fil des sorties.</div></div><div id="narutoList"><div class="loading" style="padding:20px;color:var(--muted)">…</div></div>';
+    q('app_games_catalog','select=card_number,name,image_url,variant,variant_label,rarity,set_code,set_name,game,printing_id,owned,price_eur&game=eq.NARUTO&order=variant_label').then(function(d){
+      var t=document.getElementById('narutoList'); if(!t)return;
+      if(!d.length){ t.innerHTML='<div style="padding:20px;text-align:center;color:var(--muted)">Aucune carte Naruto pour l\'instant.</div>'; return; }
+      t.innerHTML='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px">'+d.map(narutoCard).join('')+'</div>';
+    }).catch(function(e){ var t=document.getElementById('narutoList'); if(t)t.innerHTML='<div style="padding:20px;color:#dc2626">Erreur : '+E(e.message)+'</div>'; });
+  }
+
+  /* ============ ✅ À VALIDER — cockpit de correction (câblé sur admin-curate) ============ */
+  var ADMIN_PIN=null;
+  function adminPin(){ if(!ADMIN_PIN){ try{ADMIN_PIN=localStorage.getItem('tcg_admin_pin')||null;}catch(e){} } if(!ADMIN_PIN){ var p=prompt('Code admin :'); ADMIN_PIN=p||''; if(ADMIN_PIN){try{localStorage.setItem('tcg_admin_pin',ADMIN_PIN);}catch(e){}} } return ADMIN_PIN; }
+  function adminCall(action,payload,cb){ var pin=adminPin(); if(!pin)return;
+    fetch(SB+'/functions/v1/admin-curate',{method:'POST',headers:{apikey:ANON,Authorization:'Bearer '+ANON,'Content-Type':'application/json'},body:JSON.stringify(Object.assign({pin:pin,action:action},payload))})
+    .then(function(r){return r.json().then(function(j){return{ok:r.ok,j:j};});})
+    .then(function(res){ if(!res.ok){ if(res.j&&res.j.error==='unauthorized'){ try{localStorage.removeItem('tcg_admin_pin');}catch(e){} ADMIN_PIN=null; alert('Code admin refusé, réessaie.'); } else alert('Erreur : '+((res.j&&res.j.error)||'?')); return; } if(cb)cb(res.j); })
+    .catch(function(e){ alert('Erreur réseau : '+e.message); });
+  }
+  window.__ac={
+    price:function(pid){ var v=prompt('Prix courant à figer (€) :'); if(v==null)return; var n=parseFloat(String(v).replace(',','.')); if(!(n>0))return alert('Montant invalide'); adminCall('set_price',{printing_id:pid,price_eur:n},function(){ alert('Prix enregistré (visible après le prochain rafraîchissement, ~30 min).'); renderValider(); }); },
+    cote:function(pid){ var co=prompt('Société de la cote (PSA, BGS, CGC ou SGC) :'); if(!co)return; var v=prompt('Cote '+String(co).toUpperCase()+' grade 10 en USD :'); if(v==null)return; var n=parseFloat(String(v).replace(',','.')); if(!(n>0))return alert('Montant invalide'); adminCall('set_graded_cote',{printing_id:pid,company:co,price_usd:n},function(){ renderValider(); }); },
+    image:function(pid){ var u=prompt('URL de l\'image (https://…) :'); if(!u)return; adminCall('set_image',{printing_id:pid,image_url:u},function(){ renderValider(); }); },
+    variant:function(pid){ var l=prompt('Libellé de variante (ex : Alternate Art) :'); if(l==null)return; adminCall('set_variant',{printing_id:pid,variant_label:l},function(){ renderValider(); }); }
+  };
+  function vBtn(label,fn,pid){ return '<button onclick="__ac.'+fn+'(\''+pid+'\')" style="font:700 11px ui-monospace,monospace;padding:4px 9px;border-radius:7px;border:1px solid var(--line);background:var(--panel);color:var(--accent);cursor:pointer">'+E(label)+'</button>'; }
+  function vRow(c,tag,tagColor){
+    var name=(c.card_number||'')+(c.variant_label?' · '+c.variant_label:'');
+    var val=c.is_graded?(c.graded_value_eur!=null?eur(c.graded_value_eur):'à chiffrer'):(c.disp_price!=null?eur(c.disp_price):'à vérifier');
+    var btns=c.is_graded
+      ? vBtn('Cote gradée','cote',c.printing_id)+vBtn('Variante','variant',c.printing_id)+vBtn('Image','image',c.printing_id)
+      : vBtn('Prix','price',c.printing_id)+vBtn('Image','image',c.printing_id)+vBtn('Variante','variant',c.printing_id);
+    return '<div style="display:flex;gap:10px;align-items:center;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:8px 11px;margin-bottom:7px">'+
+      thumb(c.image_url,'34px','48px')+
+      '<div style="flex:1;min-width:0"><div style="font-weight:800;font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+E(name)+'</div>'+
+      '<div style="font-size:11px;color:var(--muted);margin-top:2px"><span style="color:'+tagColor+';font-weight:800">'+E(tag)+'</span> · '+E(val)+'</div></div>'+
+      '<div style="display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end;max-width:190px">'+btns+'</div></div>';
+  }
+  function vSection(title,rows,empty){ return '<div style="margin-bottom:16px"><div style="font-weight:900;font-size:13.5px;margin:0 2px 8px">'+E(title)+' <span style="color:var(--muted)">'+rows.length+'</span></div>'+(rows.length?rows.join(''):'<div style="color:var(--muted);font-size:12px;padding:4px 2px">'+E(empty)+'</div>')+'</div>'; }
+  function renderValider(){
+    var s=stage(); if(!s)return; s.className='';
+    s.innerHTML='<div style="background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:11px 13px;margin-bottom:12px"><div style="font-weight:900;font-size:15px">✅ À valider</div><div style="font-size:12px;color:var(--muted);margin-top:4px">Les cartes de ta collection que la machine ne peut pas trancher seule. Corrige d\'un tap (code admin demandé une fois).</div></div><div id="validerBody"><div class="loading" style="padding:20px;color:var(--muted)">…</div></div>';
+    var sel='select=printing_id,quantity,is_graded,grading_company,grade,variant_label,image_url,card_number,card_name,disp_price,disp_confidence,disp_status,graded_value_eur,graded_source,cert_statut,graded_raw';
+    Promise.allSettled([
+      q('app_collection_v2',sel+'&is_graded=eq.true&graded_source=in.(GRADED_ESTIMATE,GRADED_PROXY,GRADE_PRICE_REVIEW)&order=graded_source&limit=200'),
+      q('app_collection_v2',sel+'&is_graded=eq.false&disp_status=in.(PRICE_REVIEW,PRICE_A_VERIFIER)&order=card_number&limit=200'),
+      q('app_collection_v2',sel+'&image_url=is.null&order=card_number&limit=200')
+    ]).then(function(res){
+      var b=document.getElementById('validerBody'); if(!b)return;
+      var graded=(res[0].value||[]), prices=(res[1].value||[]), imgs=(res[2].value||[]);
+      var gRows=graded.map(function(c){ var t=(c.graded_source==='GRADE_PRICE_REVIEW')?'À chiffrer':(c.graded_source==='GRADED_ESTIMATE'?'≈ estimé':'≈ proxy'); return vRow(c,t,'#d97706'); });
+      var pRows=prices.map(function(c){ return vRow(c,'Prix à vérifier','#d97706'); });
+      var iRows=imgs.map(function(c){ return vRow(c,'Image manquante','#dc2626'); });
+      if(!graded.length&&!prices.length&&!imgs.length){ b.innerHTML='<div style="padding:24px;text-align:center;color:#059669;font-weight:800">🎉 Rien à valider — tout est propre.</div>'; return; }
+      b.innerHTML=vSection('🏆 Cotes gradées à confirmer',gRows,'Aucune.')+vSection('💶 Prix à vérifier',pRows,'Aucun.')+vSection('🖼️ Images manquantes',iRows,'Aucune.');
+    }).catch(function(e){ var b=document.getElementById('validerBody'); if(b)b.innerHTML='<div style="padding:20px;color:#dc2626">Erreur : '+E(e.message)+'</div>'; });
+  }
+
   /* ---- ACCUEIL DÉCISIONNEL (4 questions) ---- */
   function sectionCard(title,go,goLbl,inner){
     return '<div style="background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:12px 13px;margin-bottom:12px">'+
@@ -6902,7 +6971,7 @@ const Fake = (function(){
 
   /* ---- NAV 5 ESPACES ---- */
   var SPACES=[['home','🏠 Accueil'],['collection','📚 Collection'],['buy','🎯 À acheter'],['marche','📈 Marché'],['suivi','🧾 Suivi']];
-  var SECOND=[['catalog','Catalogue'],['sets','Sets'],['objectifs','Objectifs'],['products','Produits scellés'],['ecarts','Écarts JP/EN'],['offre','Catalyseurs'],['int_fam','Familles'],['ops','Gradation'],['gradeia','Gradation IA'],['conviction','Portefeuille'],['premium','💎 Premium'],['live','Live'],['sante','Santé des données']];
+  var SECOND=[['valider','✅ À valider'],['naruto','🍥 Naruto'],['catalog','Catalogue'],['sets','Sets'],['objectifs','Objectifs'],['products','Produits scellés'],['ecarts','Écarts JP/EN'],['offre','Catalyseurs'],['int_fam','Familles'],['ops','Gradation'],['gradeia','Gradation IA'],['conviction','Portefeuille'],['premium','💎 Premium'],['live','Live'],['sante','Santé des données']];
   var DELEG={collection:'collection',marche:'int_move',suivi:'achats'};
   var b4active='home';
   function navBtn(m,lbl,active){ return '<button data-b4="'+m+'" style="display:block;width:100%;text-align:left;padding:10px 14px;border:0;background:'+(active?'var(--chip)':'transparent')+';color:'+(active?'var(--ink)':'var(--muted)')+';font-weight:'+(active?'800':'700')+';font-size:13.5px;cursor:pointer;border-radius:9px">'+lbl+'</button>'; }
@@ -6925,6 +6994,8 @@ const Fake = (function(){
     try{ var d=document.getElementById('modeSeg'), sc=document.getElementById('navScrim'); if(d)d.classList.remove('open'); if(sc)sc.classList.remove('open'); }catch(e){}
     if(m==='home'){ b4active='home'; markNav('home'); if(window.state)state.mode='b4_home'; setTitle(''); hideTools(); renderHome4(); return; }
     if(m==='buy'){ b4active='buy'; markNav('buy'); if(window.state)state.mode='b4_buy'; setTitle('À acheter'); hideTools(); renderBuyHub(); return; }
+    if(m==='naruto'){ b4active='naruto'; markNav('naruto'); if(window.state)state.mode='b4_naruto'; setTitle('🍥 Naruto'); hideTools(); renderNaruto(); return; }
+    if(m==='valider'){ b4active='valider'; markNav('valider'); if(window.state)state.mode='b4_valider'; setTitle('✅ À valider'); hideTools(); renderValider(); return; }
     // espaces délégués + outils secondaires => modes existants
     var target=DELEG[m]||m; b4active=(m in DELEG)?m:'';
     markNav(b4active);
