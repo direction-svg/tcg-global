@@ -849,6 +849,10 @@ body{-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
     <div class="topbar">
       <button class="iconbtn" id="navBtn" title="Menu" aria-label="Menu" onclick="toggleNav()" style="font-size:19px;line-height:1">&#9776;</button>
       <div class="logo"><div class="mark"><svg viewBox="0 0 240 320"><use href="#bounty-mark"/></svg></div> <span class="logotxt">BOUNTY</span><span id="pageTitle" style="font-weight:800;color:var(--muted);margin-left:8px;font-size:14px"></span></div>
+      <div class="mktseg" id="gameSeg" title="Changer de collection" style="margin-left:8px">
+        <button data-game="ONE_PIECE" class="on" onclick="gameSwitch('ONE_PIECE')">🏴‍☠️ OP</button>
+        <button data-game="NARUTO" onclick="gameSwitch('NARUTO')">🍥 Naruto</button>
+      </div>
       <div class="grow"></div>
       <div class="mktseg" id="mktSeg" title="Marché de valorisation">
         <button data-k="JP" class="on">🇯🇵 JP</button>
@@ -4148,7 +4152,7 @@ async function homeBriefing(){
   }catch(e){ box.innerHTML='<div class="txt" style="color:var(--muted);font-size:13px">Erreur, réessaie.</div><button class="hbriefbtn" onclick="homeBriefing()">Réessayer</button>'; }
 }
 document.getElementById('modeSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMode(b.dataset.m);});
-const APP_VERSION='Version b135 · 09/09 — multi-jeux (🍥 Naruto) + cockpit ✅ À valider (corrections prix/cote/image/variante) · valeur gradée stricte + PSA10 marché';
+const APP_VERSION='Version b135.1 · 09/09 — sélecteur de collection en haut (🏴‍☠️ OP ⇆ 🍥 Naruto) + cockpit ✅ À valider (gros boutons) · valeur gradée stricte + PSA10 marché';
 { const nv=document.getElementById('navVersion'); if(nv) nv.textContent=APP_VERSION; }
 document.getElementById('mktSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMarket(b.dataset.k);});
 const CATARRS=["catColors","catCats","catRarities","catTreats","catProvs","catSets"];
@@ -6877,6 +6881,10 @@ const Fake = (function(){
     }).catch(function(e){ var t=document.getElementById('narutoList'); if(t)t.innerHTML='<div style="padding:20px;color:#dc2626">Erreur : '+E(e.message)+'</div>'; });
   }
 
+  /* ---- Sélecteur de collection (haut de page) : One Piece ⇆ Naruto ---- */
+  function markGameSeg(g){ var seg=document.getElementById('gameSeg'); if(!seg)return; Array.prototype.forEach.call(seg.querySelectorAll('[data-game]'),function(bt){ bt.className=(bt.getAttribute('data-game')===g)?'on':''; }); }
+  window.gameSwitch=function(g){ try{localStorage.setItem('tcg_game',g);}catch(e){} markGameSeg(g); if(g==='NARUTO') go('naruto'); else go('home'); };
+
   /* ============ ✅ À VALIDER — cockpit de correction (câblé sur admin-curate) ============ */
   var ADMIN_PIN=null;
   function adminPin(){ if(!ADMIN_PIN){ try{ADMIN_PIN=localStorage.getItem('tcg_admin_pin')||null;}catch(e){} } if(!ADMIN_PIN){ var p=prompt('Code admin :'); ADMIN_PIN=p||''; if(ADMIN_PIN){try{localStorage.setItem('tcg_admin_pin',ADMIN_PIN);}catch(e){}} } return ADMIN_PIN; }
@@ -6892,18 +6900,20 @@ const Fake = (function(){
     image:function(pid){ var u=prompt('URL de l\'image (https://…) :'); if(!u)return; adminCall('set_image',{printing_id:pid,image_url:u},function(){ renderValider(); }); },
     variant:function(pid){ var l=prompt('Libellé de variante (ex : Alternate Art) :'); if(l==null)return; adminCall('set_variant',{printing_id:pid,variant_label:l},function(){ renderValider(); }); }
   };
-  function vBtn(label,fn,pid){ return '<button onclick="__ac.'+fn+'(\''+pid+'\')" style="font:700 11px ui-monospace,monospace;padding:4px 9px;border-radius:7px;border:1px solid var(--line);background:var(--panel);color:var(--accent);cursor:pointer">'+E(label)+'</button>'; }
+  function vBtn(label,fn,pid,primary){ var st=primary?'background:var(--accent);color:#fff;border:1px solid var(--accent)':'background:var(--panel);color:var(--accent);border:1px solid var(--line)';
+    return '<button onclick="event.stopPropagation();__ac.'+fn+'(\''+pid+'\')" style="font:800 12px system-ui;padding:8px 13px;border-radius:9px;cursor:pointer;white-space:nowrap;'+st+'">'+E(label)+'</button>'; }
   function vRow(c,tag,tagColor){
     var name=(c.card_number||'')+(c.variant_label?' · '+c.variant_label:'');
     var val=c.is_graded?(c.graded_value_eur!=null?eur(c.graded_value_eur):'à chiffrer'):(c.disp_price!=null?eur(c.disp_price):'à vérifier');
     var btns=c.is_graded
-      ? vBtn('Cote gradée','cote',c.printing_id)+vBtn('Variante','variant',c.printing_id)+vBtn('Image','image',c.printing_id)
-      : vBtn('Prix','price',c.printing_id)+vBtn('Image','image',c.printing_id)+vBtn('Variante','variant',c.printing_id);
-    return '<div style="display:flex;gap:10px;align-items:center;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:8px 11px;margin-bottom:7px">'+
-      thumb(c.image_url,'34px','48px')+
-      '<div style="flex:1;min-width:0"><div style="font-weight:800;font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+E(name)+'</div>'+
-      '<div style="font-size:11px;color:var(--muted);margin-top:2px"><span style="color:'+tagColor+';font-weight:800">'+E(tag)+'</span> · '+E(val)+'</div></div>'+
-      '<div style="display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end;max-width:190px">'+btns+'</div></div>';
+      ? vBtn('✏️ Cote gradée','cote',c.printing_id,1)+vBtn('Image','image',c.printing_id)+vBtn('Variante','variant',c.printing_id)
+      : vBtn('✏️ Prix','price',c.printing_id,1)+vBtn('Image','image',c.printing_id)+vBtn('Variante','variant',c.printing_id);
+    return '<div style="background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:9px 11px;margin-bottom:8px">'+
+      '<div style="display:flex;gap:10px;align-items:center">'+thumb(c.image_url,'34px','48px')+
+        '<div style="flex:1;min-width:0"><div style="font-weight:800;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+E(name)+'</div>'+
+        '<div style="font-size:11.5px;color:var(--muted);margin-top:2px"><span style="color:'+tagColor+';font-weight:800">'+E(tag)+'</span> · '+E(val)+'</div></div></div>'+
+      '<div style="display:flex;gap:7px;flex-wrap:wrap;margin-top:9px">'+btns+'</div>'+
+    '</div>';
   }
   function vSection(title,rows,empty){ return '<div style="margin-bottom:16px"><div style="font-weight:900;font-size:13.5px;margin:0 2px 8px">'+E(title)+' <span style="color:var(--muted)">'+rows.length+'</span></div>'+(rows.length?rows.join(''):'<div style="color:var(--muted);font-size:12px;padding:4px 2px">'+E(empty)+'</div>')+'</div>'; }
   function renderValider(){
@@ -6971,7 +6981,7 @@ const Fake = (function(){
 
   /* ---- NAV 5 ESPACES ---- */
   var SPACES=[['home','🏠 Accueil'],['collection','📚 Collection'],['buy','🎯 À acheter'],['marche','📈 Marché'],['suivi','🧾 Suivi']];
-  var SECOND=[['valider','✅ À valider'],['naruto','🍥 Naruto'],['catalog','Catalogue'],['sets','Sets'],['objectifs','Objectifs'],['products','Produits scellés'],['ecarts','Écarts JP/EN'],['offre','Catalyseurs'],['int_fam','Familles'],['ops','Gradation'],['gradeia','Gradation IA'],['conviction','Portefeuille'],['premium','💎 Premium'],['live','Live'],['sante','Santé des données']];
+  var SECOND=[['valider','✅ À valider'],['catalog','Catalogue'],['sets','Sets'],['objectifs','Objectifs'],['products','Produits scellés'],['ecarts','Écarts JP/EN'],['offre','Catalyseurs'],['int_fam','Familles'],['ops','Gradation'],['gradeia','Gradation IA'],['conviction','Portefeuille'],['premium','💎 Premium'],['live','Live'],['sante','Santé des données']];
   var DELEG={collection:'collection',marche:'int_move',suivi:'achats'};
   var b4active='home';
   function navBtn(m,lbl,active){ return '<button data-b4="'+m+'" style="display:block;width:100%;text-align:left;padding:10px 14px;border:0;background:'+(active?'var(--chip)':'transparent')+';color:'+(active?'var(--ink)':'var(--muted)')+';font-weight:'+(active?'800':'700')+';font-size:13.5px;cursor:pointer;border-radius:9px">'+lbl+'</button>'; }
@@ -6992,6 +7002,7 @@ const Fake = (function(){
   function markNav(m){ var nav=document.getElementById('modeSeg'); if(!nav)return; Array.prototype.forEach.call(nav.querySelectorAll('[data-b4]'),function(b){ var a=b.getAttribute('data-b4')===m; b.style.background=a?'var(--chip)':'transparent'; b.style.color=a?'var(--ink)':'var(--muted)'; b.style.fontWeight=a?'800':'700'; }); }
   function go(m){
     try{ var d=document.getElementById('modeSeg'), sc=document.getElementById('navScrim'); if(d)d.classList.remove('open'); if(sc)sc.classList.remove('open'); }catch(e){}
+    if(typeof markGameSeg==='function') markGameSeg(m==='naruto'?'NARUTO':'ONE_PIECE');
     if(m==='home'){ b4active='home'; markNav('home'); if(window.state)state.mode='b4_home'; setTitle(''); hideTools(); renderHome4(); return; }
     if(m==='buy'){ b4active='buy'; markNav('buy'); if(window.state)state.mode='b4_buy'; setTitle('À acheter'); hideTools(); renderBuyHub(); return; }
     if(m==='naruto'){ b4active='naruto'; markNav('naruto'); if(window.state)state.mode='b4_naruto'; setTitle('🍥 Naruto'); hideTools(); renderNaruto(); return; }
