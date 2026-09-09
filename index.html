@@ -1415,21 +1415,30 @@ function dispReliable(c){
     && c.disp_status!=='PRICE_A_VERIFIER' && c.disp_status!=='PRICE_REVIEW'
     && c.disp_confidence!=='REVIEW');
 }
+/* b134 : valeur gradée = hiérarchie stricte app_graded_value_v2 (CERT_VALUE → OWNED_MARKET → GRADED_PROXY → REVIEW).
+   Jamais de repli RAW comme valeur gradée. REVIEW = non chiffrable (compté en « à chiffrer », JAMAIS 0/perte). */
+function gradedReliable(c){
+  return !!(c && c.is_graded && c.graded_value_eur!=null && c.graded_source && c.graded_source!=='GRADE_PRICE_REVIEW');
+}
 function mkEst(c){
-  if(c&&c.is_graded){ return c.market_value_eur==null?0:Number(c.market_value_eur); } // gradée = cote certifiée (autorisée à différer)
+  if(c&&c.is_graded){ return gradedReliable(c)?Number(c.graded_value_eur):0; } // gradée chiffrée, sinon 0 (à chiffrer)
   if(dispReliable(c)) return Number(c.disp_price);     // Price Truth canonique (fournie avec la ligne)
   return 0;                                            // review/absent ⇒ 0 (agrégats)
 }
 const val=c=> mkEst(c);   // toutes les listes/totaux suivent le prix courant canonique (Price Truth)
 /* Affichage HTML d'une valeur courante (grille/liste/fiche) — cohérent avec mkEst. */
 function valHtml(c){
-  if(c&&c.is_graded) return eur(c.market_value_eur==null?0:Number(c.market_value_eur));
+  if(c&&c.is_graded){
+    if(gradedReliable(c)) return eur(Number(c.graded_value_eur));
+    if(c.graded_source===undefined && !DATALOADED) return '<span style="opacity:.45">…</span>';
+    return '<span style="color:#d97706;font-weight:800" title="Cote gradée fiable indisponible">à chiffrer</span>';
+  }
   if(dispReliable(c)) return eur(Number(c.disp_price));
   if(c && c.disp_price===undefined && !DATALOADED) return '<span style="opacity:.45">…</span>'; // cache pré-schéma
   return '<span style="color:#d97706;font-weight:800" title="Price Truth indisponible ou en revue">à vérifier</span>';
 }
-/* Un item compte-t-il dans un total fiable ? (pour compter les « à vérifier ») */
-function valPending(c){ if(c&&c.is_graded) return false; return !dispReliable(c); }
+/* Un item compte-t-il dans un total fiable ? (à chiffrer / à vérifier — jamais compté comme 0 dans l'UX) */
+function valPending(c){ if(c&&c.is_graded) return !gradedReliable(c); return !dispReliable(c); }
 // ---------- Fiabilité du prix (selon le marché affiché + profondeur d'offres) ----------
 /* b132 : la fiabilité affichée décrit la SOURCE DU PRIX AFFICHÉ = Price Truth (disp_confidence),
    plus l'ancien overlay marché. Gradée = cote certifiée. HIGH→Fiable · MEDIUM→Indicatif · REVIEW/absent→À vérifier. */
@@ -1441,7 +1450,13 @@ function priceConf(c){
     bad: {lvl:'bad',c:'#ef4444',f:'border-color:#ef4444;box-shadow:0 0 0 1.5px #ef4444,0 0 15px rgba(239,68,68,.48)'},
     none:{lvl:'none',c:'#94a3b8',f:'border-color:rgba(148,163,184,.6);box-shadow:0 0 0 1px rgba(148,163,184,.55),0 0 9px rgba(148,163,184,.28)'}
   };
-  if(c.is_graded) return Object.assign({t:'Cote gradée / certifiée',word:'Gradée'},mk.ok);
+  if(c.is_graded){
+    var gs=c.graded_source;
+    if(gs==='CERT_VALUE')   return Object.assign({t:'Gradée · estimation PSA (certificat)',word:'Gradée'},mk.ok);
+    if(gs==='OWNED_MARKET') return Object.assign({t:'Gradée · cote marché '+((c.grading_company||'')+' '+(c.grade!=null?String(c.grade).replace(/\.0$/,''):'')).trim(),word:'Gradée'},mk.ok);
+    if(gs==='GRADED_PROXY') return Object.assign({t:'Gradée · proxy BGS/CGC/SGC (pas PSA)',word:'Gradée (proxy)'},mk.warn);
+    return Object.assign({t:'Gradée · cote fiable indisponible — à chiffrer',word:'À chiffrer'},mk.none); // REVIEW
+  }
   if(dispReliable(c)){
     if(c.disp_confidence==='HIGH') return Object.assign({t:'Fiable · Price Truth (cote de marché)',word:'Fiable'},mk.ok);
     return Object.assign({t:'Indicatif · Price Truth (RAW/agrégé)',word:'Indicatif'},mk.warn); // MEDIUM
@@ -1593,7 +1608,7 @@ async function load(){
   // 1) Fetch frais en arrière-plan
   let all=[],from=0,step=1000;
   while(true){
-    const r=await fetch(SB+"/rest/v1/app_collection_v2?select=item_id,printing_id,card_number,card_name,card_type,category,color,rarity,language,is_graded,grading_company,grade,cert_number,quantity,market_value_eur,seed_value_eur,live_value_eur,psa_estimate_eur,population,pop_higher,price_source,price_asof,image_url,set_code,set_name,variant,variant_label,origin,art_suffix,reverify,img_locked,acquired_from,acquired_date,acquired_price,disp_price,disp_basis,disp_confidence,disp_status,disp_captured_at,disp_var_7d,disp_var_30d&order=disp_price.desc.nullslast&limit="+step+"&offset="+from,{headers:{apikey:ANON,Authorization:"Bearer "+ANON}});
+    const r=await fetch(SB+"/rest/v1/app_collection_v2?select=item_id,printing_id,card_number,card_name,card_type,category,color,rarity,language,is_graded,grading_company,grade,cert_number,quantity,market_value_eur,seed_value_eur,live_value_eur,psa_estimate_eur,population,pop_higher,price_source,price_asof,image_url,set_code,set_name,variant,variant_label,origin,art_suffix,reverify,img_locked,acquired_from,acquired_date,acquired_price,disp_price,disp_basis,disp_confidence,disp_status,disp_captured_at,disp_var_7d,disp_var_30d,graded_value_eur,graded_source,cert_statut,graded_owned_market,graded_raw&order=disp_price.desc.nullslast&limit="+step+"&offset="+from,{headers:{apikey:ANON,Authorization:"Bearer "+ANON}});
     if(!r.ok){ if(DATALOADED) return; document.getElementById("stage").innerHTML='<div class="empty">Erreur de chargement ('+r.status+').</div>';return;}
     const b=await r.json(); if(!Array.isArray(b)){ if(DATALOADED) return; break; } all=all.concat(b); if(b.length<step)break; from+=step;
   }
@@ -1846,7 +1861,7 @@ function render(){
   const stage=document.getElementById("stage");
   const cardsTotal=collValue();
   const total=cardsTotal+(PROD_VALUE||0);
-  const shownTotal=a.reduce((s,c)=>s+val(c)*(c.quantity||1),0);
+  const shownTotal=a.reduce((s,c)=>s+(PROD_EXCL.has(String(c.item_id))?0:val(c)*(c.quantity||1)),0); // b133 : même périmètre que l'en-tête (exclut les singles en boîte)
   const jp=DATA.filter(c=>c.language==="JP").length, gr=DATA.filter(c=>c.is_graded).length;
   const mb=document.getElementById("miniBar"); if(mb) mb.innerHTML=portfolioMini();
   document.getElementById("countLine").textContent=a.length+" carte"+(a.length>1?"s":"")+" · "+eur0(shownTotal);
@@ -3159,7 +3174,7 @@ async function grOpenCard(itemId){
   let c=(Array.isArray(DATA)?DATA.find(x=>String(x.item_id)===String(itemId)):null);
   if(!c){
     try{
-      const sel='item_id,printing_id,card_number,card_name,card_type,category,color,rarity,language,is_graded,grading_company,grade,cert_number,quantity,market_value_eur,seed_value_eur,live_value_eur,psa_estimate_eur,population,pop_higher,price_source,price_asof,image_url,set_code,set_name,variant,variant_label,origin,art_suffix,img_locked,disp_price,disp_basis,disp_confidence,disp_status,disp_captured_at,disp_var_7d,disp_var_30d';
+      const sel='item_id,printing_id,card_number,card_name,card_type,category,color,rarity,language,is_graded,grading_company,grade,cert_number,quantity,market_value_eur,seed_value_eur,live_value_eur,psa_estimate_eur,population,pop_higher,price_source,price_asof,image_url,set_code,set_name,variant,variant_label,origin,art_suffix,img_locked,disp_price,disp_basis,disp_confidence,disp_status,disp_captured_at,disp_var_7d,disp_var_30d,graded_value_eur,graded_source,cert_statut,graded_owned_market,graded_raw';
       const [rc,rm]=await Promise.all([
         fetch(SB+'/rest/v1/app_collection_v2?item_id=eq.'+encodeURIComponent(itemId)+'&select='+sel+'&limit=1',{headers:{apikey:ANON,Authorization:'Bearer '+ANON}}).then(r=>r.json()),
         fetch(SB+'/rest/v1/app_collection_market?item_id=eq.'+encodeURIComponent(itemId)+'&select=item_id,jp_eur,eu_eur,us_eur,eu_offres,jp_live,eu_live,us_live',{headers:{apikey:ANON,Authorization:'Bearer '+ANON}}).then(r=>r.json())
@@ -3636,6 +3651,30 @@ async function loadProductValue(){
   if(Array.isArray(DATA)){ if(state.mode==='accueil') renderHome(); else if(state.mode==='collection') render(); }
 }
 function collValue(){ return DATA.reduce((s,c)=>s+(PROD_EXCL.has(String(c.item_id))?0:val(c)*(c.quantity||1)),0); }
+/* b133 : total portefeuille pour l'Accueil = EXACTEMENT la logique de l'en-tête Collection (portfolioMini) :
+   cartes Price Truth hors PROD_EXCL + scellés PROD_VALUE live. Aucun snapshot, aucun double comptage. */
+/* b133 : chargement SILENCIEUX de la collection (sans effet de bord de rendu) — pour calculer le total à l'accueil
+   sans peindre la grille par-dessus l'accueil décisionnel. */
+async function ensureCollLoaded(){
+  if(DATALOADED && Array.isArray(DATA) && DATA.length) return;
+  var all=[],from=0,step=1000;
+  try{
+    while(true){
+      var r=await fetch(SB+"/rest/v1/app_collection_v2?select=item_id,printing_id,card_number,card_name,card_type,category,color,rarity,language,is_graded,grading_company,grade,cert_number,quantity,market_value_eur,seed_value_eur,live_value_eur,psa_estimate_eur,population,pop_higher,price_source,price_asof,image_url,set_code,set_name,variant,variant_label,origin,art_suffix,reverify,img_locked,acquired_from,acquired_date,acquired_price,disp_price,disp_basis,disp_confidence,disp_status,disp_captured_at,disp_var_7d,disp_var_30d,graded_value_eur,graded_source,cert_statut,graded_owned_market,graded_raw&order=disp_price.desc.nullslast&limit="+step+"&offset="+from,{headers:{apikey:ANON,Authorization:"Bearer "+ANON}});
+      if(!r.ok) break;
+      var b=await r.json(); if(!Array.isArray(b)) break; all=all.concat(b); if(b.length<step) break; from+=step;
+    }
+    if(all.length){ DATA=all; DATALOADED=true; try{ buildFilterModal(); }catch(e){} try{ saveCollCache(); }catch(e){} }
+  }catch(e){}
+}
+async function b4Portfolio(){
+  try{ await ensureCollLoaded(); }catch(e){}
+  try{ await loadProductValue(); }catch(e){}   // renseigne PROD_VALUE (scellés live) + PROD_EXCL
+  var cards=(typeof collValue==='function' && Array.isArray(DATA))?collValue():0;
+  var sealed=PROD_VALUE||0;
+  var pend=Array.isArray(DATA)?DATA.reduce(function(s,c){return s+((valPending(c)&&!PROD_EXCL.has(String(c.item_id)))?1:0);},0):0;
+  return {cards:cards, sealed:sealed, total:cards+sealed, pend:pend};
+}
 // ---------- Accueil : tableau de bord ----------
 let HOMESNAPS=null;
 async function loadSnaps(){ try{ const r=await fetch(SB+'/rest/v1/app_value_snapshot?select=day,total_eur,cards,cards_eur,products_eur&order=day.asc&limit=400',{headers:{apikey:ANON,Authorization:"Bearer "+ANON}}); const j=await r.json(); HOMESNAPS=Array.isArray(j)?j:[]; }catch(e){ HOMESNAPS=[]; } }
@@ -4108,7 +4147,7 @@ async function homeBriefing(){
   }catch(e){ box.innerHTML='<div class="txt" style="color:var(--muted);font-size:13px">Erreur, réessaie.</div><button class="hbriefbtn" onclick="homeBriefing()">Réessayer</button>'; }
 }
 document.getElementById('modeSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMode(b.dataset.m);});
-const APP_VERSION='Version b132 · 09/09 — Accueil=Collection (Price Truth) · badge+variation Price Truth · fiche gradée = cote certifiée';
+const APP_VERSION='Version b134 · 09/09 — valeur gradée hiérarchie stricte (cert/owned/proxy/à chiffrer) · import achat photo restauré';
 { const nv=document.getElementById('navVersion'); if(nv) nv.textContent=APP_VERSION; }
 document.getElementById('mktSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMarket(b.dataset.k);});
 const CATARRS=["catColors","catCats","catRarities","catTreats","catProvs","catSets"];
@@ -5355,14 +5394,25 @@ function ptwHeadlineHtml(pid,label,qty){
   var tot=(qty>1)?(' · total '+eur(o.display_price*qty)):'';
   return _ptwCard('',eur(o.display_price),esc(label)+tot+' · '+esc(basis)+maj);
 }
-/* b132 : sur une carte GRADÉE, la « valeur retenue » = cote gradée/certifiée (market_value_eur du chemin gradé),
-   jamais la RAW Price Truth. La cote brute RAW reste affichée dessous (mktBlock) comme indicative. */
+/* b134 : fiche gradée — valeur retenue selon la hiérarchie stricte (CERT/OWNED/PROXY/REVIEW).
+   Statut cert (CERT✓/CERT/CERT?), source explicite (proxy jamais présenté comme PSA), RAW affiché à part. */
+function _certMark(cs){ return cs==='CERT_OK'?'CERT ✓':(cs==='CERT'?'CERT':(cs==='CERT?'?'CERT ?':'')); }
+function _gradedSrcLabel(gs,c){
+  if(gs==='CERT_VALUE')   return 'estimation PSA (certificat)';
+  if(gs==='OWNED_MARKET') return 'cote marché '+((c.grading_company||'')+' '+(c.grade!=null?String(c.grade).replace(/\.0$/,''):'')).trim();
+  if(gs==='GRADED_PROXY') return 'proxy BGS/CGC/SGC (≈ grade 10, pas PSA)';
+  return 'à chiffrer';
+}
 function gradedHeadlineHtml(c){
   var g=((c.grading_company||'')+' '+(c.grade!=null?String(c.grade).replace(/\.0$/,''):'')).trim();
-  if(c.market_value_eur==null) return _ptwCard(' style="color:#d97706;font-size:21px"','PRIX À VÉRIFIER','valeur gradée '+esc(g)+' — pas de cote');
-  var src=c.price_source?(' · '+esc(c.price_source)):'';
-  var tot=((c.quantity||1)>1)?(' · total '+eur(Number(c.market_value_eur)*(c.quantity||1))):'';
-  return _ptwCard('',eur(Number(c.market_value_eur)),'valeur retenue · cote gradée '+esc(g)+tot+src);
+  var cm=_certMark(c.cert_statut);
+  var rawLine=(c.graded_raw!=null)?('<div class="s" style="opacity:.7;margin-top:2px">Cote brute (RAW) indicative : '+eur(Number(c.graded_raw))+'</div>'):'';
+  if(!gradedReliable(c)){
+    return _ptwCard(' style="color:#d97706;font-size:21px"','À CHIFFRER', esc(g)+(cm?(' · '+esc(cm)):'')+' — cote gradée fiable indisponible')+rawLine;
+  }
+  var src=_gradedSrcLabel(c.graded_source,c);
+  var tot=((c.quantity||1)>1)?(' · total '+eur(Number(c.graded_value_eur)*(c.quantity||1))):'';
+  return _ptwCard('',eur(Number(c.graded_value_eur)),'valeur retenue · '+esc(g)+(cm?(' · '+esc(cm)):'')+tot+' · source : '+esc(src))+rawLine;
 }
 function renderDetail(){ const c=detailCard; if(!c)return; const body=document.getElementById("dbody");
   if(c.printing_id && PTW[c.printing_id]===undefined){ ptwGet([c.printing_id]).then(function(){ if(detailCard&&detailCard.printing_id===c.printing_id) renderDetail(); }); }
@@ -6664,7 +6714,7 @@ const Fake = (function(){
     var p='select=card_number,character,variant_label,language,now_eur,pct_7d,pct_30d,price_basis,owned,image_url,tier&now_eur=gte.40&'+col+'=not.is.null&order='+col+'.'+dir+'&limit=50';
     if(dir==='desc') p+='&'+col+'=lte.400';
     var tok=_seq;
-    iqc('app_intel_movements',p,tok,function(d){ var t=document.getElementById('intList'); if(!t)return;
+    iqc('app_intel_movements_v2',p,tok,function(d){ var t=document.getElementById('intList'); if(!t)return;
       t.innerHTML=d.length?('<div style="display:flex;flex-direction:column;gap:7px">'+d.map(function(o){ var v=col==='pct_7d'?o.pct_7d:o.pct_30d; var up=v>=0;
         o.b=o.price_basis+' · '+(o.tier||'')+(o.owned?' · possédée':''); o.variant_label=o.variant_label;
         o.right='<div style="font-weight:900;font-size:13.5px">'+money(o.now_eur)+'</div><div style="font-size:11px;font-weight:800;color:'+(up?'#059669':'#dc2626')+'">'+(up?'▲ ':'▼ ')+pctTxt(v)+'</div>';
@@ -6813,22 +6863,23 @@ const Fake = (function(){
     s.innerHTML='<div id="b4home"><div class="loading">…</div></div>';
     var box=document.getElementById('b4home');
     Promise.allSettled([
-      q('app_intel_movements','select=card_number,character,variant_label,language,now_eur,pct_30d,price_basis,image_url&now_eur=gte.40&pct_30d=not.is.null&order=pct_30d.desc&limit=6'),
+      q('app_intel_movements_v2','select=card_number,character,variant_label,language,now_eur,pct_30d,price_basis,image_url&now_eur=gte.40&pct_30d=not.is.null&order=pct_30d.desc&limit=6'),
       q('app_buy_hub_v2','select=card_number,character,variant_label,language,region,premium_family,tier,image_url,disp_price,disp_basis,disp_confidence,disp_status,disp_captured_at,disp_var_30d,buy_score_adj,jp_priority,is_grail,gap_completer&jp_priority=is.true&order=buy_score_adj.desc.nullslast&limit=6'),
-      q('app_portfolio_value_pt_v2','select=cards_eur_pt,cards_a_verifier,cards_qty,lines'),
-      q('app_ops_health','select=key,value,detail&category=eq.backlog'),
-      q('app_value_snapshot','select=day,products_eur&order=day.desc&limit=1')
+      b4Portfolio(),
+      q('app_ops_health','select=key,value,detail&category=eq.backlog')
     ]).then(function(res){
       if(!box)return;
-      var mov=res[0].value||[], buy=res[1].value||[], pv=(res[2].value||[])[0]||{}, back=res[3].value||[], snap0=(res[4]&&res[4].value||[])[0]||{};
+      var mov=res[0].value||[], buy=res[1].value||[], pf=res[2].value||{cards:0,sealed:0,total:0,pend:0}, back=res[3].value||[];
       // 1) Ce qui a changé
-      var chg=mov.length? mov.map(function(o){ var up=(o.pct_30d>=0);
+      var chg=mov.length? mov.map(function(o){ var has=(o.pct_30d!=null), up=(+o.pct_30d>=0);
+        var pctHtml=has?('<div style="font:800 11px ui-monospace,monospace;color:'+(up?'#059669':'#dc2626')+'">'+(up?'▲ +':'▼ ')+Math.round(o.pct_30d)+'%</div>')
+                       :('<div style="font:800 10px ui-monospace,monospace;color:#d97706">à vérifier</div>');
         return miniRow(thumb(o.image_url,'28px','40px')+'<div style="min-width:0"><div style="font:700 11px ui-monospace,monospace;color:var(--muted)">'+E(o.card_number||'')+'</div><div style="font-size:12px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:150px">'+E(o.character||'')+'</div></div>',
-          '<div style="font:900 12.5px ui-monospace,monospace">'+eur(o.now_eur)+'</div><div style="font:800 11px ui-monospace,monospace;color:'+(up?'#059669':'#dc2626')+'">'+(up?'▲ +':'▼ ')+Math.round(o.pct_30d)+'%</div>'); }).join('') : '<div style="color:var(--muted);font-size:12px;padding:6px 0">Rien de notable sur 30 j.</div>';
+          '<div style="font:900 12.5px ui-monospace,monospace">'+eur(o.now_eur)+'</div>'+pctHtml); }).join('') : '<div style="color:var(--muted);font-size:12px;padding:6px 0">Rien de notable sur 30 j.</div>';
       // 2) Que devrais-je acheter
       var buyInner=buy.length? '<div class="grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:9px">'+buy.map(buyCard).join('')+'</div>' : '<div style="color:var(--muted);font-size:12px;padding:6px 0">Aucune reco JP prioritaire.</div>';
-      // 3) Ma collection — b132 : MÊME total que l'écran Collection = Price Truth live (app_portfolio_value_pt_v2)
-      var cardsPt=(+pv.cards_eur_pt||0), prod=(+snap0.products_eur||0), tot=cardsPt+prod, av=(+pv.cards_a_verifier||0);
+      // 3) Ma collection — b133 : EXACTEMENT l'en-tête Collection (collValue hors PROD_EXCL + PROD_VALUE live, zéro double comptage, zéro snapshot)
+      var cardsPt=(+pf.cards||0), prod=(+pf.sealed||0), tot=(+pf.total||0), av=(+pf.pend||0);
       var colInner='<div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap"><div style="font:900 24px ui-monospace,monospace">'+eur(tot)+'</div>'+
         (av>0?'<div style="font:800 12px ui-monospace,monospace;color:#d97706">'+av+' à vérifier</div>':'')+'</div>'+
         '<div style="font-size:11px;color:var(--muted);margin-top:4px">Cartes '+eur(cardsPt)+' · Scellés '+eur(prod)+' · prix courant Price Truth</div>';
@@ -6854,11 +6905,13 @@ const Fake = (function(){
     var nav=document.getElementById('modeSeg'); if(!nav)return;
     var h='<div class="navgrp">BOUNTY 4.0</div>'+SPACES.map(function(x){return navBtn(x[0],x[1],x[0]===b4active);}).join('')+
       '<div class="navgrp" style="margin-top:8px">Autres outils</div>'+SECOND.map(function(x){return navBtn(x[0],x[1],false);}).join('')+
+      '<button data-b4="__import" style="margin-top:10px;display:block;width:100%;text-align:left;padding:10px 14px;border:0;background:transparent;color:var(--accent);font-weight:800;font-size:13.5px;cursor:pointer;border-radius:9px">➕ Importer un achat (photo)</button>'+
       '<button data-b4="__revert" style="margin-top:14px;display:block;width:100%;text-align:left;padding:9px 14px;border:1px solid var(--line);background:var(--panel);color:var(--muted);font-weight:700;font-size:12px;cursor:pointer;border-radius:9px">↺ Revenir à l\'ancienne nav (b128)</button>'+
       '<div id="navVersion" style="margin-top:14px;padding:8px 12px 4px;font-size:11px;color:var(--muted);opacity:.8">'+E(typeof APP_VERSION!=='undefined'?APP_VERSION:'')+'</div>';
     nav.innerHTML=h;
     nav.addEventListener('click',function(ev){ var b=ev.target.closest('[data-b4]'); if(!b)return; var m=b.getAttribute('data-b4');
       if(m==='__revert'){ setOn(false); location.reload(); return; }
+      if(m==='__import'){ try{ var d=document.getElementById('modeSeg'),sc=document.getElementById('navScrim'); if(d)d.classList.remove('open'); if(sc)sc.classList.remove('open'); }catch(e){} if(typeof openPurImport==='function') openPurImport(); return; }
       go(m);
     });
   }
