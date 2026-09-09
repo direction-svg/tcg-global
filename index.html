@@ -1431,6 +1431,8 @@ function valHtml(c){
 /* Un item compte-t-il dans un total fiable ? (pour compter les « à vérifier ») */
 function valPending(c){ if(c&&c.is_graded) return false; return !dispReliable(c); }
 // ---------- Fiabilité du prix (selon le marché affiché + profondeur d'offres) ----------
+/* b132 : la fiabilité affichée décrit la SOURCE DU PRIX AFFICHÉ = Price Truth (disp_confidence),
+   plus l'ancien overlay marché. Gradée = cote certifiée. HIGH→Fiable · MEDIUM→Indicatif · REVIEW/absent→À vérifier. */
 function priceConf(c){
   if(!c) return null;
   const mk={
@@ -1439,32 +1441,12 @@ function priceConf(c){
     bad: {lvl:'bad',c:'#ef4444',f:'border-color:#ef4444;box-shadow:0 0 0 1.5px #ef4444,0 0 15px rgba(239,68,68,.48)'},
     none:{lvl:'none',c:'#94a3b8',f:'border-color:rgba(148,163,184,.6);box-shadow:0 0 0 1px rgba(148,163,184,.55),0 0 9px rgba(148,163,184,.28)'}
   };
-  if(c.is_graded) return Object.assign({t:'Cote gradée'},mk.ok);
-  const v=c[MKT_FIELD[MKT]];
-  if(v==null) return Object.assign({t:'Estimation figée — pas de cote live'},mk.none);
-  const live = MKT==='JP'? c._jplive : (MKT==='EU'? c._eulive : c._uslive);
-  if(!live) return Object.assign({t:'Indicatif — repli d’un autre marché'},mk.warn);
-  if(MKT==='EU'){ const o=c._euof;
-    if(o!=null && o<=1) return Object.assign({t:'Peu fiable · 1 offre'},mk.bad);
-    if(o!=null && o<5)  return Object.assign({t:'À revoir · '+o+' offres'},mk.warn);
-    return Object.assign({t:'Fiable'+(o!=null?' · '+o+' offres':'')},mk.ok);
+  if(c.is_graded) return Object.assign({t:'Cote gradée / certifiée',word:'Gradée'},mk.ok);
+  if(dispReliable(c)){
+    if(c.disp_confidence==='HIGH') return Object.assign({t:'Fiable · Price Truth (cote de marché)',word:'Fiable'},mk.ok);
+    return Object.assign({t:'Indicatif · Price Truth (RAW/agrégé)',word:'Indicatif'},mk.warn); // MEDIUM
   }
-  if(MKT==='JP'){
-    if(c._jpconf===false) return Object.assign({t:'À confirmer · prix partagé entre variantes'},mk.bad);
-    const s=c._jpsrc, d=(c._jpdays==null?null:+c._jpdays);
-    if(s==='MANUAL') return Object.assign({t:'Prix manuel'},mk.ok);
-    if(s==='CARDRUSH'){ if(d!=null&&d>14) return Object.assign({t:'Cardrush · cote ancienne ('+d+' j)'},mk.warn); return Object.assign({t:'Fiable · Cardrush (boutique JP)'},mk.ok); }
-    if(s==='PRICECHARTING') return Object.assign({t:'Indicatif · PriceCharting (agrégé)'},mk.warn);
-    if(s==='OJA'||s==='LOGIA') return Object.assign({t:'Indicatif · valeur d\'import'},mk.warn);
-    return Object.assign({t:'Indicatif · source à confirmer'},mk.warn);
-  }
-  if(MKT==='US'){
-    const s=c._ussrc, d=(c._usdays==null?null:+c._usdays);
-    if(s==='MANUAL') return Object.assign({t:'Prix manuel'},mk.ok);
-    if(s==='PRICECHARTING'||s==='TCGPLAYER'){ if(d!=null&&d>21) return Object.assign({t:(s==='TCGPLAYER'?'TCGplayer':'PriceCharting')+' · un peu ancien ('+d+' j)'},mk.warn); return Object.assign({t:'Fiable · '+(s==='TCGPLAYER'?'TCGplayer':'PriceCharting')},mk.ok); }
-    return Object.assign({t:'Indicatif · source à confirmer'},mk.warn);
-  }
-  return Object.assign({t:'Fiable'},mk.ok);
+  return Object.assign({t:'À vérifier · pas de cote fiable',word:'À vérifier'},mk.none);
 }
 function confFrame(c){ const k=priceConf(c); return k&&k.f? (' style="'+k.f+'"') : ''; }
 // Jauge de fiabilité du prix : barres de signal (remplissage = niveau) + mot. Ne dépend pas
@@ -1473,16 +1455,15 @@ const CONF_N={ok:3,warn:2,bad:1,none:0};
 const CONF_WORD={ok:'Fiable',warn:'Indicatif',bad:'Peu fiable',none:'Estimé'};
 function confGauge(c){
   const k=priceConf(c); if(!k) return '';
-  const n=CONF_N[k.lvl]||0, word=CONF_WORD[k.lvl]||'';
+  const n=CONF_N[k.lvl]||0, word=k.word||CONF_WORD[k.lvl]||'';
   let bars=''; for(let i=0;i<3;i++) bars+='<i'+(i<n?' style="background:'+k.c+'"':'')+'></i>';
   return '<span class="cgauge" title="Fiabilité du prix : '+esc(k.t)+'"><span class="cgbars">'+bars+'</span><span>'+esc(word)+'</span></span>';
 }
 // Puce de variation ~7 jours (repli 30 j) selon le marché affiché. Vert = hausse, rouge = baisse.
 function varBadge(c){
-  const v=c&&c._var; if(!v) return '';
-  const k = MKT==='JP'?'jp_var7':(MKT==='EU'?'eu_var7':'us_var7');
-  let p=v[k], per='7 j';
-  if(p==null){ const k30=MKT==='JP'?'jp_var30':(MKT==='EU'?'eu_var30':'us_var30'); p=v[k30]; per='30 j'; }
+  if(c.is_graded) return ''; // b132 : aucune variation RAW sur une carte gradee
+  let p=(c.disp_var_7d!=null?c.disp_var_7d:null), per='7 j'; // b132 : variation Price Truth
+  if(p==null){ p=(c.disp_var_30d!=null?c.disp_var_30d:null); per='30 j'; }
   if(p==null) return '';
   p=+p; const up=p>0.05, dn=p<-0.05;
   const cls=up?'up':(dn?'dn':'fl'), ar=up?'▲':(dn?'▼':'▬');
@@ -1490,7 +1471,7 @@ function varBadge(c){
 }
 const CONF_COL={ok:'#059669',warn:'#f59e0b',bad:'#ef4444',none:'#94a3b8'};
 function confLegend(){
-  const rows=[['ok','solide : Cardrush (JP), PriceCharting (US), ≥5 offres (EU) ou prix manuel'],['warn','indicatif : PriceCharting agrégé, valeur d’import, cote ancienne ou repli'],['bad','fragile : 1 seule offre, ou prix partagé entre variantes à confirmer'],['none','pas de cote live — estimation figée']];
+  const rows=[['ok','Fiable : Price Truth confiance élevée (cote de marché), ou cote gradée / certifiée'],['warn','Indicatif : Price Truth RAW / agrégé (confiance moyenne)'],['none','À vérifier : pas de cote fiable (en revue ou absente)']];
   return '<div class="conflegend">'+rows.map(function(r){ const lv=r[0], n=CONF_N[lv], col=CONF_COL[lv]; let bars=''; for(var i=0;i<3;i++) bars+='<i'+(i<n?' style="background:'+col+'"':'')+'></i>';
     return '<div class="clrow"><span class="cgauge"><span class="cgbars">'+bars+'</span><span>'+CONF_WORD[lv]+'</span></span><span class="cldesc">'+r[1]+'</span></div>'; }).join('')+'</div>';
 }
@@ -1612,7 +1593,7 @@ async function load(){
   // 1) Fetch frais en arrière-plan
   let all=[],from=0,step=1000;
   while(true){
-    const r=await fetch(SB+"/rest/v1/app_collection_v2?select=item_id,printing_id,card_number,card_name,card_type,category,color,rarity,language,is_graded,grading_company,grade,cert_number,quantity,market_value_eur,seed_value_eur,live_value_eur,psa_estimate_eur,population,pop_higher,price_source,price_asof,image_url,set_code,set_name,variant,variant_label,origin,art_suffix,reverify,img_locked,acquired_from,acquired_date,acquired_price,disp_price,disp_basis,disp_confidence,disp_status,disp_captured_at&order=disp_price.desc.nullslast&limit="+step+"&offset="+from,{headers:{apikey:ANON,Authorization:"Bearer "+ANON}});
+    const r=await fetch(SB+"/rest/v1/app_collection_v2?select=item_id,printing_id,card_number,card_name,card_type,category,color,rarity,language,is_graded,grading_company,grade,cert_number,quantity,market_value_eur,seed_value_eur,live_value_eur,psa_estimate_eur,population,pop_higher,price_source,price_asof,image_url,set_code,set_name,variant,variant_label,origin,art_suffix,reverify,img_locked,acquired_from,acquired_date,acquired_price,disp_price,disp_basis,disp_confidence,disp_status,disp_captured_at,disp_var_7d,disp_var_30d&order=disp_price.desc.nullslast&limit="+step+"&offset="+from,{headers:{apikey:ANON,Authorization:"Bearer "+ANON}});
     if(!r.ok){ if(DATALOADED) return; document.getElementById("stage").innerHTML='<div class="empty">Erreur de chargement ('+r.status+').</div>';return;}
     const b=await r.json(); if(!Array.isArray(b)){ if(DATALOADED) return; break; } all=all.concat(b); if(b.length<step)break; from+=step;
   }
@@ -3178,7 +3159,7 @@ async function grOpenCard(itemId){
   let c=(Array.isArray(DATA)?DATA.find(x=>String(x.item_id)===String(itemId)):null);
   if(!c){
     try{
-      const sel='item_id,printing_id,card_number,card_name,card_type,category,color,rarity,language,is_graded,grading_company,grade,cert_number,quantity,market_value_eur,seed_value_eur,live_value_eur,psa_estimate_eur,population,pop_higher,price_source,price_asof,image_url,set_code,set_name,variant,variant_label,origin,art_suffix,img_locked,disp_price,disp_basis,disp_confidence,disp_status,disp_captured_at';
+      const sel='item_id,printing_id,card_number,card_name,card_type,category,color,rarity,language,is_graded,grading_company,grade,cert_number,quantity,market_value_eur,seed_value_eur,live_value_eur,psa_estimate_eur,population,pop_higher,price_source,price_asof,image_url,set_code,set_name,variant,variant_label,origin,art_suffix,img_locked,disp_price,disp_basis,disp_confidence,disp_status,disp_captured_at,disp_var_7d,disp_var_30d';
       const [rc,rm]=await Promise.all([
         fetch(SB+'/rest/v1/app_collection_v2?item_id=eq.'+encodeURIComponent(itemId)+'&select='+sel+'&limit=1',{headers:{apikey:ANON,Authorization:'Bearer '+ANON}}).then(r=>r.json()),
         fetch(SB+'/rest/v1/app_collection_market?item_id=eq.'+encodeURIComponent(itemId)+'&select=item_id,jp_eur,eu_eur,us_eur,eu_offres,jp_live,eu_live,us_live',{headers:{apikey:ANON,Authorization:'Bearer '+ANON}}).then(r=>r.json())
@@ -3696,7 +3677,11 @@ function homeChart(snaps){
   const legend='<div class="chlegend">'+series.map(se=>'<span><i style="background:'+se.c+'"></i>'+se.n+'</span>').join('')+'</div>';
   return svg+dates+legend;
 }
+// b132 : quand la nav BOUNTY 4.0 est active, l'accueil est rendu UNIQUEMENT par renderHome4.
+// L'ancien renderHome (b128) ne s'exécute jamais dans ce cas (supprime le double renderer P0-2).
+function bounty4On(){ try{ return localStorage.getItem('bounty4_nav')!=='0'; }catch(e){ return true; } }
 async function renderHome(){
+  if(bounty4On()) return; // nav 4.0 : accueil géré par renderHome4
   const stage=document.getElementById('stage'); if(!stage) return;
   stage.className='';
   if(!DATALOADED){ stage.innerHTML='<div class="loading">Chargement du tableau de bord&hellip;</div>'; return; }
@@ -4123,7 +4108,7 @@ async function homeBriefing(){
   }catch(e){ box.innerHTML='<div class="txt" style="color:var(--muted);font-size:13px">Erreur, réessaie.</div><button class="hbriefbtn" onclick="homeBriefing()">Réessayer</button>'; }
 }
 document.getElementById('modeSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMode(b.dataset.m);});
-const APP_VERSION='Version b131 · 09/09 — Price Truth partout (prix par ligne, sans lot in()) · candidate';
+const APP_VERSION='Version b132 · 09/09 — Accueil=Collection (Price Truth) · badge+variation Price Truth · fiche gradée = cote certifiée';
 { const nv=document.getElementById('navVersion'); if(nv) nv.textContent=APP_VERSION; }
 document.getElementById('mktSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMarket(b.dataset.k);});
 const CATARRS=["catColors","catCats","catRarities","catTreats","catProvs","catSets"];
@@ -5370,6 +5355,15 @@ function ptwHeadlineHtml(pid,label,qty){
   var tot=(qty>1)?(' · total '+eur(o.display_price*qty)):'';
   return _ptwCard('',eur(o.display_price),esc(label)+tot+' · '+esc(basis)+maj);
 }
+/* b132 : sur une carte GRADÉE, la « valeur retenue » = cote gradée/certifiée (market_value_eur du chemin gradé),
+   jamais la RAW Price Truth. La cote brute RAW reste affichée dessous (mktBlock) comme indicative. */
+function gradedHeadlineHtml(c){
+  var g=((c.grading_company||'')+' '+(c.grade!=null?String(c.grade).replace(/\.0$/,''):'')).trim();
+  if(c.market_value_eur==null) return _ptwCard(' style="color:#d97706;font-size:21px"','PRIX À VÉRIFIER','valeur gradée '+esc(g)+' — pas de cote');
+  var src=c.price_source?(' · '+esc(c.price_source)):'';
+  var tot=((c.quantity||1)>1)?(' · total '+eur(Number(c.market_value_eur)*(c.quantity||1))):'';
+  return _ptwCard('',eur(Number(c.market_value_eur)),'valeur retenue · cote gradée '+esc(g)+tot+src);
+}
 function renderDetail(){ const c=detailCard; if(!c)return; const body=document.getElementById("dbody");
   if(c.printing_id && PTW[c.printing_id]===undefined){ ptwGet([c.printing_id]).then(function(){ if(detailCard&&detailCard.printing_id===c.printing_id) renderDetail(); }); }
   // Onglets fiche (façon Logia) : Collection = ta possession · Tarifs = les prix/sources · Détails = la carte.
@@ -5381,8 +5375,9 @@ function renderDetail(){ const c=detailCard; if(!c)return; const body=document.g
   show('dprints', detailTab==='det');
   if(detailTab==="tar"){
     // Prix par marché (JP/EU/US) + jauge de fiabilité, puis le détail des sources (#dsrc) et la cote gradée (#dladder) juste en dessous.
-    body.innerHTML=ptwHeadlineHtml(c.printing_id,'valeur retenue',(c.quantity||1))+
-      '<div class="s" style="margin:2px 2px 6px;opacity:.7">Valeur canonique Price Truth (par impression exacte). Cotes brutes par marché ci-dessous — indicatives.</div>'+
+    body.innerHTML=(c.is_graded
+        ? gradedHeadlineHtml(c)+'<div class="s" style="margin:2px 2px 6px;opacity:.7">Cote gradée / certifiée retenue (cote unique de la carte notée). Cote brute RAW ci-dessous — indicative.</div>'
+        : ptwHeadlineHtml(c.printing_id,'valeur retenue',(c.quantity||1))+'<div class="s" style="margin:2px 2px 6px;opacity:.7">Valeur canonique Price Truth (par impression exacte). Cotes brutes par marché ci-dessous — indicatives.</div>')+
       mktBlock(c);
     return;
   }
@@ -6820,22 +6815,23 @@ const Fake = (function(){
     Promise.allSettled([
       q('app_intel_movements','select=card_number,character,variant_label,language,now_eur,pct_30d,price_basis,image_url&now_eur=gte.40&pct_30d=not.is.null&order=pct_30d.desc&limit=6'),
       q('app_buy_hub_v2','select=card_number,character,variant_label,language,region,premium_family,tier,image_url,disp_price,disp_basis,disp_confidence,disp_status,disp_captured_at,disp_var_30d,buy_score_adj,jp_priority,is_grail,gap_completer&jp_priority=is.true&order=buy_score_adj.desc.nullslast&limit=6'),
-      q('app_value_snapshot','select=day,total_eur,cards_eur,products_eur&order=day.desc&limit=2'),
-      q('app_ops_health','select=key,value,detail&category=eq.backlog')
+      q('app_portfolio_value_pt_v2','select=cards_eur_pt,cards_a_verifier,cards_qty,lines'),
+      q('app_ops_health','select=key,value,detail&category=eq.backlog'),
+      q('app_value_snapshot','select=day,products_eur&order=day.desc&limit=1')
     ]).then(function(res){
       if(!box)return;
-      var mov=res[0].value||[], buy=res[1].value||[], snap=res[2].value||[], back=res[3].value||[];
+      var mov=res[0].value||[], buy=res[1].value||[], pv=(res[2].value||[])[0]||{}, back=res[3].value||[], snap0=(res[4]&&res[4].value||[])[0]||{};
       // 1) Ce qui a changé
       var chg=mov.length? mov.map(function(o){ var up=(o.pct_30d>=0);
         return miniRow(thumb(o.image_url,'28px','40px')+'<div style="min-width:0"><div style="font:700 11px ui-monospace,monospace;color:var(--muted)">'+E(o.card_number||'')+'</div><div style="font-size:12px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:150px">'+E(o.character||'')+'</div></div>',
           '<div style="font:900 12.5px ui-monospace,monospace">'+eur(o.now_eur)+'</div><div style="font:800 11px ui-monospace,monospace;color:'+(up?'#059669':'#dc2626')+'">'+(up?'▲ +':'▼ ')+Math.round(o.pct_30d)+'%</div>'); }).join('') : '<div style="color:var(--muted);font-size:12px;padding:6px 0">Rien de notable sur 30 j.</div>';
       // 2) Que devrais-je acheter
       var buyInner=buy.length? '<div class="grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:9px">'+buy.map(buyCard).join('')+'</div>' : '<div style="color:var(--muted);font-size:12px;padding:6px 0">Aucune reco JP prioritaire.</div>';
-      // 3) Ma collection
-      var last=snap[0]||{}, prev=snap[1]||{}, dc=(+last.cards_eur||0)-(+prev.cards_eur||0), base=(+prev.cards_eur||0), pc=base?dc/base*100:0, up=dc>=0;
-      var colInner='<div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap"><div style="font:900 24px ui-monospace,monospace">'+eur(last.total_eur)+'</div>'+
-        (prev.cards_eur!=null?'<div style="font:800 13px ui-monospace,monospace;color:'+(up?'#059669':'#dc2626')+'">'+(up?'▲ +':'▼ ')+eur(Math.abs(dc))+' ('+(up?'+':'')+pc.toFixed(1).replace('.',',')+' %) cartes</div>':'')+'</div>'+
-        '<div style="font-size:11px;color:var(--muted);margin-top:4px">Cartes '+eur(last.cards_eur)+' · Scellés '+eur(last.products_eur)+'</div>';
+      // 3) Ma collection — b132 : MÊME total que l'écran Collection = Price Truth live (app_portfolio_value_pt_v2)
+      var cardsPt=(+pv.cards_eur_pt||0), prod=(+snap0.products_eur||0), tot=cardsPt+prod, av=(+pv.cards_a_verifier||0);
+      var colInner='<div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap"><div style="font:900 24px ui-monospace,monospace">'+eur(tot)+'</div>'+
+        (av>0?'<div style="font:800 12px ui-monospace,monospace;color:#d97706">'+av+' à vérifier</div>':'')+'</div>'+
+        '<div style="font-size:11px;color:var(--muted);margin-top:4px">Cartes '+eur(cardsPt)+' · Scellés '+eur(prod)+' · prix courant Price Truth</div>';
       // 4) Ce qui nécessite attention
       var bk={}; back.forEach(function(b){ bk[b.key]=+b.value; });
       var att=[['price_A_VERIFIER','Prix à vérifier','buy'],['price_PRICE_REVIEW','Prix en revue','buy'],['image_WRONG_ART','Images non conformes','marche'],['image_REVIEW','Images ambiguës','marche']];
