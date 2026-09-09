@@ -1403,9 +1403,31 @@ const eur0=n=> (n==null?"—":(Number(n)>0&&Math.round(Number(n))===0?"< 1 €":
 let MKT='JP';
 const MKT_FIELD={JP:'_jp',EU:'_eu',US:'_us'};
 const MKT_LABEL={JP:'🇯🇵 Japon',EU:'🇪🇺 Europe',US:'🇺🇸 US'};
-function mkStrict(c){ const v=c[MKT_FIELD[MKT]]; return (v==null)?null:Number(v); }        // vrai prix marché (ou null)
-function mkEst(c){ if(c&&c.is_graded){ return c.market_value_eur==null?0:Number(c.market_value_eur); } /* gradée = cote unique, jamais le prix brut par marché */ const v=c[MKT_FIELD[MKT]]; if(v!=null) return Number(v); return c.market_value_eur==null?0:Number(c.market_value_eur); } // estimé (repli)
-const val=c=> mkEst(c);   // toutes les listes/totaux suivent le marché choisi (estimé)
+function mkStrict(c){ const v=c[MKT_FIELD[MKT]]; return (v==null)?null:Number(v); }        // cote brute par marché (indicative, fiche seulement)
+/* ===== b131 : PRIX COURANT CANONIQUE = Price Truth (app_price_truth_wide.display_price) par printing_id EXACT =====
+   mkEst/val alimentent grille + total + tris + accueil + portefeuille + premium. Une seule source.
+   Exceptions AUTORISÉES à différer : carte gradée (cote certifiée unique). Tout le reste converge.
+   Non fiable / absent / en cours ⇒ 0 dans les agrégats et « à vérifier » à l'affichage (JAMAIS l'ancien fallback marché). */
+function ptCur(c){ // objet Price Truth de l'impression, ou undefined
+  return (c&&c.printing_id)?PTW[c.printing_id]:undefined;
+}
+function mkEst(c){
+  if(c&&c.is_graded){ return c.market_value_eur==null?0:Number(c.market_value_eur); } // gradée = cote certifiée (autorisée à différer)
+  var o=ptCur(c);
+  if(ptwReliable(o)) return Number(o.display_price);   // Price Truth canonique
+  return 0;                                            // review/absent/loading/error ⇒ 0 (agrégats)
+}
+const val=c=> mkEst(c);   // toutes les listes/totaux suivent le prix courant canonique (Price Truth)
+/* Affichage HTML d'une valeur courante (grille/liste/fiche) — cohérent avec mkEst. */
+function valHtml(c){
+  if(c&&c.is_graded) return eur(c.market_value_eur==null?0:Number(c.market_value_eur));
+  var o=ptCur(c);
+  if(o===undefined||o==='LOADING') return '<span style="opacity:.45">…</span>';
+  if(ptwReliable(o)) return eur(Number(o.display_price));
+  return '<span style="color:#d97706;font-weight:800" title="Price Truth indisponible ou en revue">à vérifier</span>';
+}
+/* Un item compte-t-il dans un total fiable ? (pour compter les « à vérifier ») */
+function valPending(c){ if(c&&c.is_graded) return false; var o=ptCur(c); return !ptwReliable(o); }
 // ---------- Fiabilité du prix (selon le marché affiché + profondeur d'offres) ----------
 function priceConf(c){
   if(!c) return null;
@@ -1470,7 +1492,15 @@ function confLegend(){
   return '<div class="conflegend">'+rows.map(function(r){ const lv=r[0], n=CONF_N[lv], col=CONF_COL[lv]; let bars=''; for(var i=0;i<3;i++) bars+='<i'+(i<n?' style="background:'+col+'"':'')+'></i>';
     return '<div class="clrow"><span class="cgauge"><span class="cgbars">'+bars+'</span><span>'+CONF_WORD[lv]+'</span></span><span class="cldesc">'+r[1]+'</span></div>'; }).join('')+'</div>';
 }
-function catMkPrice(c){ const v=c['mk_'+MKT.toLowerCase()]; if(v!=null) return Number(v); const f=c[MKT.toLowerCase()+'_eur']; if(f!=null) return Number(f); return c.price_eur!=null?Number(c.price_eur):null; }  // catalogue : prix marché BRUT uniquement (jamais la cote gradée ; celle-ci reste affichée à part dans la fiche). Le tri suit ce prix brut.
+// b131 : catalogue = prix courant CANONIQUE (app_catalog_priced_v2.disp_price = Price Truth par printing_id exact).
+// Plus jamais mk_jp/mk_eu (cote brute non fiable qui donnait p.ex. 388,60 au lieu de 178,26 pour Nami Girls).
+function catReliable(c){ return !!(c && c.disp_price!=null && c.disp_status!=='PRICE_A_VERIFIER' && c.disp_status!=='PRICE_REVIEW' && c.disp_confidence!=='REVIEW'); }
+function catMkPrice(c){ return catReliable(c)?Number(c.disp_price):null; }  // null ⇒ pas de prix fiable (« à vérifier »/« — »)
+function catPxHtml(c){ // affichage compact du prix courant catalogue
+  if(catReliable(c)) return eur(Number(c.disp_price));
+  if(c && (c.disp_status==='PRICE_A_VERIFIER'||c.disp_status==='PRICE_REVIEW'||c.disp_confidence==='REVIEW')) return '<span style="color:#d97706;font-weight:800">à vérifier</span>';
+  return '—';
+}
 // Quand le prix affiché vient d'une cote GRADÉE (aucune vente brute), renvoie le libellé (ex "PSA 10") pour l'étiqueter clairement.
 function catGradedTag(c){ if(MKT==='JP') return (c.mk_jp==null && c.jp_g!=null)?(c.jp_gl||'gradé'):null; if(MKT==='US') return (c.mk_us==null && c.us_g!=null)?(c.us_gl||'gradé'):null; return null; }
 // Bloc prix de la fiche : montre TOUJOURS le prix marché brut ET la cote gradée (PSA/BGS) côte à côte,
@@ -1563,6 +1593,14 @@ async function refreshItemMarket(item){
 
 const COLL_CACHE_KEY='bounty_coll_cache_v1';
 function saveCollCache(){ try{ if(Array.isArray(DATA)&&DATA.length) localStorage.setItem(COLL_CACHE_KEY, JSON.stringify(DATA)); }catch(e){} }
+/* b131 : charge Price Truth (par printing_id exact) pour la collection, puis re-render la surface active. */
+async function loadPriceTruth(){
+  if(!Array.isArray(DATA)||!DATA.length) return;
+  var pids=DATA.filter(function(c){return c && c.printing_id && !c.is_graded;}).map(function(c){return c.printing_id;});
+  await ptwGet(pids);
+  if(state.mode==="accueil"){ renderHome(); }
+  else if(state.mode==="collection"||state.mode==="catalog"){ render(); }
+}
 async function load(){
   // 0) FAÇADE : afficher immédiatement le dernier état connu (cache local), le temps que le frais arrive.
   //    Évite l'écran vide / l'attente quand les vues serveur sont lentes.
@@ -1590,6 +1628,9 @@ async function load(){
   if(state.mode==="accueil"){ renderHome(); }
   else { render(); if(state.mode==="collection") loadBriefing(); }
   saveCollCache();
+  // 2bis) PRIX COURANT CANONIQUE : charger Price Truth pour TOUTES les impressions possédées,
+  //       puis re-render. Grille + total + tris + accueil + portefeuille convergent d'un coup.
+  try{ await loadPriceTruth(); }catch(e){}
   // 3) Enrichissements non bloquants (verify / images PriceCharting / valeurs marché)
   try{ await loadVerify(); }catch(e){}
   try{ await loadPending(); }catch(e){}
@@ -1612,11 +1653,13 @@ async function loadBriefing(){
   let dateStr=''; try{ dateStr=now.toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'}); }catch(e){}
   let valLine='';
   if(DATALOADED && Array.isArray(DATA) && DATA.length){
-    // valeur live (identique à l'accueil) — évite l'écart avec le snapshot quotidien périmé
+    // b131 : valeur live = somme des prix courants canoniques (Price Truth). Les items sans cote fiable
+    // sont exclus du total et comptés « à vérifier ». Le delta snapshot n'est affiché que si la base concorde.
     const cardsVal=DATA.reduce((s,c)=>s+val(c)*(c.quantity||1),0);
+    const nPend=DATA.reduce((s,c)=>s+(valPending(c)?1:0),0);
     let d='';
-    if(snaps.length){ const prev=+snaps[0].total_eur; if(prev){ const diff=cardsVal-prev; const pct=prev?(diff/prev*100):0; const cls=diff>=0?'up':'down'; d=' <span class="bd '+cls+'">'+(diff>=0?'+':'')+eur(diff)+' ('+(diff>=0?'+':'')+pct.toFixed(1).replace('.',',')+' %)</span> <span class="dt">depuis le dernier relevé</span>'; } }
-    valLine='<div class="bval">Ta collection vaut <b>'+eur(cardsVal)+'</b> <span class="dt">· cartes · marché '+MKT+'</span>'+d+'</div>';
+    const pend=nPend?' <span class="dt">· '+nPend+' à vérifier</span>':'';
+    valLine='<div class="bval">Ta collection vaut <b>'+eur(cardsVal)+'</b> <span class="dt">· prix courant (Price Truth)</span>'+pend+d+'</div>';
   } else if(snaps.length){
     valLine='<div class="bval">Ta collection vaut <b>'+eur(+snaps[0].total_eur)+'</b> <span class="dt">· dernier relevé</span></div>';
   }
@@ -1840,12 +1883,12 @@ function render(){
       const g=c.is_graded?'<span class="grade">'+(c.grading_company||"")+' '+(c.grade!=null?String(c.grade).replace(/\.0$/,''):'')+'</span>':'<span></span>';
       const q=(c.quantity>1)?'<span class="qty">x'+c.quantity+'</span>':'';
       return '<div class="card" data-id="'+c.item_id+'"'+confFrame(c)+'><div class="imgwrap">'+imgTag(c)+'<div class="badges">'+g+'</div><span class="flag">'+(FLAG[c.language]||"")+'</span>'+q+photoBadge(c)+pendingBadge(c)+(c.reverify?'<span class="rvdot" title="À revérifier (authenticité)"></span>':'')+'</div>'+
-      '<div class="meta"><p class="nm">'+esc(c.card_name||"")+'</p><div class="tagrow"><span class="code">'+esc(c.card_number||"")+'</span>'+descTags(c)+'</div><div class="valrow"><div class="val">'+eur(val(c))+'</div>'+varBadge(c)+'</div><div class="foot">'+confGauge(c)+'</div></div></div>';
+      '<div class="meta"><p class="nm">'+esc(c.card_name||"")+'</p><div class="tagrow"><span class="code">'+esc(c.card_number||"")+'</span>'+descTags(c)+'</div><div class="valrow"><div class="val">'+valHtml(c)+'</div>'+varBadge(c)+'</div><div class="foot">'+confGauge(c)+'</div></div></div>';
     }).join("")+'</div>';
   } else {
     stage.className="list"; stage.innerHTML=a.map(c=>{
       const g=c.is_graded?'<span class="grade">'+(c.grading_company||"")+' '+(c.grade!=null?String(c.grade).replace(/\.0$/,''):'')+'</span>':'';
-      return '<div class="row" data-id="'+c.item_id+'"><div class="lthumb"'+confFrame(c)+'>'+imgTag(c)+photoBadge(c)+pendingBadge(c)+'</div><div><p class="nm">'+(c.reverify?'<span class="rvdot rvinline" title="À revérifier (authenticité)"></span>':'')+esc(c.card_name||"")+'</p><div class="sub"><span>'+(FLAG[c.language]||"")+'</span><span>'+esc(c.card_number||"")+'</span>'+descTags(c)+' '+g+'</div></div><div class="r"><div class="val">'+eur(val(c))+'</div>'+varBadge(c)+confGauge(c)+(c.quantity>1?'<div class="sub">x'+c.quantity+'</div>':'')+'</div></div>';
+      return '<div class="row" data-id="'+c.item_id+'"><div class="lthumb"'+confFrame(c)+'>'+imgTag(c)+photoBadge(c)+pendingBadge(c)+'</div><div><p class="nm">'+(c.reverify?'<span class="rvdot rvinline" title="À revérifier (authenticité)"></span>':'')+esc(c.card_name||"")+'</p><div class="sub"><span>'+(FLAG[c.language]||"")+'</span><span>'+esc(c.card_number||"")+'</span>'+descTags(c)+' '+g+'</div></div><div class="r"><div class="val">'+valHtml(c)+'</div>'+varBadge(c)+confGauge(c)+(c.quantity>1?'<div class="sub">x'+c.quantity+'</div>':'')+'</div></div>';
     }).join("");
   }
 }
@@ -2266,7 +2309,7 @@ function convRarWord(s){ return s>=95?'rareté au sommet':s>=85?'grande rareté'
 async function loadConvMap(force){
   if(CONVLOADED && !force) return;
   try{
-    const r=await fetch(SB+'/rest/v1/app_conviction_scored?select=item_id,card_number,card_name,language,variant_label,image_url,rarity,quantity,market_value_eur,eu_offres,mom_pct,rar_score,liq_score,val_score,conviction,bucket&limit=5000',{headers:{apikey:ANON,Authorization:'Bearer '+ANON}});
+    const r=await fetch(SB+'/rest/v1/app_conviction_scored_v2?select=item_id,card_number,card_name,language,variant_label,image_url,rarity,quantity,market_value_eur,eu_offres,mom_pct,rar_score,liq_score,val_score,conviction,bucket&limit=5000',{headers:{apikey:ANON,Authorization:'Bearer '+ANON}});
     let rows=await r.json(); CONV=Array.isArray(rows)?rows:[];
     CONVMAP={}; CONV.forEach(x=>{ CONVMAP[String(x.item_id)]=x; });
     CONVLOADED=true;
@@ -4088,7 +4131,7 @@ async function homeBriefing(){
   }catch(e){ box.innerHTML='<div class="txt" style="color:var(--muted);font-size:13px">Erreur, réessaie.</div><button class="hbriefbtn" onclick="homeBriefing()">Réessayer</button>'; }
 }
 document.getElementById('modeSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMode(b.dataset.m);});
-const APP_VERSION='Version b130 · 12/08 — Price Truth sur fiche (fix états) · candidate';
+const APP_VERSION='Version b131 · 09/09 — Price Truth partout + scores/reco v2 (premium · conviction · buy hub) · candidate';
 { const nv=document.getElementById('navVersion'); if(nv) nv.textContent=APP_VERSION; }
 document.getElementById('mktSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMarket(b.dataset.k);});
 const CATARRS=["catColors","catCats","catRarities","catTreats","catProvs","catSets"];
@@ -4171,10 +4214,10 @@ async function fetchCatalog(append){
   const term=(state.catQuery||"").replace(/[%*(),]/g," ").trim();
   const noFilters=!term && !state.catLangs.length && !state.catCats.length && !state.catRarities.length && !state.catTreats.length && !state.catProvs.length && !state.catColors.length && !state.catSets.length;
   if(!append){ state.catOffset=0; CATACC=[]; stage.className=""; stage.innerHTML='<div class="loading">Recherche…</div>'; }
-  // Le tri prix suit le marché sélectionné (JP/EU/US) — même colonne que le prix affiché, sinon l'ordre paraît aléatoire.
-  const mkcol=(MKT==='EU'?'mk_eu':'disp_'+(MKT_FIELD[MKT]?MKT.toLowerCase():'jp'));
+  // b131 : le tri prix suit le PRIX COURANT CANONIQUE (disp_price = Price Truth), pas une cote par marché.
+  const mkcol='disp_price';
   const ord=state.catSort==="name"?"name.asc":(state.catSort==="lang"?"language.asc,card_number.asc":(state.catSort==="price_desc"?(mkcol+".desc.nullslast"):(state.catSort==="price_asc"?(mkcol+".asc.nullslast"):"card_number.asc")));
-  let url=SB+"/rest/v1/app_catalog_priced?select=card_number,language,name,image_url,img_verify,owned,variant,variant_label,rarity,set_code,set_name,category,origin,printing_id,price_eur,price_source,jp_eur,eu_eur,us_eur,mk_jp,mk_eu,mk_us,jp_g,jp_gl,us_g,us_gl,disp_jp,disp_us&limit="+CATPAGE+"&offset="+(state.catOffset||0)+"&order="+ord;
+  let url=SB+"/rest/v1/app_catalog_priced_v2?select=card_number,language,name,image_url,img_verify,owned,variant,variant_label,rarity,set_code,set_name,category,origin,printing_id,price_eur,price_source,jp_eur,eu_eur,us_eur,mk_jp,mk_eu,mk_us,jp_g,jp_gl,us_g,us_gl,disp_jp,disp_us,disp_price,disp_basis,disp_confidence,disp_status,disp_captured_at,disp_var_30d&limit="+CATPAGE+"&offset="+(state.catOffset||0)+"&order="+ord;
   // Par défaut on masque les DON SANS VALEUR (bulk), sinon ils monopolisent la 1re page. Mais on
   // laisse remonter les DON à valeur (gold/promo ≥ 20 € sur le marché affiché) : ils apparaissent
   // dans le catalogue et en tête quand on trie par prix. Tous restent accessibles via le filtre « DON!! ».
@@ -4233,7 +4276,7 @@ function renderCatalog(rows, hasMore){
       const img=vfy?('<div class="vfy"><span class="vt">🔍</span></div>'):(eff?('<img loading="lazy" referrerpolicy="no-referrer" src="'+esc(eff)+'" onerror="this.remove()">'):('<div class="vfy vfywait"><span class="vt">⏳</span></div>'));
       const owned=c._grpOwned; const cpx=catMkPrice(c); const gtag=catGradedTag(c);
       const vtag=(c._n>1)?('<span class="verstag">'+c._n+' versions</span>'):'';
-      return '<div class="row" data-idx="'+c._idx+'"><div class="lthumb">'+img+'<span class="flag">'+(FLAG[c.language]||"")+'</span></div><div><p class="nm">'+esc(c.name||"")+'</p><div class="sub"><span>'+esc(c.card_number||"")+'</span>'+(c._n>1?vtag:descTags(c))+(owned?' <span class="owntag own">✓ Possédée</span>':'')+'</div></div><div class="r"><div class="val">'+(cpx!=null?eur(cpx):'—')+'</div>'+(gtag?'<div class="sub"><span class="verstag">'+esc(gtag)+'</span></div>':'')+'</div></div>';
+      return '<div class="row" data-idx="'+c._idx+'"><div class="lthumb">'+img+'<span class="flag">'+(FLAG[c.language]||"")+'</span></div><div><p class="nm">'+esc(c.name||"")+'</p><div class="sub"><span>'+esc(c.card_number||"")+'</span>'+(c._n>1?vtag:descTags(c))+(owned?' <span class="owntag own">✓ Possédée</span>':'')+'</div></div><div class="r"><div class="val">'+catPxHtml(c)+'</div>'+(gtag?'<div class="sub"><span class="verstag">'+esc(gtag)+'</span></div>':'')+'</div></div>';
     }).join("")+loadmore;
   } else {
     stage.className='';
@@ -4243,7 +4286,7 @@ function renderCatalog(rows, hasMore){
       const owned=c._grpOwned;
       const badge=owned?'<span class="owntag own">✓ Possédée</span>':'<span class="owntag no">Non possédée</span>';
       const vtag=(c._n>1)?('<span class="verstag">'+c._n+' versions</span>'):'';
-      const cpx=catMkPrice(c); const gtag=catGradedTag(c); const px=(cpx!=null)?('<span class="pxg">'+eur(cpx)+(gtag?(' <span style="font-size:9px;background:#b08528;color:#fff;padding:1px 4px;border-radius:5px;font-weight:800;vertical-align:middle">'+esc(gtag)+'</span>'):'')+'</span>'):'';
+      const cpx=catMkPrice(c); const gtag=catGradedTag(c); const pxi=catPxHtml(c); const px=(pxi!=='—')?('<span class="pxg">'+pxi+(gtag?(' <span style="font-size:9px;background:#b08528;color:#fff;padding:1px 4px;border-radius:5px;font-weight:800;vertical-align:middle">'+esc(gtag)+'</span>'):'')+'</span>'):'';
       return '<div class="card" data-idx="'+c._idx+'"><div class="imgwrap">'+img+'<span class="flag">'+(FLAG[c.language]||"")+'</span>'+vtag+(px?'<div class="pxcorner">'+px+'</div>':'')+'</div><div class="meta"><p class="nm">'+esc(c.name||"")+'</p><div class="sub"><span>'+esc(c.card_number||"")+'</span>'+(c._n>1?'':descTags(c))+'</div>'+badge+'</div></div>';
     }).join("")+'</div>';
     stage.innerHTML=grid+loadmore;
@@ -4447,12 +4490,12 @@ async function loadCardVersions(c){
   const box=document.getElementById("cdprints"); if(!box) return;
   let rows=[];
   try{
-    const r=await fetch(SB+'/rest/v1/app_catalog_priced?card_number=eq.'+encodeURIComponent(c.card_number)+'&select=card_number,language,name,image_url,img_verify,variant,variant_label,rarity,set_code,set_name,category,origin,owned,printing_id,price_eur,price_source,jp_eur,eu_eur,us_eur,mk_jp,mk_eu,mk_us,jp_g,jp_gl,us_g,us_gl,disp_jp,disp_us&limit=80',{headers:{apikey:ANON,Authorization:"Bearer "+ANON}});
+    const r=await fetch(SB+'/rest/v1/app_catalog_priced_v2?card_number=eq.'+encodeURIComponent(c.card_number)+'&select=card_number,language,name,image_url,img_verify,variant,variant_label,rarity,set_code,set_name,category,origin,owned,printing_id,price_eur,price_source,jp_eur,eu_eur,us_eur,mk_jp,mk_eu,mk_us,jp_g,jp_gl,us_g,us_gl,disp_jp,disp_us,disp_price,disp_basis,disp_confidence,disp_status,disp_captured_at,disp_var_30d&limit=80',{headers:{apikey:ANON,Authorization:"Bearer "+ANON}});
     rows=await r.json(); if(!Array.isArray(rows)) rows=[];
   }catch(e){ box.innerHTML=""; return; }
-  // tri : langue (JP,EN,FR,CN) puis prix décroissant
+  // tri : langue (JP,EN,FR,CN) puis prix courant canonique décroissant
   const LO={JP:0,EN:1,FR:2,CN:3};
-  rows.sort((a,b)=>((LO[a.language]??9)-(LO[b.language]??9))||((b.price_eur||0)-(a.price_eur||0)));
+  rows.sort((a,b)=>((LO[a.language]??9)-(LO[b.language]??9))||((+b.disp_price||0)-(+a.disp_price||0)));
   CATPRINTS=rows;
   // quantités possédées par printing (pour marquer ✓)
   let ow="";
@@ -4465,7 +4508,7 @@ async function loadCardVersions(c){
     const artv=isArtVariant(p.variant);
     const vb='<span class="vbadge'+(artv?' art':'')+'">'+esc(vNice(p.variant))+'</span>';
     const rn=rarNice(p.rarity); const rar=rn?('<span class="vbadge">'+esc(rn)+'</span>'):'';
-    const pxv=catMkPrice(p); const pgt=catGradedTag(p); const px=(pxv!=null)?('<span class="vpx">'+eur(pxv)+(pgt?(' <span style="font-size:8px;background:#b08528;color:#fff;padding:0 3px;border-radius:4px;font-weight:800">'+esc(pgt)+'</span>'):'')+'</span>'):'<span class="vpx none">—</span>';
+    const pgt=catGradedTag(p); const pxi=catPxHtml(p); const px=(pxi!=='—')?('<span class="vpx">'+pxi+(pgt?(' <span style="font-size:8px;background:#b08528;color:#fff;padding:0 3px;border-radius:4px;font-weight:800">'+esc(pgt)+'</span>'):'')+'</span>'):'<span class="vpx none">—</span>';
     const q=qmap[p.printing_id]||0;
     const add='<button class="vadd'+(q>0?' have':'')+'" onclick="event.stopPropagation();collAddFromList(\''+esc(p.printing_id||'')+'\',this)">'+(q>0?('✓ ×'+q):'+ Ajouter')+'</button>';
     const sel=(p.printing_id===c.printing_id)?' sel':'';
@@ -5312,13 +5355,16 @@ function ptwReliable(o){ return !!(o && typeof o==='object'
 function ptwGet(pids){ pids=(pids||[]).filter(function(p){return p && PTW[p]===undefined;});
   pids.forEach(function(p){ PTW[p]='LOADING'; });
   if(!pids.length) return Promise.resolve();
-  var url=SB+'/rest/v1/app_price_truth_wide?printing_id=in.('+pids.map(encodeURIComponent).join(',')+')&select=printing_id,display_price,price_kind,market,price_confidence,price_status,captured_at,language';
-  return fetch(url,{headers:{apikey:ANON,Authorization:'Bearer '+ANON}})
-    .then(function(r){ if(!r.ok) throw new Error('http '+r.status); return r.json(); })
-    .then(function(a){ var seen={};
-      if(Array.isArray(a)) a.forEach(function(o){ if(o&&o.printing_id){ PTW[o.printing_id]=o; seen[o.printing_id]=1; } });
-      pids.forEach(function(p){ if(!seen[p]) PTW[p]='ABSENT'; }); })     // demandé mais non renvoyé ⇒ ABSENT
-    .catch(function(){ pids.forEach(function(p){ if(PTW[p]==='LOADING') PTW[p]='ERROR'; }); }); // HTTP KO ⇒ ERROR
+  var CH=120, batches=[]; for(var i=0;i<pids.length;i+=CH) batches.push(pids.slice(i,i+CH)); // chunk : URL in.() bornée
+  return Promise.all(batches.map(function(chunk){
+    var url=SB+'/rest/v1/app_price_truth_wide?printing_id=in.('+chunk.map(encodeURIComponent).join(',')+')&select=printing_id,display_price,price_kind,market,price_confidence,price_status,captured_at,language';
+    return fetch(url,{headers:{apikey:ANON,Authorization:'Bearer '+ANON}})
+      .then(function(r){ if(!r.ok) throw new Error('http '+r.status); return r.json(); })
+      .then(function(a){ var seen={};
+        if(Array.isArray(a)) a.forEach(function(o){ if(o&&o.printing_id){ PTW[o.printing_id]=o; seen[o.printing_id]=1; } });
+        chunk.forEach(function(p){ if(!seen[p]) PTW[p]='ABSENT'; }); })   // demandé mais non renvoyé ⇒ ABSENT
+      .catch(function(){ chunk.forEach(function(p){ if(PTW[p]==='LOADING') PTW[p]='ERROR'; }); }); // HTTP KO ⇒ ERROR
+  }));
 }
 function _ptwCard(bstyle,big,sub){ return '<div class="dval" style="margin-bottom:6px"><div class="b"'+bstyle+'>'+big+'</div><div class="s">'+sub+'</div></div>'; }
 function ptwHeadlineHtml(pid,label,qty){
@@ -5868,13 +5914,23 @@ function pmDisamb(r){ /* zéro ambiguïté : CODE + perso + artwork + distributi
   return bits.join(' · ')||'<span style="color:#5a616b">base</span>'; }
 
 async function pmLoad(){
-  PMX.universe=await pmFetch('app_premium_universe','select=*&order=premium_score.desc&limit=4000');
+  PMX.universe=await pmFetch('app_premium_universe_v2','select=*&order=premium_score.desc&limit=4000');
   PMX.owned=PMX.universe.filter(function(r){return r.owned;});
   PMX.missing=PMX.universe.filter(function(r){return !r.owned;});
-  PMX.grails=await pmFetch('app_premium_grails','select=*&order=rank.asc&limit=200');
-  PMX.reco=await pmFetch('app_premium_reco','select=*&order=rank.asc&limit=400');
-  PMX.watch=await pmFetch('app_premium_watch','select=*');
+  PMX.grails=await pmFetch('app_premium_grails_v2','select=*&order=rank.asc&limit=200');
+  PMX.reco=await pmFetch('app_premium_reco_v2','select=*&order=rank.asc&limit=400');
+  PMX.watch=await pmFetch('app_premium_watch_v2','select=*');
+  // b131 : charge Price Truth pour toutes les impressions premium ⇒ valeur affichée = prix courant canonique.
+  try{ await ptwGet([].concat(PMX.universe,PMX.grails).map(function(r){return r&&r.printing_id;}).filter(Boolean)); }catch(e){}
   PMX.loaded=true;
+}
+/* b131 : valeur courante CANONIQUE d'une carte premium = Price Truth (display_price) par printing_id exact.
+   Gradée (owned_grade) = cote certifiée unique (autorisée à différer). Sinon PT fiable, ou null ⇒ « PRICE REVIEW ».
+   On n'utilise PLUS raw_market_eur/owned_value_eur RAW pour la valeur courante (divergeait de la Price Truth). */
+function pmCur(r){
+  if(r && r.owned_grade){ return r.owned_value_eur!=null?Number(r.owned_value_eur):null; } // certifiée
+  var o=(r&&r.printing_id)?PTW[r.printing_id]:undefined;
+  return ptwReliable(o)?Number(o.display_price):null;
 }
 
 /* ---------- helpers budget ---------- */
@@ -5892,14 +5948,14 @@ function pmKpi(n,l,sub){ return '<div style="background:#14161c;border:1px solid
 
 /* ---------- 1) TABLEAU DE BORD ---------- */
 function pmDash(){
-  var val=PMX.owned.reduce(function(a,r){return a+(Number(r.owned_value_eur!=null?r.owned_value_eur:r.raw_market_eur)||0);},0);
+  var val=PMX.owned.reduce(function(a,r){return a+(Number(pmCur(r))||0);},0);
   var splusOwn=PMX.owned.filter(function(r){return r.tier==='S+';}).length;
   var grailsOwn=PMX.owned.filter(function(r){return r.premium_family==='Serial'||r.premium_family==='Flagship';}).length;
   var jpPrem=PMX.owned.filter(function(r){return r.language==='JP';}).length;
   var prog=PMX.universe.length?Math.round(PMX.owned.length/PMX.universe.length*100):0;
   var kpis='<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:6px 0 4px">'
     +pmKpi(PMX.owned.length+' <span style="color:#6a717c;font-size:14px">/ '+PMX.universe.length+'</span>','Premium possédées','Progression '+prog+' %')
-    +pmKpi(Math.round(val).toLocaleString('fr-FR')+' €','Valeur premium connue','cert PSA + marché RAW')
+    +pmKpi(Math.round(val).toLocaleString('fr-FR')+' €','Valeur premium connue','prix courant Price Truth (cert PSA pour les gradées)')
     +pmKpi(grailsOwn,'Grails possédés','Serial + Flagship')
     +pmKpi(splusOwn,'S+ possédées','tier prestige max')
     +pmKpi(jpPrem,'JP Premium','cœur du marché')
@@ -5938,7 +5994,7 @@ function pmGrails(){
       +'<div style="flex:1;min-width:0">'
         +'<div style="display:flex;justify-content:space-between;gap:8px;align-items:baseline">'
           +'<b style="color:#f0ece2">'+esc(r.card_number)+'</b>'
-          +'<span style="color:#e6c877;font-weight:700;font-size:13px">'+pmEur(r.raw_market_eur)+'</span></div>'
+          +'<span style="color:#e6c877;font-weight:700;font-size:13px">'+pmEur(pmCur(r))+'</span></div>'
         +'<div style="color:#c9cdd4;font-size:12px;margin:1px 0">'+esc(r.character)+'</div>'
         +'<div style="color:#8a909a;font-size:11px">'+pmDisamb(r)+'</div>'
         +'<div style="display:flex;gap:6px;align-items:center;margin-top:5px;flex-wrap:wrap">'
@@ -5988,12 +6044,12 @@ function pmColl(){
     if(PMX.colLang && r.language!==PMX.colLang) return false;
     if(PMX.colTier && r.tier!==PMX.colTier) return false;
     if(PMX.colGrade && pmGradeKind(r)!==PMX.colGrade) return false;
-    if(PMX.colPrice==='priced' && r.raw_market_eur==null && r.owned_value_eur==null) return false;
-    if(PMX.colPrice==='review' && !(r.raw_market_eur==null && r.owned_value_eur==null)) return false;
+    if(PMX.colPrice==='priced' && pmCur(r)==null) return false;
+    if(PMX.colPrice==='review' && pmCur(r)!=null) return false;
     if(q){ var hay=((r.card_number||'')+' '+(r.character||'')+' '+(r.variant_label||'')+' '+(r.premium_family||'')).toLowerCase(); if(hay.indexOf(q)<0) return false; }
     return true;
   });
-  var val=function(r){ return Number(r.owned_value_eur!=null?r.owned_value_eur:r.raw_market_eur)||0; };
+  var val=function(r){ return Number(pmCur(r))||0; };
   rows.sort(function(x,y){
     if(PMX.colSort==='val') return val(y)-val(x);
     if(PMX.colSort==='score') return (y.premium_score-x.premium_score)||(val(y)-val(x));
@@ -6024,7 +6080,7 @@ function pmColl(){
       +'<td>'+esc(r.premium_family||'')+'</td>'
       +'<td>'+pmTier(r.tier)+'</td>'
       +'<td>'+(r.owned_grade?'<span style="color:#3fb98a">'+esc(pmGradeTxt(r))+'</span>':'<span style="color:#9aa0aa">RAW</span>')+'</td>'
-      +'<td style="text-align:right">'+pmEur(r.owned_value_eur!=null?r.owned_value_eur:r.raw_market_eur)+'</td>'
+      +'<td style="text-align:right">'+pmEur(pmCur(r))+'</td>'
       +'<td style="color:#6a717c;font-size:11px">'+esc(r.acquired_date||'')+'</td>'
       +'</tr>';
   }).join('');
@@ -6041,7 +6097,7 @@ function pmWatch(){
              ['DATA_REVIEW','DATA REVIEW','#c98a3f','données insuffisantes']];
   var out=order.map(function(g){
     var rows=PMX.watch.filter(function(r){return r.watch_type===g[0];})
-      .sort(function(x,y){return (Number(y.raw_market_eur)||0)-(Number(x.raw_market_eur)||0);});
+      .sort(function(x,y){return (Number(pmCur(y))||0)-(Number(pmCur(x))||0);});
     if(!rows.length) return '';
     var body=rows.slice(0,40).map(function(r){
       return '<tr>'
@@ -6049,7 +6105,7 @@ function pmWatch(){
         +'<td><b>'+esc(r.card_number)+'</b><div style="color:#8a909a;font-size:11px">'+esc(r.character)+'</div></td>'
         +'<td>'+esc(r.variant_label||'')+'</td>'
         +'<td>'+esc(r.language||'')+'</td>'
-        +'<td style="text-align:right">'+pmEur(r.raw_market_eur)+'</td>'
+        +'<td style="text-align:right">'+pmEur(pmCur(r))+'</td>'
         +'<td>'+(r.owned_grade?esc(pmGradeTxt(r)):'RAW')+'</td>'
         +'<td style="color:#9aa0aa;font-size:11px">'+esc(r.watch_reason||'')+'</td>'
         +'</tr>';
@@ -6579,7 +6635,7 @@ const Fake = (function(){
   function loadNew(){ var p='select=card_number,character,variant_label,language,region,premium_family,premium_score,raw_market_eur,image_url,tier,discovered,status&status=eq.NEW%20MISSING&premium_score=gte.55&order=discovered.desc.nullsfirst,premium_score.desc&limit=60';
     if(IST.new.fam!=='all') p+='&premium_family=eq.'+encodeURIComponent(IST.new.fam);
     var tok=_seq;
-    iqc('app_intel_new_rare',p,tok,function(d){ var t=document.getElementById('intList'); if(!t)return;
+    iqc('app_intel_new_rare_v2',p,tok,function(d){ var t=document.getElementById('intList'); if(!t)return;
       if(!d.length){ t.innerHTML='<div class="empty">Aucune carte pour ce filtre.</div>'; return; }
       if(_vmode==='list'){ t.innerHTML='<div style="display:flex;flex-direction:column;gap:7px">'+d.map(function(o){
           o.b=esc(o.character||'')+(o.region&&o.region!=='-'?' · '+esc(o.region):'')+(o.tier?' · '+o.tier:'');
@@ -6600,7 +6656,7 @@ const Fake = (function(){
     if(IST.opp.f==='jp') p+='&jp_priority=is.true';
     if(IST.opp.f==='gap') p+='&gap_completer=is.true';
     var tok=_seq;
-    iqc('app_intel_opportunities',p,tok,function(d){ var t=document.getElementById('intList'); if(!t)return;
+    iqc('app_intel_opportunities_v2',p,tok,function(d){ var t=document.getElementById('intList'); if(!t)return;
       if(!d.length){ t.innerHTML='<div class="empty">Aucune carte.</div>'; return; }
       if(_vmode==='list'){ t.innerHTML='<div style="display:flex;flex-direction:column;gap:7px">'+d.map(function(o){
           var bs=(o.buy_score_adj!=null?o.buy_score_adj:o.buy_score);
@@ -6754,7 +6810,7 @@ const Fake = (function(){
     else if(BUY.flt==='b_lt100') p+='&disp_price=lt.100';
     else if(BUY.flt==='b_100_300') p+='&disp_price=gte.100&disp_price=lte.300';
     else if(BUY.flt==='b_gt300') p+='&disp_price=gt.300';
-    q('app_buy_hub',p).then(function(d){ var t=document.getElementById('b4buyList'); if(!t)return;
+    q('app_buy_hub_v2',p).then(function(d){ var t=document.getElementById('b4buyList'); if(!t)return;
       if(!d.length){ t.innerHTML='<div class="empty" style="padding:20px;text-align:center;color:var(--muted)">Aucune carte pour ce filtre.</div>'; return; }
       if(BUY.vmode==='list'){ t.innerHTML='<div style="display:flex;flex-direction:column;gap:7px">'+d.map(buyRow).join('')+'</div>'; }
       else { t.innerHTML='<div class="grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px">'+d.map(buyCard).join('')+'</div>'; }
@@ -6774,7 +6830,7 @@ const Fake = (function(){
     var box=document.getElementById('b4home');
     Promise.allSettled([
       q('app_intel_movements','select=card_number,character,variant_label,language,now_eur,pct_30d,price_basis,image_url&now_eur=gte.40&pct_30d=not.is.null&order=pct_30d.desc&limit=6'),
-      q('app_buy_hub','select=card_number,character,variant_label,language,region,premium_family,tier,image_url,disp_price,disp_basis,disp_confidence,disp_status,disp_captured_at,disp_var_30d,buy_score_adj,jp_priority,is_grail,gap_completer&jp_priority=is.true&order=buy_score_adj.desc.nullslast&limit=6'),
+      q('app_buy_hub_v2','select=card_number,character,variant_label,language,region,premium_family,tier,image_url,disp_price,disp_basis,disp_confidence,disp_status,disp_captured_at,disp_var_30d,buy_score_adj,jp_priority,is_grail,gap_completer&jp_priority=is.true&order=buy_score_adj.desc.nullslast&limit=6'),
       q('app_value_snapshot','select=day,total_eur,cards_eur,products_eur&order=day.desc&limit=2'),
       q('app_ops_health','select=key,value,detail&category=eq.backlog')
     ]).then(function(res){
