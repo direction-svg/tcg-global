@@ -1408,26 +1408,28 @@ function mkStrict(c){ const v=c[MKT_FIELD[MKT]]; return (v==null)?null:Number(v)
    mkEst/val alimentent grille + total + tris + accueil + portefeuille + premium. Une seule source.
    Exceptions AUTORISÉES à différer : carte gradée (cote certifiée unique). Tout le reste converge.
    Non fiable / absent / en cours ⇒ 0 dans les agrégats et « à vérifier » à l'affichage (JAMAIS l'ancien fallback marché). */
-function ptCur(c){ // objet Price Truth de l'impression, ou undefined
-  return (c&&c.printing_id)?PTW[c.printing_id]:undefined;
+/* b131 : le prix courant canonique arrive DIRECTEMENT avec chaque ligne (app_collection_v2.disp_price),
+   joint côté serveur par printing_id exact. Plus AUCUNE requête in.(...) groupée fragile côté front. */
+function dispReliable(c){
+  return !!(c && c.disp_price!=null
+    && c.disp_status!=='PRICE_A_VERIFIER' && c.disp_status!=='PRICE_REVIEW'
+    && c.disp_confidence!=='REVIEW');
 }
 function mkEst(c){
   if(c&&c.is_graded){ return c.market_value_eur==null?0:Number(c.market_value_eur); } // gradée = cote certifiée (autorisée à différer)
-  var o=ptCur(c);
-  if(ptwReliable(o)) return Number(o.display_price);   // Price Truth canonique
-  return 0;                                            // review/absent/loading/error ⇒ 0 (agrégats)
+  if(dispReliable(c)) return Number(c.disp_price);     // Price Truth canonique (fournie avec la ligne)
+  return 0;                                            // review/absent ⇒ 0 (agrégats)
 }
 const val=c=> mkEst(c);   // toutes les listes/totaux suivent le prix courant canonique (Price Truth)
 /* Affichage HTML d'une valeur courante (grille/liste/fiche) — cohérent avec mkEst. */
 function valHtml(c){
   if(c&&c.is_graded) return eur(c.market_value_eur==null?0:Number(c.market_value_eur));
-  var o=ptCur(c);
-  if(o===undefined||o==='LOADING') return '<span style="opacity:.45">…</span>';
-  if(ptwReliable(o)) return eur(Number(o.display_price));
+  if(dispReliable(c)) return eur(Number(c.disp_price));
+  if(c && c.disp_price===undefined && !DATALOADED) return '<span style="opacity:.45">…</span>'; // cache pré-schéma
   return '<span style="color:#d97706;font-weight:800" title="Price Truth indisponible ou en revue">à vérifier</span>';
 }
 /* Un item compte-t-il dans un total fiable ? (pour compter les « à vérifier ») */
-function valPending(c){ if(c&&c.is_graded) return false; var o=ptCur(c); return !ptwReliable(o); }
+function valPending(c){ if(c&&c.is_graded) return false; return !dispReliable(c); }
 // ---------- Fiabilité du prix (selon le marché affiché + profondeur d'offres) ----------
 function priceConf(c){
   if(!c) return null;
@@ -1591,16 +1593,8 @@ async function refreshItemMarket(item){
   }catch(e){}
 }
 
-const COLL_CACHE_KEY='bounty_coll_cache_v1';
+const COLL_CACHE_KEY='bounty_coll_cache_v2pt'; // v2pt : cache inclut disp_price (Price Truth par ligne)
 function saveCollCache(){ try{ if(Array.isArray(DATA)&&DATA.length) localStorage.setItem(COLL_CACHE_KEY, JSON.stringify(DATA)); }catch(e){} }
-/* b131 : charge Price Truth (par printing_id exact) pour la collection, puis re-render la surface active. */
-async function loadPriceTruth(){
-  if(!Array.isArray(DATA)||!DATA.length) return;
-  var pids=DATA.filter(function(c){return c && c.printing_id && !c.is_graded;}).map(function(c){return c.printing_id;});
-  await ptwGet(pids);
-  if(state.mode==="accueil"){ renderHome(); }
-  else if(state.mode==="collection"||state.mode==="catalog"){ render(); }
-}
 async function load(){
   // 0) FAÇADE : afficher immédiatement le dernier état connu (cache local), le temps que le frais arrive.
   //    Évite l'écran vide / l'attente quand les vues serveur sont lentes.
@@ -1618,7 +1612,7 @@ async function load(){
   // 1) Fetch frais en arrière-plan
   let all=[],from=0,step=1000;
   while(true){
-    const r=await fetch(SB+"/rest/v1/app_collection?select=item_id,printing_id,card_number,card_name,card_type,category,color,rarity,language,is_graded,grading_company,grade,cert_number,quantity,market_value_eur,seed_value_eur,live_value_eur,psa_estimate_eur,population,pop_higher,price_source,price_asof,image_url,set_code,set_name,variant,variant_label,origin,art_suffix,reverify,img_locked,acquired_from,acquired_date,acquired_price&order=market_value_eur.desc.nullslast&limit="+step+"&offset="+from,{headers:{apikey:ANON,Authorization:"Bearer "+ANON}});
+    const r=await fetch(SB+"/rest/v1/app_collection_v2?select=item_id,printing_id,card_number,card_name,card_type,category,color,rarity,language,is_graded,grading_company,grade,cert_number,quantity,market_value_eur,seed_value_eur,live_value_eur,psa_estimate_eur,population,pop_higher,price_source,price_asof,image_url,set_code,set_name,variant,variant_label,origin,art_suffix,reverify,img_locked,acquired_from,acquired_date,acquired_price,disp_price,disp_basis,disp_confidence,disp_status,disp_captured_at&order=disp_price.desc.nullslast&limit="+step+"&offset="+from,{headers:{apikey:ANON,Authorization:"Bearer "+ANON}});
     if(!r.ok){ if(DATALOADED) return; document.getElementById("stage").innerHTML='<div class="empty">Erreur de chargement ('+r.status+').</div>';return;}
     const b=await r.json(); if(!Array.isArray(b)){ if(DATALOADED) return; break; } all=all.concat(b); if(b.length<step)break; from+=step;
   }
@@ -1628,9 +1622,7 @@ async function load(){
   if(state.mode==="accueil"){ renderHome(); }
   else { render(); if(state.mode==="collection") loadBriefing(); }
   saveCollCache();
-  // 2bis) PRIX COURANT CANONIQUE : charger Price Truth pour TOUTES les impressions possédées,
-  //       puis re-render. Grille + total + tris + accueil + portefeuille convergent d'un coup.
-  try{ await loadPriceTruth(); }catch(e){}
+  // (Prix courant canonique déjà présent dans chaque ligne via app_collection_v2.disp_price — aucun chargement groupé.)
   // 3) Enrichissements non bloquants (verify / images PriceCharting / valeurs marché)
   try{ await loadVerify(); }catch(e){}
   try{ await loadPending(); }catch(e){}
@@ -3186,9 +3178,9 @@ async function grOpenCard(itemId){
   let c=(Array.isArray(DATA)?DATA.find(x=>String(x.item_id)===String(itemId)):null);
   if(!c){
     try{
-      const sel='item_id,printing_id,card_number,card_name,card_type,category,color,rarity,language,is_graded,grading_company,grade,cert_number,quantity,market_value_eur,seed_value_eur,live_value_eur,psa_estimate_eur,population,pop_higher,price_source,price_asof,image_url,set_code,set_name,variant,variant_label,origin,art_suffix,img_locked';
+      const sel='item_id,printing_id,card_number,card_name,card_type,category,color,rarity,language,is_graded,grading_company,grade,cert_number,quantity,market_value_eur,seed_value_eur,live_value_eur,psa_estimate_eur,population,pop_higher,price_source,price_asof,image_url,set_code,set_name,variant,variant_label,origin,art_suffix,img_locked,disp_price,disp_basis,disp_confidence,disp_status,disp_captured_at';
       const [rc,rm]=await Promise.all([
-        fetch(SB+'/rest/v1/app_collection?item_id=eq.'+encodeURIComponent(itemId)+'&select='+sel+'&limit=1',{headers:{apikey:ANON,Authorization:'Bearer '+ANON}}).then(r=>r.json()),
+        fetch(SB+'/rest/v1/app_collection_v2?item_id=eq.'+encodeURIComponent(itemId)+'&select='+sel+'&limit=1',{headers:{apikey:ANON,Authorization:'Bearer '+ANON}}).then(r=>r.json()),
         fetch(SB+'/rest/v1/app_collection_market?item_id=eq.'+encodeURIComponent(itemId)+'&select=item_id,jp_eur,eu_eur,us_eur,eu_offres,jp_live,eu_live,us_live',{headers:{apikey:ANON,Authorization:'Bearer '+ANON}}).then(r=>r.json())
       ]);
       c=(Array.isArray(rc)&&rc[0])?rc[0]:null; const m=(Array.isArray(rm)&&rm[0])?rm[0]:null;
@@ -4131,7 +4123,7 @@ async function homeBriefing(){
   }catch(e){ box.innerHTML='<div class="txt" style="color:var(--muted);font-size:13px">Erreur, réessaie.</div><button class="hbriefbtn" onclick="homeBriefing()">Réessayer</button>'; }
 }
 document.getElementById('modeSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMode(b.dataset.m);});
-const APP_VERSION='Version b131 · 09/09 — Price Truth partout + scores/reco v2 (premium · conviction · buy hub) · candidate';
+const APP_VERSION='Version b131 · 09/09 — Price Truth partout (prix par ligne, sans lot in()) · candidate';
 { const nv=document.getElementById('navVersion'); if(nv) nv.textContent=APP_VERSION; }
 document.getElementById('mktSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMarket(b.dataset.k);});
 const CATARRS=["catColors","catCats","catRarities","catTreats","catProvs","catSets"];
@@ -5232,7 +5224,7 @@ async function chooseVariant(pid){
   const item=detailCard.item_id;
   try{
     await fetch(SB+'/rest/v1/rpc/set_owned_printing',{method:"POST",headers:{apikey:ANON,Authorization:"Bearer "+ANON,"Content-Type":"application/json"},body:JSON.stringify({p_item:item,p_printing_id:pid})});
-    const r=await fetch(SB+'/rest/v1/app_collection?item_id=eq.'+encodeURIComponent(item)+'&select=*',{headers:{apikey:ANON,Authorization:"Bearer "+ANON}});
+    const r=await fetch(SB+'/rest/v1/app_collection_v2?item_id=eq.'+encodeURIComponent(item)+'&select=*',{headers:{apikey:ANON,Authorization:"Bearer "+ANON}});
     const rows=await r.json();
     if(!detailCard || detailCard.item_id!==item) return;
     if(Array.isArray(rows)&&rows[0]){ Object.assign(detailCard,rows[0]); const d=findCard(item); if(d) Object.assign(d,rows[0]);
@@ -5920,17 +5912,14 @@ async function pmLoad(){
   PMX.grails=await pmFetch('app_premium_grails_v2','select=*&order=rank.asc&limit=200');
   PMX.reco=await pmFetch('app_premium_reco_v2','select=*&order=rank.asc&limit=400');
   PMX.watch=await pmFetch('app_premium_watch_v2','select=*');
-  // b131 : charge Price Truth pour toutes les impressions premium ⇒ valeur affichée = prix courant canonique.
-  try{ await ptwGet([].concat(PMX.universe,PMX.grails).map(function(r){return r&&r.printing_id;}).filter(Boolean)); }catch(e){}
   PMX.loaded=true;
 }
-/* b131 : valeur courante CANONIQUE d'une carte premium = Price Truth (display_price) par printing_id exact.
-   Gradée (owned_grade) = cote certifiée unique (autorisée à différer). Sinon PT fiable, ou null ⇒ « PRICE REVIEW ».
-   On n'utilise PLUS raw_market_eur/owned_value_eur RAW pour la valeur courante (divergeait de la Price Truth). */
+/* b131 : valeur courante CANONIQUE d'une carte premium = Price Truth, fournie DIRECTEMENT par les vues *_v2
+   (raw_market_eur = display_price canonique, NULL si REVIEW/ABSENT). Gradée (owned_grade) = cote certifiée.
+   Aucune requête in.(...) groupée : la valeur est déjà dans la ligne. */
 function pmCur(r){
   if(r && r.owned_grade){ return r.owned_value_eur!=null?Number(r.owned_value_eur):null; } // certifiée
-  var o=(r&&r.printing_id)?PTW[r.printing_id]:undefined;
-  return ptwReliable(o)?Number(o.display_price):null;
+  return (r && r.raw_market_eur!=null)?Number(r.raw_market_eur):null; // PT canonique (null ⇒ PRICE REVIEW)
 }
 
 /* ---------- helpers budget ---------- */
