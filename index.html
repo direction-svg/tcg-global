@@ -4152,7 +4152,7 @@ async function homeBriefing(){
   }catch(e){ box.innerHTML='<div class="txt" style="color:var(--muted);font-size:13px">Erreur, réessaie.</div><button class="hbriefbtn" onclick="homeBriefing()">Réessayer</button>'; }
 }
 document.getElementById('modeSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMode(b.dataset.m);});
-const APP_VERSION='Version b135.1 · 09/09 — sélecteur de collection en haut (🏴‍☠️ OP ⇆ 🍥 Naruto) + cockpit ✅ À valider (gros boutons) · valeur gradée stricte + PSA10 marché';
+const APP_VERSION='Version b136 · 10/09 — fiche Naruto cliquable (cote, achats, saisie d\'achat comme One Piece, compté à part) · Yankees CP-001 enregistrée · sélecteur OP ⇆ Naruto + cockpit ✅ À valider';
 { const nv=document.getElementById('navVersion'); if(nv) nv.textContent=APP_VERSION; }
 document.getElementById('mktSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMarket(b.dataset.k);});
 const CATARRS=["catColors","catCats","catRarities","catTreats","catProvs","catSets"];
@@ -6861,8 +6861,9 @@ const Fake = (function(){
   }
 
   /* ============ 🍥 NARUTO (jeu Bandai) — lit app_games_catalog, isolé de One Piece ============ */
+  var NARUTO_CARDS={};
   function narutoCard(c){
-    return '<div style="background:var(--panel);border:1px solid var(--line);border-radius:12px;overflow:hidden;display:flex;flex-direction:column">'+
+    return '<div onclick="narutoOpen(\''+E(c.printing_id)+'\')" style="background:var(--panel);border:1px solid var(--line);border-radius:12px;overflow:hidden;display:flex;flex-direction:column;cursor:pointer" onmouseover="this.style.borderColor=\'var(--accent)\'" onmouseout="this.style.borderColor=\'var(--line)\'">'+
       thumb(c.image_url)+
       '<div style="padding:8px 9px 10px;display:flex;flex-direction:column;gap:3px;flex:1">'+
         '<div style="font:700 11px/1 ui-monospace,monospace;color:var(--muted)">'+E(c.card_number||'')+(c.owned?' · <span style="color:#059669">possédée</span>':'')+'</div>'+
@@ -6873,13 +6874,100 @@ const Fake = (function(){
   }
   function renderNaruto(){
     var s=stage(); if(!s)return; s.className='';
-    s.innerHTML='<div style="background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:11px 13px;margin-bottom:12px"><div style="font-weight:900;font-size:15px">🍥 Naruto Card Game <span style="font-size:11px;color:var(--muted);font-weight:700">· Bandai</span></div><div style="font-size:12px;color:var(--muted);margin-top:4px">Le jeu officiel Bandai démarre : seules les promos existent à date (sortie complète 2027). Même moteur que One Piece — les cotes marché arriveront au fil des sorties.</div></div><div id="narutoList"><div class="loading" style="padding:20px;color:var(--muted)">…</div></div>';
+    s.innerHTML='<div style="background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:11px 13px;margin-bottom:12px"><div style="font-weight:900;font-size:15px">🍥 Naruto Card Game <span style="font-size:11px;color:var(--muted);font-weight:700">· Bandai</span></div><div style="font-size:12px;color:var(--muted);margin-top:4px">Le jeu officiel Bandai démarre : seules les promos existent à date (sortie complète 2027). Touche une carte pour l\'ouvrir : cote, achats, saisie d\'achat — comme One Piece, mais compté à part.</div></div><div id="narutoList"><div class="loading" style="padding:20px;color:var(--muted)">…</div></div>';
     q('app_games_catalog','select=card_number,name,image_url,variant,variant_label,rarity,set_code,set_name,game,printing_id,owned,price_eur&game=eq.NARUTO&order=variant_label').then(function(d){
       var t=document.getElementById('narutoList'); if(!t)return;
+      NARUTO_CARDS={}; d.forEach(function(c){ NARUTO_CARDS[c.printing_id]=c; });
       if(!d.length){ t.innerHTML='<div style="padding:20px;text-align:center;color:var(--muted)">Aucune carte Naruto pour l\'instant.</div>'; return; }
       t.innerHTML='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px">'+d.map(narutoCard).join('')+'</div>';
     }).catch(function(e){ var t=document.getElementById('narutoList'); if(t)t.innerHTML='<div style="padding:20px;color:#dc2626">Erreur : '+E(e.message)+'</div>'; });
   }
+  /* ---- Fiche Naruto (modale) : image, cote, achats, saisie d'achat ---- */
+  window.narutoClose=function(){ var m=document.getElementById('narutoModal'); if(m) m.remove(); };
+  function narutoRecvBadge(r){ var ok=(r==='Oui'); return '<span style="font:800 10px system-ui;padding:1px 7px;border-radius:6px;'+(ok?'background:#dcfce7;color:#059669':'background:#fef3c7;color:#b45309')+'">'+(ok?'Reçue':'En route')+'</span>'; }
+  function narutoPurRow(p){
+    var line1=E(p.purchase_date||'')+' · '+E(p.seller||'?')+(p.platform?(' · '+E(p.platform)):'');
+    var paid=(p.amount_eur!=null?eur(p.amount_eur):'—');
+    var card=(p.subtotal_eur!=null?(' · carte '+eur(p.subtotal_eur)):'');
+    return '<div style="border:1px solid var(--line);border-radius:9px;padding:8px 10px;margin-top:7px;background:var(--bg)">'+
+      '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><span style="font-size:11.5px;color:var(--muted)">'+line1+'</span>'+narutoRecvBadge(p.received)+'</div>'+
+      '<div style="font:800 13px ui-monospace,monospace;margin-top:3px">payé '+paid+'<span style="font-weight:600;color:var(--muted)">'+card+'</span></div>'+
+      (p.reference?('<div style="font-size:10.5px;color:var(--muted);margin-top:2px">'+E(p.reference)+'</div>'):'')+
+    '</div>';
+  }
+  window.narutoOpen=function(pid){
+    var c=NARUTO_CARDS[pid]; if(!c) return;
+    narutoClose();
+    var wrap=document.createElement('div'); wrap.id='narutoModal';
+    wrap.setAttribute('style','position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.55);display:flex;align-items:flex-start;justify-content:center;overflow:auto;padding:24px 12px');
+    wrap.onclick=function(e){ if(e.target===wrap) narutoClose(); };
+    var priceHtml=(c.price_eur!=null)?('<span style="font:900 18px ui-monospace,monospace">'+eur(c.price_eur)+'</span> <span style="font-size:11px;color:var(--muted)">cote marché</span>'):'<span style="font:800 11px ui-monospace,monospace;color:#d97706;border:1px solid #d97706;border-radius:6px;padding:2px 8px">À CHIFFRER</span>';
+    wrap.innerHTML='<div style="background:var(--panel);border:1px solid var(--line);border-radius:16px;max-width:440px;width:100%;overflow:hidden" onclick="event.stopPropagation()">'+
+      '<div style="display:flex;gap:12px;padding:14px 14px 10px;align-items:flex-start">'+
+        '<div style="width:96px;flex:none">'+thumb(c.image_url,'96px','134px')+'</div>'+
+        '<div style="flex:1;min-width:0">'+
+          '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px"><div style="font:700 11px ui-monospace,monospace;color:var(--muted)">'+E(c.card_number||'')+'</div><button onclick="narutoClose()" style="border:none;background:var(--bg);border-radius:8px;width:28px;height:28px;cursor:pointer;font-size:15px;color:var(--muted);flex:none">✕</button></div>'+
+          '<div style="font-weight:900;font-size:16px;line-height:1.2;margin-top:2px">'+E(c.name||'')+'</div>'+
+          '<div style="font-size:11.5px;color:var(--muted);margin-top:3px">'+E(c.variant_label||'')+(c.rarity?(' · '+E(c.rarity)):'')+'</div>'+
+          '<div style="font-size:10.5px;color:var(--muted);margin-top:1px">'+E(c.set_name||'')+'</div>'+
+          '<div style="margin-top:8px">'+priceHtml+'</div>'+
+        '</div>'+
+      '</div>'+
+      '<div style="padding:2px 14px 14px">'+
+        '<div style="display:flex;gap:7px;flex-wrap:wrap;margin:2px 0 12px">'+
+          vBtn('✏️ Prix','price',pid,1)+vBtn('🖼️ Image','image',pid)+vBtn('Variante','variant',pid)+
+          '<button onclick="narutoAchatForm(\''+E(pid)+'\')" style="font:800 12px system-ui;padding:8px 13px;border-radius:9px;cursor:pointer;background:#059669;color:#fff;border:1px solid #059669">➕ Saisir un achat</button>'+
+        '</div>'+
+        '<div id="narutoAchatBox"></div>'+
+        '<div style="font-weight:900;font-size:13px;margin:2px 2px 0">Achats</div>'+
+        '<div id="narutoPurs"><div style="color:var(--muted);font-size:12px;padding:6px 2px">…</div></div>'+
+      '</div>'+
+    '</div>';
+    document.body.appendChild(wrap);
+    narutoLoadPurs(pid);
+  };
+  function narutoLoadPurs(pid){
+    q('app_purchases','select=id,purchase_date,seller,platform,amount_eur,subtotal_eur,received,reference&printing_id=eq.'+encodeURIComponent(pid)+'&order=purchase_date.desc').then(function(rows){
+      var b=document.getElementById('narutoPurs'); if(!b)return;
+      if(!rows.length){ b.innerHTML='<div style="color:var(--muted);font-size:12px;padding:6px 2px">Aucun achat enregistré pour cette carte.</div>'; return; }
+      b.innerHTML=rows.map(narutoPurRow).join('');
+    }).catch(function(e){ var b=document.getElementById('narutoPurs'); if(b)b.innerHTML='<div style="color:#dc2626;font-size:12px;padding:6px 2px">Erreur : '+E(e.message)+'</div>'; });
+  }
+  window.narutoAchatForm=function(pid){
+    var box=document.getElementById('narutoAchatBox'); if(!box)return;
+    if(box.getAttribute('data-open')==='1'){ box.innerHTML=''; box.setAttribute('data-open','0'); return; }
+    box.setAttribute('data-open','1');
+    var today=new Date().toISOString().slice(0,10);
+    var inp='width:100%;box-sizing:border-box;padding:7px 9px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);font-size:13px';
+    var lab='font-size:10.5px;color:var(--muted);font-weight:700;margin:0 0 2px';
+    box.innerHTML='<div style="border:1px solid var(--line);border-radius:11px;padding:11px;margin-bottom:12px;background:var(--bg)">'+
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">'+
+        '<div><div style="'+lab+'">Date</div><input id="naDate" type="date" value="'+today+'" style="'+inp+'"></div>'+
+        '<div><div style="'+lab+'">Devise</div><select id="naCur" style="'+inp+'"><option>USD</option><option>EUR</option><option>JPY</option><option>GBP</option></select></div>'+
+        '<div><div style="'+lab+'">Total payé (livraison incl.)</div><input id="naTotal" type="number" step="0.01" placeholder="355.52" style="'+inp+'"></div>'+
+        '<div><div style="'+lab+'">Prix carte seule (option.)</div><input id="naSub" type="number" step="0.01" placeholder="275" style="'+inp+'"></div>'+
+        '<div><div style="'+lab+'">Vendeur</div><input id="naSeller" placeholder="handle" style="'+inp+'"></div>'+
+        '<div><div style="'+lab+'">Plateforme</div><input id="naPlat" placeholder="ebay" style="'+inp+'"></div>'+
+        '<div><div style="'+lab+'">Reçue ?</div><select id="naRecv" style="'+inp+'"><option>Non</option><option>Oui</option></select></div>'+
+      '</div>'+
+      '<button onclick="narutoAchatSave(\''+E(pid)+'\')" style="width:100%;margin-top:10px;font:800 13px system-ui;padding:9px;border-radius:9px;cursor:pointer;background:var(--accent);color:#fff;border:1px solid var(--accent)">Enregistrer l\'achat</button>'+
+    '</div>';
+  };
+  window.narutoAchatSave=function(pid){
+    function val(id){ var e=document.getElementById(id); return e?e.value:''; }
+    var total=parseFloat(String(val('naTotal')).replace(',','.'));
+    if(!(total>0)) return alert('Total payé invalide.');
+    var subS=String(val('naSub')).replace(',','.'); var sub=subS?parseFloat(subS):null;
+    var payload={ printing_id:pid, amount_origin:total, currency:val('naCur')||'USD',
+      purchase_date:val('naDate')||undefined, seller:val('naSeller')||undefined,
+      platform:val('naPlat')||undefined, received:val('naRecv')||'Non' };
+    if(sub!=null && sub>0) payload.subtotal_origin=sub;
+    adminCall('add_purchase',payload,function(){
+      var box=document.getElementById('narutoAchatBox'); if(box){ box.innerHTML=''; box.setAttribute('data-open','0'); }
+      narutoLoadPurs(pid);
+      alert('Achat enregistré ✓');
+    });
+  };
 
   /* ---- Sélecteur de collection (haut de page) : One Piece ⇆ Naruto ---- */
   function markGameSeg(g){ var seg=document.getElementById('gameSeg'); if(!seg)return; Array.prototype.forEach.call(seg.querySelectorAll('[data-game]'),function(bt){ bt.className=(bt.getAttribute('data-game')===g)?'on':''; }); }
