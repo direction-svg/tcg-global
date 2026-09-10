@@ -4152,7 +4152,7 @@ async function homeBriefing(){
   }catch(e){ box.innerHTML='<div class="txt" style="color:var(--muted);font-size:13px">Erreur, réessaie.</div><button class="hbriefbtn" onclick="homeBriefing()">Réessayer</button>'; }
 }
 document.getElementById('modeSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMode(b.dataset.m);});
-const APP_VERSION='Version b136 · 10/09 — Naruto : MÊME fiche que One Piece (image, Tarifs, Détails, 📷 Ma photo) · onglet Collection = achats + saisie d\'achat (compté à part) · photo Yankees CP-001 intégrée · sélecteur OP ⇆ Naruto';
+const APP_VERSION='Version b136 · 10/09 — Naruto : MÊME fiche que One Piece (image, Tarifs, Détails, 📷 Ma photo) · onglet Collection = achats + saisie d\'achat (compté à part) · FIX : photos & variantes choisies tiennent au rechargement (verrou par carte) · sélecteur OP ⇆ Naruto';
 { const nv=document.getElementById('navVersion'); if(nv) nv.textContent=APP_VERSION; }
 document.getElementById('mktSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMarket(b.dataset.k);});
 const CATARRS=["catColors","catCats","catRarities","catTreats","catProvs","catSets"];
@@ -5281,7 +5281,9 @@ async function chooseVariant(pid){
     if(!detailCard || detailCard.item_id!==item) return;
     if(Array.isArray(rows)&&rows[0]){ Object.assign(detailCard,rows[0]); const d=findCard(item); if(d) Object.assign(d,rows[0]);
       const eff=((!detailCard.is_graded&&!detailCard.img_locked)&&PCIMG[detailCard.printing_id])||detailCard.image_url; detailCard.image_url=eff; if(d) d.image_url=eff;
-      const di=document.getElementById("dimg"); if(eff){ di.src=eff; di.style.visibility="visible"; } else { di.style.visibility="hidden"; } }
+      const di=document.getElementById("dimg"); if(eff){ di.src=eff; di.style.visibility="visible"; } else { di.style.visibility="hidden"; }
+      /* b136 : fige l'image de la variante choisie par carte — tient au rechargement */
+      if(eff){ try{ await fetch(SB+'/rest/v1/rpc/set_owned_image',{method:"POST",headers:{apikey:ANON,Authorization:"Bearer "+ANON,"Content-Type":"application/json"},body:JSON.stringify({p_item:item,p_url:eff})}); detailCard.img_locked=true; if(d) d.img_locked=true; }catch(e){} } }
     await refreshItemMarket(item);
     renderDetail(); loadLadder(detailCard); loadPrints(detailCard.card_number); render();
   }catch(e){}
@@ -5291,7 +5293,9 @@ async function chooseArt(suf, imgurl){
   try{
     await fetch(SB+'/rest/v1/rpc/set_owned_art',{method:"POST",headers:{apikey:ANON,Authorization:"Bearer "+ANON,"Content-Type":"application/json"},body:JSON.stringify({p_item:detailCard.item_id,p_suffix:suf})});
     detailCard.art_suffix=suf;
-    if(imgurl){ detailCard.image_url=imgurl; VERIFY.delete(detailCard.item_id); NEWPHOTO.delete(detailCard.item_id); const dv=document.getElementById("dvfy"); if(dv) dv.style.display="none"; const di=document.getElementById("dimg"); di.src=imgurl; di.style.visibility="visible"; const d=findCard(detailCard.item_id); if(d) d.image_url=imgurl; }
+    if(imgurl){ detailCard.image_url=imgurl; VERIFY.delete(detailCard.item_id); NEWPHOTO.delete(detailCard.item_id); const dv=document.getElementById("dvfy"); if(dv) dv.style.display="none"; const di=document.getElementById("dimg"); di.src=imgurl; di.style.visibility="visible"; const d=findCard(detailCard.item_id); if(d) d.image_url=imgurl;
+      /* b136 : fige l'illustration choisie par carte (owned_image_url) — tient au rechargement, même sur gradée */
+      try{ await fetch(SB+'/rest/v1/rpc/set_owned_image',{method:"POST",headers:{apikey:ANON,Authorization:"Bearer "+ANON,"Content-Type":"application/json"},body:JSON.stringify({p_item:detailCard.item_id,p_url:imgurl})}); if(d) d.img_locked=true; detailCard.img_locked=true; }catch(e){} }
     document.querySelectorAll('#dprints .pcard').forEach(x=>x.classList.toggle('sel', x.getAttribute('data-suf')===suf));
     render();
   }catch(e){}
