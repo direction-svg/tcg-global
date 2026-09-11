@@ -985,6 +985,7 @@ body{-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
     <div class="fsec"><h5>&#127942; Tournoi</h5><div class="chipwrap" id="cmEvent"></div></div>
     <div class="fsec"><h5>Tier tournoi</h5><div class="chipwrap" id="cmTier"></div></div>
     <div class="fsec"><h5>R&eacute;gion</h5><div class="chipwrap" id="cmRegion"></div></div>
+    <div class="fsec"><h5>&#10024; Finition</h5><div class="chipwrap" id="cmFinish"></div></div>
     <div class="fsec"><h5>Set / &Eacute;dition</h5><select id="cmSet"><option value="all">Tous les sets</option></select></div>
     <div class="ffoot"><button class="reset" id="cfreset">R&eacute;initialiser</button><button class="apply" id="cfapply">Voir les cartes</button></div>
   </div>
@@ -1332,8 +1333,8 @@ function provenanceFamily(c){
 }
 function variantFamily(c){ return treatmentFamily(c); }   // compat
 // b137 : TOURNOI — familles/tiers structurés (backend event_family, none/na déjà neutralisés en NULL par les vues)
-const EVENT_FAM_LABELS={flagship:"Flagship",championship:"Championship",regional:"Regional",store_championship:"Store Championship",store:"Store",standard_battle:"Standard Battle",sealed_battle:"Sealed Battle",treasure_cup:"Treasure Cup",tournament_pack:"Tournament Pack",release_event:"Release Event",judge:"Judge",anniversary_event:"Anniversary Event"};
-const EVENT_FAM_ORDER=["flagship","championship","regional","store_championship","store","standard_battle","sealed_battle","treasure_cup","tournament_pack","release_event","judge","anniversary_event"];
+const EVENT_FAM_LABELS={flagship:"Flagship",championship:"Championship",regional:"Regional",store_championship:"Store Championship",store:"Store",standard_battle:"Standard Battle",sealed_battle:"Sealed Battle",deck_battle:"Deck Battle",treasure_cup:"Treasure Cup",tournament_pack:"Tournament Pack",release_event:"Release Event",judge:"Judge",anniversary_event:"Anniversary Event"};
+const EVENT_FAM_ORDER=["flagship","championship","regional","store_championship","store","standard_battle","sealed_battle","deck_battle","treasure_cup","tournament_pack","release_event","judge","anniversary_event"];
 const EVENT_TIER_LABELS={winner:"Winner",top4:"Top 4",finalist:"Finalist",participation:"Participation",top8:"Top 8",top16:"Top 16",top32:"Top 32",top64:"Top 64",top_player:"Top Player",third_place:"3rd Place"};
 const EVENT_TIER_ORDER=["winner","top4","top8","top16","top32","top64","finalist","top_player","third_place","participation"];
 function tierLabel(c){ return (c&&c.event_tier)?(EVENT_TIER_LABELS[c.event_tier]||c.event_tier):''; }
@@ -1371,7 +1372,7 @@ function setFamily(code){ const s=String(code||'').toUpperCase().trim(); if(!s) 
   return pre;
 }
 function setFamRank(fam){ const m=String(fam).match(/^([A-Z]+)(\d+)?/); const g=({OP:0,EB:1,PRB:2,ST:3})[m?m[1]:'']; return [(g==null?8:g), m?m[1]:'zz', (m&&m[2])?+m[2]:999]; }
-const DEF={q:"",lang:"all",color:"all",type:"all",prov:"all",event:"all",cat:"all",rarity:"all",character:"all",grade:"all",set:"all",minVal:0,imgf:"all",authf:"all",recvf:"all",pricef:"all",variant:"all",achatPeriod:"all",openRatio:null,openLiquid:false,gapView:"mine",tgtLang:"JP",tgtBudget:0,sort:"val_desc",view:"grid",mode:"accueil",catLang:"all",catQuery:"",catLangs:[],catColors:[],catCats:[],catRarities:[],catTypes:[],catTreats:[],catProvs:[],catEvents:[],catTiers:[],catRegions:[],catSets:[],catSort:"price_desc",catGroup:true,catView:"grid",setLang:"JP",prodLang:"JP"};
+const DEF={q:"",lang:"all",color:"all",type:"all",prov:"all",event:"all",cat:"all",rarity:"all",character:"all",grade:"all",set:"all",minVal:0,imgf:"all",authf:"all",recvf:"all",pricef:"all",variant:"all",achatPeriod:"all",openRatio:null,openLiquid:false,gapView:"mine",tgtLang:"JP",tgtBudget:0,sort:"val_desc",view:"grid",mode:"accueil",catLang:"all",catQuery:"",catLangs:[],catColors:[],catCats:[],catRarities:[],catTypes:[],catTreats:[],catProvs:[],catEvents:[],catTiers:[],catRegions:[],catFinish:[],catSets:[],catSort:"price_desc",catGroup:true,catView:"grid",setLang:"JP",prodLang:"JP"};
 let PROD_VALUE=0;
 // Barre du haut : portefeuille détaillé (total = cartes + scellés), même valeur live que l'accueil
 function portfolioMini(){
@@ -1645,7 +1646,7 @@ async function load(){
   // 1) Fetch frais en arrière-plan
   let all=[],from=0,step=1000;
   while(true){
-    const r=await fetch(SB+"/rest/v1/app_collection_v2?select=item_id,printing_id,card_number,card_name,card_type,category,color,rarity,language,is_graded,grading_company,grade,cert_number,quantity,market_value_eur,seed_value_eur,live_value_eur,psa_estimate_eur,population,pop_higher,price_source,price_asof,image_url,set_code,set_name,variant,variant_label,origin,art_suffix,reverify,img_locked,acquired_from,acquired_date,acquired_price,disp_price,disp_basis,disp_confidence,disp_status,disp_captured_at,disp_var_7d,disp_var_30d,graded_value_eur,graded_source,cert_statut,graded_owned_market,graded_raw,event_family,event_tier,event_circuit,treatment_family_v2,treatment_tags,provenance_family_live,distribution_region,printed_language&order=disp_price.desc.nullslast&limit="+step+"&offset="+from,{headers:{apikey:ANON,Authorization:"Bearer "+ANON}});
+    const r=await fetch(SB+"/rest/v1/app_collection_v2?select=item_id,printing_id,card_number,card_name,card_type,category,color,rarity,language,is_graded,grading_company,grade,cert_number,quantity,market_value_eur,seed_value_eur,live_value_eur,psa_estimate_eur,population,pop_higher,price_source,price_asof,image_url,set_code,set_name,variant,variant_label,origin,art_suffix,reverify,img_locked,acquired_from,acquired_date,acquired_price,disp_price,disp_basis,disp_confidence,disp_status,disp_captured_at,disp_var_7d,disp_var_30d,graded_value_eur,graded_source,cert_statut,graded_owned_market,graded_raw,event_family,event_tier,event_circuit,treatment_family_v2,treatment_tags,provenance_family_live,distribution_region,printed_language,finish_tags,is_errata&order=disp_price.desc.nullslast&limit="+step+"&offset="+from,{headers:{apikey:ANON,Authorization:"Bearer "+ANON}});
     if(!r.ok){ if(DATALOADED) return; document.getElementById("stage").innerHTML='<div class="empty">Erreur de chargement ('+r.status+').</div>';return;}
     const b=await r.json(); if(!Array.isArray(b)){ if(DATALOADED) return; break; } all=all.concat(b); if(b.length<step)break; from+=step;
   }
@@ -3709,7 +3710,7 @@ async function ensureCollLoaded(){
   var all=[],from=0,step=1000;
   try{
     while(true){
-      var r=await fetch(SB+"/rest/v1/app_collection_v2?select=item_id,printing_id,card_number,card_name,card_type,category,color,rarity,language,is_graded,grading_company,grade,cert_number,quantity,market_value_eur,seed_value_eur,live_value_eur,psa_estimate_eur,population,pop_higher,price_source,price_asof,image_url,set_code,set_name,variant,variant_label,origin,art_suffix,reverify,img_locked,acquired_from,acquired_date,acquired_price,disp_price,disp_basis,disp_confidence,disp_status,disp_captured_at,disp_var_7d,disp_var_30d,graded_value_eur,graded_source,cert_statut,graded_owned_market,graded_raw,event_family,event_tier,event_circuit,treatment_family_v2,treatment_tags,provenance_family_live,distribution_region,printed_language&order=disp_price.desc.nullslast&limit="+step+"&offset="+from,{headers:{apikey:ANON,Authorization:"Bearer "+ANON}});
+      var r=await fetch(SB+"/rest/v1/app_collection_v2?select=item_id,printing_id,card_number,card_name,card_type,category,color,rarity,language,is_graded,grading_company,grade,cert_number,quantity,market_value_eur,seed_value_eur,live_value_eur,psa_estimate_eur,population,pop_higher,price_source,price_asof,image_url,set_code,set_name,variant,variant_label,origin,art_suffix,reverify,img_locked,acquired_from,acquired_date,acquired_price,disp_price,disp_basis,disp_confidence,disp_status,disp_captured_at,disp_var_7d,disp_var_30d,graded_value_eur,graded_source,cert_statut,graded_owned_market,graded_raw,event_family,event_tier,event_circuit,treatment_family_v2,treatment_tags,provenance_family_live,distribution_region,printed_language,finish_tags,is_errata&order=disp_price.desc.nullslast&limit="+step+"&offset="+from,{headers:{apikey:ANON,Authorization:"Bearer "+ANON}});
       if(!r.ok) break;
       var b=await r.json(); if(!Array.isArray(b)) break; all=all.concat(b); if(b.length<step) break; from+=step;
     }
@@ -4199,9 +4200,14 @@ document.getElementById('modeSeg').addEventListener('click',e=>{const b=e.target
 const APP_VERSION='Version b139 · 11/09 — Ajout famille tournoi « Sealed Battle » (taxonomie) ; reste UX inchangé';
 { const nv=document.getElementById('navVersion'); if(nv) nv.textContent=APP_VERSION; }
 document.getElementById('mktSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMarket(b.dataset.k);});
-const CATARRS=["catColors","catCats","catRarities","catTreats","catProvs","catEvents","catTiers","catRegions","catSets"];
+const CATARRS=["catColors","catCats","catRarities","catTreats","catProvs","catEvents","catTiers","catRegions","catFinish","catSets"];
+const FINISH_LABELS={parallel:"Parallel",super_parallel:"Super Parallel",full_art:"Full Art",gold:"Gold",silver:"Silver",textured:"Textured",foil:"Foil",jolly:"Jolly",wanted:"Wanted"};
+const FINISH_ORDER=["parallel","super_parallel","full_art","gold","silver","textured","foil","jolly","wanted"];
+function finishChips(c){ var f=c&&c.finish_tags; if(!Array.isArray(f)||!f.length) return ''; var st='display:inline-block;padding:1px 7px;margin:1px 3px 1px 0;border-radius:9px;font-size:11px;font-weight:700;background:rgba(120,120,140,.16);color:var(--muted)'; return f.slice().sort().map(function(t){ return '<span style="'+st+'">'+esc(FINISH_LABELS[t]||t)+'</span>'; }).join(''); }
+function finishRow(c){ var h=finishChips(c); return h?('<div class="s" style="margin-top:3px">✨ '+h+'</div>'):''; }
+function errataBadge(c){ return (c&&c.is_errata)?'<span style="display:inline-block;padding:1px 7px;border-radius:9px;font-size:11px;font-weight:800;background:rgba(220,120,40,.18);color:#c8781e">Errata</span>':''; }
 function toggleCat(key,code){ if(code==="all"){ state[key]=[]; } else { const a=state[key]; state[key]=a.includes(code)?a.filter(x=>x!==code):a.concat([code]); } }
-function catActiveCount(){ return state.catColors.length+state.catCats.length+state.catRarities.length+state.catTreats.length+state.catProvs.length+state.catEvents.length+state.catTiers.length+state.catRegions.length+state.catSets.length; }
+function catActiveCount(){ return state.catColors.length+state.catCats.length+state.catRarities.length+state.catTreats.length+state.catProvs.length+state.catEvents.length+state.catTiers.length+state.catRegions.length+state.catFinish.length+state.catSets.length; }
 // Facettes variantes (traitement + provenance) : familles réellement présentes, avec compteurs.
 // Se remplit tout seul quand une nouvelle variante entre au catalogue.
 let CATFACETS={treat:{},prov:{},set:{},event:{},tier:{},region:{}};
@@ -4255,6 +4261,12 @@ function buildCatFilterModal(){
     // familles présentes hors ordre connu (nouvelles variantes) : on les sort quand même
     Object.keys(counts||{}).forEach(fam=>{ if(order.includes(fam)||!counts[fam]) return; box.appendChild(makeChip((labels[fam]||fam),counts[fam],state[key].includes(fam),()=>{ toggleCat(key,fam); buildCatFilterModal(); syncCatBadge(); fetchCatalog(); })); });
   });
+  // Axe Finition : vocabulaire fixe finish_tags (multi-valeur), filtre serveur par recouvrement (ov).
+  const fbox=document.getElementById("cmFinish");
+  if(fbox){ fbox.innerHTML="";
+    fbox.appendChild(makeChip("Toutes",null,state.catFinish.length===0,()=>{ state.catFinish=[]; buildCatFilterModal(); syncCatBadge(); fetchCatalog(); }));
+    FINISH_ORDER.forEach(t=>{ fbox.appendChild(makeChip(FINISH_LABELS[t],null,state.catFinish.includes(t),()=>{ toggleCat("catFinish",t); buildCatFilterModal(); syncCatBadge(); fetchCatalog(); })); });
+  }
   // Axe Set / Édition en menu déroulant : mêmes familles normalisées que la collection (setFamily), triées par rang.
   const sbox=document.getElementById("cmSet");
   if(sbox){
@@ -4280,12 +4292,12 @@ let CATACC=[]; const CATPAGE=120;
 async function fetchCatalog(append){
   const stage=document.getElementById('stage');
   const term=(state.catQuery||"").replace(/[%*(),]/g," ").trim();
-  const noFilters=!term && !state.catLangs.length && !state.catCats.length && !state.catRarities.length && !state.catTreats.length && !state.catProvs.length && !state.catEvents.length && !state.catTiers.length && !state.catRegions.length && !state.catColors.length && !state.catSets.length;
+  const noFilters=!term && !state.catLangs.length && !state.catCats.length && !state.catRarities.length && !state.catTreats.length && !state.catProvs.length && !state.catEvents.length && !state.catTiers.length && !state.catRegions.length && !(state.catFinish&&state.catFinish.length) && !state.catColors.length && !state.catSets.length;
   if(!append){ state.catOffset=0; CATACC=[]; stage.className=""; stage.innerHTML='<div class="loading">Recherche…</div>'; }
   // b131 : le tri prix suit le PRIX COURANT CANONIQUE (disp_price = Price Truth), pas une cote par marché.
   const mkcol='disp_price';
   const ord=state.catSort==="name"?"name.asc":(state.catSort==="lang"?"language.asc,card_number.asc":(state.catSort==="price_desc"?(mkcol+".desc.nullslast"):(state.catSort==="price_asc"?(mkcol+".asc.nullslast"):"card_number.asc")));
-  let url=SB+"/rest/v1/app_catalog_priced_v2?select=card_number,language,name,image_url,img_verify,owned,variant,variant_label,rarity,set_code,set_name,category,origin,printing_id,price_eur,price_source,jp_eur,eu_eur,us_eur,mk_jp,mk_eu,mk_us,jp_g,jp_gl,us_g,us_gl,disp_jp,disp_us,disp_price,disp_basis,disp_confidence,disp_status,disp_captured_at,disp_var_30d,event_family,event_tier,event_circuit,treatment_family_v2,treatment_tags,provenance_family_live,distribution_region,printed_language&limit="+CATPAGE+"&offset="+(state.catOffset||0)+"&order="+ord;
+  let url=SB+"/rest/v1/app_catalog_priced_v2?select=card_number,language,name,image_url,img_verify,owned,variant,variant_label,rarity,set_code,set_name,category,origin,printing_id,price_eur,price_source,jp_eur,eu_eur,us_eur,mk_jp,mk_eu,mk_us,jp_g,jp_gl,us_g,us_gl,disp_jp,disp_us,disp_price,disp_basis,disp_confidence,disp_status,disp_captured_at,disp_var_30d,event_family,event_tier,event_circuit,treatment_family_v2,treatment_tags,provenance_family_live,distribution_region,printed_language,finish_tags,is_errata&limit="+CATPAGE+"&offset="+(state.catOffset||0)+"&order="+ord;
   // Par défaut on masque les DON SANS VALEUR (bulk), sinon ils monopolisent la 1re page. Mais on
   // laisse remonter les DON à valeur (gold/promo ≥ 20 € sur le marché affiché) : ils apparaissent
   // dans le catalogue et en tête quand on trie par prix. Tous restent accessibles via le filtre « DON!! ».
@@ -4301,6 +4313,7 @@ async function fetchCatalog(append){
   if(state.catEvents.length) url+="&event_family=in.("+state.catEvents.join(",")+")";
   if(state.catTiers.length) url+="&event_tier=in.("+state.catTiers.join(",")+")";
   if(state.catRegions.length) url+="&distribution_region=in.("+state.catRegions.join(",")+")";
+  if(state.catFinish&&state.catFinish.length) url+="&finish_tags=ov.{"+state.catFinish.join(",")+"}";
   if(state.catSets.length) url+="&set_family=in.("+state.catSets.join(",")+")";
   const groups=[];
   if(state.catColors.length) groups.push("or("+state.catColors.map(c=>"color.ilike.*"+c+"*").join(",")+")");
@@ -4540,6 +4553,8 @@ function renderCatDetail(){
       drow("Catégorie", CAT_LABELS[c.category]||c.category)+
       drow("Set / Édition", esc((c.set_code||"")+(c.set_name?(" — "+c.set_name):"")))+
       drow("Langue", (FLAG[c.language]||"")+' '+(LANG_LABELS[c.language]||c.language))+
+      ((Array.isArray(c.finish_tags)&&c.finish_tags.length)?drow("Finition", finishChips(c)):"")+
+      (c.is_errata?drow("Version", '<b>'+errataBadge(c)+'</b>'):"")+
       regionRow(c);
     return;
   }
@@ -5538,6 +5553,8 @@ function renderDetail(){ const c=detailCard; if(!c)return; const body=document.g
       drow("Couleur", (c.color||"").split(";").filter(Boolean).join(" / "))+
       drow("Set / Édition", esc((c.set_code||"")+(c.set_name?(" — "+c.set_name):"")))+
       drow("Langue", (FLAG[c.language]||"")+' '+(LANG_LABELS[c.language]||c.language))+
+      ((Array.isArray(c.finish_tags)&&c.finish_tags.length)?drow("Finition", finishChips(c)):"")+
+      (c.is_errata?drow("Version", '<b>'+errataBadge(c)+'</b>'):"")+
       regionRow(c);
     return;
   }
