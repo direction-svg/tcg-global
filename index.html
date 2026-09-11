@@ -4221,6 +4221,46 @@ async function loadCatFacets(){
     if(!document.getElementById('cfmodal').classList.contains('hidden')) buildCatFilterModal();
   }catch(e){}
 }
+// b144 : compteurs Tier CONTEXTUELS. Quand une (ou plusieurs) famille tournoi est
+// sélectionnée, les chips « Tier » sont recalculés depuis les données LIVE sur cette
+// population uniquement (AND avec tous les autres filtres actifs, sauf le tier lui-même),
+// au lieu d'afficher les compteurs GLOBAUX toutes familles confondues. Aucun nombre codé
+// en dur : tout vient de app_catalog_priced_v2. Sans famille tournoi → compteurs globaux.
+let CTXTIER=null, CTXTIER_SIG=null, CTXTIER_LOADING=false;
+function ctxTierSig(){ return JSON.stringify([state.catEvents,state.catLangs,state.catCats,state.catRarities,state.catTreats,state.catProvs,state.catRegions,state.catFinish,state.catSets,state.catColors,(state.catQuery||"").trim()]); }
+async function ensureCtxTier(){
+  // Pas de famille tournoi sélectionnée → on retombe sur les compteurs globaux (CATFACETS.tier)
+  if(!state.catEvents.length){ if(CTXTIER!==null){ CTXTIER=null; CTXTIER_SIG=null; if(!document.getElementById('cfmodal').classList.contains('hidden')) buildCatFilterModal(); } return; }
+  const sig=ctxTierSig();
+  if(sig===CTXTIER_SIG || CTXTIER_LOADING) return; // déjà à jour, ou requête en vol
+  CTXTIER_LOADING=true;
+  // Même jeu de filtres que fetchCatalog, MAIS sans event_tier (l'axe compté) et sans paging/tri
+  let cls=state.catLangs.filter(x=>x==="JP"||x==="EN"); if(!cls.length) cls=["JP","EN"];
+  let url=SB+"/rest/v1/app_catalog_priced_v2?select=event_tier&limit=10000&language=in.("+cls.join(",")+")";
+  if(state.catCats.length) url+="&category=in.("+state.catCats.join(",")+")";
+  if(state.catRarities.length) url+="&rarity=in.("+state.catRarities.join(",")+")";
+  if(state.catTreats.length) url+="&treatment_effective=in.("+state.catTreats.join(",")+")";
+  if(state.catProvs.length) url+="&provenance_effective=in.("+state.catProvs.join(",")+")";
+  url+="&event_family=in.("+state.catEvents.join(",")+")";
+  if(state.catRegions.length) url+="&distribution_region=in.("+state.catRegions.join(",")+")";
+  if(state.catFinish&&state.catFinish.length) url+="&finish_tags=ov.{"+state.catFinish.join(",")+"}";
+  if(state.catSets.length) url+="&set_family=in.("+state.catSets.join(",")+")";
+  const term=(state.catQuery||"").replace(/[%*(),]/g," ").trim();
+  const groups=[];
+  if(state.catColors.length) groups.push("or("+state.catColors.map(c=>"color.ilike.*"+c+"*").join(",")+")");
+  if(term){ const pat="*"+encodeURIComponent(term)+"*"; groups.push("or(card_number.ilike."+pat+",name.ilike."+pat+")"); }
+  if(groups.length===1) url+="&"+groups[0].replace(/^or\(/,"or=(");
+  else if(groups.length===2) url+="&and=("+groups.join(",")+")";
+  try{
+    const r=await fetch(url,{headers:{apikey:ANON,Authorization:"Bearer "+ANON}});
+    const rows=await r.json();
+    const ct={}; if(Array.isArray(rows)) rows.forEach(x=>{ if(x.event_tier) ct[x.event_tier]=(ct[x.event_tier]||0)+1; });
+    CTXTIER=ct; CTXTIER_SIG=sig;
+  }catch(e){ CTXTIER=null; CTXTIER_SIG=null; }
+  CTXTIER_LOADING=false;
+  if(sig!==ctxTierSig()){ ensureCtxTier(); return; } // les filtres ont bougé pendant la requête
+  if(!document.getElementById('cfmodal').classList.contains('hidden')) buildCatFilterModal();
+}
 function syncCatBadge(){ const n=catActiveCount(); const b=document.getElementById("fbadge"); b.textContent=n; b.style.display=n?"grid":"none"; document.getElementById("filterBtn").classList.toggle("act",!!n); }
 function buildCatLangRow(){
   const row=document.getElementById('catLangRow'); row.innerHTML="";
@@ -4244,6 +4284,10 @@ function buildCatLangRow(){
   row.appendChild(vv);
 }
 function buildCatFilterModal(){
+  ensureCtxTier(); // b144 : (re)calcule les compteurs Tier contextuels si une famille tournoi est active
+  // Source des compteurs Tier : contextuelle (population de la/les famille(s) sélectionnée(s)) si filtre
+  // tournoi actif, sinon globale. CTXTIER peut être momentanément null le temps du chargement.
+  const tierCounts = state.catEvents.length ? (CTXTIER||{}) : CATFACETS.tier;
   const colorOpts=[["all","Toutes"]].concat(COLORS.map(c=>[c,'<span style="width:11px;height:11px;border-radius:50%;background:'+(COLOR_HEX[c]||"#888")+';display:inline-block"></span> '+c]));
   const conf=[["cmColor","catColors",colorOpts],["cmCat","catCats",CATCATS],["cmRarity","catRarities",CATRARS]];
   conf.forEach(([boxId,key,opts])=>{
@@ -4253,7 +4297,7 @@ function buildCatFilterModal(){
   // Axes variantes dynamiques : traitement (artwork) + collection/provenance, mêmes familles que la collection
   const axes=[["cmTreat","catTreats",TREAT_ORDER,TREAT_LABELS,CATFACETS.treat],["cmProv","catProvs",PROV_ORDER,PROV_LABELS,CATFACETS.prov],
               ["cmEvent","catEvents",EVENT_FAM_ORDER,EVENT_FAM_LABELS,CATFACETS.event],
-              ["cmTier","catTiers",EVENT_TIER_ORDER,EVENT_TIER_LABELS,CATFACETS.tier],
+              ["cmTier","catTiers",EVENT_TIER_ORDER,EVENT_TIER_LABELS,tierCounts],
               ["cmRegion","catRegions",Object.keys(CATFACETS.region||{}).sort(),REGION_LABELS,CATFACETS.region]];
   axes.forEach(([boxId,key,order,labels,counts])=>{
     const box=document.getElementById(boxId); if(!box)return; box.innerHTML="";
