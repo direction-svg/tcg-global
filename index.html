@@ -1272,7 +1272,7 @@ function vNice(v){ if(!v) return "Normale"; v=String(v).toLowerCase(); if(VMAP[v
 function isArtVariant(v){ v=String(v||'').toLowerCase(); return v!=='normal' && v!==''; }
 // DEUX axes distincts : le TRAITEMENT (fini/style d'illustration) et la PROVENANCE (produit/collection d'origine).
 // La taxonomie brute (variant + variant_label) mélange les deux (ex. "jolly_roger_prb01" = traitement Jolly Roger, provenance Premium Booster).
-const TREAT_LABELS={normal:"Normale",gold:"Gold",foil:"Foil",parallel:"Parallèle",alt_art:"Alt-Art",manga:"Manga",super_parallel:"Super Parallèle",full_art:"Full Art",jolly_roger:"Jolly Roger",textured:"Textured",sp:"SP",other:"Autre"};
+const TREAT_LABELS={normal:"Normale",gold:"Gold",foil:"Foil",parallel:"Parallèle",alt_art:"Alt-Art",manga:"Manga",super_parallel:"Super Parallèle",full_art:"Full Art",jolly_roger:"Jolly Roger",textured:"Textured",sp:"SP",serial:"Serial",treasure_rare:"Treasure Rare",other:"Autre"};
 const TREAT_ORDER=["normal","gold","foil","parallel","alt_art","manga","super_parallel","full_art","jolly_roger","textured","sp","other"];
 function treatmentFamily(c){
   // b137 : backend treatment_family_v2 PRIORITAIRE ; regex legacy seulement si NULL.
@@ -4201,7 +4201,8 @@ const APP_VERSION='Version b139 · 11/09 — Ajout famille tournoi « Sealed Bat
 { const nv=document.getElementById('navVersion'); if(nv) nv.textContent=APP_VERSION; }
 document.getElementById('mktSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMarket(b.dataset.k);});
 const CATARRS=["catColors","catCats","catRarities","catTreats","catProvs","catEvents","catTiers","catRegions","catFinish","catSets"];
-const FINISH_LABELS={parallel:"Parallel",super_parallel:"Super Parallel",full_art:"Full Art",gold:"Gold",silver:"Silver",textured:"Textured",foil:"Foil",jolly:"Jolly",wanted:"Wanted"};
+const FINISH_LABELS={parallel:"Parallèle",super_parallel:"Super Parallèle",full_art:"Full Art",gold:"Gold",silver:"Silver",textured:"Texturée",foil:"Foil",jolly:"Jolly Roger",wanted:"Wanted"};
+const REGION_LABELS={ASIA:"Asie",CN:"Chine",EN_WW:"EN / Worldwide",JP:"Japon"};
 const FINISH_ORDER=["parallel","super_parallel","full_art","gold","silver","textured","foil","jolly","wanted"];
 function finishChips(c){ var f=c&&c.finish_tags; if(!Array.isArray(f)||!f.length) return ''; var st='display:inline-block;padding:1px 7px;margin:1px 3px 1px 0;border-radius:9px;font-size:11px;font-weight:700;background:rgba(120,120,140,.16);color:var(--muted)'; return f.slice().sort().map(function(t){ return '<span style="'+st+'">'+esc(FINISH_LABELS[t]||t)+'</span>'; }).join(''); }
 function finishRow(c){ var h=finishChips(c); return h?('<div class="s" style="margin-top:3px">✨ '+h+'</div>'):''; }
@@ -4253,7 +4254,7 @@ function buildCatFilterModal(){
   const axes=[["cmTreat","catTreats",TREAT_ORDER,TREAT_LABELS,CATFACETS.treat],["cmProv","catProvs",PROV_ORDER,PROV_LABELS,CATFACETS.prov],
               ["cmEvent","catEvents",EVENT_FAM_ORDER,EVENT_FAM_LABELS,CATFACETS.event],
               ["cmTier","catTiers",EVENT_TIER_ORDER,EVENT_TIER_LABELS,CATFACETS.tier],
-              ["cmRegion","catRegions",Object.keys(CATFACETS.region||{}).sort(),{},CATFACETS.region]];
+              ["cmRegion","catRegions",Object.keys(CATFACETS.region||{}).sort(),REGION_LABELS,CATFACETS.region]];
   axes.forEach(([boxId,key,order,labels,counts])=>{
     const box=document.getElementById(boxId); if(!box)return; box.innerHTML="";
     box.appendChild(makeChip("Toutes",null,state[key].length===0,()=>{ toggleCat(key,"all"); buildCatFilterModal(); syncCatBadge(); fetchCatalog(); }));
@@ -7173,8 +7174,8 @@ const Fake = (function(){
   }
 
   /* ---- NAV 5 ESPACES ---- */
-  var SPACES=[['home','🏠 Accueil'],['collection','📚 Collection'],['buy','🎯 À acheter'],['marche','📈 Marché'],['suivi','🧾 Suivi']];
-  var SECOND=[['valider','✅ À valider'],['catalog','Catalogue'],['sets','Sets'],['objectifs','Objectifs'],['products','Produits scellés'],['ecarts','Écarts JP/EN'],['offre','Catalyseurs'],['int_fam','Familles'],['ops','Gradation'],['gradeia','Gradation IA'],['conviction','Portefeuille'],['premium','💎 Premium'],['live','Live'],['sante','Santé des données']];
+  var SPACES=[['home','🏠 Accueil'],['collection','📚 Collection'],['catalog','🗂️ Catalogue'],['buy','🎯 À acheter'],['marche','📈 Marché'],['suivi','🧾 Suivi']];
+  var SECOND=[['valider','✅ À valider'],['sets','Sets'],['objectifs','Objectifs'],['products','Produits scellés'],['ecarts','Écarts JP/EN'],['offre','Catalyseurs'],['int_fam','Familles'],['ops','Gradation'],['gradeia','Gradation IA'],['conviction','Portefeuille'],['premium','💎 Premium'],['live','Live'],['sante','Santé des données']];
   var DELEG={collection:'collection',marche:'int_move',suivi:'achats'};
   var b4active='home';
   function navBtn(m,lbl,active){ return '<button data-b4="'+m+'" style="display:block;width:100%;text-align:left;padding:10px 14px;border:0;background:'+(active?'var(--chip)':'transparent')+';color:'+(active?'var(--ink)':'var(--muted)')+';font-weight:'+(active?'800':'700')+';font-size:13.5px;cursor:pointer;border-radius:9px">'+lbl+'</button>'; }
