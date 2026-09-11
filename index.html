@@ -934,6 +934,7 @@ body{-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
     <div class="fsec"><h5>Cat&eacute;gorie</h5><div class="chipwrap" id="mCat"></div></div>
     <div class="fsec"><h5>Traitement (artwork)</h5><div class="chipwrap" id="mType"></div></div>
     <div class="fsec"><h5>Collection / Provenance</h5><div class="chipwrap" id="mProv"></div></div>
+    <div class="fsec"><h5>&#127942; Tournoi</h5><div class="chipwrap" id="mEvent"></div></div>
     <div class="fsec"><h5>Raret&eacute;</h5><div class="chipwrap" id="mRarity"></div></div>
     <div class="fsec"><h5>&Eacute;tat</h5><div class="chipwrap" id="mGrade"></div></div>
     <div class="fsec"><h5>Variante pr&eacute;cise</h5><select id="mVariant"><option value="all">Toutes variantes</option></select></div>
@@ -1270,6 +1271,13 @@ function isArtVariant(v){ v=String(v||'').toLowerCase(); return v!=='normal' && 
 const TREAT_LABELS={normal:"Normale",gold:"Gold",foil:"Foil",parallel:"Parallèle",alt_art:"Alt-Art",manga:"Manga",super_parallel:"Super Parallèle",full_art:"Full Art",jolly_roger:"Jolly Roger",textured:"Textured",sp:"SP",other:"Autre"};
 const TREAT_ORDER=["normal","gold","foil","parallel","alt_art","manga","super_parallel","full_art","jolly_roger","textured","sp","other"];
 function treatmentFamily(c){
+  // b137 : backend treatment_family_v2 PRIORITAIRE ; regex legacy seulement si NULL.
+  const bk=c&&c.treatment_family_v2;
+  if(bk){
+    const tg=Array.isArray(c.treatment_tags)?c.treatment_tags:[];
+    if(bk==='alt_art'&&tg.indexOf('super')>=0) return 'super_parallel';
+    return bk==='serial_numbered'?'serial':bk;
+  }
   const v=String(c&&c.variant||'').toLowerCase();
   const lab=String(c&&c.variant_label||'').toLowerCase();
   const nm=String((c&&(c.card_name||c.name))||'').toLowerCase();
@@ -1298,6 +1306,12 @@ function treatmentFamily(c){
 const PROV_LABELS={base:"Set principal",premium_booster:"Premium Booster",promo:"Promo",tournament:"Tournoi / Event",special_product:"Produit spécial",jump:"Jump / Magazine",anniversary:"Anniversaire",ope_day:"One Piece Day",serial:"Serial",other:"Autre"};
 const PROV_ORDER=["base","premium_booster","promo","tournament","special_product","anniversary","serial","other"];
 function provenanceFamily(c){
+  // b137 : backend provenance_family_live PRIORITAIRE ; helper legacy seulement si NULL/UNKNOWN.
+  const bk=c&&c.provenance_family_live;
+  if(bk&&bk!=='UNKNOWN'){
+    const M={base:'base',booster:'base',starter_deck:'base',special_product:'special_product',premium_collection:'special_product',premium_booster:'premium_booster',promo:'promo',tournament:'tournament',magazine:'jump',campaign:'promo',anniversary:'anniversary',serial:'serial'};
+    return M[bk]||'other';
+  }
   const v=String(c&&c.variant||'').toLowerCase();
   const lab=String(c&&c.variant_label||'').toLowerCase();
   const num=String(c&&(c.card_number||c.number)||'').toUpperCase();
@@ -1314,6 +1328,19 @@ function provenanceFamily(c){
   return 'base';                 // set principal (normale + alt-art de série, etc.)
 }
 function variantFamily(c){ return treatmentFamily(c); }   // compat
+// b137 : TOURNOI — familles/tiers structurés (backend event_family, none/na déjà neutralisés en NULL par les vues)
+const EVENT_FAM_LABELS={flagship:"Flagship",championship:"Championship",regional:"Regional",store_championship:"Store Championship",store:"Store",standard_battle:"Standard Battle",treasure_cup:"Treasure Cup",tournament_pack:"Tournament Pack",release_event:"Release Event",judge:"Judge",anniversary_event:"Anniversary Event"};
+const EVENT_FAM_ORDER=["flagship","championship","regional","store_championship","store","standard_battle","treasure_cup","tournament_pack","release_event","judge","anniversary_event"];
+const EVENT_TIER_LABELS={winner:"Winner",finalist:"Finalist",participation:"Participation",top8:"Top 8",top16:"Top 16",top32:"Top 32",top64:"Top 64",top_player:"Top Player",third_place:"3rd Place"};
+function eventFam(c){ return (c&&c.event_family)||null; } // NULL si non-tournoi
+function tournoiRow(c){
+  if(!c||!c.event_family) return '';
+  var parts=[EVENT_FAM_LABELS[c.event_family]||c.event_family];
+  if(c.event_tier) parts.push(EVENT_TIER_LABELS[c.event_tier]||c.event_tier);
+  if(c.event_circuit) parts.push(String(c.event_circuit).replace(/_/g,' '));
+  return drow("🏆 Tournoi", '<b>'+esc(parts.join(' · '))+'</b>');
+}
+function regionRow(c){ return (c&&c.distribution_region)? drow("Région", esc(c.distribution_region)) : ''; }
 function rarNice(r){ if(!r) return ""; const m=String(r).match(/([A-Za-z]{1,4})/); const code=m?m[1].toUpperCase():String(r); return RAR_LABELS[code]||code; }
 const RAR_ORDER=["SEC","L","SR","R","UC","C","PR","TR"];
 const COLORS=["Red","Green","Blue","Purple","Black","Yellow"];
@@ -1339,7 +1366,7 @@ function setFamily(code){ const s=String(code||'').toUpperCase().trim(); if(!s) 
   return pre;
 }
 function setFamRank(fam){ const m=String(fam).match(/^([A-Z]+)(\d+)?/); const g=({OP:0,EB:1,PRB:2,ST:3})[m?m[1]:'']; return [(g==null?8:g), m?m[1]:'zz', (m&&m[2])?+m[2]:999]; }
-const DEF={q:"",lang:"all",color:"all",type:"all",prov:"all",cat:"all",rarity:"all",character:"all",grade:"all",set:"all",minVal:0,imgf:"all",authf:"all",recvf:"all",pricef:"all",variant:"all",achatPeriod:"all",openRatio:null,openLiquid:false,gapView:"mine",tgtLang:"JP",tgtBudget:0,sort:"val_desc",view:"grid",mode:"accueil",catLang:"all",catQuery:"",catLangs:[],catColors:[],catCats:[],catRarities:[],catTypes:[],catTreats:[],catProvs:[],catSets:[],catSort:"price_desc",catGroup:true,catView:"grid",setLang:"JP",prodLang:"JP"};
+const DEF={q:"",lang:"all",color:"all",type:"all",prov:"all",event:"all",cat:"all",rarity:"all",character:"all",grade:"all",set:"all",minVal:0,imgf:"all",authf:"all",recvf:"all",pricef:"all",variant:"all",achatPeriod:"all",openRatio:null,openLiquid:false,gapView:"mine",tgtLang:"JP",tgtBudget:0,sort:"val_desc",view:"grid",mode:"accueil",catLang:"all",catQuery:"",catLangs:[],catColors:[],catCats:[],catRarities:[],catTypes:[],catTreats:[],catProvs:[],catSets:[],catSort:"price_desc",catGroup:true,catView:"grid",setLang:"JP",prodLang:"JP"};
 let PROD_VALUE=0;
 // Barre du haut : portefeuille détaillé (total = cartes + scellés), même valeur live que l'accueil
 function portfolioMini(){
@@ -1613,7 +1640,7 @@ async function load(){
   // 1) Fetch frais en arrière-plan
   let all=[],from=0,step=1000;
   while(true){
-    const r=await fetch(SB+"/rest/v1/app_collection_v2?select=item_id,printing_id,card_number,card_name,card_type,category,color,rarity,language,is_graded,grading_company,grade,cert_number,quantity,market_value_eur,seed_value_eur,live_value_eur,psa_estimate_eur,population,pop_higher,price_source,price_asof,image_url,set_code,set_name,variant,variant_label,origin,art_suffix,reverify,img_locked,acquired_from,acquired_date,acquired_price,disp_price,disp_basis,disp_confidence,disp_status,disp_captured_at,disp_var_7d,disp_var_30d,graded_value_eur,graded_source,cert_statut,graded_owned_market,graded_raw&order=disp_price.desc.nullslast&limit="+step+"&offset="+from,{headers:{apikey:ANON,Authorization:"Bearer "+ANON}});
+    const r=await fetch(SB+"/rest/v1/app_collection_v2?select=item_id,printing_id,card_number,card_name,card_type,category,color,rarity,language,is_graded,grading_company,grade,cert_number,quantity,market_value_eur,seed_value_eur,live_value_eur,psa_estimate_eur,population,pop_higher,price_source,price_asof,image_url,set_code,set_name,variant,variant_label,origin,art_suffix,reverify,img_locked,acquired_from,acquired_date,acquired_price,disp_price,disp_basis,disp_confidence,disp_status,disp_captured_at,disp_var_7d,disp_var_30d,graded_value_eur,graded_source,cert_statut,graded_owned_market,graded_raw,event_family,event_tier,event_circuit,treatment_family_v2,treatment_tags,provenance_family_live,distribution_region,printed_language&order=disp_price.desc.nullslast&limit="+step+"&offset="+from,{headers:{apikey:ANON,Authorization:"Bearer "+ANON}});
     if(!r.ok){ if(DATALOADED) return; document.getElementById("stage").innerHTML='<div class="empty">Erreur de chargement ('+r.status+').</div>';return;}
     const b=await r.json(); if(!Array.isArray(b)){ if(DATALOADED) return; break; } all=all.concat(b); if(b.length<step)break; from+=step;
   }
@@ -1700,6 +1727,17 @@ function buildFilterModal(){
   if(mP){ mP.innerHTML="";
     mP.appendChild(makeChip("Toutes",DATA.length,state.prov==="all",()=>{state.prov="all";afterFilter()}));
     PROV_ORDER.forEach(t=>{ if(!pvc[t])return; mP.appendChild(makeChip(PROV_LABELS[t]||t,pvc[t],state.prov===t,()=>{state.prov=t;afterFilter()})); });
+  }
+
+  // b137 : filtre 🏆 Tournoi sur event_family (backend, jamais none/na). Section masquée si aucune carte tournoi.
+  const evc={}; DATA.forEach(c=>{ const f=eventFam(c); if(f) evc[f]=(evc[f]||0)+1; });
+  const mE=document.getElementById("mEvent");
+  if(mE){ mE.innerHTML="";
+    const nEv=DATA.filter(c=>!!eventFam(c)).length;
+    if(nEv>0){
+      mE.appendChild(makeChip("Toutes",nEv,state.event==="all"||!state.event,()=>{state.event="all";afterFilter()}));
+      EVENT_FAM_ORDER.forEach(t=>{ if(!evc[t])return; mE.appendChild(makeChip(EVENT_FAM_LABELS[t]||t,evc[t],state.event===t,()=>{state.event=t;afterFilter()})); });
+    }
   }
 
   const rc={}; DATA.forEach(c=>{if(c.rarity)rc[c.rarity]=(rc[c.rarity]||0)+1});
@@ -1791,6 +1829,7 @@ function apply(){
   else if(state.lang!=="all") a=a.filter(c=>c.language===state.lang);
   if(state.type!=="all") a=a.filter(c=>treatmentFamily(c)===state.type);
   if(state.prov&&state.prov!=="all") a=a.filter(c=>provenanceFamily(c)===state.prov);
+  if(state.event&&state.event!=="all") a=a.filter(c=>eventFam(c)===state.event);
   if(state.cat!=="all") a=a.filter(c=>c.category===state.cat);
   if(state.color!=="all") a=a.filter(c=>(c.color||"").split(";").includes(state.color));
   if(state.rarity!=="all") a=a.filter(c=>c.rarity===state.rarity);
@@ -2093,7 +2132,7 @@ async function loadSanteSuspect(){
   const box=document.getElementById('santeSuspect'); if(!box) return;
   let rows=[];
   try{
-    const r=await fetch(SB+'/rest/v1/app_catalog_priced?jp_conf=is.false&language=eq.JP&select=card_number,name,variant_label,jp_eur,set_code&order=jp_eur.desc.nullslast&limit=300',{headers:{apikey:ANON,Authorization:'Bearer '+ANON}});
+    const r=await fetch(SB+'/rest/v1/app_catalog_priced?jp_conf=is.false&language=eq.JP&select=card_number,name,variant_label,jp_eur,set_code,event_family,event_tier,event_circuit,treatment_family_v2,treatment_tags,provenance_family_live,distribution_region,printed_language&order=jp_eur.desc.nullslast&limit=300',{headers:{apikey:ANON,Authorization:'Bearer '+ANON}});
     rows=await r.json(); if(!Array.isArray(rows))rows=[];
   }catch(e){ return; }
   if(!rows.length) return;
@@ -3665,7 +3704,7 @@ async function ensureCollLoaded(){
   var all=[],from=0,step=1000;
   try{
     while(true){
-      var r=await fetch(SB+"/rest/v1/app_collection_v2?select=item_id,printing_id,card_number,card_name,card_type,category,color,rarity,language,is_graded,grading_company,grade,cert_number,quantity,market_value_eur,seed_value_eur,live_value_eur,psa_estimate_eur,population,pop_higher,price_source,price_asof,image_url,set_code,set_name,variant,variant_label,origin,art_suffix,reverify,img_locked,acquired_from,acquired_date,acquired_price,disp_price,disp_basis,disp_confidence,disp_status,disp_captured_at,disp_var_7d,disp_var_30d,graded_value_eur,graded_source,cert_statut,graded_owned_market,graded_raw&order=disp_price.desc.nullslast&limit="+step+"&offset="+from,{headers:{apikey:ANON,Authorization:"Bearer "+ANON}});
+      var r=await fetch(SB+"/rest/v1/app_collection_v2?select=item_id,printing_id,card_number,card_name,card_type,category,color,rarity,language,is_graded,grading_company,grade,cert_number,quantity,market_value_eur,seed_value_eur,live_value_eur,psa_estimate_eur,population,pop_higher,price_source,price_asof,image_url,set_code,set_name,variant,variant_label,origin,art_suffix,reverify,img_locked,acquired_from,acquired_date,acquired_price,disp_price,disp_basis,disp_confidence,disp_status,disp_captured_at,disp_var_7d,disp_var_30d,graded_value_eur,graded_source,cert_statut,graded_owned_market,graded_raw,event_family,event_tier,event_circuit,treatment_family_v2,treatment_tags,provenance_family_live,distribution_region,printed_language&order=disp_price.desc.nullslast&limit="+step+"&offset="+from,{headers:{apikey:ANON,Authorization:"Bearer "+ANON}});
       if(!r.ok) break;
       var b=await r.json(); if(!Array.isArray(b)) break; all=all.concat(b); if(b.length<step) break; from+=step;
     }
@@ -4152,7 +4191,7 @@ async function homeBriefing(){
   }catch(e){ box.innerHTML='<div class="txt" style="color:var(--muted);font-size:13px">Erreur, réessaie.</div><button class="hbriefbtn" onclick="homeBriefing()">Réessayer</button>'; }
 }
 document.getElementById('modeSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMode(b.dataset.m);});
-const APP_VERSION='Version b136 · 10/09 — Naruto : MÊME fiche que One Piece (image, Tarifs, Détails, 📷 Ma photo) · onglet Collection = achats + saisie d\'achat (compté à part) · FIX : photos & variantes choisies tiennent au rechargement (verrou par carte) · sélecteur OP ⇆ Naruto';
+const APP_VERSION='Version b137 · 11/09 — Exposition refactors : Tournoi (event_family), Traitement (treatment_family_v2/tags backend), Provenance (backend) dans catalogue/fiche/filtres · classification backend prioritaire sur regex legacy';
 { const nv=document.getElementById('navVersion'); if(nv) nv.textContent=APP_VERSION; }
 document.getElementById('mktSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMarket(b.dataset.k);});
 const CATARRS=["catColors","catCats","catRarities","catTreats","catProvs","catSets"];
@@ -5471,6 +5510,7 @@ function renderDetail(){ const c=detailCard; if(!c)return; const body=document.g
     const artwork=variantNice(c);
     const typ=(c.card_type&&TYPE_LABELS[c.card_type]&&String(c.card_type).toLowerCase()!=='normal')?(TYPE_LABELS[c.card_type]||c.card_type):'';
     body.innerHTML=
+      tournoiRow(c)+
       drow("Nom", esc(c.card_name))+
       drow("Numéro de carte", esc(c.card_number))+
       drow("Rareté", RAR_LABELS[c.rarity]||c.rarity||"—")+
@@ -5480,7 +5520,8 @@ function renderDetail(){ const c=detailCard; if(!c)return; const body=document.g
       drow("Catégorie", CAT_LABELS[c.category]||c.category)+
       drow("Couleur", (c.color||"").split(";").filter(Boolean).join(" / "))+
       drow("Set / Édition", esc((c.set_code||"")+(c.set_name?(" — "+c.set_name):"")))+
-      drow("Langue", (FLAG[c.language]||"")+' '+(LANG_LABELS[c.language]||c.language));
+      drow("Langue", (FLAG[c.language]||"")+' '+(LANG_LABELS[c.language]||c.language))+
+      regionRow(c);
     return;
   }
   if(detailTab==="col"){
@@ -5690,7 +5731,7 @@ async function ensurePcImages(){
 }
 async function goalRows(g){
   const lim=(g.language==='COMPLET'||g.language==='ALL')?6000:3000;
-  const url=SB+'/rest/v1/app_catalog_priced?select=printing_id,card_number,name,variant,variant_label,rarity,set_code,set_name,language,color,category,owned,jp_eur,eu_eur,us_eur,price_eur,price_source,image_url,treatment_family&limit='+lim+goalParams(g);
+  const url=SB+'/rest/v1/app_catalog_priced?select=printing_id,card_number,name,variant,variant_label,rarity,set_code,set_name,language,color,category,owned,jp_eur,eu_eur,us_eur,price_eur,price_source,image_url,treatment_family,event_family,event_tier,event_circuit,treatment_family_v2,treatment_tags,provenance_family_live,distribution_region,printed_language&limit='+lim+goalParams(g);
   try{ await ensurePcImages(); const r=await fetch(url,{headers:{apikey:ANON,Authorization:'Bearer '+ANON}}); const j=await r.json(); let rows=Array.isArray(j)?j:[]; if(g.language==='COMPLET') rows=goalDedup(rows); return rows; }catch(e){ return []; }
 }
 function goalKindLabel(g){ return g.kind==='personnage'?('Personnage · '+g.value):(g.kind==='set'?('Set · '+g.value):(g.kind==='traitement'?('Famille · '+(TREAT_LABELS[g.value]||g.value)):(g.kind==='rarete'?('Rareté · '+(RAR_LABELS[g.value]||g.value)):('Type · '+((typeof GOAL_TYPE_LABEL!=='undefined'&&GOAL_TYPE_LABEL[g.value])||g.value))))); }
@@ -6905,7 +6946,7 @@ const Fake = (function(){
   function renderNaruto(){
     var s=stage(); if(!s)return; s.className='';
     s.innerHTML='<div style="background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:11px 13px;margin-bottom:12px"><div style="font-weight:900;font-size:15px">🍥 Naruto Card Game <span style="font-size:11px;color:var(--muted);font-weight:700">· Bandai</span></div><div style="font-size:12px;color:var(--muted);margin-top:4px">Le jeu officiel Bandai démarre : seules les promos existent à date (sortie complète 2027). Touche une carte pour l\'ouvrir : cote, achats, saisie d\'achat — comme One Piece, mais compté à part.</div></div><div id="narutoList"><div class="loading" style="padding:20px;color:var(--muted)">…</div></div>';
-    q('app_games_catalog','select=card_number,name,image_url,language,variant,variant_label,rarity,set_code,set_name,game,printing_id,owned,price_eur&game=eq.NARUTO&order=variant_label').then(function(d){
+    q('app_games_catalog','select=card_number,name,image_url,language,variant,variant_label,rarity,set_code,set_name,game,printing_id,owned,price_eur,event_family,event_tier,event_circuit,treatment_family_v2,treatment_tags,provenance_family,distribution_region,printed_language&game=eq.NARUTO&order=variant_label').then(function(d){
       var t=document.getElementById('narutoList'); if(!t)return;
       NARUTO_CARDS={}; d.forEach(function(c){ if(!c.image_url&&NARUTO_IMG[c.printing_id]) c.image_url=NARUTO_IMG[c.printing_id]; NARUTO_CARDS[c.printing_id]=c; });
       if(!d.length){ t.innerHTML='<div style="padding:20px;text-align:center;color:var(--muted)">Aucune carte Naruto pour l\'instant.</div>'; return; }
