@@ -1332,8 +1332,8 @@ function provenanceFamily(c){
 }
 function variantFamily(c){ return treatmentFamily(c); }   // compat
 // b137 : TOURNOI — familles/tiers structurés (backend event_family, none/na déjà neutralisés en NULL par les vues)
-const EVENT_FAM_LABELS={flagship:"Flagship",championship:"Championship",regional:"Regional",store_championship:"Store Championship",store:"Store",standard_battle:"Standard Battle",treasure_cup:"Treasure Cup",tournament_pack:"Tournament Pack",release_event:"Release Event",judge:"Judge",anniversary_event:"Anniversary Event"};
-const EVENT_FAM_ORDER=["flagship","championship","regional","store_championship","store","standard_battle","treasure_cup","tournament_pack","release_event","judge","anniversary_event"];
+const EVENT_FAM_LABELS={flagship:"Flagship",championship:"Championship",regional:"Regional",store_championship:"Store Championship",store:"Store",standard_battle:"Standard Battle",sealed_battle:"Sealed Battle",treasure_cup:"Treasure Cup",tournament_pack:"Tournament Pack",release_event:"Release Event",judge:"Judge",anniversary_event:"Anniversary Event"};
+const EVENT_FAM_ORDER=["flagship","championship","regional","store_championship","store","standard_battle","sealed_battle","treasure_cup","tournament_pack","release_event","judge","anniversary_event"];
 const EVENT_TIER_LABELS={winner:"Winner",top4:"Top 4",finalist:"Finalist",participation:"Participation",top8:"Top 8",top16:"Top 16",top32:"Top 32",top64:"Top 64",top_player:"Top Player",third_place:"3rd Place"};
 const EVENT_TIER_ORDER=["winner","top4","top8","top16","top32","top64","finalist","top_player","third_place","participation"];
 function tierLabel(c){ return (c&&c.event_tier)?(EVENT_TIER_LABELS[c.event_tier]||c.event_tier):''; }
@@ -4196,7 +4196,7 @@ async function homeBriefing(){
   }catch(e){ box.innerHTML='<div class="txt" style="color:var(--muted);font-size:13px">Erreur, réessaie.</div><button class="hbriefbtn" onclick="homeBriefing()">Réessayer</button>'; }
 }
 document.getElementById('modeSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMode(b.dataset.m);});
-const APP_VERSION='Version b138 · 11/09 — Catalogue : filtres Tournoi/Tier/Traitement/Provenance/Région backend + tier visible sur cartes/fiche · fix data 6 impressions tournoi collection';
+const APP_VERSION='Version b139 · 11/09 — Ajout famille tournoi « Sealed Battle » (taxonomie) ; reste UX inchangé';
 { const nv=document.getElementById('navVersion'); if(nv) nv.textContent=APP_VERSION; }
 document.getElementById('mktSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMarket(b.dataset.k);});
 const CATARRS=["catColors","catCats","catRarities","catTreats","catProvs","catEvents","catTiers","catRegions","catSets"];
