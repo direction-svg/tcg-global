@@ -3621,7 +3621,7 @@ async function fetchProducts(){
   try{
     const [r,ra]=await Promise.all([
       fetch(SB+'/rest/v1/app_products?language=eq.'+lang+'&select=product_id,name,category,image_url,price_eur,owned_qty,set_code,sort_key,count_mode,prod_item_id&order=sort_key.asc.nullslast,name.asc',{headers:{apikey:ANON,Authorization:"Bearer "+ANON}}),
-      fetch(SB+'/rest/v1/app_product_arb?select=product_id,prod_item_id,box_value,cards_value,resolved_mode,count_mode,n_mapped,n_content',{headers:{apikey:ANON,Authorization:"Bearer "+ANON}})
+      fetch(SB+'/rest/v1/app_product_arb_mv?select=product_id,prod_item_id,box_value,cards_value,resolved_mode,count_mode,n_mapped,n_content',{headers:{apikey:ANON,Authorization:"Bearer "+ANON}})
     ]);
     let rows=await r.json(); if(!Array.isArray(rows))rows=[];
     let arb=await ra.json(); PRODARB={}; if(Array.isArray(arb)) arb.forEach(x=>{ PRODARB[String(x.product_id)]=x; });
@@ -3693,7 +3693,7 @@ async function prodRemove(idx){ const r=PRODROWS[idx]; if(!r) return;
 }
 let PROD_EXCL=new Set(); // item_ids de cartes déjà représentées par un produit compté « scellé » → exclues du total collection (anti-doublon)
 async function loadProductValue(){
-  try{ const r=await fetch(SB+'/rest/v1/app_product_arb?select=box_value,cards_value,resolved_mode,mapped_item_ids',{headers:{apikey:ANON,Authorization:"Bearer "+ANON}}); const j=await r.json();
+  try{ const r=await fetch(SB+'/rest/v1/app_product_arb_mv?select=box_value,cards_value,resolved_mode,mapped_item_ids',{headers:{apikey:ANON,Authorization:"Bearer "+ANON}}); const j=await r.json();
     // Arbitrage : chaque produit compte soit comme boîte scellée (on exclut alors ses cartes de la collection), soit via ses cartes (on ne compte pas la boîte). Voir app_product_arb.
     PROD_VALUE=0; PROD_EXCL=new Set();
     if(Array.isArray(j)) j.forEach(x=>{ if(x.resolved_mode==='product'){ PROD_VALUE+=(+x.box_value||0); (x.mapped_item_ids||[]).forEach(id=>PROD_EXCL.add(String(id))); } });
