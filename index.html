@@ -982,6 +982,9 @@ body{-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
     <div class="fsec"><h5>Raret&eacute;</h5><div class="chipwrap" id="cmRarity"></div></div>
     <div class="fsec"><h5>Traitement (artwork)</h5><div class="chipwrap" id="cmTreat"></div></div>
     <div class="fsec"><h5>Collection / Provenance</h5><div class="chipwrap" id="cmProv"></div></div>
+    <div class="fsec"><h5>&#127942; Tournoi</h5><div class="chipwrap" id="cmEvent"></div></div>
+    <div class="fsec"><h5>Tier tournoi</h5><div class="chipwrap" id="cmTier"></div></div>
+    <div class="fsec"><h5>R&eacute;gion</h5><div class="chipwrap" id="cmRegion"></div></div>
     <div class="fsec"><h5>Set / &Eacute;dition</h5><select id="cmSet"><option value="all">Tous les sets</option></select></div>
     <div class="ffoot"><button class="reset" id="cfreset">R&eacute;initialiser</button><button class="apply" id="cfapply">Voir les cartes</button></div>
   </div>
@@ -1331,7 +1334,9 @@ function variantFamily(c){ return treatmentFamily(c); }   // compat
 // b137 : TOURNOI — familles/tiers structurés (backend event_family, none/na déjà neutralisés en NULL par les vues)
 const EVENT_FAM_LABELS={flagship:"Flagship",championship:"Championship",regional:"Regional",store_championship:"Store Championship",store:"Store",standard_battle:"Standard Battle",treasure_cup:"Treasure Cup",tournament_pack:"Tournament Pack",release_event:"Release Event",judge:"Judge",anniversary_event:"Anniversary Event"};
 const EVENT_FAM_ORDER=["flagship","championship","regional","store_championship","store","standard_battle","treasure_cup","tournament_pack","release_event","judge","anniversary_event"];
-const EVENT_TIER_LABELS={winner:"Winner",finalist:"Finalist",participation:"Participation",top8:"Top 8",top16:"Top 16",top32:"Top 32",top64:"Top 64",top_player:"Top Player",third_place:"3rd Place"};
+const EVENT_TIER_LABELS={winner:"Winner",top4:"Top 4",finalist:"Finalist",participation:"Participation",top8:"Top 8",top16:"Top 16",top32:"Top 32",top64:"Top 64",top_player:"Top Player",third_place:"3rd Place"};
+const EVENT_TIER_ORDER=["winner","top4","top8","top16","top32","top64","finalist","top_player","third_place","participation"];
+function tierLabel(c){ return (c&&c.event_tier)?(EVENT_TIER_LABELS[c.event_tier]||c.event_tier):''; }
 function eventFam(c){ return (c&&c.event_family)||null; } // NULL si non-tournoi
 function tournoiRow(c){
   if(!c||!c.event_family) return '';
@@ -1366,7 +1371,7 @@ function setFamily(code){ const s=String(code||'').toUpperCase().trim(); if(!s) 
   return pre;
 }
 function setFamRank(fam){ const m=String(fam).match(/^([A-Z]+)(\d+)?/); const g=({OP:0,EB:1,PRB:2,ST:3})[m?m[1]:'']; return [(g==null?8:g), m?m[1]:'zz', (m&&m[2])?+m[2]:999]; }
-const DEF={q:"",lang:"all",color:"all",type:"all",prov:"all",event:"all",cat:"all",rarity:"all",character:"all",grade:"all",set:"all",minVal:0,imgf:"all",authf:"all",recvf:"all",pricef:"all",variant:"all",achatPeriod:"all",openRatio:null,openLiquid:false,gapView:"mine",tgtLang:"JP",tgtBudget:0,sort:"val_desc",view:"grid",mode:"accueil",catLang:"all",catQuery:"",catLangs:[],catColors:[],catCats:[],catRarities:[],catTypes:[],catTreats:[],catProvs:[],catSets:[],catSort:"price_desc",catGroup:true,catView:"grid",setLang:"JP",prodLang:"JP"};
+const DEF={q:"",lang:"all",color:"all",type:"all",prov:"all",event:"all",cat:"all",rarity:"all",character:"all",grade:"all",set:"all",minVal:0,imgf:"all",authf:"all",recvf:"all",pricef:"all",variant:"all",achatPeriod:"all",openRatio:null,openLiquid:false,gapView:"mine",tgtLang:"JP",tgtBudget:0,sort:"val_desc",view:"grid",mode:"accueil",catLang:"all",catQuery:"",catLangs:[],catColors:[],catCats:[],catRarities:[],catTypes:[],catTreats:[],catProvs:[],catEvents:[],catTiers:[],catRegions:[],catSets:[],catSort:"price_desc",catGroup:true,catView:"grid",setLang:"JP",prodLang:"JP"};
 let PROD_VALUE=0;
 // Barre du haut : portefeuille détaillé (total = cartes + scellés), même valeur live que l'accueil
 function portfolioMini(){
@@ -4191,21 +4196,21 @@ async function homeBriefing(){
   }catch(e){ box.innerHTML='<div class="txt" style="color:var(--muted);font-size:13px">Erreur, réessaie.</div><button class="hbriefbtn" onclick="homeBriefing()">Réessayer</button>'; }
 }
 document.getElementById('modeSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMode(b.dataset.m);});
-const APP_VERSION='Version b137 · 11/09 — Exposition refactors : Tournoi (event_family), Traitement (treatment_family_v2/tags backend), Provenance (backend) dans catalogue/fiche/filtres · classification backend prioritaire sur regex legacy';
+const APP_VERSION='Version b138 · 11/09 — Catalogue : filtres Tournoi/Tier/Traitement/Provenance/Région backend + tier visible sur cartes/fiche · fix data 6 impressions tournoi collection';
 { const nv=document.getElementById('navVersion'); if(nv) nv.textContent=APP_VERSION; }
 document.getElementById('mktSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMarket(b.dataset.k);});
-const CATARRS=["catColors","catCats","catRarities","catTreats","catProvs","catSets"];
+const CATARRS=["catColors","catCats","catRarities","catTreats","catProvs","catEvents","catTiers","catRegions","catSets"];
 function toggleCat(key,code){ if(code==="all"){ state[key]=[]; } else { const a=state[key]; state[key]=a.includes(code)?a.filter(x=>x!==code):a.concat([code]); } }
-function catActiveCount(){ return state.catColors.length+state.catCats.length+state.catRarities.length+state.catTreats.length+state.catProvs.length+state.catSets.length; }
+function catActiveCount(){ return state.catColors.length+state.catCats.length+state.catRarities.length+state.catTreats.length+state.catProvs.length+state.catEvents.length+state.catTiers.length+state.catRegions.length+state.catSets.length; }
 // Facettes variantes (traitement + provenance) : familles réellement présentes, avec compteurs.
 // Se remplit tout seul quand une nouvelle variante entre au catalogue.
-let CATFACETS={treat:{},prov:{},set:{}};
+let CATFACETS={treat:{},prov:{},set:{},event:{},tier:{},region:{}};
 async function loadCatFacets(){
   try{
     const r=await fetch(SB+"/rest/v1/app_catalog_facets?select=kind,fam,n",{headers:{apikey:ANON,Authorization:"Bearer "+ANON}});
     const rows=await r.json(); if(!Array.isArray(rows)) return;
-    const t={},p={},se={}; rows.forEach(x=>{ if(x.kind==='treat')t[x.fam]=x.n; else if(x.kind==='prov')p[x.fam]=x.n; else if(x.kind==='set')se[x.fam]=x.n; });
-    CATFACETS={treat:t,prov:p,set:se};
+    const t={},p={},se={},ev={},ti={},rg={}; rows.forEach(x=>{ if(x.kind==='treat')t[x.fam]=x.n; else if(x.kind==='prov')p[x.fam]=x.n; else if(x.kind==='set')se[x.fam]=x.n; else if(x.kind==='event')ev[x.fam]=x.n; else if(x.kind==='tier')ti[x.fam]=x.n; else if(x.kind==='region')rg[x.fam]=x.n; });
+    CATFACETS={treat:t,prov:p,set:se,event:ev,tier:ti,region:rg};
     if(!document.getElementById('cfmodal').classList.contains('hidden')) buildCatFilterModal();
   }catch(e){}
 }
@@ -4239,7 +4244,10 @@ function buildCatFilterModal(){
     opts.forEach(([code,label])=>{ const active = code==="all" ? state[key].length===0 : state[key].includes(code); box.appendChild(makeChip(label,null,active,()=>{ toggleCat(key,code); buildCatFilterModal(); syncCatBadge(); fetchCatalog(); })); });
   });
   // Axes variantes dynamiques : traitement (artwork) + collection/provenance, mêmes familles que la collection
-  const axes=[["cmTreat","catTreats",TREAT_ORDER,TREAT_LABELS,CATFACETS.treat],["cmProv","catProvs",PROV_ORDER,PROV_LABELS,CATFACETS.prov]];
+  const axes=[["cmTreat","catTreats",TREAT_ORDER,TREAT_LABELS,CATFACETS.treat],["cmProv","catProvs",PROV_ORDER,PROV_LABELS,CATFACETS.prov],
+              ["cmEvent","catEvents",EVENT_FAM_ORDER,EVENT_FAM_LABELS,CATFACETS.event],
+              ["cmTier","catTiers",EVENT_TIER_ORDER,EVENT_TIER_LABELS,CATFACETS.tier],
+              ["cmRegion","catRegions",Object.keys(CATFACETS.region||{}).sort(),{},CATFACETS.region]];
   axes.forEach(([boxId,key,order,labels,counts])=>{
     const box=document.getElementById(boxId); if(!box)return; box.innerHTML="";
     box.appendChild(makeChip("Toutes",null,state[key].length===0,()=>{ toggleCat(key,"all"); buildCatFilterModal(); syncCatBadge(); fetchCatalog(); }));
@@ -4272,12 +4280,12 @@ let CATACC=[]; const CATPAGE=120;
 async function fetchCatalog(append){
   const stage=document.getElementById('stage');
   const term=(state.catQuery||"").replace(/[%*(),]/g," ").trim();
-  const noFilters=!term && !state.catLangs.length && !state.catCats.length && !state.catRarities.length && !state.catTreats.length && !state.catProvs.length && !state.catColors.length && !state.catSets.length;
+  const noFilters=!term && !state.catLangs.length && !state.catCats.length && !state.catRarities.length && !state.catTreats.length && !state.catProvs.length && !state.catEvents.length && !state.catTiers.length && !state.catRegions.length && !state.catColors.length && !state.catSets.length;
   if(!append){ state.catOffset=0; CATACC=[]; stage.className=""; stage.innerHTML='<div class="loading">Recherche…</div>'; }
   // b131 : le tri prix suit le PRIX COURANT CANONIQUE (disp_price = Price Truth), pas une cote par marché.
   const mkcol='disp_price';
   const ord=state.catSort==="name"?"name.asc":(state.catSort==="lang"?"language.asc,card_number.asc":(state.catSort==="price_desc"?(mkcol+".desc.nullslast"):(state.catSort==="price_asc"?(mkcol+".asc.nullslast"):"card_number.asc")));
-  let url=SB+"/rest/v1/app_catalog_priced_v2?select=card_number,language,name,image_url,img_verify,owned,variant,variant_label,rarity,set_code,set_name,category,origin,printing_id,price_eur,price_source,jp_eur,eu_eur,us_eur,mk_jp,mk_eu,mk_us,jp_g,jp_gl,us_g,us_gl,disp_jp,disp_us,disp_price,disp_basis,disp_confidence,disp_status,disp_captured_at,disp_var_30d&limit="+CATPAGE+"&offset="+(state.catOffset||0)+"&order="+ord;
+  let url=SB+"/rest/v1/app_catalog_priced_v2?select=card_number,language,name,image_url,img_verify,owned,variant,variant_label,rarity,set_code,set_name,category,origin,printing_id,price_eur,price_source,jp_eur,eu_eur,us_eur,mk_jp,mk_eu,mk_us,jp_g,jp_gl,us_g,us_gl,disp_jp,disp_us,disp_price,disp_basis,disp_confidence,disp_status,disp_captured_at,disp_var_30d,event_family,event_tier,event_circuit,treatment_family_v2,treatment_tags,provenance_family_live,distribution_region,printed_language&limit="+CATPAGE+"&offset="+(state.catOffset||0)+"&order="+ord;
   // Par défaut on masque les DON SANS VALEUR (bulk), sinon ils monopolisent la 1re page. Mais on
   // laisse remonter les DON à valeur (gold/promo ≥ 20 € sur le marché affiché) : ils apparaissent
   // dans le catalogue et en tête quand on trie par prix. Tous restent accessibles via le filtre « DON!! ».
@@ -4288,8 +4296,11 @@ async function fetchCatalog(append){
   url+="&language=in.("+cls.join(",")+")";
   if(state.catCats.length) url+="&category=in.("+state.catCats.join(",")+")";
   if(state.catRarities.length) url+="&rarity=in.("+state.catRarities.join(",")+")";
-  if(state.catTreats.length) url+="&treatment_family=in.("+state.catTreats.join(",")+")";
-  if(state.catProvs.length) url+="&provenance_family=in.("+state.catProvs.join(",")+")";
+  if(state.catTreats.length) url+="&treatment_effective=in.("+state.catTreats.join(",")+")";
+  if(state.catProvs.length) url+="&provenance_effective=in.("+state.catProvs.join(",")+")";
+  if(state.catEvents.length) url+="&event_family=in.("+state.catEvents.join(",")+")";
+  if(state.catTiers.length) url+="&event_tier=in.("+state.catTiers.join(",")+")";
+  if(state.catRegions.length) url+="&distribution_region=in.("+state.catRegions.join(",")+")";
   if(state.catSets.length) url+="&set_family=in.("+state.catSets.join(",")+")";
   const groups=[];
   if(state.catColors.length) groups.push("or("+state.catColors.map(c=>"color.ilike.*"+c+"*").join(",")+")");
@@ -4465,7 +4476,11 @@ function renderOps(){
 }
 const ORIGIN_LABELS={STANDARD:"Standard",PROMO:"Promo",BATTLE_EVENT:"Battleship",PREMIUM_COLLECTION:"Premium Collection",TOURNAMENT:"Tournoi",PRODUCT_EXCLUSIVE:"Exclusivité produit",OTHER:"Autre source"};
 // Provenance lisible (n'affiche rien pour les cartes standard). Utilisé partout : collection, catalogue, fiches.
-function provNice(c){ const f=provenanceFamily(c); return (f&&f!=='base')?(PROV_LABELS[f]||f):''; }
+function provNice(c){
+  // b137 : cartes tournoi → « Famille · Tier » (event_family backend prioritaire sur la provenance générique)
+  if(c&&c.event_family){ const t=tierLabel(c); return (EVENT_FAM_LABELS[c.event_family]||c.event_family)+(t?' · '+t:''); }
+  const f=provenanceFamily(c); return (f&&f!=='base')?(PROV_LABELS[f]||f):'';
+}
 // Étiquettes descriptives d'une carte (variante + provenance) — mêmes chips partout.
 function descTags(c){
   let s='';
@@ -4517,13 +4532,15 @@ function renderCatDetail(){
   }
   if(catDetailTab==="det"){
     body.innerHTML=
+      tournoiRow(c)+
       drow("Nom", esc(c.name))+drow("Numéro de carte", esc(c.card_number))+
       drow("Rareté", RAR_LABELS[c.rarity]||c.rarity||"—")+
       drow("Rareté de l’œuvre", '<b>'+variantNice(c)+'</b>')+
       drow("Provenance", (PROV_LABELS[provenanceFamily(c)]||provenanceFamily(c)))+
       drow("Catégorie", CAT_LABELS[c.category]||c.category)+
       drow("Set / Édition", esc((c.set_code||"")+(c.set_name?(" — "+c.set_name):"")))+
-      drow("Langue", (FLAG[c.language]||"")+' '+(LANG_LABELS[c.language]||c.language));
+      drow("Langue", (FLAG[c.language]||"")+' '+(LANG_LABELS[c.language]||c.language))+
+      regionRow(c);
     return;
   }
   // col : possession / ajout
@@ -4532,7 +4549,7 @@ function renderCatDetail(){
     if(typeof window.narutoFicheCol==='function') window.narutoFicheCol(c.printing_id);
     return;
   }
-  body.innerHTML='<div class="dval"><div class="b">'+esc(c.name||"")+'</div><div class="s">'+(FLAG[c.language]||"")+' '+(LANG_LABELS[c.language]||c.language)+' · '+esc(c.card_number||"")+'</div><div class="collact" id="cdcollact"></div></div>';
+  body.innerHTML='<div class="dval"><div class="b">'+esc(c.name||"")+'</div><div class="s">'+(FLAG[c.language]||"")+' '+(LANG_LABELS[c.language]||c.language)+' · '+esc(c.card_number||"")+'</div>'+(c.event_family?'<div class="s" style="color:var(--gold);font-weight:800">🏆 '+esc((EVENT_FAM_LABELS[c.event_family]||c.event_family)+(tierLabel(c)?' · '+tierLabel(c):''))+'</div>':'')+'<div class="collact" id="cdcollact"></div></div>';
   renderCollBtn(c.printing_id);
 }
 async function openCatDetail(c){
