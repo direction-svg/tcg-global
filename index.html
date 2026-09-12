@@ -4211,7 +4211,7 @@ async function homeBriefing(){
   }catch(e){ box.innerHTML='<div class="txt" style="color:var(--muted);font-size:13px">Erreur, réessaie.</div><button class="hbriefbtn" onclick="homeBriefing()">Réessayer</button>'; }
 }
 document.getElementById('modeSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMode(b.dataset.m);});
-const APP_VERSION='Version b144 · 12/09 — Resolution Center + DISCOVERY (recherche image/mapping/sources réelles, ouverture depuis Catalogue) — LECTURE SEULE ; écriture admin ; reste UX inchangé';
+const APP_VERSION='Version b145 · 13/09 — Resolution Center + DISCOVERY — FIX bouton Traiter (reference_id manquant au chargement Radar) — LECTURE SEULE ; écriture admin ; reste UX inchangé';
 { const nv=document.getElementById('navVersion'); if(nv) nv.textContent=APP_VERSION; }
 document.getElementById('mktSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMarket(b.dataset.k);});
 const CATARRS=["catColors","catCats","catRarities","catTreats","catProvs","catEvents","catTiers","catRegions","catFinish","catSets"];
@@ -7561,13 +7561,13 @@ const Fake = (function(){
         '<td class="num">'+(r.n_sources||0)+'</td>'+
         '<td><span class="rown '+(r.owned_any?'yes':'no')+'">'+(r.owned_any?'possédé':'—')+'</span></td>'+
         '<td class="raction">'+esc(r.recommended_action||'')+'</td>'+
-        '<td><button class="rd-open" type="button" data-refid="'+esc(r.reference_id||'')+'">Traiter</button></td></tr>';
+        '<td><button class="rd-open" type="button" data-refid="'+esc(r.reference_id||'')+'" data-cn="'+esc(r.card_number||'')+'">Traiter</button></td></tr>';
     }).join('');
     var btn=document.getElementById('radarAll'); if(btn){ btn.style.display=(rows.length>LIM)?'inline-block':'none'; btn.textContent=radarShowAll?'Réduire':('Voir tout le Radar ('+rows.length+')'); }
   }
   function loadRadar(){
     radarShowAll=false;
-    return cq("app_coverage_radar?select=family,card_number,character,region,radar_status,radar_priority,verification_status,source_level,printed_language,event_name,event_tier,serial_flag,n_sources,owned_any,catalogue_present,last_seen,radar_label,recommended_action&order=radar_priority.desc&limit=500").then(function(rows){
+    return cq("app_coverage_radar?select=reference_id,official_asset_code,family,card_number,character,region,radar_status,radar_priority,verification_status,source_level,printed_language,event_name,event_tier,serial_flag,n_sources,owned_any,catalogue_present,last_seen,radar_label,recommended_action&order=radar_priority.desc&limit=500").then(function(rows){
       RADAR=Array.isArray(rows)?rows:[];
       var famSel=document.getElementById('rFam'), regSel=document.getElementById('rRegion');
       var fams={}, regs={};
@@ -7612,8 +7612,13 @@ const Fake = (function(){
   var CAN_WRITE=false; /* aucune session admin authentifiée => LECTURE SEULE ; mutations refusées serveur pour anon */
   var RCUR=null;
   function closeDrawer(){ var d=document.getElementById('rDrawer'); if(d)d.hidden=true; RCUR=null; }
-  function openResolve(refid){
-    var row=RADAR.filter(function(x){return String(x.reference_id)===String(refid);})[0]; if(!row)return;
+  function openResolve(refid,cn){
+    /* b145 : robustesse — on retrouve la ligne par reference_id, sinon par card_number,
+       sinon on ouvre quand même une ligne minimale (le bouton ne reste jamais inerte). */
+    var row=null;
+    if(refid) row=RADAR.filter(function(x){return String(x.reference_id)===String(refid);})[0]||null;
+    if(!row && cn) row=RADAR.filter(function(x){return String(x.card_number)===String(cn);})[0]||null;
+    if(!row) row={card_number:cn||'?',reference_id:refid||null,radar_status:'MANUAL_CATALOGUE',radar_label:'Ouvert depuis le Radar',region:null,character:null};
     RCUR={row:row,cands:[],sel:null,preview:null,msg:'',msgok:false,imgCands:null,imgSel:-1,links:null,mapRes:null};
     var d=document.getElementById('rDrawer'); if(d)d.hidden=false;
     document.getElementById('rdPanel').innerHTML='<div class="rd-head"><b>Traiter — '+esc(row.card_number)+'</b><button class="rd-close" data-rdclose="1">✕</button></div><div class="rd-msg">Chargement…</div>';
@@ -7798,7 +7803,7 @@ const Fake = (function(){
   }
   if(!window.__rdBound){ window.__rdBound=true;
     document.addEventListener('click',function(ev){
-      var o=ev.target.closest('.rd-open'); if(o){ openResolve(o.getAttribute('data-refid')); return; }
+      var o=ev.target.closest('.rd-open'); if(o){ openResolve(o.getAttribute('data-refid'),o.getAttribute('data-cn')); return; }
       var op=ev.target.closest('[data-openpid]'); if(op){ openResolveByPrinting(op.getAttribute('data-openpid')); return; }
       if(ev.target.closest('[data-rdclose]')){ closeDrawer(); return; }
       var tb=ev.target.closest('[data-rtab]'); if(tb){ if(RCUR){ RCUR.tab=tb.getAttribute('data-rtab'); renderDrawer(); } return; }
