@@ -4216,7 +4216,7 @@ async function homeBriefing(){
   }catch(e){ box.innerHTML='<div class="txt" style="color:var(--muted);font-size:13px">Erreur, réessaie.</div><button class="hbriefbtn" onclick="homeBriefing()">Réessayer</button>'; }
 }
 document.getElementById('modeSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMode(b.dataset.m);});
-const APP_VERSION='Version b152 · 12/09 — Resolution Center opérationnel : connexion admin réelle (Supabase Auth) + droit d\'écriture dynamique (serveur = autorité). Mode rapide QUICK_VALIDATE écrit réellement, une carte à la fois, gardes revérifiées serveur. Conserve b151 (démarrage matview) et tout l\'UX précédent.';
+const APP_VERSION='Version b154 · 12/09 — Fiabilite : le panneau de correction ne peut plus rester en ecran noir (rendu blinde, toujours fermable) ; Mode rapide robuste. Admin discret (roue crantee, connecte de base), image corrigee en Mode rapide. Conserve b151/b152/b153 et tout l UX precedent.';
 { const nv=document.getElementById('navVersion'); if(nv) nv.textContent=APP_VERSION; }
 document.getElementById('mktSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMarket(b.dataset.k);});
 const CATARRS=["catColors","catCats","catRarities","catTreats","catProvs","catEvents","catTiers","catRegions","catFinish","catSets"];
@@ -7724,37 +7724,50 @@ const Fake = (function(){
   /* Widget de connexion admin flottant (discret, n'altère aucune mise en page existante) */
   function buildAuthWidget(){
     if(document.getElementById('admLauncher')) return;
-    var b=document.createElement('button'); b.id='admLauncher'; b.type='button';
-    b.style.cssText='position:fixed;left:12px;bottom:12px;z-index:99998;border:1px solid var(--line,#333);background:var(--panel,#171a1f);color:var(--txt,#e8ecf1);border-radius:999px;padding:8px 12px;font:700 12px system-ui;cursor:pointer;opacity:.9';
-    b.addEventListener('click',function(){ var m=document.getElementById('admModal'); if(m) m.hidden=!m.hidden; });
+    /* b153 : lanceur DISCRET (roue crantée, sans étiquette). Aucune « étiquette admin » permanente.
+       La session admin est restaurée silencieusement au chargement → connecté de base. */
+    var b=document.createElement('button'); b.id='admLauncher'; b.type='button'; b.setAttribute('aria-label','Espace admin'); b.textContent='⚙';
+    b.style.cssText='position:fixed;left:10px;bottom:10px;z-index:99998;width:32px;height:32px;padding:0;border:1px solid var(--line,#2a2f37);background:var(--panel,#171a1f);color:var(--muted,#8b94a3);border-radius:50%;font-size:15px;line-height:30px;text-align:center;cursor:pointer;opacity:.3;transition:opacity .15s';
+    b.addEventListener('mouseenter',function(){b.style.opacity='.85';});
+    b.addEventListener('mouseleave',function(){b.style.opacity='.3';});
+    b.addEventListener('click',function(ev){ ev.stopPropagation(); var m=document.getElementById('admModal'); if(m){ m.hidden=!m.hidden; if(!m.hidden) updateAuthUI(); } });
     document.body.appendChild(b);
     var m=document.createElement('div'); m.id='admModal'; m.hidden=true;
-    m.style.cssText='position:fixed;left:12px;bottom:56px;z-index:99999;width:min(300px,92vw);border:1px solid var(--line,#333);background:var(--panel,#171a1f);color:var(--txt,#e8ecf1);border-radius:14px;padding:14px;box-shadow:0 12px 40px rgba(0,0,0,.5);font:13px system-ui';
+    m.style.cssText='position:fixed;left:10px;bottom:50px;z-index:99999;width:min(300px,92vw);border:1px solid var(--line,#2a2f37);background:var(--panel,#171a1f);color:var(--txt,#e8ecf1);border-radius:14px;padding:14px;box-shadow:0 12px 40px rgba(0,0,0,.5);font:13px system-ui';
+    m.addEventListener('click',function(ev){ ev.stopPropagation(); });
     m.innerHTML='<div id="admBody"></div>';
     document.body.appendChild(m);
+    if(!window.__admOutside){ window.__admOutside=true;
+      document.addEventListener('click',function(){ var mm=document.getElementById('admModal'); if(mm&&!mm.hidden) mm.hidden=true; });
+      document.addEventListener('keydown',function(ev){ if(ev.key==='Escape'){ var mm=document.getElementById('admModal'); if(mm&&!mm.hidden) mm.hidden=true; } });
+    }
     updateAuthUI();
   }
+  function _admClose(){ var mm=document.getElementById('admModal'); if(mm) mm.hidden=true; }
   function updateAuthUI(){
     var b=document.getElementById('admLauncher'); var body=document.getElementById('admBody');
-    if(b){ b.textContent = AUTH_STATE==='admin' ? '✅ Admin' : (AUTH_STATE==='authed_nonadmin' ? '⚠ Non-admin' : '🔒 Admin'); }
+    if(b){ /* couleur discrète de la roue selon l'état ; aucune étiquette texte */
+      b.style.color = AUTH_STATE==='admin' ? '#2ecc71' : (AUTH_STATE==='authed_nonadmin' ? '#f0a030' : 'var(--muted,#8b94a3)');
+      b.title = AUTH_STATE==='admin' ? 'Connecté' : (AUTH_STATE==='authed_nonadmin' ? 'Connecté (non-admin)' : 'Espace admin');
+    }
     if(body){
       if(AUTH_STATE==='admin'){
-        body.innerHTML='<div style="font-weight:800;margin-bottom:6px">Connecté — admin</div>'+
+        body.innerHTML='<div style="font-weight:800;margin-bottom:6px">Connecté</div>'+
           '<div style="color:var(--muted,#8b94a3);font-size:12px;margin-bottom:10px">'+esc(ADMIN_EMAIL||'')+' · écriture activée</div>'+
-          '<button id="admOut" type="button" style="width:100%;padding:9px;border-radius:9px;border:1px solid var(--line,#333);background:transparent;color:var(--txt,#e8ecf1);font-weight:700;cursor:pointer">Se déconnecter</button>';
-        var o=document.getElementById('admOut'); if(o) o.onclick=function(){ adminLogout(); };
+          '<button id="admOut" type="button" style="width:100%;padding:9px;border-radius:9px;border:1px solid var(--line,#2a2f37);background:transparent;color:var(--txt,#e8ecf1);font-weight:700;cursor:pointer">Se déconnecter</button>';
+        var o=document.getElementById('admOut'); if(o) o.onclick=function(){ adminLogout(); _admClose(); };
       } else {
         var warn = AUTH_STATE==='authed_nonadmin' ? '<div style="color:#f0a030;font-size:12px;margin-bottom:8px">Session valide mais ce compte n\'est pas admin.</div>' : '';
-        body.innerHTML='<div style="font-weight:800;margin-bottom:8px">Connexion admin</div>'+warn+
-          '<input id="admEmail" type="email" placeholder="email" autocomplete="username" style="width:100%;margin-bottom:6px;padding:8px;border-radius:8px;border:1px solid var(--line,#333);background:var(--chip,#1e232b);color:var(--txt,#e8ecf1)">'+
-          '<input id="admPw" type="password" placeholder="mot de passe" autocomplete="current-password" style="width:100%;margin-bottom:8px;padding:8px;border-radius:8px;border:1px solid var(--line,#333);background:var(--chip,#1e232b);color:var(--txt,#e8ecf1)">'+
+        body.innerHTML='<div style="font-weight:800;margin-bottom:8px">Connexion</div>'+warn+
+          '<input id="admEmail" type="email" placeholder="email" autocomplete="username" style="width:100%;margin-bottom:6px;padding:8px;border-radius:8px;border:1px solid var(--line,#2a2f37);background:var(--chip,#1e232b);color:var(--txt,#e8ecf1)">'+
+          '<input id="admPw" type="password" placeholder="mot de passe" autocomplete="current-password" style="width:100%;margin-bottom:8px;padding:8px;border-radius:8px;border:1px solid var(--line,#2a2f37);background:var(--chip,#1e232b);color:var(--txt,#e8ecf1)">'+
           '<button id="admIn" type="button" style="width:100%;padding:9px;border-radius:9px;border:0;background:#5b8cff;color:#fff;font-weight:800;cursor:pointer">Se connecter</button>'+
           '<div id="admMsg" style="font-size:12px;margin-top:8px;color:var(--muted,#8b94a3)">Le serveur reste l\'autorité : sans admin, toute écriture est refusée.</div>';
         var go=document.getElementById('admIn');
         if(go) go.onclick=function(){
           var e=(document.getElementById('admEmail')||{}).value, p=(document.getElementById('admPw')||{}).value;
           var msg=document.getElementById('admMsg'); if(msg){msg.style.color='var(--muted,#8b94a3)';msg.textContent='Connexion…';}
-          adminLogin(e,p).then(function(ok){ if(msg){ if(ok){msg.style.color='#2ecc71';msg.textContent='Connecté — écriture activée.';} else {msg.style.color='#f0a030';msg.textContent='Connecté mais non-admin : écriture refusée.';} } })
+          adminLogin(e,p).then(function(ok){ if(msg){ if(ok){msg.style.color='#2ecc71';msg.textContent='Connecté — écriture activée.'; setTimeout(_admClose,650);} else {msg.style.color='#f0a030';msg.textContent='Connecté mais non-admin : écriture refusée.';} } })
             .catch(function(err){ if(msg){msg.style.color='#e5484d';msg.textContent=String(err.message||err);} });
         };
       }
@@ -7814,30 +7827,55 @@ const Fake = (function(){
   function doSearchLinks(){ var pid=curPid(); if(!pid||!RCUR)return; RCUR.links='loading'; renderDrawer();
     rpcGet('rc_search_links',{p_printing_id:pid}).then(function(a){ if(!RCUR)return; RCUR.links=Array.isArray(a)?a:[]; renderDrawer(); }).catch(function(){ if(RCUR){RCUR.links=[]; renderDrawer();} }); }
   var CONF_CLR2={HIGH:'g',MEDIUM:'o',LOW:'gr',REVIEW:'gr'};
+  /* b154 : rendu du drawer BLINDÉ — toute erreur de rendu affiche un panneau lisible et FERMABLE
+     (jamais un panneau vide = écran noir plein écran sur mobile). */
+  function _rdHead(row){
+    return '<div class="rd-head"><button class="rd-close" data-rdclose="1" type="button" aria-label="Fermer">✕</button>'+
+      '<div class="rd-hid"><span class="rd-hcard">'+esc((row&&row.card_number)||'?')+'</span>'+
+      ((row&&row.character)?'<span class="rd-hchar">'+esc(row.character)+'</span>':'')+'</div></div>';
+  }
   function renderDrawer(){
-    if(!RCUR)return; var row=RCUR.row; if(!RCUR.tab)RCUR.tab='identite';
-    var hasConf=!!(row && row.bucket);
-    if(RCUR.mode==null) RCUR.mode = hasConf ? 'simple' : 'expert';
-    var toggle = hasConf ? '<button class="rd-mode" data-rmode="1" type="button">'+(RCUR.mode==='simple'?'Détail ▸':'◂ Simple')+'</button>' : '';
-    var head='<div class="rd-head"><button class="rd-close" data-rdclose="1" type="button" aria-label="Fermer">✕</button>'+
-      '<div class="rd-hid"><span class="rd-hcard">'+esc(row.card_number||'?')+'</span>'+
-      (row.character?'<span class="rd-hchar">'+esc(row.character)+'</span>':'')+'</div>'+
-      toggle+(CAN_WRITE?'':'<span class="rd-ro">READ ONLY</span>')+'</div>';
-    if(RCUR.mode==='simple' && hasConf){
-      document.getElementById('rdPanel').innerHTML=head+renderSimple();
-    } else {
-      var tabs=[['identite','Identité'],['image','Image'],['prix','Prix'],['sources','Sources'],['histo','Historique']];
-      var tabbar='<div class="rd-tabs">'+tabs.map(function(t){return '<button class="rd-tab'+(RCUR.tab===t[0]?' on':'')+'" data-rtab="'+t[0]+'" type="button">'+t[1]+'</button>';}).join('')+'</div>';
-      document.getElementById('rdPanel').innerHTML=head+tabbar+'<div id="rdTab"></div>';
-      renderTab();
+    if(!RCUR)return; var pnl=document.getElementById('rdPanel'); if(!pnl)return;
+    try{
+      var row=RCUR.row||{}; if(!RCUR.tab)RCUR.tab='identite';
+      var hasConf=!!(row && row.bucket);
+      if(RCUR.mode==null) RCUR.mode = hasConf ? 'simple' : 'expert';
+      var toggle = hasConf ? '<button class="rd-mode" data-rmode="1" type="button">'+(RCUR.mode==='simple'?'Détail ▸':'◂ Simple')+'</button>' : '';
+      var head='<div class="rd-head"><button class="rd-close" data-rdclose="1" type="button" aria-label="Fermer">✕</button>'+
+        '<div class="rd-hid"><span class="rd-hcard">'+esc(row.card_number||'?')+'</span>'+
+        (row.character?'<span class="rd-hchar">'+esc(row.character)+'</span>':'')+'</div>'+
+        toggle+(CAN_WRITE?'':'<span class="rd-ro">READ ONLY</span>')+'</div>';
+      if(RCUR.mode==='simple' && hasConf){
+        pnl.innerHTML=head+renderSimple();
+      } else {
+        var tabs=[['identite','Identité'],['image','Image'],['prix','Prix'],['sources','Sources'],['histo','Historique']];
+        var tabbar='<div class="rd-tabs">'+tabs.map(function(t){return '<button class="rd-tab'+(RCUR.tab===t[0]?' on':'')+'" data-rtab="'+t[0]+'" type="button">'+t[1]+'</button>';}).join('')+'</div>';
+        pnl.innerHTML=head+tabbar+'<div id="rdTab"></div>';
+        renderTab();
+      }
+      try{ var hd=document.querySelector('#rdPanel .rd-head'); if(hd&&pnl) pnl.style.setProperty('--rd-headh', hd.offsetHeight+'px'); }catch(e){}
+    }catch(err){
+      try{ console.error('[RC renderDrawer]', err && (err.stack||err.message||err)); }catch(_){}
+      try{
+        pnl.innerHTML=_rdHead(RCUR&&RCUR.row)+
+          '<div class="rd-msg err" style="padding:14px;line-height:1.5">Affichage indisponible pour cette carte.<br>Ferme (✕) et rouvre le détail complet, ou passe à la suivante.</div>'+
+          (FAST_ACTIVE?'<div class="rd-actions"><button class="rd-btn" data-fastact="passer">Passer ▸</button><button class="rd-btn warn" data-fastact="review">Review</button></div>':'<div class="rd-actions"><button class="rd-btn" data-rdclose="1">Fermer</button></div>');
+      }catch(_){}
     }
-    try{ var hd=document.querySelector('#rdPanel .rd-head'), pn=document.getElementById('rdPanel'); if(hd&&pn) pn.style.setProperty('--rd-headh', hd.offsetHeight+'px'); }catch(e){}
   }
   /* ===== b148 : VUE SIMPLE (reco + confiance + raisons + alternatives + 3 boutons) ===== */
   function renderSimple(){
-    var row=RCUR.row; var img=(RCUR.cands&&RCUR.cands[0]&&RCUR.cands[0].image_url)||'';
-    var conf=row.confidence||'REVIEW'; var reasons=row.reasons||[]; var unc=row.uncertainties||[];
-    var nAlt=(row.n_compat_uncl||RCUR.cands.length||0);
+    var row=RCUR.row;
+    /* b153 : image = meilleure candidate réelle (flagship/région-exacte d'abord), jamais cands[0] aveugle
+       (cands[0] peut être une impression sans image → « base »/vide). */
+    var _imgc=(RCUR.cands||[]).filter(function(c){return c && c.image_url && !/MISSING/i.test(String(c.image_url));});
+    var _pick=_imgc.filter(function(c){return c.event_family==='flagship';})[0]
+           || _imgc.filter(function(c){return c.distribution_region===row.region;})[0]
+           || _imgc[0] || null;
+    var img=_pick?_pick.image_url:'';
+    var conf=row.confidence||'REVIEW';
+    var reasons=Array.isArray(row.reasons)?row.reasons:[]; var unc=Array.isArray(row.uncertainties)?row.uncertainties:[];
+    var nAlt=(row.n_compat_uncl||(RCUR.cands&&RCUR.cands.length)||0);
     var prog=FAST_ACTIVE?'<div class="sm-prog">⚡ Mode rapide — carte '+(FASTI+1)+' / '+FASTQ.length+'</div>':'';
     var s=prog+'<div class="sm">'+
       '<div class="sm-card">'+(img?'<img class="sm-img" src="'+esc(img)+'" alt="">':'<div class="sm-noimg">pas d\'image</div>')+
