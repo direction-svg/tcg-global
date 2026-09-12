@@ -4212,7 +4212,7 @@ async function homeBriefing(){
   }catch(e){ box.innerHTML='<div class="txt" style="color:var(--muted);font-size:13px">Erreur, réessaie.</div><button class="hbriefbtn" onclick="homeBriefing()">Réessayer</button>'; }
 }
 document.getElementById('modeSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMode(b.dataset.m);});
-const APP_VERSION='Version b147 · 13/09 — Resolution Center — bouton Traiter/Corriger aussi sur la fiche COLLECTION (fiche possédée) — LECTURE SEULE ; reste inchangé';
+const APP_VERSION='Version b148 · 13/09 — Resolution Center SIMPLIFIÉ : confiance + buckets, Mode Simple/Expert, galerie image reco+alternatives+comparer, prix groupé, Mode rapide — LECTURE SEULE ; reste inchangé';
 { const nv=document.getElementById('navVersion'); if(nv) nv.textContent=APP_VERSION; }
 document.getElementById('mktSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMarket(b.dataset.k);});
 const CATARRS=["catColors","catCats","catRarities","catTreats","catProvs","catEvents","catTiers","catRegions","catFinish","catSets"];
@@ -7357,6 +7357,12 @@ const Fake = (function(){
 .covwrap .cov-radar h2{color:var(--cv-tx)}
 .covwrap .radar-summary{display:flex;flex-wrap:wrap;gap:8px;padding:11px 14px;border-bottom:1px solid var(--cv-line)}
 .covwrap .rchip{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:99px;border:1px solid var(--cv-line);background:var(--cv-card2);font-size:12px;font-weight:600}
+.covwrap .rbk{display:inline-flex;align-items:center;gap:6px;padding:5px 11px;margin:3px 4px 3px 0;border-radius:99px;border:1px solid var(--cv-line);background:var(--cv-card2);font-size:12px;font-weight:700;cursor:pointer;color:inherit}
+.covwrap .rbk.on{outline:2px solid var(--cv-gold,#c79b3b)}
+.covwrap .rbk.g b{color:#2fa25f}.covwrap .rbk.o b{color:#d0821f}.covwrap .rbk.r b{color:#d8524a}.covwrap .rbk.gr b{color:var(--cv-muted,#9aa3af)}
+.covwrap .rbk.rfast{background:rgba(47,162,95,.14);border-color:#2fa25f}
+.covwrap .rconf{display:inline-block;font-size:10px;font-weight:800;padding:1px 6px;border-radius:99px;letter-spacing:.3px;vertical-align:middle}
+.covwrap .rconf.g{background:rgba(47,162,95,.18);color:#2fa25f}.covwrap .rconf.o{background:rgba(208,130,31,.18);color:#d0821f}.covwrap .rconf.gr{background:rgba(140,140,140,.16);color:var(--cv-muted,#9aa3af)}.covwrap .rconf.r{background:rgba(216,82,74,.18);color:#d8524a}
 .covwrap .rchip b{font-size:13px}
 .covwrap .rchip.tot b{color:var(--cv-gold)}
 .covwrap .rchip.d b{color:var(--cv-orange)}
@@ -7436,6 +7442,31 @@ const Fake = (function(){
 .rd-linkbtn{background:none;border:none;color:var(--rgold,#c79b3b);cursor:pointer;padding:0;font-size:11px;text-decoration:underline}
 .rd-cap{font-size:11px;line-height:1.6;background:rgba(127,127,127,.08);border-radius:6px;padding:6px 8px;margin:6px 0}
 .rd-cat-treat{margin:8px 0}
+/* b148 : vue simple */
+.rd-mode{margin-left:auto;flex:none;background:var(--panel,#16191e);border:1px solid var(--rl);color:inherit;border-radius:8px;padding:5px 10px;font-size:12px;font-weight:800;cursor:pointer}
+.rd-head .rd-ro{margin-left:8px}
+.sm{padding:12px 14px}
+.sm-card{display:flex;gap:12px;align-items:center;margin-bottom:12px}
+.sm-img{width:96px;height:134px;object-fit:cover;border-radius:8px;border:1px solid var(--rl);background:var(--rl)}
+.sm-noimg{width:96px;height:134px;border-radius:8px;border:1px dashed var(--rl);display:flex;align-items:center;justify-content:center;color:var(--rm);font-size:11px}
+.sm-cmeta{font-size:14px;line-height:1.4}
+.sm-mut{color:var(--rm);font-size:12px}
+.sm-sec{padding:10px 0;border-top:1px solid var(--rl)}
+.sm-h{font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:var(--rm);margin-bottom:5px;display:flex;align-items:center;gap:8px}
+.sm-reco{background:rgba(199,155,59,.08);border-radius:10px;padding:12px;border-top:0;margin:4px 0}
+.sm-recotxt{font-size:15px;font-weight:800;line-height:1.35}
+.sm-ul{margin:0;padding-left:2px;list-style:none;font-size:13px;line-height:1.7}
+.sm-ul li{color:var(--rg)}
+.sm-unc li{color:var(--ro)}
+.sm-prog{position:sticky;top:var(--rd-headh,56px);z-index:3;background:rgba(47,162,95,.14);color:var(--rg);font-weight:800;font-size:12.5px;padding:8px 14px;border-bottom:1px solid var(--rl)}
+.rconf{display:inline-block;font-size:10px;font-weight:800;padding:1px 7px;border-radius:99px}
+.rconf.g{background:rgba(47,162,95,.18);color:var(--rg)}.rconf.o{background:rgba(208,130,31,.18);color:var(--ro)}.rconf.gr{background:rgba(140,140,140,.18);color:var(--rm)}.rconf.r{background:rgba(216,82,74,.18);color:var(--rr)}
+.rd-imgrid.one{grid-template-columns:1fr;max-width:260px;margin:6px auto}
+.rd-imgc.big .rd-imgt{aspect-ratio:5/7}
+.rd-cmp{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:8px 0}
+.rd-cmp img{width:100%;aspect-ratio:5/7;object-fit:contain;border-radius:8px;border:1px solid var(--rl);background:#000}
+.rd-cmp-h{font-size:11px;color:var(--rm);text-align:center;margin-bottom:4px;font-weight:700}
+.rd-cmp-no{width:100%;aspect-ratio:5/7;border:1px dashed var(--rl);border-radius:8px;display:flex;align-items:center;justify-content:center;color:var(--rm)}
 </style>
 <script>
 /* Couverture — module BOUNTY (namespacé, additif, lecture seule). Réutilise index_coverage.html + P3 santé/alertes. */
@@ -7538,15 +7569,17 @@ const Fake = (function(){
   var RSTAT_SHORT={B_POTENTIAL_MISSING_PRINTING:['Manquante ?','B'],C_PRESENT_UNCLASSIFIED:['Mal qualifiée','C'],D_METADATA_GAP:['Métadonnées','D'],E_REVIEW_ONLY:['Preuve faible','E']};
   function rval(id){var e=document.getElementById(id);return e?e.value:'';}
   function proofPill(vs,lvl){ var cls=vs==='VERIFIED_OFFICIAL'?'off':vs==='MANUAL_REVIEWED'?'man':'rev'; var t=vs==='VERIFIED_OFFICIAL'?'OFFICIEL':vs==='MANUAL_REVIEWED'?'DOCUMENTÉ':'REVIEW'; return '<span class="pill '+cls+'">'+t+(lvl?' '+esc(lvl):'')+'</span>'; }
+  var RBUCKET='';
   function radarSummary(){
-    var c={B_POTENTIAL_MISSING_PRINTING:0,C_PRESENT_UNCLASSIFIED:0,D_METADATA_GAP:0,E_REVIEW_ONLY:0};
-    RADAR.forEach(function(r){ if(c[r.radar_status]!=null)c[r.radar_status]++; });
     var el=document.getElementById('radarSummary'); if(!el)return;
+    var bk={QUICK_VALIDATE:0,NEEDS_CHOICE:0,NEEDS_RESEARCH:0,REVIEW_ONLY:0,CONFLICT:0}; var hasConf=false;
+    RADAR.forEach(function(r){ if(r.bucket!=null){ hasConf=true; if(bk[r.bucket]!=null)bk[r.bucket]++; } });
+    if(!hasConf){ el.innerHTML='<span class="rchip tot"><b>'+RADAR.length+'</b> à traiter</span><span class="rchip">chargement confiance…</span>'; return; }
+    function chip(b,lbl){ return '<button class="rbk '+BUCKET_CLR[b]+(RBUCKET===b?' on':'')+'" data-bucket="'+b+'"><b>'+bk[b]+'</b> '+lbl+'</button>'; }
     el.innerHTML='<span class="rchip tot"><b>'+RADAR.length+'</b> à traiter</span>'+
-      '<span class="rchip d"><b>'+c.D_METADATA_GAP+'</b> métadonnées à confirmer</span>'+
-      '<span class="rchip c"><b>'+c.C_PRESENT_UNCLASSIFIED+'</b> présentes mal qualifiées</span>'+
-      '<span class="rchip e"><b>'+c.E_REVIEW_ONLY+'</b> preuve insuffisante</span>'+
-      '<span class="rchip b"><b>'+c.B_POTENTIAL_MISSING_PRINTING+'</b> manque crédible</span>';
+      chip('QUICK_VALIDATE','validation rapide')+chip('NEEDS_CHOICE','à choisir')+
+      chip('NEEDS_RESEARCH','à rechercher')+chip('REVIEW_ONLY','en review')+chip('CONFLICT','conflit')+
+      (bk.QUICK_VALIDATE>0?'<button class="rbk g rfast" data-fast="1">⚡ Mode rapide ('+bk.QUICK_VALIDATE+')</button>':'');
   }
   function renderRadar(){
     var fam=rval('rFam'),st=rval('rStatus'),reg=rval('rRegion'),pf=rval('rProof'),ow=rval('rOwned'),sort=rval('rSort')||'prio';
@@ -7558,7 +7591,11 @@ const Fake = (function(){
     else if(pf) rows=rows.filter(function(r){return r.verification_status===pf;});
     if(ow==='no') rows=rows.filter(function(r){return !r.owned_any;});
     else if(ow==='own') rows=rows.filter(function(r){return r.owned_any;});
-    if(sort==='prio') rows.sort(function(a,b){return b.radar_priority-a.radar_priority;});
+    if(RBUCKET) rows=rows.filter(function(r){return r.bucket===RBUCKET;});
+    var CORD={HIGH:0,MEDIUM:1,LOW:2,REVIEW:3};
+    if(sort==='confidence') rows.sort(function(a,b){return (CORD[a.confidence]==null?9:CORD[a.confidence])-(CORD[b.confidence]==null?9:CORD[b.confidence])||(b.radar_priority-a.radar_priority);});
+    else if(sort==='owned') rows.sort(function(a,b){return (b.owned_any?1:0)-(a.owned_any?1:0)||(b.radar_priority-a.radar_priority);});
+    else if(sort==='prio') rows.sort(function(a,b){return b.radar_priority-a.radar_priority;});
     else if(sort==='recent') rows.sort(function(a,b){return (''+(b.last_seen||'')).localeCompare(''+(a.last_seen||''));});
     else if(sort==='fam') rows.sort(function(a,b){return (FAM_LABEL[a.family]||a.family||'').localeCompare(FAM_LABEL[b.family]||b.family||'')||(b.radar_priority-a.radar_priority);});
     else if(sort==='proof') rows.sort(function(a,b){var o={VERIFIED_OFFICIAL:0,MANUAL_REVIEWED:1,REVIEW:2};return ((o[a.verification_status]||9)-(o[b.verification_status]||9))||(b.radar_priority-a.radar_priority);});
@@ -7566,8 +7603,9 @@ const Fake = (function(){
     document.getElementById('radarCount').textContent=rows.length+' élément'+(rows.length>1?'s':'')+' actionnable'+(rows.length>1?'s':'')+((radarShowAll||rows.length<=LIM)?'':' · '+shown.length+' affichés');
     document.getElementById('radarbody').innerHTML=shown.map(function(r){
       var sh=RSTAT_SHORT[r.radar_status]||['',''];
+      var cbadge=r.confidence?('<span class="rconf '+(CONF_CLR[r.confidence]||'gr')+'">'+r.confidence+'</span> '):'';
       return '<tr><td class="num"><span class="rprio">'+(r.radar_priority||0)+'</span></td>'+
-        '<td><span class="rlabel '+sh[1]+'">'+esc(r.radar_label||sh[0])+'</span></td>'+
+        '<td>'+cbadge+'<span class="rlabel '+sh[1]+'">'+esc(r.radar_label||sh[0])+'</span></td>'+
         '<td>'+esc(FAM_LABEL[r.family]||r.family)+'</td>'+
         '<td class="fam">'+esc(r.card_number)+'</td>'+
         '<td>'+esc(r.character||'')+'</td>'+
@@ -7593,9 +7631,18 @@ const Fake = (function(){
       if(regSel) Object.keys(regs).sort().forEach(function(g){var o=document.createElement('option');o.value=g;o.textContent=g;regSel.appendChild(o);});
       ['rFam','rStatus','rRegion','rProof','rOwned','rSort'].forEach(function(id){var e=document.getElementById(id); if(e&&!e._rb){e.addEventListener('change',renderRadar);e._rb=true;}});
       var btn=document.getElementById('radarAll'); if(btn&&!btn._rb){ btn.addEventListener('click',function(){radarShowAll=!radarShowAll;renderRadar();}); btn._rb=true; }
-      radarSummary(); renderRadar();
+      /* b148 : couche CONFIANCE (UX) — fusionne bucket/confidence/raisons par reference_id */
+      cq("app_radar_confidence?select=reference_id,bucket,confidence,problem_type,recommended,reasons,uncertainties,n_compat_uncl,n_region_exact&limit=500").then(function(cf){
+        var by={}; (Array.isArray(cf)?cf:[]).forEach(function(x){ by[x.reference_id]=x; });
+        RADAR.forEach(function(r){ var c=by[r.reference_id]; if(c){ r.bucket=c.bucket; r.confidence=c.confidence; r.problem_type=c.problem_type; r.recommended=c.recommended; r.reasons=c.reasons||[]; r.uncertainties=c.uncertainties||[]; r.n_compat_uncl=c.n_compat_uncl; r.n_region_exact=c.n_region_exact; } });
+        RCONF_READY=true; radarSummary(); renderRadar();
+      }).catch(function(){ radarSummary(); renderRadar(); });
     }).catch(function(e){ var el=document.getElementById('radarSummary'); if(el)el.innerHTML='<span class="rchip">Radar indisponible</span>'; });
   }
+  var RCONF_READY=false;
+  var BUCKET_LABEL={QUICK_VALIDATE:'Validation rapide',NEEDS_CHOICE:'À choisir',NEEDS_RESEARCH:'À rechercher',REVIEW_ONLY:'En review',CONFLICT:'Conflit'};
+  var BUCKET_CLR={QUICK_VALIDATE:'g',NEEDS_CHOICE:'o',NEEDS_RESEARCH:'gr',REVIEW_ONLY:'gr',CONFLICT:'r'};
+  var CONF_CLR={HIGH:'g',MEDIUM:'o',LOW:'gr',REVIEW:'gr'};
   /* ===== Radar Resolution (drawer Traiter) — STAGING ; RPC non activée pour anon tant que non-GO ===== */
   function rpcResolve(body){
     return fetch(SBc+"/rest/v1/rpc/resolve_coverage_gap",{method:"POST",headers:{apikey:ANONc,Authorization:"Bearer "+ANONc,"Content-Type":"application/json"},body:JSON.stringify(body)}).then(function(r){return r.json();});
@@ -7678,19 +7725,59 @@ const Fake = (function(){
     rpcGet('rc_price_mapping_candidates',{p_printing_id:pid,p_provider:provider}).then(function(j){ if(!RCUR)return; RCUR.mapRes=j||{}; renderDrawer(); }).catch(function(){ if(RCUR){RCUR.mapRes={status:'erreur'}; renderDrawer();} }); }
   function doSearchLinks(){ var pid=curPid(); if(!pid||!RCUR)return; RCUR.links='loading'; renderDrawer();
     rpcGet('rc_search_links',{p_printing_id:pid}).then(function(a){ if(!RCUR)return; RCUR.links=Array.isArray(a)?a:[]; renderDrawer(); }).catch(function(){ if(RCUR){RCUR.links=[]; renderDrawer();} }); }
+  var CONF_CLR2={HIGH:'g',MEDIUM:'o',LOW:'gr',REVIEW:'gr'};
   function renderDrawer(){
     if(!RCUR)return; var row=RCUR.row; if(!RCUR.tab)RCUR.tab='identite';
+    var hasConf=!!(row && row.bucket);
+    if(RCUR.mode==null) RCUR.mode = hasConf ? 'simple' : 'expert';
+    var toggle = hasConf ? '<button class="rd-mode" data-rmode="1" type="button">'+(RCUR.mode==='simple'?'Détail ▸':'◂ Simple')+'</button>' : '';
     var head='<div class="rd-head"><button class="rd-close" data-rdclose="1" type="button" aria-label="Fermer">✕</button>'+
       '<div class="rd-hid"><span class="rd-hcard">'+esc(row.card_number||'?')+'</span>'+
       (row.character?'<span class="rd-hchar">'+esc(row.character)+'</span>':'')+'</div>'+
-      (CAN_WRITE?'':'<span class="rd-ro">READ ONLY</span>')+'</div>';
-    var tabs=[['identite','Identité'],['image','Image'],['prix','Prix'],['sources','Sources'],['histo','Historique']];
-    var tabbar='<div class="rd-tabs">'+tabs.map(function(t){return '<button class="rd-tab'+(RCUR.tab===t[0]?' on':'')+'" data-rtab="'+t[0]+'" type="button">'+t[1]+'</button>';}).join('')+'</div>';
-    document.getElementById('rdPanel').innerHTML=head+tabbar+'<div id="rdTab"></div>';
-    renderTab();
-    /* b146 : cale les onglets sous le header sticky réel (safe-area incluse) */
+      toggle+(CAN_WRITE?'':'<span class="rd-ro">READ ONLY</span>')+'</div>';
+    if(RCUR.mode==='simple' && hasConf){
+      document.getElementById('rdPanel').innerHTML=head+renderSimple();
+    } else {
+      var tabs=[['identite','Identité'],['image','Image'],['prix','Prix'],['sources','Sources'],['histo','Historique']];
+      var tabbar='<div class="rd-tabs">'+tabs.map(function(t){return '<button class="rd-tab'+(RCUR.tab===t[0]?' on':'')+'" data-rtab="'+t[0]+'" type="button">'+t[1]+'</button>';}).join('')+'</div>';
+      document.getElementById('rdPanel').innerHTML=head+tabbar+'<div id="rdTab"></div>';
+      renderTab();
+    }
     try{ var hd=document.querySelector('#rdPanel .rd-head'), pn=document.getElementById('rdPanel'); if(hd&&pn) pn.style.setProperty('--rd-headh', hd.offsetHeight+'px'); }catch(e){}
   }
+  /* ===== b148 : VUE SIMPLE (reco + confiance + raisons + alternatives + 3 boutons) ===== */
+  function renderSimple(){
+    var row=RCUR.row; var img=(RCUR.cands&&RCUR.cands[0]&&RCUR.cands[0].image_url)||'';
+    var conf=row.confidence||'REVIEW'; var reasons=row.reasons||[]; var unc=row.uncertainties||[];
+    var nAlt=(row.n_compat_uncl||RCUR.cands.length||0);
+    var prog=FAST_ACTIVE?'<div class="sm-prog">⚡ Mode rapide — carte '+(FASTI+1)+' / '+FASTQ.length+'</div>':'';
+    var s=prog+'<div class="sm">'+
+      '<div class="sm-card">'+(img?'<img class="sm-img" src="'+esc(img)+'" alt="">':'<div class="sm-noimg">pas d\'image</div>')+
+        '<div class="sm-cmeta"><b>'+esc(row.card_number)+'</b> · '+esc(row.character||'')+'<br><span class="sm-mut">'+esc(FAM_LABEL[row.family]||row.family)+' · '+esc(row.region||'?')+esc(row.event_tier?(' · '+row.event_tier):'')+'</span></div></div>'+
+      '<div class="sm-sec"><div class="sm-h">Problème</div><div>'+esc(row.radar_label||row.problem_type||'')+'</div></div>'+
+      '<div class="sm-sec sm-reco"><div class="sm-h">Proposition recommandée <span class="rconf '+(CONF_CLR2[conf]||'gr')+'">'+conf+'</span></div>'+
+        '<div class="sm-recotxt">'+esc(row.recommended||'')+'</div></div>'+
+      '<div class="sm-sec"><div class="sm-h">Pourquoi</div><ul class="sm-ul">'+(reasons.length?reasons.map(function(x){return '<li>✓ '+esc(x)+'</li>';}).join(''):'<li class="sm-mut">—</li>')+'</ul></div>'+
+      (unc.length?'<div class="sm-sec"><div class="sm-h">Ce qui reste incertain</div><ul class="sm-ul sm-unc">'+unc.map(function(x){return '<li>⚠ '+esc(x)+'</li>';}).join('')+'</ul></div>':'')+
+      '</div>';
+    var acts;
+    if(FAST_ACTIVE){
+      /* file UX : ces boutons font AVANCER la file (aucune mutation) → jamais désactivés */
+      acts='<div class="rd-actions"><button class="rd-btn primary" data-fastact="valider">Valider</button><button class="rd-btn" data-fastact="passer">Passer</button><button class="rd-btn warn" data-fastact="review">Review</button></div>'+
+        (CAN_WRITE?'':'<div class="rd-note" style="padding:0 14px 10px">Mode rapide en lecture seule : les choix ne sont pas écrits (simulation UX).</div>');
+    } else {
+      acts=roActions('<button class="rd-btn primary" data-raction="'+(row.problem_type==='REGION'?'FIX_REGION':'CLASSIFY')+'">Valider</button>')+
+        '<div class="rd-actions" style="border-top:0;padding-top:0"><button class="rd-btn" data-rmode="1">Voir les alternatives ('+nAlt+')</button><button class="rd-btn warn" data-raction="KEEP_REVIEW">Garder en REVIEW</button></div>';
+    }
+    var msg=RCUR.msg?'<div class="rd-msg '+(RCUR.msgok?'ok':'err')+'">'+esc(RCUR.msg)+'</div>':'';
+    return s+msg+acts;
+  }
+  /* ===== Mode rapide : file de validation sur le bucket QUICK_VALIDATE ===== */
+  var FAST_ACTIVE=false, FASTQ=[], FASTI=0;
+  function startFast(){ FASTQ=RADAR.filter(function(r){return r.bucket==='QUICK_VALIDATE';}); FASTI=0; if(!FASTQ.length)return; FAST_ACTIVE=true; fastOpen(); }
+  function fastOpen(){ var r=FASTQ[FASTI]; if(!r){ fastEnd(); return; } openResolve(r.reference_id, r.card_number); }
+  function fastAct(a){ /* aucune mutation en staging — file UX simulée */ FASTI++; if(FASTI<FASTQ.length){ fastOpen(); } else { fastEnd(); } }
+  function fastEnd(){ FAST_ACTIVE=false; closeDrawer(); var el=document.getElementById('radarSummary'); if(el){ var d=document.createElement('div'); d.className='rchip'; d.textContent='⚡ Fin du mode rapide ('+FASTQ.length+' cartes passées en revue)'; el.appendChild(d); } }
   function renderTab(){ var el=document.getElementById('rdTab'); if(!el||!RCUR)return; var t=RCUR.tab;
     if(t==='sources') renderTabSources(el); else if(t==='histo') renderTabHisto(el);
     else if(t==='image') renderTabImage(el); else if(t==='prix') renderTabPrix(el); else renderTabIdentite(el);
@@ -7756,24 +7843,34 @@ const Fake = (function(){
       box.innerHTML=(rows&&rows.length)?rows.map(function(h){return '<div class="rd-item"><b>'+esc(h.action)+'</b> · '+esc(h.result)+' · <span style="color:var(--rm)">'+esc(String(h.created_at||'').slice(0,16))+'</span><br>'+esc(h.reason||'')+(h.after_state?'<br><span style="color:var(--rm)">'+esc(JSON.stringify(h.after_state))+'</span>':'')+'</div>';}).join(''):'<div class="rd-note">Aucune correction enregistrée pour cette carte.</div>';
     }).catch(function(){ var b=document.getElementById('rdHi'); if(b)b.innerHTML='<div class="rd-note">Indisponible.</div>'; });
   }
+  var TIER_LBL={MATCH_EXACT:['exact','A'],MATCH_FORT:['fort','A'],MATCH_PARTIEL:['partiel','C'],FAIBLE:['faible','D']};
+  function imgCard(c,i,big){ var t=TIER_LBL[c.match_tier]||['?','C'];
+    return '<div class="rd-imgc'+(big?' big':'')+(RCUR.imgSel===i?' sel':'')+'"><img class="rd-imgt" src="'+esc(c.url)+'" alt="" loading="lazy">'+
+      '<div class="rd-imm"><span class="rd-pill2 '+t[1]+'">MATCH '+t[0]+'</span> <span class="rd-pill2 '+(c.official?'A':'C')+'">'+(c.official?'officiel':'non off.')+'</span>'+(c.region?' <span class="rd-pill2">'+esc(c.region)+'</span>':'')+
+      '<div class="rd-mini" style="color:var(--rm)">'+esc(c.match_reason||'')+'</div>'+
+      '<div class="rd-mini"><button class="rd-linkbtn" data-imgcmp="'+i+'">comparer</button> · <a href="'+esc(c.url)+'" target="_blank" rel="noopener">ouvrir</a> · <button class="rd-linkbtn" data-imgpick="'+i+'">choisir</button> · <button class="rd-linkbtn" data-imgrej="'+i+'">rejeter</button></div></div></div>'; }
   function renderTabImage(el){
     var pid=curPid(); var cur=(RCUR.sel&&RCUR.sel.image_url)||(RCUR.cands[0]&&RCUR.cands[0].image_url)||'';
     var gal;
-    if(RCUR.imgCands==null) gal='<div class="rd-note">Clique « Rechercher des images » : interroge le cardlist JP officiel + les impressions internes de la même carte (sources réellement disponibles ci-dessous).</div>';
+    if(RCUR.imgCands==null) gal='<div class="rd-note">Clique « Rechercher des images » : interroge le cardlist JP officiel + les impressions internes (sources réellement disponibles ci-dessous).</div>';
     else if(RCUR.imgCands==='loading') gal='<div class="rd-note">Recherche…</div>';
-    else if(RCUR.imgCands.length===0) gal='<div class="rd-note">Aucune image candidate dans les sources internes interrogeables pour cette carte.</div>';
-    else gal='<div class="rd-imgrid">'+RCUR.imgCands.map(function(c,i){return '<div class="rd-imgc'+(RCUR.imgSel===i?' sel':'')+'"><img class="rd-imgt" src="'+esc(c.url)+'" alt="" loading="lazy">'+
-      '<div class="rd-imm"><span class="rd-pill2 '+(c.official?'A':'C')+'">'+(c.official?'officiel':'non off.')+'</span> <span class="rd-pill2">'+esc(c.source)+'</span> <span class="rd-pill2 '+(c.confidence==='HIGH'?'A':'C')+'">'+esc(c.confidence)+'</span>'+
-      '<div class="rd-mini" style="color:var(--rm)">'+esc(c.match_reason||'')+'</div>'+
-      '<div class="rd-mini"><a href="'+esc(c.url)+'" target="_blank" rel="noopener">ouvrir</a> · <button class="rd-linkbtn" data-imgpick="'+i+'">sélectionner</button> · <button class="rd-linkbtn" data-imgrej="'+i+'">rejeter</button></div></div></div>';}).join('')+'</div>';
+    else if(RCUR.imgCands.length===0) gal='<div class="rd-note">Aucune image candidate dans les sources internes interrogeables.</div>';
+    else { var a=RCUR.imgCands; var reco=a[0]; var alts=a.slice(1,4); var rest=a.slice(4);
+      var cmp='';
+      if(RCUR.cmp!=null && a[RCUR.cmp]){ cmp='<div class="rd-cmp"><div><div class="rd-cmp-h">Actuelle</div>'+(cur?'<img src="'+esc(cur)+'">':'<div class="rd-cmp-no">—</div>')+'</div>'+
+        '<div><div class="rd-cmp-h">Candidate ('+esc((TIER_LBL[a[RCUR.cmp].match_tier]||['?'])[0])+')</div><img src="'+esc(a[RCUR.cmp].url)+'"></div></div>'+
+        '<div class="rd-mini" style="color:var(--rm);text-align:center;margin-bottom:6px">'+esc(a[RCUR.cmp].match_reason||'')+'</div>'; }
+      gal=cmp+'<div class="sm-h" style="margin-top:6px">Recommandée</div><div class="rd-imgrid one">'+imgCard(reco,0,true)+'</div>'+
+        (alts.length?'<div class="sm-h">Alternatives proches</div><div class="rd-imgrid">'+alts.map(function(c,k){return imgCard(c,k+1,false);}).join('')+'</div>':'')+
+        (rest.length?(RCUR.imgShowAll?('<div class="rd-imgrid">'+rest.map(function(c,k){return imgCard(c,k+4,false);}).join('')+'</div><div class="rd-actions"><button class="rd-btn" data-imgmore="0">Réduire</button></div>')
+                                      :'<div class="rd-actions"><button class="rd-btn" data-imgmore="1">Voir toutes les images ('+rest.length+')</button></div>'):''); }
     el.innerHTML='<div class="rd-sec"><h3>Image — impression '+esc(String(pid||'').slice(0,8))+'</h3>'+
       '<div id="rdCapImg" class="rd-cap">…</div>'+
       '<div class="rd-actions"><button class="rd-btn" data-imgsearch="1">🔎 Rechercher des images</button></div>'+
-      (cur?'<div class="rd-note">Image canonique actuelle :</div><img class="rd-img2" src="'+esc(cur)+'">':'<div class="rd-note">Aucune image canonique actuelle.</div>')+
       gal+
       '<div style="margin-top:10px"><h3>Ajouter une URL image</h3><input class="rd-in" id="imgUrl" placeholder="https://… image source" '+(CAN_WRITE?'':'disabled')+'>'+
-      roActions('<button class="rd-btn primary" data-raction="SET_IMAGE">Sélectionner / cacher cette image</button><button class="rd-btn warn" data-raction="IMG_INCORRECT">Marquer image incorrecte</button>')+
-      '<div class="rd-note">Une URL externe passe par un fetch/cache backend contrôlé (allowlist SSRF), puis un storage interne lié au printing_id exact ; jamais un lien externe durable. L\'image validée est protégée d\'un sync moins fiable.</div></div></div>';
+      roActions('<button class="rd-btn primary" data-raction="SET_IMAGE">Choisir / cacher cette image</button><button class="rd-btn warn" data-raction="IMG_INCORRECT">Marquer image incorrecte</button>')+
+      '<div class="rd-note">Le classement se fait d\'abord par métadonnées (asset officiel exact > région/variant > card_number). Une URL externe passe par un fetch/cache backend (allowlist SSRF) puis un storage interne lié au printing_id exact.</div></div></div>';
     renderCapNote('rdCapImg','image');
   }
   function renderTabPrix(el){ var pid=curPid();
@@ -7796,7 +7893,24 @@ const Fake = (function(){
       var h=document.getElementById('rdPxHead'); var d=(j&&j.display)||null;
       if(h) h.innerHTML=d?('<b style="font-size:1.15em">'+esc(String(d.price))+' '+esc(d.currency||'EUR')+'</b> · '+esc(d.basis||'?')+' · '+esc(d.source||'?')+' · '+esc(d.confidence||'')+' · '+esc(String(d.captured_at||'').slice(0,10))+(d.age_days!=null?' ('+d.age_days+' j)':'')+' · '+esc(d.status||'')):'<span class="rd-note">Pas de prix canonique (hors scope owned/premium ou à vérifier).</span>';
       var box=document.getElementById('rdPx'); var src=(j&&j.sources)||[];
-      if(box) box.innerHTML=src.length?src.map(function(p){return '<div class="rd-item">'+esc(p.source)+' · '+esc(p.price_kind)+' · <b>'+esc(String(p.price))+'</b> '+esc(p.currency)+(p.grade?' · grade '+esc(String(p.grade))+' '+esc(p.grading_company||''):'')+(p.excluded?' <span class="rd-lock">exclue</span>':'')+'<br><span style="color:var(--rm)">'+esc(String(p.captured_at||'').slice(0,10))+(p.product_id?' · id '+esc(String(p.product_id)):'')+'</span></div>';}).join(''):'<div class="rd-note">Aucune cote source pour cette impression.</div>';
+      if(box){
+        if(!src.length){ box.innerHTML='<div class="rd-note">Aucune cote source pour cette impression.</div>'; }
+        else {
+          var vals=src.filter(function(p){return !p.excluded && +p.price>0;}).map(function(p){return +p.price;}).sort(function(a,b){return a-b;});
+          var med=vals.length?vals[Math.floor(vals.length/2)]:0;
+          function grp(p){ if(p.excluded||p.price_kind==='PRICECHARTING_GENERIC') return 'SUSPECTE';
+            if(med>0 && (+p.price>4*med || +p.price<0.25*med)) return 'SUSPECTE';
+            if(d && p.source===d.source && p.price_kind===d.basis) return 'UTILISEE';
+            return 'COMPATIBLE'; }
+          var G={UTILISEE:[],COMPATIBLE:[],SUSPECTE:[]}; src.forEach(function(p){ G[grp(p)].push(p); });
+          function row(p,tag){ return '<div class="rd-item">'+(tag||'')+esc(p.source)+' · '+esc(p.price_kind)+' · <b>'+esc(String(p.price))+'</b> '+esc(p.currency)+(p.grade?' · grade '+esc(String(p.grade))+' '+esc(p.grading_company||''):'')+(p.excluded?' <span class="rd-lock">exclue</span>':'')+'<br><span style="color:var(--rm)">'+esc(String(p.captured_at||'').slice(0,10))+(p.product_id?' · id '+esc(String(p.product_id)):'')+'</span></div>'; }
+          var html='';
+          if(G.UTILISEE.length) html+='<div class="sm-h" style="color:var(--rg)">✓ Utilisée (retenue)</div>'+G.UTILISEE.map(function(p){return row(p);}).join('');
+          if(G.COMPATIBLE.length) html+='<div class="sm-h">Compatibles</div>'+G.COMPATIBLE.map(function(p){return row(p);}).join('');
+          if(G.SUSPECTE.length) html+='<div class="sm-h" style="color:var(--ro)">⚠ Suspectes / exclues</div>'+G.SUSPECTE.map(function(p){return row(p);}).join('');
+          box.innerHTML=html;
+        }
+      }
     }).catch(function(){ var b=document.getElementById('rdPx'); if(b)b.innerHTML='<div class="rd-note">Indisponible.</div>'; });
   }
   function selectCand(pid){ if(!RCUR)return; RCUR.sel=RCUR.cands.filter(function(c){return c.printing_id===pid;})[0]||null; RCUR.tab='identite'; renderDrawer(); }
@@ -7833,13 +7947,19 @@ const Fake = (function(){
   if(!window.__rdBound){ window.__rdBound=true;
     document.addEventListener('keydown',function(ev){ if(ev.key==='Escape'||ev.keyCode===27){ var d=document.getElementById('rDrawer'); if(d&&!d.hidden) closeDrawer(); } });
     document.addEventListener('click',function(ev){
+      var bk=ev.target.closest('[data-bucket]'); if(bk){ var bb=bk.getAttribute('data-bucket'); RBUCKET=(RBUCKET===bb?'':bb); radarSummary(); renderRadar(); return; }
+      if(ev.target.closest('[data-fast]')){ startFast(); return; }
       var o=ev.target.closest('.rd-open'); if(o){ openResolve(o.getAttribute('data-refid'),o.getAttribute('data-cn')); return; }
       var op=ev.target.closest('[data-openpid]'); if(op){ openResolveByPrinting(op.getAttribute('data-openpid')); return; }
       if(ev.target.closest('[data-rdclose]')){ closeDrawer(); return; }
-      var tb=ev.target.closest('[data-rtab]'); if(tb){ if(RCUR){ RCUR.tab=tb.getAttribute('data-rtab'); renderDrawer(); } return; }
+      if(ev.target.closest('[data-rmode]')){ if(RCUR){ RCUR.mode=(RCUR.mode==='expert'?'simple':'expert'); renderDrawer(); } return; }
+      var fn=ev.target.closest('[data-fastact]'); if(fn){ fastAct(fn.getAttribute('data-fastact')); return; }
+      var tb=ev.target.closest('[data-rtab]'); if(tb){ if(RCUR){ RCUR.tab=tb.getAttribute('data-rtab'); RCUR.mode='expert'; renderDrawer(); } return; }
       if(ev.target.closest('[data-imgsearch]')){ doImgSearch(); return; }
       var ip=ev.target.closest('[data-imgpick]'); if(ip){ if(RCUR){ RCUR.imgSel=+ip.getAttribute('data-imgpick'); renderDrawer(); } return; }
-      var ir=ev.target.closest('[data-imgrej]'); if(ir){ if(RCUR&&RCUR.imgCands&&RCUR.imgCands.splice){ RCUR.imgCands.splice(+ir.getAttribute('data-imgrej'),1); RCUR.imgSel=-1; renderDrawer(); } return; }
+      var ir=ev.target.closest('[data-imgrej]'); if(ir){ if(RCUR&&RCUR.imgCands&&RCUR.imgCands.splice){ RCUR.imgCands.splice(+ir.getAttribute('data-imgrej'),1); RCUR.imgSel=-1; RCUR.cmp=null; renderDrawer(); } return; }
+      var ic=ev.target.closest('[data-imgcmp]'); if(ic){ if(RCUR){ var ci=+ic.getAttribute('data-imgcmp'); RCUR.cmp=(RCUR.cmp===ci?null:ci); renderDrawer(); } return; }
+      var im=ev.target.closest('[data-imgmore]'); if(im){ if(RCUR){ RCUR.imgShowAll=im.getAttribute('data-imgmore')==='1'; renderDrawer(); } return; }
       var ms=ev.target.closest('[data-mapsearch]'); if(ms){ doMapSearch(ms.getAttribute('data-mapsearch')); return; }
       if(ev.target.closest('[data-searchlinks]')){ doSearchLinks(); return; }
       var cd=ev.target.closest('[data-cand]'); if(cd){ selectCand(cd.getAttribute('data-cand')); return; }
@@ -7869,7 +7989,7 @@ const Fake = (function(){
           '<select id="rProof"><option value="">Toute preuve</option><option value="AB">Officiel A/B</option>'+
             '<option value="VERIFIED_OFFICIAL">VERIFIED</option><option value="MANUAL_REVIEWED">MANUAL</option><option value="REVIEW">REVIEW</option></select>'+
           '<select id="rOwned"><option value="">Possédé + non</option><option value="no">Non possédé</option><option value="own">Déjà possédé</option></select>'+
-          '<select id="rSort"><option value="prio">Tri : priorité</option><option value="recent">Plus récent</option><option value="fam">Famille</option><option value="proof">Niveau de preuve</option></select>'+
+          '<select id="rSort"><option value="confidence">Tri : confiance (faciles d\'abord)</option><option value="prio">Priorité</option><option value="owned">Possédées d\'abord</option><option value="recent">Plus récent</option><option value="fam">Famille</option><option value="proof">Niveau de preuve</option></select>'+
         '</div>'+
         '<div class="count" id="radarCount"></div>'+
         '<div class="scroll"><table><thead><tr>'+
