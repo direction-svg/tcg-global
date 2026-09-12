@@ -889,6 +889,7 @@ body{-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
     <button data-m="mouv">Mouvements</button>
     <button data-m="ouvrir">Ouvrir&nbsp;?</button>
     <button data-m="sante">Santé des données</button>
+    <button data-m="couverture">Couverture</button>
     <div class="navgrp">Direct</div>
     <button data-m="live">Live</button>
     <div class="navgrp" id="premiumGrp" style="display:none">Collection premium</div>
@@ -1974,7 +1975,7 @@ function secNav(items){ items=(items||[]).filter(it=>it && (it.always || it.n==n
 function jumpSec(id){ const el=document.getElementById('sec-'+id); if(el) el.scrollIntoView({behavior:'smooth',block:'start'}); }
 function pgSection(id,label,inner,color){ return '<div class="pgsec" id="sec-'+id+'">'+(label?('<div class="pgsec-h"'+(color?(' style="color:'+color+'"'):'')+'>'+esc(label)+'</div>'):'')+inner+'</div>'; }
 function pgSortSel(sorts,cur,onchange){ return '<select class="pgsort" onchange="'+onchange+'">'+sorts.map(s=>'<option value="'+s[0]+'"'+(cur===s[0]?' selected':'')+'>'+esc(s[1])+'</option>').join('')+'</select>'; }
-const NAV_TITLES={accueil:'Accueil',collection:'Collection',catalog:'Catalogue',objectifs:'Objectifs',sets:'Sets',products:'Produits scellés',cibler:'À cibler',conviction:'Conviction',ops:'Opportunités',ecarts:'Écarts JP/EN',offre:'Offre & reprint',risque:'Risque',track:'Track record',agenda:'Agenda',achats:'Achats',ventes:'Ventes',mouv:'Mouvements',gradation:'Gradation',gradeia:'Gradation IA',preachat:'Avant d\'acheter',ouvrir:'Ouvrir ?',sante:'Santé des données',live:'Live',premium:'Premium',int_new:'New & Rare',int_opp:'Opportunités',int_move:'Mouvements',int_fam:'Familles',int_alert:'Alertes'};
+const NAV_TITLES={accueil:'Accueil',collection:'Collection',catalog:'Catalogue',objectifs:'Objectifs',sets:'Sets',products:'Produits scellés',cibler:'À cibler',conviction:'Conviction',ops:'Opportunités',ecarts:'Écarts JP/EN',offre:'Offre & reprint',risque:'Risque',track:'Track record',agenda:'Agenda',achats:'Achats',ventes:'Ventes',mouv:'Mouvements',gradation:'Gradation',gradeia:'Gradation IA',preachat:'Avant d\'acheter',ouvrir:'Ouvrir ?',sante:'Santé des données',live:'Live',premium:'Premium',int_new:'New & Rare',int_opp:'Opportunités',int_move:'Mouvements',int_fam:'Familles',int_alert:'Alertes',couverture:'Couverture'};
 // ---- Pages regroupées : un onglet de menu, plusieurs sous-pages ----
 const PARENTS={
   portefeuille:{label:'Portefeuille',tabs:[['conviction','Conviction'],['risque','Risque']]},
@@ -2001,6 +2002,18 @@ function setMode(m){
   { const pt=document.getElementById('pageTitle'); if(pt) pt.textContent=(m==='accueil'?'':(parentKey?PARENTS[parentKey].label:(NAV_TITLES[m]||''))); }
   { const st=document.getElementById('stage'); if(st) st.scrollTop=0; }
   closeNav();
+  if(m==='couverture'){
+    ['viewBtn','filterBtn','sortBtn','scanFab'].forEach(function(id){var e=document.getElementById(id); if(e) e.classList.add('hidden');});
+    var _sr=document.querySelector('.search'); if(_sr) _sr.classList.add('hidden');
+    var _cl=document.getElementById('catLangRow'); if(_cl) _cl.classList.add('hidden');
+    var _cf=document.getElementById('catFilters'); if(_cf) _cf.classList.add('hidden');
+    var _vf=document.getElementById('valFilterRow'); if(_vf) _vf.style.display='none';
+    var _mb=document.getElementById('miniBar'); if(_mb){ _mb.style.display='none'; }
+    var _pt=document.getElementById('pageTitle'); if(_pt) _pt.textContent='Couverture';
+    var _cnt=document.getElementById('countLine'); if(_cnt) _cnt.textContent='';
+    if(typeof renderCoverage==='function') renderCoverage();
+    return;
+  }
   if(m==='premium'){
     ['viewBtn','filterBtn','sortBtn','scanFab'].forEach(function(id){var e=document.getElementById(id); if(e) e.classList.add('hidden');});
     var _sr=document.querySelector('.search'); if(_sr) _sr.classList.add('hidden');
@@ -4197,7 +4210,7 @@ async function homeBriefing(){
   }catch(e){ box.innerHTML='<div class="txt" style="color:var(--muted);font-size:13px">Erreur, réessaie.</div><button class="hbriefbtn" onclick="homeBriefing()">Réessayer</button>'; }
 }
 document.getElementById('modeSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMode(b.dataset.m);});
-const APP_VERSION='Version b139 · 11/09 — Ajout famille tournoi « Sealed Battle » (taxonomie) ; reste UX inchangé';
+const APP_VERSION='Version b140 · 12/09 — Intégration surface Couverture (détection/preuve externe) ; reste UX inchangé';
 { const nv=document.getElementById('navVersion'); if(nv) nv.textContent=APP_VERSION; }
 document.getElementById('mktSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMarket(b.dataset.k);});
 const CATARRS=["catColors","catCats","catRarities","catTreats","catProvs","catEvents","catTiers","catRegions","catFinish","catSets"];
@@ -7219,7 +7232,7 @@ const Fake = (function(){
 
   /* ---- NAV 5 ESPACES ---- */
   var SPACES=[['home','🏠 Accueil'],['collection','📚 Collection'],['catalog','🗂️ Catalogue'],['buy','🎯 À acheter'],['marche','📈 Marché'],['suivi','🧾 Suivi']];
-  var SECOND=[['valider','✅ À valider'],['sets','Sets'],['objectifs','Objectifs'],['products','Produits scellés'],['ecarts','Écarts JP/EN'],['offre','Catalyseurs'],['int_fam','Familles'],['ops','Gradation'],['gradeia','Gradation IA'],['conviction','Portefeuille'],['premium','💎 Premium'],['live','Live'],['sante','Santé des données']];
+  var SECOND=[['valider','✅ À valider'],['sets','Sets'],['objectifs','Objectifs'],['products','Produits scellés'],['ecarts','Écarts JP/EN'],['offre','Catalyseurs'],['int_fam','Familles'],['ops','Gradation'],['gradeia','Gradation IA'],['conviction','Portefeuille'],['premium','💎 Premium'],['live','Live'],['sante','Santé des données'],['couverture','🛡️ Couverture']];
   var DELEG={collection:'collection',marche:'int_move',suivi:'achats'};
   var b4active='home';
   function navBtn(m,lbl,active){ return '<button data-b4="'+m+'" style="display:block;width:100%;text-align:left;padding:10px 14px;border:0;background:'+(active?'var(--chip)':'transparent')+';color:'+(active?'var(--ink)':'var(--muted)')+';font-weight:'+(active?'800':'700')+';font-size:13.5px;cursor:pointer;border-radius:9px">'+lbl+'</button>'; }
@@ -7276,6 +7289,199 @@ const Fake = (function(){
   }
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',function(){setTimeout(boot,250);});
   else setTimeout(boot,250);
+})();
+</script>
+
+<!-- ===== COUVERTURE (module additif, réutilise la logique validée d'index_coverage.html + santé/alertes P3) ===== -->
+<style id="cov-style">
+.covwrap{--cv-card:var(--panel,#16191e);--cv-card2:var(--chip,#1c2027);--cv-line:var(--line,#262c36);
+  --cv-tx:var(--ink,#e8eaed);--cv-mut:var(--muted,#9aa3af);--cv-gold:var(--gold,#d9b26a);
+  --cv-green:#2fa25f;--cv-orange:#d0821f;--cv-gray:#8b909c;--cv-red:#d8524a;--cv-blue:#4f8cd9;
+  color:var(--cv-tx);font-size:14px;line-height:1.45}
+.covwrap h1.covh{font-size:19px;margin:2px 0 2px;display:flex;align-items:center;gap:8px}
+.covwrap .sub{color:var(--cv-mut);font-size:12.5px;margin:0 0 12px}
+.covwrap .disclaimer{background:var(--cv-card2);border:1px solid var(--cv-line);border-left:3px solid var(--cv-gold);
+  border-radius:8px;padding:9px 12px;color:var(--cv-mut);font-size:12.5px;margin:0 0 12px}
+.covwrap .cov-health{font-size:12px;color:var(--cv-mut);margin:0 0 12px;display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center}
+.covwrap .cov-health b{color:var(--cv-tx)}
+.covwrap .hbadge{display:inline-block;padding:1px 8px;border-radius:99px;font-size:11px;font-weight:700}
+.covwrap .hbadge.ok{background:rgba(63,185,107,.14);color:var(--cv-green)}
+.covwrap .hbadge.deg{background:rgba(224,145,47,.16);color:var(--cv-orange)}
+.covwrap .hbadge.fail{background:rgba(217,83,79,.18);color:var(--cv-red)}
+.covwrap .legend{display:flex;gap:14px;flex-wrap:wrap;margin:0 0 12px;font-size:12px;color:var(--cv-mut)}
+.covwrap .dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:5px;vertical-align:middle}
+.covwrap .g{background:var(--cv-green)}.covwrap .o{background:var(--cv-orange)}.covwrap .gr{background:var(--cv-gray)}
+.covwrap .cov-card{background:var(--cv-card);border:1px solid var(--cv-line);border-radius:10px;padding:0;margin:0 0 16px;overflow:hidden}
+.covwrap .cov-card h2{font-size:13px;text-transform:uppercase;letter-spacing:.5px;color:var(--cv-mut);margin:0;padding:12px 14px;border-bottom:1px solid var(--cv-line)}
+.covwrap table{width:100%;border-collapse:collapse;font-size:13px}
+.covwrap th,.covwrap td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--cv-line);white-space:nowrap}
+.covwrap th{color:var(--cv-mut);font-weight:600;font-size:11.5px;text-transform:uppercase;letter-spacing:.3px}
+.covwrap tbody tr:hover{background:var(--cv-card2)}
+.covwrap td.num,.covwrap th.num{text-align:right;font-variant-numeric:tabular-nums}
+.covwrap .fam{font-weight:700}
+.covwrap .pct{font-variant-numeric:tabular-nums;font-weight:700}
+.covwrap .pct.proven{color:var(--cv-green)}.covwrap .pct.rev{color:var(--cv-orange)}.covwrap .pct.na{color:var(--cv-gray)}
+.covwrap .pill{display:inline-block;padding:1px 7px;border-radius:99px;font-size:11px;font-weight:600;border:1px solid transparent}
+.covwrap .pill.off{background:rgba(63,185,107,.14);color:var(--cv-green);border-color:rgba(63,185,107,.3)}
+.covwrap .pill.man{background:rgba(224,145,47,.14);color:var(--cv-orange);border-color:rgba(224,145,47,.3)}
+.covwrap .pill.rev{background:rgba(107,114,128,.16);color:#aab2bd;border-color:rgba(107,114,128,.3)}
+.covwrap .pill.np{background:rgba(217,83,79,.12);color:var(--cv-red);border-color:rgba(217,83,79,.3)}
+.covwrap .st{font-size:11.5px;padding:1px 7px;border-radius:6px;font-weight:600}
+.covwrap .st.MATCH{background:rgba(63,185,107,.14);color:var(--cv-green)}
+.covwrap .st.MISSING_PRINTING{background:rgba(217,83,79,.16);color:var(--cv-red)}
+.covwrap .st.PRESENT_UNCLASSIFIED{background:rgba(79,140,217,.14);color:var(--cv-blue)}
+.covwrap .st.WRONG_REGION_LANGUAGE,.covwrap .st.WRONG_CLASSIFICATION,.covwrap .st.AMBIGUOUS{background:rgba(224,145,47,.14);color:var(--cv-orange)}
+.covwrap .st.REVIEW{background:rgba(107,114,128,.16);color:#aab2bd}
+.covwrap .filters{display:flex;gap:8px;flex-wrap:wrap;padding:11px 14px;border-bottom:1px solid var(--cv-line)}
+.covwrap select,.covwrap input{background:var(--cv-card2);color:var(--cv-tx);border:1px solid var(--cv-line);border-radius:7px;padding:6px 9px;font-size:13px}
+.covwrap .alert{padding:9px 14px;border-bottom:1px solid var(--cv-line);font-size:13px;color:var(--cv-mut)}
+.covwrap .alert:last-child{border-bottom:0}
+.covwrap .alert b{color:var(--cv-tx)}
+.covwrap .alsev{display:inline-block;min-width:74px;font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:.3px}
+.covwrap .alsev.CRITICAL{color:var(--cv-red)}.covwrap .alsev.WARNING{color:var(--cv-orange)}.covwrap .alsev.INFO{color:var(--cv-mut)}
+.covwrap .count{color:var(--cv-mut);font-size:12px;padding:8px 14px}
+.covwrap .err{color:var(--cv-red)}
+.covwrap .scroll{overflow-x:auto}
+@media(max-width:640px){.covwrap th,.covwrap td{padding:7px 7px;font-size:12px}}
+</style>
+<script>
+/* Couverture — module BOUNTY (namespacé, additif, lecture seule). Réutilise index_coverage.html + P3 santé/alertes. */
+(function(){
+  var SBc="https://bvnjkiivuntbjbmltpkl.supabase.co";
+  var ANONc="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ2bmpraWl2dW50YmpibWx0cGtsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE3MDk4NDgsImV4cCI6MjA5NzI4NTg0OH0.ob6BL-tW60qmn-oYJP1vJrrBTTBuM-iVyrQaK92b_Ao";
+  var Hc={apikey:ANONc,Authorization:"Bearer "+ANONc};
+  var FAM_LABEL={flagship:"Flagship",TR:"Treasure Rare",SP:"SP Card",MANGA:"Manga",serial:"Serial / Numbered",
+    championship:"Championship",world:"World Championship",regional:"Regional",treasure_cup:"Treasure Cup"};
+  var NOT_BOUNDED=[["anniversary","Anniversary"],["promos","Promos magazine/store/event"],["exclusive","Produits exclusifs"]];
+  function esc(s){return (s==null?"":String(s)).replace(/[&<>"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c];});}
+  function cq(path){return fetch(SBc+"/rest/v1/"+path,{headers:Hc}).then(function(r){if(!r.ok)throw new Error(path.split("?")[0]+" "+r.status);return r.json();});}
+  var GAPS=[];
+  function famDot(row){ if((row.verified_official||0)>0) return 'g'; if((row.manual_reviewed||0)>0) return 'o'; return 'gr'; }
+  function pctCell(v,cls){ return v==null?'<td class="num pct na">—</td>':'<td class="num pct '+cls+'">'+v+'%</td>'; }
+
+  function loadSummary(){
+    return cq("app_coverage_summary?select=*").then(function(rows){
+      var order=["flagship","TR","SP","MANGA","serial","championship","world","regional","treasure_cup"];
+      rows.sort(function(a,b){return order.indexOf(a.family)-order.indexOf(b.family);});
+      var tb=document.getElementById("sumbody"); if(!tb)return; tb.innerHTML="";
+      var famSel=document.getElementById("fFam");
+      rows.forEach(function(r){
+        var tr=document.createElement("tr");
+        tr.innerHTML='<td class="fam"><i class="dot '+famDot(r)+'"></i>'+esc(FAM_LABEL[r.family]||r.family)+'</td>'+
+          '<td class="num">'+(r.verified_official||0)+'</td>'+
+          '<td class="num">'+(r.manual_reviewed||0)+'</td>'+
+          '<td class="num">'+(r.review||0)+'</td>'+
+          '<td class="num">'+((r.match_official||0)+(r.match_manual||0))+'</td>'+
+          '<td class="num">'+(r.present_unclassified||0)+'</td>'+
+          '<td class="num">'+(r.wrong||0)+'</td>'+
+          '<td class="num">'+(r.missing||0)+'</td>'+
+          pctCell(r.coverage_proven_pct,'proven')+pctCell(r.coverage_reviewed_pct,'rev');
+        tb.appendChild(tr);
+        var o=document.createElement("option");o.value=r.family;o.textContent=FAM_LABEL[r.family]||r.family;famSel.appendChild(o);
+      });
+      NOT_BOUNDED.forEach(function(p){
+        var tr=document.createElement("tr");tr.style.opacity=".7";
+        tr.innerHTML='<td class="fam"><span class="pill np">NON BORNÉ</span> '+esc(p[1])+'</td>'+
+          '<td class="num" colspan="7" style="color:var(--cv-mut)">référentiel externe absent — non mesuré</td>'+
+          '<td class="num pct na">—</td><td class="num pct na">—</td>';
+        tb.appendChild(tr);
+      });
+    });
+  }
+  function renderGaps(){
+    var fam=document.getElementById("fFam").value, st=document.getElementById("fStatus").value,
+      qq=(document.getElementById("fq").value||"").toLowerCase().trim();
+    var rows=GAPS.filter(function(g){return g.indicative_status!=='MATCH';});
+    if(fam) rows=rows.filter(function(g){return g.family===fam;});
+    if(st) rows=rows.filter(function(g){return g.indicative_status===st;});
+    if(qq) rows=rows.filter(function(g){return ((g.card_number||"")+" "+(g.character||"")).toLowerCase().indexOf(qq)>=0;});
+    var shown=rows.slice(0,300);
+    document.getElementById("gapcount").textContent=rows.length+" écart"+(rows.length>1?"s":"")+(rows.length>300?" (300 affichés)":"")+" · match masqués";
+    function conf(v){return v==='VERIFIED_OFFICIAL'?'<span class="pill off">OFFICIEL</span>':v==='MANUAL_REVIEWED'?'<span class="pill man">DOCUMENTÉ</span>':'<span class="pill rev">REVIEW</span>';}
+    document.getElementById("gapbody").innerHTML=shown.map(function(g){ return '<tr><td>'+esc(FAM_LABEL[g.family]||g.family)+'</td><td class="fam">'+esc(g.card_number)+'</td>'+
+      '<td>'+esc(g.character||"")+'</td><td>'+esc(g.region||"")+'</td>'+
+      '<td>'+esc([g.event_tier,g.event_name].filter(Boolean).join(" · "))+'</td>'+
+      '<td>'+conf(g.verification_status)+'</td>'+
+      '<td><span class="st '+esc(g.indicative_status)+'">'+esc(g.indicative_status)+'</span></td></tr>';}).join("");
+  }
+  function loadGaps(){
+    return cq("app_coverage_gap?select=family,card_number,character,region,event_tier,event_name,verification_status,indicative_status&limit=2000").then(function(rows){
+      GAPS=rows;
+      ["fFam","fStatus","fq"].forEach(function(id){var e=document.getElementById(id); if(e && !e._covBound){e.addEventListener("input",renderGaps);e._covBound=true;}});
+      renderGaps();
+    });
+  }
+  function loadAlerts(){
+    var box=document.getElementById("alertbox"); if(!box)return Promise.resolve();
+    var pAl=cq("app_coverage_alerts?select=sev,code,cnt,msg").catch(function(){return [];});
+    var pNew=cq("app_coverage_new?select=family,card_number,region&limit=50").catch(function(){return [];});
+    return Promise.all([pAl,pNew]).then(function(res){
+      var al=Array.isArray(res[0])?res[0]:[], neu=Array.isArray(res[1])?res[1]:[];
+      var html="";
+      if(al.length){
+        html+=al.map(function(a){return '<div class="alert"><span class="alsev '+esc(a.sev)+'">'+esc(a.sev)+'</span> '+esc(a.msg)+'</div>';}).join("");
+      }
+      var nn=neu.length;
+      html+='<div class="alert"><b>'+nn+'</b> nouvelle(s) référence(s) découverte(s) automatiquement'+
+        (nn?' : '+neu.slice(0,12).map(function(x){return esc(x.card_number)+(x.region?'/'+esc(x.region):'');}).join(", ")+(nn>12?'…':''):'')+
+        '.<br><span style="color:var(--cv-mut)">Détection via coverage-watch (crawl hebdo EN/JP/ASIA) → REVIEW si ambigu, jamais de correction auto du catalogue.</span></div>';
+      box.innerHTML=html;
+    });
+  }
+  function loadHealth(){
+    var el=document.getElementById("covHealth"); if(!el)return Promise.resolve();
+    return cq("app_coverage_health?select=severity_class").then(function(rows){
+      var ok=0,deg=0,fail=0; rows.forEach(function(r){ if(r.severity_class==='OK')ok++; else if(r.severity_class==='FAIL')fail++; else deg++; });
+      var tot=rows.length;
+      var cls=fail?'fail':(deg?'deg':'ok');
+      el.innerHTML='🩺 Santé Coverage Watch : <span class="hbadge '+cls+'"><b>'+ok+'/'+tot+'</b> OK</span>'+
+        (deg?' · <span class="hbadge deg">'+deg+' dégradée(s)</span>':'')+
+        (fail?' · <span class="hbadge fail">'+fail+' en échec</span>':'')+
+        ' <span style="opacity:.7">— surveillance en arrière-plan (canary quotidien)</span>';
+    }).catch(function(){ el.innerHTML='🩺 Santé Coverage Watch : indisponible'; });
+  }
+
+  window.renderCoverage=function(){
+    var stage=document.getElementById("stage"); if(!stage)return;
+    stage.innerHTML=
+      '<div class="covwrap">'+
+      '<h1 class="covh">📊 Couverture <span style="color:var(--cv-gold);font-size:13px;font-weight:600">— détection & preuve externe</span></h1>'+
+      '<p class="sub" id="covAsof">Chargement…</p>'+
+      '<div class="disclaimer">⚠ Couverture mesurée <b>uniquement sur les référentiels externes disponibles</b>. '+
+        'Ce n\'est pas « X % du catalogue complet » : les familles non bornées apparaissent explicitement.</div>'+
+      '<div class="cov-health" id="covHealth">🩺 …</div>'+
+      '<div class="legend">'+
+        '<span><i class="dot g"></i>VERIFIED_OFFICIAL — preuve officielle A/B (compte dans « prouvé »)</span>'+
+        '<span><i class="dot o"></i>MANUAL_REVIEWED — fortement documenté, non officiel (« documenté » séparé)</span>'+
+        '<span><i class="dot gr"></i>REVIEW — incertain / marketplace / suspect</span>'+
+      '</div>'+
+      '<div class="cov-card"><h2>Couverture par famille</h2><div class="scroll"><table id="sumtbl"><thead><tr>'+
+        '<th>Famille</th><th class="num">Vérif. off.</th><th class="num">Manual rev.</th><th class="num">Review</th>'+
+        '<th class="num">Match</th><th class="num">Non classé</th><th class="num">Wrong</th><th class="num">Missing</th>'+
+        '<th class="num">Prouvé %</th><th class="num">Documenté %</th>'+
+      '</tr></thead><tbody id="sumbody"></tbody></table></div></div>'+
+      '<div class="cov-card"><h2>À vérifier / manque potentiel</h2>'+
+        '<div class="filters">'+
+          '<select id="fFam"><option value="">Toutes familles</option></select>'+
+          '<select id="fStatus"><option value="">Tous statuts</option>'+
+            '<option>MISSING_PRINTING</option><option>PRESENT_UNCLASSIFIED</option>'+
+            '<option>WRONG_REGION_LANGUAGE</option><option>WRONG_CLASSIFICATION</option><option>AMBIGUOUS</option>'+
+          '</select>'+
+          '<input id="fq" placeholder="card_number / perso…" style="flex:1;min-width:120px">'+
+        '</div>'+
+        '<div class="count" id="gapcount"></div>'+
+        '<div class="scroll"><table><thead><tr>'+
+          '<th>Famille</th><th>Carte</th><th>Perso</th><th>Rég.</th><th>Tier/Event</th><th>Preuve</th><th>Statut BOUNTY</th>'+
+        '</tr></thead><tbody id="gapbody"></tbody></table></div>'+
+      '</div>'+
+      '<div class="cov-card"><h2>Alertes couverture</h2><div id="alertbox"><div class="alert">Chargement…</div></div></div>'+
+      '</div>';
+    Promise.all([loadSummary(),loadGaps(),loadAlerts(),loadHealth()]).then(function(){
+      var a=document.getElementById("covAsof"); if(a)a.textContent="Données live · "+new Date().toLocaleString("fr-FR");
+    }).catch(function(e){
+      var a=document.getElementById("covAsof"); if(a)a.innerHTML='<span class="err">Erreur de chargement : '+esc(e.message)+'</span>';
+    });
+  };
 })();
 </script>
 </body>
