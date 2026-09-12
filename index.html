@@ -4211,7 +4211,7 @@ async function homeBriefing(){
   }catch(e){ box.innerHTML='<div class="txt" style="color:var(--muted);font-size:13px">Erreur, réessaie.</div><button class="hbriefbtn" onclick="homeBriefing()">Réessayer</button>'; }
 }
 document.getElementById('modeSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMode(b.dataset.m);});
-const APP_VERSION='Version b145 · 13/09 — Resolution Center + DISCOVERY — FIX bouton Traiter (reference_id manquant au chargement Radar) — LECTURE SEULE ; écriture admin ; reste UX inchangé';
+const APP_VERSION='Version b146 · 13/09 — Resolution Center — FIX UX mobile (drawer plein écran dvh, header sticky + fermeture permanente, safe-area) — LECTURE SEULE ; reste inchangé';
 { const nv=document.getElementById('navVersion'); if(nv) nv.textContent=APP_VERSION; }
 document.getElementById('mktSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMarket(b.dataset.k);});
 const CATARRS=["catColors","catCats","catRarities","catTreats","catProvs","catEvents","catTiers","catRegions","catFinish","catSets"];
@@ -7369,13 +7369,24 @@ const Fake = (function(){
 .rdrawer{position:fixed;inset:0;z-index:99999;display:flex;justify-content:flex-end;font:14px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
 .rdrawer[hidden]{display:none!important}
 .rd-scrim{position:absolute;inset:0;background:rgba(0,0,0,.5)}
-.rd-panel{position:relative;background:var(--panel,#16191e);color:var(--ink,#e8eaed);width:min(560px,100%);height:100%;overflow-y:auto;border-left:1px solid var(--line,#262c36);box-shadow:-8px 0 30px rgba(0,0,0,.4)}
+.rd-panel{position:relative;background:var(--panel,#16191e);color:var(--ink,#e8eaed);width:min(560px,100%);height:100%;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;border-left:1px solid var(--line,#262c36);box-shadow:-8px 0 30px rgba(0,0,0,.4)}
 .rd-panel *{box-sizing:border-box}
-.rd-panel{--rg:#2fa25f;--ro:#d0821f;--rr:#d8524a;--rm:var(--muted,#9aa3af);--rl:var(--line,#262c36);--rc2:var(--chip,#1c2027);--rgold:var(--gold,#d9b26a)}
-@media(max-width:640px){.rdrawer{align-items:flex-end;justify-content:stretch}.rd-panel{width:100%;height:92vh;border-left:0;border-radius:16px 16px 0 0}}
-.rd-head{position:sticky;top:0;background:var(--rc2);padding:12px 14px;border-bottom:1px solid var(--rl);display:flex;align-items:center;gap:8px;justify-content:space-between;z-index:2}
+.rd-panel{--rg:#2fa25f;--ro:#d0821f;--rr:#d8524a;--rm:var(--muted,#9aa3af);--rl:var(--line,#262c36);--rc2:var(--chip,#1c2027);--rgold:var(--gold,#d9b26a);--rd-headh:56px}
+/* b146 : mobile = vrai modal plein écran, jamais sous le header, dvh + safe-area */
+@media(max-width:768px){
+  .rdrawer{align-items:stretch;justify-content:stretch}
+  .rd-scrim{display:none}
+  .rd-panel{width:100%;height:100dvh;max-height:100dvh;border-left:0;border-radius:0;box-shadow:none}
+}
+@supports not (height:100dvh){ @media(max-width:768px){ .rd-panel{height:100vh;max-height:100vh} } }
+.rd-head{position:sticky;top:0;background:var(--rc2);padding:12px 14px;padding-top:calc(12px + env(safe-area-inset-top,0px));border-bottom:1px solid var(--rl);display:flex;align-items:center;gap:10px;justify-content:flex-start;z-index:5}
+.rd-head .rd-hid{display:flex;flex-direction:column;min-width:0;flex:1}
+.rd-head .rd-hcard{font-size:15px;font-weight:800;line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rd-head .rd-hchar{font-size:12px;color:var(--rm);line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rd-head .rd-ro{margin-left:auto;flex:none;font-size:10px;font-weight:800;letter-spacing:.4px;color:var(--rm);border:1px solid var(--rl);border-radius:99px;padding:3px 8px;white-space:nowrap}
 .rd-head b{font-size:15px}
-.rd-close{background:transparent;border:1px solid var(--rl);color:inherit;border-radius:8px;width:32px;height:32px;font-size:16px;cursor:pointer}
+.rd-close{background:var(--panel,#16191e);border:1px solid var(--rl);color:inherit;border-radius:9px;min-width:40px;height:40px;font-size:18px;font-weight:800;cursor:pointer;flex:none;-webkit-tap-highlight-color:transparent}
+.rd-close:active{background:var(--rc2)}
 .rd-sec{padding:12px 14px;border-bottom:1px solid var(--rl)}
 .rd-sec h3{margin:0 0 8px;font-size:11.5px;text-transform:uppercase;letter-spacing:.4px;color:var(--rm)}
 .rd-kv{display:grid;grid-template-columns:auto 1fr;gap:3px 10px;font-size:13px}
@@ -7388,7 +7399,7 @@ const Fake = (function(){
 .rd-new{color:var(--rg);font-weight:700}
 .rd-match{display:inline-block;padding:2px 9px;border-radius:99px;font-size:11px;font-weight:700;background:rgba(63,185,107,.16);color:var(--rg)}
 .rd-nomatch{display:inline-block;padding:2px 9px;border-radius:99px;font-size:11px;font-weight:700;background:rgba(224,145,47,.16);color:var(--ro)}
-.rd-actions{padding:12px 14px;display:flex;flex-wrap:wrap;gap:8px;position:sticky;bottom:0;background:var(--rc2);border-top:1px solid var(--rl)}
+.rd-actions{padding:12px 14px;padding-bottom:calc(12px + env(safe-area-inset-bottom,0px));display:flex;flex-wrap:wrap;gap:8px;position:sticky;bottom:0;background:var(--rc2);border-top:1px solid var(--rl);z-index:4}
 .rd-btn{border-radius:8px;padding:9px 12px;font-size:13px;font-weight:700;cursor:pointer;border:1px solid var(--rl);background:var(--panel,#16191e);color:inherit}
 .rd-btn.primary{background:var(--rg);border-color:var(--rg);color:#08140d}
 .rd-btn.warn{background:transparent;color:var(--rm)}
@@ -7397,7 +7408,7 @@ const Fake = (function(){
 .rd-msg.ok{color:var(--rg)}.rd-msg.err{color:var(--rr)}
 .rd-img{width:66px;height:92px;object-fit:cover;border-radius:6px;border:1px solid var(--rl);float:right;margin-left:10px}
 .rd-note{color:var(--rm);font-size:11.5px;margin-top:6px}
-.rd-tabs{display:flex;gap:4px;padding:8px 10px;border-bottom:1px solid var(--rl);position:sticky;top:56px;background:var(--rc2);overflow-x:auto;z-index:1}
+.rd-tabs{display:flex;gap:4px;padding:8px 10px;border-bottom:1px solid var(--rl);position:sticky;top:var(--rd-headh,56px);background:var(--rc2);overflow-x:auto;-webkit-overflow-scrolling:touch;z-index:3}
 .rd-tab{border:1px solid var(--rl);background:transparent;color:var(--rm);border-radius:99px;padding:6px 12px;font-size:12.5px;font-weight:700;cursor:pointer;white-space:nowrap}
 .rd-tab.on{background:var(--rgold);color:#1a1a1a;border-color:var(--rgold)}
 .rd-list{font-size:12.5px}
@@ -7610,8 +7621,10 @@ const Fake = (function(){
   }
   function regionOk(rr,pr){ return !rr||!pr||pr===rr||(rr==='EN'&&pr==='EN_WW')||(rr==='EN_WW'&&pr==='EN'); }
   var CAN_WRITE=false; /* aucune session admin authentifiée => LECTURE SEULE ; mutations refusées serveur pour anon */
-  var RCUR=null;
-  function closeDrawer(){ var d=document.getElementById('rDrawer'); if(d)d.hidden=true; RCUR=null; }
+  var RCUR=null; var RD_SCROLL=0;
+  /* b146 : portalise le drawer sous <body> (échappe tout stacking-context) + mémorise le scroll */
+  function rdShow(){ var d=document.getElementById('rDrawer'); if(!d)return; if(d.parentNode!==document.body) document.body.appendChild(d); RD_SCROLL=window.scrollY||window.pageYOffset||0; d.hidden=false; }
+  function closeDrawer(){ var d=document.getElementById('rDrawer'); if(d)d.hidden=true; RCUR=null; try{ window.scrollTo(0,RD_SCROLL); }catch(e){} }
   function openResolve(refid,cn){
     /* b145 : robustesse — on retrouve la ligne par reference_id, sinon par card_number,
        sinon on ouvre quand même une ligne minimale (le bouton ne reste jamais inerte). */
@@ -7620,7 +7633,7 @@ const Fake = (function(){
     if(!row && cn) row=RADAR.filter(function(x){return String(x.card_number)===String(cn);})[0]||null;
     if(!row) row={card_number:cn||'?',reference_id:refid||null,radar_status:'MANUAL_CATALOGUE',radar_label:'Ouvert depuis le Radar',region:null,character:null};
     RCUR={row:row,cands:[],sel:null,preview:null,msg:'',msgok:false,imgCands:null,imgSel:-1,links:null,mapRes:null};
-    var d=document.getElementById('rDrawer'); if(d)d.hidden=false;
+    rdShow();
     document.getElementById('rdPanel').innerHTML='<div class="rd-head"><b>Traiter — '+esc(row.card_number)+'</b><button class="rd-close" data-rdclose="1">✕</button></div><div class="rd-msg">Chargement…</div>';
     cq("app_resolution_candidates?card_number=eq."+encodeURIComponent(row.card_number)+"&select=*").then(function(cands){
       RCUR.cands=Array.isArray(cands)?cands:[]; renderDrawer();
@@ -7636,7 +7649,7 @@ const Fake = (function(){
   /* Ouverture du Centre depuis une fiche Catalogue (par printing_id direct, hors Radar) */
   function openResolveByPrinting(pid){
     RCUR={row:{card_number:'…',reference_id:null,radar_status:'MANUAL_CATALOGUE',radar_label:'Ouvert depuis le catalogue (hors Radar)',region:null,character:null},cands:[],sel:null,preview:null,msg:'',msgok:false,manual:true,pid:pid,imgCands:null,imgSel:-1};
-    var d=document.getElementById('rDrawer'); if(d)d.hidden=false;
+    rdShow();
     document.getElementById('rdPanel').innerHTML='<div class="rd-head"><b>Traiter</b><button class="rd-close" data-rdclose="1">✕</button></div><div class="rd-msg">Chargement…</div>';
     rpcGet('rc_identity_candidates',{p_printing_id:pid}).then(function(res){
       var list=(res&&res.candidates)||[];
@@ -7656,11 +7669,16 @@ const Fake = (function(){
     rpcGet('rc_search_links',{p_printing_id:pid}).then(function(a){ if(!RCUR)return; RCUR.links=Array.isArray(a)?a:[]; renderDrawer(); }).catch(function(){ if(RCUR){RCUR.links=[]; renderDrawer();} }); }
   function renderDrawer(){
     if(!RCUR)return; var row=RCUR.row; if(!RCUR.tab)RCUR.tab='identite';
-    var head='<div class="rd-head"><b>Centre de résolution — '+esc(row.card_number)+'</b><button class="rd-close" data-rdclose="1">✕</button></div>';
+    var head='<div class="rd-head"><button class="rd-close" data-rdclose="1" type="button" aria-label="Fermer">✕</button>'+
+      '<div class="rd-hid"><span class="rd-hcard">'+esc(row.card_number||'?')+'</span>'+
+      (row.character?'<span class="rd-hchar">'+esc(row.character)+'</span>':'')+'</div>'+
+      (CAN_WRITE?'':'<span class="rd-ro">READ ONLY</span>')+'</div>';
     var tabs=[['identite','Identité'],['image','Image'],['prix','Prix'],['sources','Sources'],['histo','Historique']];
     var tabbar='<div class="rd-tabs">'+tabs.map(function(t){return '<button class="rd-tab'+(RCUR.tab===t[0]?' on':'')+'" data-rtab="'+t[0]+'" type="button">'+t[1]+'</button>';}).join('')+'</div>';
     document.getElementById('rdPanel').innerHTML=head+tabbar+'<div id="rdTab"></div>';
     renderTab();
+    /* b146 : cale les onglets sous le header sticky réel (safe-area incluse) */
+    try{ var hd=document.querySelector('#rdPanel .rd-head'), pn=document.getElementById('rdPanel'); if(hd&&pn) pn.style.setProperty('--rd-headh', hd.offsetHeight+'px'); }catch(e){}
   }
   function renderTab(){ var el=document.getElementById('rdTab'); if(!el||!RCUR)return; var t=RCUR.tab;
     if(t==='sources') renderTabSources(el); else if(t==='histo') renderTabHisto(el);
@@ -7802,6 +7820,7 @@ const Fake = (function(){
     }).catch(function(){ RCUR.msg='Action non autorisée (résolution non activée en PROD).'; RCUR.msgok=false; renderDrawer(); });
   }
   if(!window.__rdBound){ window.__rdBound=true;
+    document.addEventListener('keydown',function(ev){ if(ev.key==='Escape'||ev.keyCode===27){ var d=document.getElementById('rDrawer'); if(d&&!d.hidden) closeDrawer(); } });
     document.addEventListener('click',function(ev){
       var o=ev.target.closest('.rd-open'); if(o){ openResolve(o.getAttribute('data-refid'),o.getAttribute('data-cn')); return; }
       var op=ev.target.closest('[data-openpid]'); if(op){ openResolveByPrinting(op.getAttribute('data-openpid')); return; }
