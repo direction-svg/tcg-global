@@ -4216,7 +4216,7 @@ async function homeBriefing(){
   }catch(e){ box.innerHTML='<div class="txt" style="color:var(--muted);font-size:13px">Erreur, réessaie.</div><button class="hbriefbtn" onclick="homeBriefing()">Réessayer</button>'; }
 }
 document.getElementById('modeSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMode(b.dataset.m);});
-const APP_VERSION='Version b154 · 12/09 — Fiabilite : le panneau de correction ne peut plus rester en ecran noir (rendu blinde, toujours fermable) ; Mode rapide robuste. Admin discret (roue crantee, connecte de base), image corrigee en Mode rapide. Conserve b151/b152/b153 et tout l UX precedent.';
+const APP_VERSION='Version b156 · 12/09 — Choix d image plus clair : vignette par impression dans Identite (au lieu d un simple ?), images candidates chargees automatiquement dans l onglet Image. Conserve b155 (validation image) et tout l UX.';
 { const nv=document.getElementById('navVersion'); if(nv) nv.textContent=APP_VERSION; }
 document.getElementById('mktSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMarket(b.dataset.k);});
 const CATARRS=["catColors","catCats","catRarities","catTreats","catProvs","catEvents","catTiers","catRegions","catFinish","catSets"];
@@ -7820,6 +7820,34 @@ const Fake = (function(){
   }
   window.rcOpenByPrinting=openResolveByPrinting;
   function curPid(){ return (RCUR&&RCUR.sel&&RCUR.sel.printing_id)||(RCUR&&RCUR.cands[0]&&RCUR.cands[0].printing_id)||(RCUR&&RCUR.pid)||null; }
+  /* b155 : VALIDER une image choisie — écrit réellement (rc_apply_image, admin) : met à jour l'image
+     affichée du printing + enregistre/protège le choix. Aucune écriture sans admin (serveur = autorité). */
+  function applyImage(url){
+    if(!RCUR) return;
+    if(!url){ RCUR.msg='Aucune URL image.'; RCUR.msgok=false; renderDrawer(); return; }
+    if(!CAN_WRITE){ RCUR.msg='🔒 Connexion admin requise pour valider une image (roue ⚙ en bas à gauche).'; RCUR.msgok=false; renderDrawer(); return; }
+    var pid=curPid(); if(!pid){ RCUR.msg='Aucune impression cible sélectionnée (onglet Identité).'; RCUR.msgok=false; renderDrawer(); return; }
+    RCUR.msg='Validation de l\'image…'; RCUR.msgok=true; renderDrawer();
+    rpcAdmin('rc_apply_image',{p_printing_id:pid,p_url:url,p_dry_run:false}).then(function(res){
+      if(res&&res.result==='APPLIED'){
+        if(RCUR.sel&&String(RCUR.sel.printing_id)===String(pid)) RCUR.sel.image_url=url;
+        if(Array.isArray(RCUR.cands)) RCUR.cands.forEach(function(c){ if(c&&String(c.printing_id)===String(pid)) c.image_url=url; });
+        try{ if(typeof DATA!=='undefined'&&Array.isArray(DATA)) DATA.forEach(function(d){ if(d&&String(d.printing_id)===String(pid)){ d.image_url=url; d.img_locked=true; } }); }catch(e){}
+        RCUR.tab='identite'; RCUR.msg='✅ Image validée et appliquée (protégée contre la resync).'; RCUR.msgok=true; renderDrawer();
+      } else {
+        RCUR.msg='Refusé : '+((res&&(res.reason||res.message))||'garde serveur non satisfaite'); RCUR.msgok=false; renderDrawer();
+      }
+    }).catch(function(){ if(RCUR){ RCUR.msg='Action refusée par le serveur.'; RCUR.msgok=false; renderDrawer(); } });
+  }
+  function markImageIncorrect(){
+    if(!RCUR) return;
+    if(!CAN_WRITE){ RCUR.msg='🔒 Connexion admin requise.'; RCUR.msgok=false; renderDrawer(); return; }
+    var pid=curPid(); if(!pid) return; var cur=(RCUR.sel&&RCUR.sel.image_url)||(RCUR.cands[0]&&RCUR.cands[0].image_url)||null;
+    if(!cur){ RCUR.msg='Aucune image actuelle à marquer.'; RCUR.msgok=false; renderDrawer(); return; }
+    rpcAdmin('rc_set_canonical_image',{p_printing_id:pid,p_chosen_url:cur,p_status:'INCORRECT',p_dry_run:false}).then(function(res){
+      RCUR.msg=(res&&res.result==='APPLIED')?'✅ Image marquée incorrecte (à re-sourcer).':'Refusé : '+((res&&res.reason)||'garde serveur'); RCUR.msgok=!!(res&&res.result==='APPLIED'); renderDrawer();
+    }).catch(function(){ if(RCUR){ RCUR.msg='Action refusée.'; RCUR.msgok=false; renderDrawer(); } });
+  }
   function doImgSearch(){ var pid=curPid(); if(!pid||!RCUR)return; RCUR.imgCands='loading'; renderDrawer();
     rpcGet('rc_image_candidates',{p_printing_id:pid}).then(function(a){ if(!RCUR)return; RCUR.imgCands=Array.isArray(a)?a:[]; renderDrawer(); }).catch(function(){ if(RCUR){RCUR.imgCands=[]; renderDrawer();} }); }
   function doMapSearch(provider){ var pid=curPid(); if(!pid||!RCUR)return; RCUR.mapProv=provider; RCUR.mapRes='loading'; renderDrawer();
@@ -7850,7 +7878,7 @@ const Fake = (function(){
       } else {
         var tabs=[['identite','Identité'],['image','Image'],['prix','Prix'],['sources','Sources'],['histo','Historique']];
         var tabbar='<div class="rd-tabs">'+tabs.map(function(t){return '<button class="rd-tab'+(RCUR.tab===t[0]?' on':'')+'" data-rtab="'+t[0]+'" type="button">'+t[1]+'</button>';}).join('')+'</div>';
-        pnl.innerHTML=head+tabbar+'<div id="rdTab"></div>';
+        pnl.innerHTML=head+tabbar+(RCUR.msg?'<div class="rd-msg '+(RCUR.msgok?'ok':'err')+'" style="margin:8px 14px 0">'+esc(RCUR.msg)+'</div>':'')+'<div id="rdTab"></div>';
         renderTab();
       }
       try{ var hd=document.querySelector('#rdPanel .rd-head'); if(hd&&pnl) pnl.style.setProperty('--rd-headh', hd.offsetHeight+'px'); }catch(e){}
@@ -7951,8 +7979,13 @@ const Fake = (function(){
       '<span class="k">Sources</span><span>'+(row.n_sources||0)+'</span>'+
       '<span class="k">Code officiel</span><span>'+esc(row.official_asset_code||'—')+'</span></div></div>';
     var catl=cands.map(function(c){ var sel=RCUR.sel&&RCUR.sel.printing_id===c.printing_id;
-      return '<div class="rd-cand'+(sel?' sel':'')+'" data-cand="'+esc(c.printing_id)+'"><b>'+esc(c.distribution_region||'?')+'</b> · '+esc(c.variant_label||c.variant||'base')+' · '+esc(c.rarity||'')+
-        '<br><span style="color:var(--rm)">event_family='+esc(c.event_family||'∅')+' · event_tier='+esc(c.event_tier||'∅')+' · treatment='+esc(c.treatment_family_v2||'∅')+' · opi='+esc(c.official_print_id||'∅')+'</span></div>';
+      /* b156 : vignette par impression pour choisir visuellement (au lieu d'un simple « ? »). */
+      var th=(c.image_url&&!/MISSING/i.test(String(c.image_url)))
+        ? '<img src="'+esc(c.image_url)+'" alt="" loading="lazy" style="width:42px;height:59px;border-radius:6px;object-fit:cover;flex:none;background:var(--rc2)" onerror="this.style.visibility=\'hidden\'">'
+        : '<div style="width:42px;height:59px;border-radius:6px;flex:none;background:var(--rc2);display:flex;align-items:center;justify-content:center;color:var(--rm);font-size:10px;text-align:center">pas<br>d\'img</div>';
+      return '<div class="rd-cand'+(sel?' sel':'')+'" data-cand="'+esc(c.printing_id)+'" style="display:flex;gap:10px;align-items:flex-start">'+th+
+        '<div style="flex:1;min-width:0"><b>'+esc(c.distribution_region||'région ?')+'</b> · '+esc(c.variant_label||c.variant||'base')+' · '+esc(c.rarity||'')+
+        '<br><span style="color:var(--rm);font-size:11px">event_family='+esc(c.event_family||'∅')+' · event_tier='+esc(c.event_tier||'∅')+' · treatment='+esc(c.treatment_family_v2||'∅')+' · opi='+esc(c.official_print_id||'∅')+'</span></div></div>';
     }).join('');
     var cat='<div class="rd-sec"><h3>Catalogue actuel ('+cands.length+')</h3>'+(cands.length?catl:'<div class="rd-note">Aucune impression au catalogue.</div>')+'</div>';
     var prop='<div class="rd-sec"><h3>Proposition (avant → après)</h3><div id="rdPreview"><div class="rd-note">Sélectionne une impression cible.</div></div></div>';
@@ -7999,11 +8032,13 @@ const Fake = (function(){
     return '<div class="rd-imgc'+(big?' big':'')+(RCUR.imgSel===i?' sel':'')+'"><img class="rd-imgt" src="'+esc(c.url)+'" alt="" loading="lazy">'+
       '<div class="rd-imm"><span class="rd-pill2 '+t[1]+'">MATCH '+t[0]+'</span> <span class="rd-pill2 '+(c.official?'A':'C')+'">'+(c.official?'officiel':'non off.')+'</span>'+(c.region?' <span class="rd-pill2">'+esc(c.region)+'</span>':'')+
       '<div class="rd-mini" style="color:var(--rm)">'+esc(c.match_reason||'')+'</div>'+
-      '<div class="rd-mini"><button class="rd-linkbtn" data-imgcmp="'+i+'">comparer</button> · <a href="'+esc(c.url)+'" target="_blank" rel="noopener">ouvrir</a> · <button class="rd-linkbtn" data-imgpick="'+i+'">choisir</button> · <button class="rd-linkbtn" data-imgrej="'+i+'">rejeter</button></div></div></div>'; }
+      '<div class="rd-mini"><button class="rd-linkbtn" data-imgcmp="'+i+'">comparer</button> · <a href="'+esc(c.url)+'" target="_blank" rel="noopener">ouvrir</a> · <button class="rd-linkbtn" data-imgpick="'+i+'" style="font-weight:800;color:var(--rg)">✅ valider</button> · <button class="rd-linkbtn" data-imgrej="'+i+'">rejeter</button></div></div></div>'; }
   function renderTabImage(el){
     var pid=curPid(); var cur=(RCUR.sel&&RCUR.sel.image_url)||(RCUR.cands[0]&&RCUR.cands[0].image_url)||'';
     var gal;
-    if(RCUR.imgCands==null) gal='<div class="rd-note">Clique « Rechercher des images » : interroge le cardlist JP officiel + les impressions internes (sources réellement disponibles ci-dessous).</div>';
+    /* b156 : charge automatiquement les images candidates à l'ouverture de l'onglet (plus besoin de cliquer « Rechercher »). */
+    if(RCUR.imgCands==null && pid){ setTimeout(doImgSearch,0); }
+    if(RCUR.imgCands==null) gal='<div class="rd-note">Chargement des images candidates…</div>';
     else if(RCUR.imgCands==='loading') gal='<div class="rd-note">Recherche…</div>';
     else if(RCUR.imgCands.length===0) gal='<div class="rd-note">Aucune image candidate dans les sources internes interrogeables.</div>';
     else { var a=RCUR.imgCands; var reco=a[0]; var alts=a.slice(1,4); var rest=a.slice(4);
@@ -8020,7 +8055,7 @@ const Fake = (function(){
       '<div class="rd-actions"><button class="rd-btn" data-imgsearch="1">🔎 Rechercher des images</button></div>'+
       gal+
       '<div style="margin-top:10px"><h3>Ajouter une URL image</h3><input class="rd-in" id="imgUrl" placeholder="https://… image source" '+(CAN_WRITE?'':'disabled')+'>'+
-      roActions('<button class="rd-btn primary" data-raction="SET_IMAGE">Choisir / cacher cette image</button><button class="rd-btn warn" data-raction="IMG_INCORRECT">Marquer image incorrecte</button>')+
+      roActions('<button class="rd-btn primary" data-raction="SET_IMAGE">Valider cette URL image</button><button class="rd-btn warn" data-raction="IMG_INCORRECT">Marquer image incorrecte</button>')+
       '<div class="rd-note">Le classement se fait d\'abord par métadonnées (asset officiel exact > région/variant > card_number). Une URL externe passe par un fetch/cache backend (allowlist SSRF) puis un storage interne lié au printing_id exact.</div></div></div>';
     renderCapNote('rdCapImg','image');
   }
@@ -8107,14 +8142,17 @@ const Fake = (function(){
       var fn=ev.target.closest('[data-fastact]'); if(fn){ fastAct(fn.getAttribute('data-fastact')); return; }
       var tb=ev.target.closest('[data-rtab]'); if(tb){ if(RCUR){ RCUR.tab=tb.getAttribute('data-rtab'); RCUR.mode='expert'; renderDrawer(); } return; }
       if(ev.target.closest('[data-imgsearch]')){ doImgSearch(); return; }
-      var ip=ev.target.closest('[data-imgpick]'); if(ip){ if(RCUR){ RCUR.imgSel=+ip.getAttribute('data-imgpick'); renderDrawer(); } return; }
+      var ip=ev.target.closest('[data-imgpick]'); if(ip){ if(RCUR){ var _ii=+ip.getAttribute('data-imgpick'); RCUR.imgSel=_ii; var _c=(RCUR.imgCands&&RCUR.imgCands[_ii])||null; if(_c&&_c.url){ applyImage(_c.url); } else { renderDrawer(); } } return; }
       var ir=ev.target.closest('[data-imgrej]'); if(ir){ if(RCUR&&RCUR.imgCands&&RCUR.imgCands.splice){ RCUR.imgCands.splice(+ir.getAttribute('data-imgrej'),1); RCUR.imgSel=-1; RCUR.cmp=null; renderDrawer(); } return; }
       var ic=ev.target.closest('[data-imgcmp]'); if(ic){ if(RCUR){ var ci=+ic.getAttribute('data-imgcmp'); RCUR.cmp=(RCUR.cmp===ci?null:ci); renderDrawer(); } return; }
       var im=ev.target.closest('[data-imgmore]'); if(im){ if(RCUR){ RCUR.imgShowAll=im.getAttribute('data-imgmore')==='1'; renderDrawer(); } return; }
       var ms=ev.target.closest('[data-mapsearch]'); if(ms){ doMapSearch(ms.getAttribute('data-mapsearch')); return; }
       if(ev.target.closest('[data-searchlinks]')){ doSearchLinks(); return; }
       var cd=ev.target.closest('[data-cand]'); if(cd){ selectCand(cd.getAttribute('data-cand')); return; }
-      var ra=ev.target.closest('[data-raction]'); if(ra){ doAction(ra.getAttribute('data-raction')); return; }
+      var ra=ev.target.closest('[data-raction]'); if(ra){ var _act=ra.getAttribute('data-raction');
+        if(_act==='SET_IMAGE'){ var _u=(document.getElementById('imgUrl')||{}).value||''; applyImage(_u.trim()); return; }
+        if(_act==='IMG_INCORRECT'){ markImageIncorrect(); return; }
+        doAction(_act); return; }
     });
   }
   window.renderCoverage=function(){
