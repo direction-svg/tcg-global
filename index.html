@@ -4216,7 +4216,7 @@ async function homeBriefing(){
   }catch(e){ box.innerHTML='<div class="txt" style="color:var(--muted);font-size:13px">Erreur, réessaie.</div><button class="hbriefbtn" onclick="homeBriefing()">Réessayer</button>'; }
 }
 document.getElementById('modeSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMode(b.dataset.m);});
-const APP_VERSION='Version b151 · 12/09 — Démarrage quasi-instantané : Accueil + Collection lisent la vue matérialisée app_collection_v2_mat (snapshot rafraîchi, mêmes valeurs métier) au lieu de la vue lourde. Détail carte, changement de variante et Resolution Center restent sur la vue live. Reste inchangé — LECTURE SEULE.';
+const APP_VERSION='Version b152 · 12/09 — Resolution Center opérationnel : connexion admin réelle (Supabase Auth) + droit d\'écriture dynamique (serveur = autorité). Mode rapide QUICK_VALIDATE écrit réellement, une carte à la fois, gardes revérifiées serveur. Conserve b151 (démarrage matview) et tout l\'UX précédent.';
 { const nv=document.getElementById('navVersion'); if(nv) nv.textContent=APP_VERSION; }
 document.getElementById('mktSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMarket(b.dataset.k);});
 const CATARRS=["catColors","catCats","catRarities","catTreats","catProvs","catEvents","catTiers","catRegions","catFinish","catSets"];
@@ -7660,7 +7660,7 @@ const Fake = (function(){
   var CONF_CLR={HIGH:'g',MEDIUM:'o',LOW:'gr',REVIEW:'gr'};
   /* ===== Radar Resolution (drawer Traiter) — STAGING ; RPC non activée pour anon tant que non-GO ===== */
   function rpcResolve(body){
-    return fetch(SBc+"/rest/v1/rpc/resolve_coverage_gap",{method:"POST",headers:{apikey:ANONc,Authorization:"Bearer "+ANONc,"Content-Type":"application/json"},body:JSON.stringify(body)}).then(function(r){return r.json();});
+    return fetch(SBc+"/rest/v1/rpc/resolve_coverage_gap",{method:"POST",headers:_ah(),body:JSON.stringify(body)}).then(function(r){return r.json();});
   }
   function proposeFields(row){
     var f=row.family,o={};
@@ -7688,7 +7688,80 @@ const Fake = (function(){
     return false;
   }
   function regionOk(rr,pr){ return !rr||!pr||pr===rr||(rr==='EN'&&pr==='EN_WW')||(rr==='EN_WW'&&pr==='EN'); }
-  var CAN_WRITE=false; /* aucune session admin authentifiée => LECTURE SEULE ; mutations refusées serveur pour anon */
+  /* ===== b152 : AUTH ADMIN réelle (Supabase Auth) — CAN_WRITE dynamique =====
+     CAN_WRITE n'est PLUS une autorité : c'est un simple reflet UI de (session authentifiée ET is_admin() serveur).
+     Aucun service_role, aucun uid en dur, aucun secret : seule la clé anon publique + le token de session.
+     Le serveur reste l'autorité finale : toute mutation exige auth.uid() admin, sinon NOT_AUTHORIZED. */
+  var CAN_WRITE=false;
+  var ADMIN_TOKEN=null, ADMIN_REFRESH=null, ADMIN_EMAIL=null, AUTH_STATE='anon'; /* anon | authed_nonadmin | admin */
+  function _ah(){ return {apikey:ANONc, Authorization:'Bearer '+(ADMIN_TOKEN||ANONc), 'Content-Type':'application/json'}; }
+  function rpcAdmin(fn,body){ return fetch(SBc+'/rest/v1/rpc/'+fn,{method:'POST',headers:_ah(),body:JSON.stringify(body||{})}).then(function(r){return r.json();}); }
+  function checkAdmin(){
+    return fetch(SBc+'/rest/v1/rpc/is_admin',{method:'POST',headers:_ah(),body:'{}'})
+      .then(function(r){return r.json();}).then(function(v){
+        CAN_WRITE=(v===true); AUTH_STATE=(v===true?'admin':(ADMIN_TOKEN?'authed_nonadmin':'anon')); updateAuthUI(); return CAN_WRITE;
+      }).catch(function(){ CAN_WRITE=false; AUTH_STATE=(ADMIN_TOKEN?'authed_nonadmin':'anon'); updateAuthUI(); return false; });
+  }
+  function adminLogin(email,pw){
+    return fetch(SBc+'/auth/v1/token?grant_type=password',{method:'POST',headers:{apikey:ANONc,'Content-Type':'application/json'},body:JSON.stringify({email:email,password:pw})})
+      .then(function(r){return r.json();}).then(function(j){
+        if(!j.access_token) throw new Error(j.error_description||j.msg||j.error||'Identifiants invalides');
+        ADMIN_TOKEN=j.access_token; ADMIN_REFRESH=j.refresh_token||null; ADMIN_EMAIL=email;
+        try{ localStorage.setItem('bounty_admin_rt', ADMIN_REFRESH||''); }catch(e){}
+        return checkAdmin();
+      });
+  }
+  function adminLogout(){ ADMIN_TOKEN=null; ADMIN_REFRESH=null; ADMIN_EMAIL=null; CAN_WRITE=false; AUTH_STATE='anon'; try{localStorage.removeItem('bounty_admin_rt');}catch(e){} updateAuthUI(); }
+  function restoreSession(){
+    var rt=null; try{ rt=localStorage.getItem('bounty_admin_rt'); }catch(e){}
+    if(!rt){ updateAuthUI(); return; }
+    fetch(SBc+'/auth/v1/token?grant_type=refresh_token',{method:'POST',headers:{apikey:ANONc,'Content-Type':'application/json'},body:JSON.stringify({refresh_token:rt})})
+      .then(function(r){return r.json();}).then(function(j){
+        if(j.access_token){ ADMIN_TOKEN=j.access_token; ADMIN_REFRESH=j.refresh_token||rt; try{localStorage.setItem('bounty_admin_rt',ADMIN_REFRESH);}catch(e){} checkAdmin(); }
+        else { adminLogout(); }
+      }).catch(function(){ updateAuthUI(); });
+  }
+  /* Widget de connexion admin flottant (discret, n'altère aucune mise en page existante) */
+  function buildAuthWidget(){
+    if(document.getElementById('admLauncher')) return;
+    var b=document.createElement('button'); b.id='admLauncher'; b.type='button';
+    b.style.cssText='position:fixed;left:12px;bottom:12px;z-index:99998;border:1px solid var(--line,#333);background:var(--panel,#171a1f);color:var(--txt,#e8ecf1);border-radius:999px;padding:8px 12px;font:700 12px system-ui;cursor:pointer;opacity:.9';
+    b.addEventListener('click',function(){ var m=document.getElementById('admModal'); if(m) m.hidden=!m.hidden; });
+    document.body.appendChild(b);
+    var m=document.createElement('div'); m.id='admModal'; m.hidden=true;
+    m.style.cssText='position:fixed;left:12px;bottom:56px;z-index:99999;width:min(300px,92vw);border:1px solid var(--line,#333);background:var(--panel,#171a1f);color:var(--txt,#e8ecf1);border-radius:14px;padding:14px;box-shadow:0 12px 40px rgba(0,0,0,.5);font:13px system-ui';
+    m.innerHTML='<div id="admBody"></div>';
+    document.body.appendChild(m);
+    updateAuthUI();
+  }
+  function updateAuthUI(){
+    var b=document.getElementById('admLauncher'); var body=document.getElementById('admBody');
+    if(b){ b.textContent = AUTH_STATE==='admin' ? '✅ Admin' : (AUTH_STATE==='authed_nonadmin' ? '⚠ Non-admin' : '🔒 Admin'); }
+    if(body){
+      if(AUTH_STATE==='admin'){
+        body.innerHTML='<div style="font-weight:800;margin-bottom:6px">Connecté — admin</div>'+
+          '<div style="color:var(--muted,#8b94a3);font-size:12px;margin-bottom:10px">'+esc(ADMIN_EMAIL||'')+' · écriture activée</div>'+
+          '<button id="admOut" type="button" style="width:100%;padding:9px;border-radius:9px;border:1px solid var(--line,#333);background:transparent;color:var(--txt,#e8ecf1);font-weight:700;cursor:pointer">Se déconnecter</button>';
+        var o=document.getElementById('admOut'); if(o) o.onclick=function(){ adminLogout(); };
+      } else {
+        var warn = AUTH_STATE==='authed_nonadmin' ? '<div style="color:#f0a030;font-size:12px;margin-bottom:8px">Session valide mais ce compte n\'est pas admin.</div>' : '';
+        body.innerHTML='<div style="font-weight:800;margin-bottom:8px">Connexion admin</div>'+warn+
+          '<input id="admEmail" type="email" placeholder="email" autocomplete="username" style="width:100%;margin-bottom:6px;padding:8px;border-radius:8px;border:1px solid var(--line,#333);background:var(--chip,#1e232b);color:var(--txt,#e8ecf1)">'+
+          '<input id="admPw" type="password" placeholder="mot de passe" autocomplete="current-password" style="width:100%;margin-bottom:8px;padding:8px;border-radius:8px;border:1px solid var(--line,#333);background:var(--chip,#1e232b);color:var(--txt,#e8ecf1)">'+
+          '<button id="admIn" type="button" style="width:100%;padding:9px;border-radius:9px;border:0;background:#5b8cff;color:#fff;font-weight:800;cursor:pointer">Se connecter</button>'+
+          '<div id="admMsg" style="font-size:12px;margin-top:8px;color:var(--muted,#8b94a3)">Le serveur reste l\'autorité : sans admin, toute écriture est refusée.</div>';
+        var go=document.getElementById('admIn');
+        if(go) go.onclick=function(){
+          var e=(document.getElementById('admEmail')||{}).value, p=(document.getElementById('admPw')||{}).value;
+          var msg=document.getElementById('admMsg'); if(msg){msg.style.color='var(--muted,#8b94a3)';msg.textContent='Connexion…';}
+          adminLogin(e,p).then(function(ok){ if(msg){ if(ok){msg.style.color='#2ecc71';msg.textContent='Connecté — écriture activée.';} else {msg.style.color='#f0a030';msg.textContent='Connecté mais non-admin : écriture refusée.';} } })
+            .catch(function(err){ if(msg){msg.style.color='#e5484d';msg.textContent=String(err.message||err);} });
+        };
+      }
+    }
+    try{ var note=document.getElementById('fastRoNote'); if(note) note.hidden=CAN_WRITE; }catch(e){}
+  }
+  window.__bountyAuth={login:adminLogin,logout:adminLogout,check:checkAdmin,state:function(){return AUTH_STATE;}};
   var RCUR=null; var RD_SCROLL=0;
   /* b146 : portalise le drawer sous <body> (échappe tout stacking-context) + mémorise le scroll */
   function rdShow(){ var d=document.getElementById('rDrawer');
@@ -7779,7 +7852,7 @@ const Fake = (function(){
     if(FAST_ACTIVE){
       /* file UX : ces boutons font AVANCER la file (aucune mutation) → jamais désactivés */
       acts='<div class="rd-actions"><button class="rd-btn primary" data-fastact="valider">Valider</button><button class="rd-btn" data-fastact="passer">Passer</button><button class="rd-btn warn" data-fastact="review">Review</button></div>'+
-        (CAN_WRITE?'':'<div class="rd-note" style="padding:0 14px 10px">Mode rapide en lecture seule : les choix ne sont pas écrits (simulation UX).</div>');
+        '<div class="rd-note" id="fastRoNote" style="padding:0 14px 10px"'+(CAN_WRITE?' hidden':'')+'>🔒 Connexion admin requise pour valider (bouton en bas à gauche). Sans admin, « Valider » n\'écrit rien — le serveur refuse.</div>';
     } else {
       acts=roActions('<button class="rd-btn primary" data-raction="'+(row.problem_type==='REGION'?'FIX_REGION':'CLASSIFY')+'">Valider</button>')+
         '<div class="rd-actions" style="border-top:0;padding-top:0"><button class="rd-btn" data-rmode="1">Voir les alternatives ('+nAlt+')</button><button class="rd-btn warn" data-raction="KEEP_REVIEW">Garder en REVIEW</button></div>';
@@ -7791,8 +7864,33 @@ const Fake = (function(){
   var FAST_ACTIVE=false, FASTQ=[], FASTI=0;
   function startFast(){ FASTQ=RADAR.filter(function(r){return r.bucket==='QUICK_VALIDATE';}); FASTI=0; if(!FASTQ.length)return; FAST_ACTIVE=true; fastOpen(); }
   function fastOpen(){ var r=FASTQ[FASTI]; if(!r){ fastEnd(); return; } openResolve(r.reference_id, r.card_number); }
-  function fastAct(a){ /* aucune mutation en staging — file UX simulée */ FASTI++; if(FASTI<FASTQ.length){ fastOpen(); } else { fastEnd(); } }
-  function fastEnd(){ FAST_ACTIVE=false; closeDrawer(); var el=document.getElementById('radarSummary'); if(el){ var d=document.createElement('div'); d.className='rchip'; d.textContent='⚡ Fin du mode rapide ('+FASTQ.length+' cartes passées en revue)'; el.appendChild(d); } }
+  var FAST_APPLIED=0, FAST_REVIEW=0, FAST_DIRTY=false;
+  function advanceFast(delay){ setTimeout(function(){ FASTI++; if(FASTI<FASTQ.length){ fastOpen(); } else { fastEnd(); } }, delay||0); }
+  function fastAct(a){
+    var r=FASTQ[FASTI]; if(!r){ fastEnd(); return; }
+    if(a==='passer'){ advanceFast(0); return; }
+    if(a==='review'){ if(RCUR){RCUR.msg='Gardé en review.';RCUR.msgok=true;renderDrawer();} FAST_REVIEW++; advanceFast(650); return; }
+    /* valider = écriture réelle, une carte à la fois, chaque garde revérifiée serveur */
+    if(!CAN_WRITE){ if(RCUR){RCUR.msg='🔒 Connexion admin requise pour valider (bouton 🔒 en bas à gauche).';RCUR.msgok=false;renderDrawer();} return; }
+    if(RCUR){RCUR.msg='Validation…';RCUR.msgok=true;renderDrawer();}
+    rpcAdmin('rc_quick_validate',{p_reference_id:r.reference_id,p_dry_run:false}).then(function(res){
+      var applied=res&&(res.result==='APPLIED'||res.result==='NOOP');
+      if(applied){ FAST_APPLIED++; FAST_DIRTY=true;
+        if(RCUR){RCUR.msg=(res.result==='APPLIED'?('✅ Classé flagship'+(res.tier?' · '+res.tier:'')+' — la carte sort du Radar.'):'Déjà à jour (idempotent).');RCUR.msgok=true;renderDrawer();}
+        advanceFast(750);
+      } else {
+        FAST_REVIEW++;
+        if(RCUR){RCUR.msg='⚠ '+((res&&res.reason)||'garde non satisfaite')+' → non écrit, laissé en review.';RCUR.msgok=false;renderDrawer();}
+        advanceFast(1200);
+      }
+    }).catch(function(){ if(RCUR){RCUR.msg='Action refusée par le serveur.';RCUR.msgok=false;renderDrawer();} FAST_REVIEW++; advanceFast(1200); });
+  }
+  function fastEnd(){ FAST_ACTIVE=false; closeDrawer();
+    var el=document.getElementById('radarSummary');
+    if(el){ var d=document.createElement('div'); d.className='rchip'; d.textContent='⚡ Fin du mode rapide — '+FAST_APPLIED+' validée(s), '+FAST_REVIEW+' en review'; el.appendChild(d); }
+    if(FAST_DIRTY){ FAST_DIRTY=false; try{ loadRadar(); }catch(e){} } /* rafraîchit le Radar : les cartes validées ont quitté le trou */
+    FAST_APPLIED=0; FAST_REVIEW=0;
+  }
   function renderTab(){ var el=document.getElementById('rdTab'); if(!el||!RCUR)return; var t=RCUR.tab;
     if(t==='sources') renderTabSources(el); else if(t==='histo') renderTabHisto(el);
     else if(t==='image') renderTabImage(el); else if(t==='prix') renderTabPrix(el); else renderTabIdentite(el);
@@ -8046,6 +8144,11 @@ const Fake = (function(){
       var a=document.getElementById("covAsof"); if(a)a.innerHTML='<span class="err">Erreur de chargement : '+esc(e.message)+'</span>';
     });
   };
+  /* b152 : monte le widget de connexion admin + restaure une session existante (refresh token) */
+  try{
+    if(document.readyState==='loading'){ document.addEventListener('DOMContentLoaded',function(){ buildAuthWidget(); restoreSession(); }); }
+    else { buildAuthWidget(); restoreSession(); }
+  }catch(e){}
 })();
 </script>
 </body>
