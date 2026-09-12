@@ -4210,7 +4210,7 @@ async function homeBriefing(){
   }catch(e){ box.innerHTML='<div class="txt" style="color:var(--muted);font-size:13px">Erreur, réessaie.</div><button class="hbriefbtn" onclick="homeBriefing()">Réessayer</button>'; }
 }
 document.getElementById('modeSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMode(b.dataset.m);});
-const APP_VERSION='Version b140 · 12/09 — Intégration surface Couverture (détection/preuve externe) ; reste UX inchangé';
+const APP_VERSION='Version b141 · 12/09 — Radar nouvelles cartes (rare & limited) dans Couverture ; reste UX inchangé';
 { const nv=document.getElementById('navVersion'); if(nv) nv.textContent=APP_VERSION; }
 document.getElementById('mktSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMarket(b.dataset.k);});
 const CATARRS=["catColors","catCats","catRarities","catTreats","catProvs","catEvents","catTiers","catRegions","catFinish","catSets"];
@@ -7343,6 +7343,23 @@ const Fake = (function(){
 .covwrap .err{color:var(--cv-red)}
 .covwrap .scroll{overflow-x:auto}
 @media(max-width:640px){.covwrap th,.covwrap td{padding:7px 7px;font-size:12px}}
+.covwrap .cov-radar h2{color:var(--cv-tx)}
+.covwrap .radar-summary{display:flex;flex-wrap:wrap;gap:8px;padding:11px 14px;border-bottom:1px solid var(--cv-line)}
+.covwrap .rchip{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:99px;border:1px solid var(--cv-line);background:var(--cv-card2);font-size:12px;font-weight:600}
+.covwrap .rchip b{font-size:13px}
+.covwrap .rchip.tot b{color:var(--cv-gold)}
+.covwrap .rchip.d b{color:var(--cv-orange)}
+.covwrap .rchip.c b{color:var(--cv-blue)}
+.covwrap .rchip.e b{color:var(--cv-gray)}
+.covwrap .rchip.b b{color:var(--cv-red)}
+.covwrap .radar-btn{background:var(--cv-card2);color:var(--cv-tx);border:1px solid var(--cv-line);border-radius:8px;padding:7px 14px;font-size:13px;font-weight:600;cursor:pointer}
+.covwrap .radar-btn:hover{border-color:var(--cv-gold)}
+.covwrap .rlabel{font-size:11.5px;font-weight:600;white-space:nowrap}
+.covwrap .rlabel.C{color:var(--cv-blue)}.covwrap .rlabel.D{color:var(--cv-orange)}.covwrap .rlabel.E{color:var(--cv-gray)}.covwrap .rlabel.B{color:var(--cv-red)}
+.covwrap .rprio{font-variant-numeric:tabular-nums;font-weight:800;color:var(--cv-gold)}
+.covwrap .rown{font-size:11px;font-weight:700}
+.covwrap .rown.yes{color:var(--cv-green)}.covwrap .rown.no{color:var(--cv-mut)}
+.covwrap .raction{color:var(--cv-mut);font-size:11.5px;white-space:normal;min-width:150px}
 </style>
 <script>
 /* Couverture — module BOUNTY (namespacé, additif, lecture seule). Réutilise index_coverage.html + P3 santé/alertes. */
@@ -7441,6 +7458,67 @@ const Fake = (function(){
     }).catch(function(){ el.innerHTML='🩺 Santé Coverage Watch : indisponible'; });
   }
 
+  var RADAR=[], radarShowAll=false;
+  var RSTAT_SHORT={B_POTENTIAL_MISSING_PRINTING:['Manquante ?','B'],C_PRESENT_UNCLASSIFIED:['Mal qualifiée','C'],D_METADATA_GAP:['Métadonnées','D'],E_REVIEW_ONLY:['Preuve faible','E']};
+  function rval(id){var e=document.getElementById(id);return e?e.value:'';}
+  function proofPill(vs,lvl){ var cls=vs==='VERIFIED_OFFICIAL'?'off':vs==='MANUAL_REVIEWED'?'man':'rev'; var t=vs==='VERIFIED_OFFICIAL'?'OFFICIEL':vs==='MANUAL_REVIEWED'?'DOCUMENTÉ':'REVIEW'; return '<span class="pill '+cls+'">'+t+(lvl?' '+esc(lvl):'')+'</span>'; }
+  function radarSummary(){
+    var c={B_POTENTIAL_MISSING_PRINTING:0,C_PRESENT_UNCLASSIFIED:0,D_METADATA_GAP:0,E_REVIEW_ONLY:0};
+    RADAR.forEach(function(r){ if(c[r.radar_status]!=null)c[r.radar_status]++; });
+    var el=document.getElementById('radarSummary'); if(!el)return;
+    el.innerHTML='<span class="rchip tot"><b>'+RADAR.length+'</b> à traiter</span>'+
+      '<span class="rchip d"><b>'+c.D_METADATA_GAP+'</b> métadonnées à confirmer</span>'+
+      '<span class="rchip c"><b>'+c.C_PRESENT_UNCLASSIFIED+'</b> présentes mal qualifiées</span>'+
+      '<span class="rchip e"><b>'+c.E_REVIEW_ONLY+'</b> preuve insuffisante</span>'+
+      '<span class="rchip b"><b>'+c.B_POTENTIAL_MISSING_PRINTING+'</b> manque crédible</span>';
+  }
+  function renderRadar(){
+    var fam=rval('rFam'),st=rval('rStatus'),reg=rval('rRegion'),pf=rval('rProof'),ow=rval('rOwned'),sort=rval('rSort')||'prio';
+    var rows=RADAR.slice();
+    if(fam) rows=rows.filter(function(r){return r.family===fam;});
+    if(st) rows=rows.filter(function(r){return r.radar_status===st;});
+    if(reg) rows=rows.filter(function(r){return (r.region||'')===reg;});
+    if(pf==='AB') rows=rows.filter(function(r){return r.source_level==='A'||r.source_level==='B';});
+    else if(pf) rows=rows.filter(function(r){return r.verification_status===pf;});
+    if(ow==='no') rows=rows.filter(function(r){return !r.owned_any;});
+    else if(ow==='own') rows=rows.filter(function(r){return r.owned_any;});
+    if(sort==='prio') rows.sort(function(a,b){return b.radar_priority-a.radar_priority;});
+    else if(sort==='recent') rows.sort(function(a,b){return (''+(b.last_seen||'')).localeCompare(''+(a.last_seen||''));});
+    else if(sort==='fam') rows.sort(function(a,b){return (FAM_LABEL[a.family]||a.family||'').localeCompare(FAM_LABEL[b.family]||b.family||'')||(b.radar_priority-a.radar_priority);});
+    else if(sort==='proof') rows.sort(function(a,b){var o={VERIFIED_OFFICIAL:0,MANUAL_REVIEWED:1,REVIEW:2};return ((o[a.verification_status]||9)-(o[b.verification_status]||9))||(b.radar_priority-a.radar_priority);});
+    var LIM=30; var shown=radarShowAll?rows:rows.slice(0,LIM);
+    document.getElementById('radarCount').textContent=rows.length+' élément'+(rows.length>1?'s':'')+' actionnable'+(rows.length>1?'s':'')+((radarShowAll||rows.length<=LIM)?'':' · '+shown.length+' affichés');
+    document.getElementById('radarbody').innerHTML=shown.map(function(r){
+      var sh=RSTAT_SHORT[r.radar_status]||['',''];
+      return '<tr><td class="num"><span class="rprio">'+(r.radar_priority||0)+'</span></td>'+
+        '<td><span class="rlabel '+sh[1]+'">'+esc(r.radar_label||sh[0])+'</span></td>'+
+        '<td>'+esc(FAM_LABEL[r.family]||r.family)+'</td>'+
+        '<td class="fam">'+esc(r.card_number)+'</td>'+
+        '<td>'+esc(r.character||'')+'</td>'+
+        '<td>'+esc(r.region||'')+'</td>'+
+        '<td>'+proofPill(r.verification_status,r.source_level)+'</td>'+
+        '<td>'+esc([r.event_tier,r.event_name].filter(Boolean).join(' · '))+'</td>'+
+        '<td>'+esc(r.printed_language||'—')+'</td>'+
+        '<td class="num">'+(r.n_sources||0)+'</td>'+
+        '<td><span class="rown '+(r.owned_any?'yes':'no')+'">'+(r.owned_any?'possédé':'—')+'</span></td>'+
+        '<td class="raction">'+esc(r.recommended_action||'')+'</td></tr>';
+    }).join('');
+    var btn=document.getElementById('radarAll'); if(btn){ btn.style.display=(rows.length>LIM)?'inline-block':'none'; btn.textContent=radarShowAll?'Réduire':('Voir tout le Radar ('+rows.length+')'); }
+  }
+  function loadRadar(){
+    radarShowAll=false;
+    return cq("app_coverage_radar?select=family,card_number,character,region,radar_status,radar_priority,verification_status,source_level,printed_language,event_name,event_tier,serial_flag,n_sources,owned_any,catalogue_present,last_seen,radar_label,recommended_action&order=radar_priority.desc&limit=500").then(function(rows){
+      RADAR=Array.isArray(rows)?rows:[];
+      var famSel=document.getElementById('rFam'), regSel=document.getElementById('rRegion');
+      var fams={}, regs={};
+      RADAR.forEach(function(r){ if(r.family)fams[r.family]=1; if(r.region)regs[r.region]=1; });
+      if(famSel) Object.keys(fams).sort().forEach(function(f){var o=document.createElement('option');o.value=f;o.textContent=FAM_LABEL[f]||f;famSel.appendChild(o);});
+      if(regSel) Object.keys(regs).sort().forEach(function(g){var o=document.createElement('option');o.value=g;o.textContent=g;regSel.appendChild(o);});
+      ['rFam','rStatus','rRegion','rProof','rOwned','rSort'].forEach(function(id){var e=document.getElementById(id); if(e&&!e._rb){e.addEventListener('change',renderRadar);e._rb=true;}});
+      var btn=document.getElementById('radarAll'); if(btn&&!btn._rb){ btn.addEventListener('click',function(){radarShowAll=!radarShowAll;renderRadar();}); btn._rb=true; }
+      radarSummary(); renderRadar();
+    }).catch(function(e){ var el=document.getElementById('radarSummary'); if(el)el.innerHTML='<span class="rchip">Radar indisponible</span>'; });
+  }
   window.renderCoverage=function(){
     var stage=document.getElementById("stage"); if(!stage)return;
     stage.innerHTML=
@@ -7450,6 +7528,29 @@ const Fake = (function(){
       '<div class="disclaimer">⚠ Couverture mesurée <b>uniquement sur les référentiels externes disponibles</b>. '+
         'Ce n\'est pas « X % du catalogue complet » : les familles non bornées apparaissent explicitement.</div>'+
       '<div class="cov-health" id="covHealth">🩺 …</div>'+
+      '<div class="cov-card cov-radar"><h2>🚨 Radar nouvelles cartes</h2>'+
+        '<div class="radar-summary" id="radarSummary"></div>'+
+        '<div class="filters">'+
+          '<select id="rFam"><option value="">Toutes familles</option></select>'+
+          '<select id="rStatus"><option value="">Tous statuts</option>'+
+            '<option value="B_POTENTIAL_MISSING_PRINTING">Impression potentiellement manquante</option>'+
+            '<option value="C_PRESENT_UNCLASSIFIED">Présente mais mal qualifiée</option>'+
+            '<option value="D_METADATA_GAP">Métadonnées à confirmer</option>'+
+            '<option value="E_REVIEW_ONLY">Preuve insuffisante</option>'+
+          '</select>'+
+          '<select id="rRegion"><option value="">Toutes régions</option></select>'+
+          '<select id="rProof"><option value="">Toute preuve</option><option value="AB">Officiel A/B</option>'+
+            '<option value="VERIFIED_OFFICIAL">VERIFIED</option><option value="MANUAL_REVIEWED">MANUAL</option><option value="REVIEW">REVIEW</option></select>'+
+          '<select id="rOwned"><option value="">Possédé + non</option><option value="no">Non possédé</option><option value="own">Déjà possédé</option></select>'+
+          '<select id="rSort"><option value="prio">Tri : priorité</option><option value="recent">Plus récent</option><option value="fam">Famille</option><option value="proof">Niveau de preuve</option></select>'+
+        '</div>'+
+        '<div class="count" id="radarCount"></div>'+
+        '<div class="scroll"><table><thead><tr>'+
+          '<th class="num">Prio</th><th>Statut</th><th>Famille</th><th>Carte</th><th>Perso</th><th>Rég.</th>'+
+          '<th>Preuve</th><th>Event / Tier</th><th>Lang</th><th class="num">Src</th><th>Coll.</th><th>Action</th>'+
+        '</tr></thead><tbody id="radarbody"></tbody></table></div>'+
+        '<div style="padding:10px 14px"><button id="radarAll" class="radar-btn" type="button">Voir tout le Radar</button></div>'+
+      '</div>'+
       '<div class="legend">'+
         '<span><i class="dot g"></i>VERIFIED_OFFICIAL — preuve officielle A/B (compte dans « prouvé »)</span>'+
         '<span><i class="dot o"></i>MANUAL_REVIEWED — fortement documenté, non officiel (« documenté » séparé)</span>'+
@@ -7476,7 +7577,7 @@ const Fake = (function(){
       '</div>'+
       '<div class="cov-card"><h2>Alertes couverture</h2><div id="alertbox"><div class="alert">Chargement…</div></div></div>'+
       '</div>';
-    Promise.all([loadSummary(),loadGaps(),loadAlerts(),loadHealth()]).then(function(){
+    Promise.all([loadRadar(),loadSummary(),loadGaps(),loadAlerts(),loadHealth()]).then(function(){
       var a=document.getElementById("covAsof"); if(a)a.textContent="Données live · "+new Date().toLocaleString("fr-FR");
     }).catch(function(e){
       var a=document.getElementById("covAsof"); if(a)a.innerHTML='<span class="err">Erreur de chargement : '+esc(e.message)+'</span>';
