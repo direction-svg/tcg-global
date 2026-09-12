@@ -969,6 +969,7 @@ body{-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
   <div class="sheet">
     <div class="dhead"><button class="dclose" id="cdclose">&times;</button><img id="cdimg" referrerpolicy="no-referrer"><div id="cdvfy" class="vfy" style="display:none"><span class="vt">🔍</span>Photo à vérifier</div><button id="cdphoto" onclick="pickCatPhoto()" title="Ajouter ma photo" style="position:absolute;bottom:8px;left:8px;z-index:6;border:none;background:rgba(0,0,0,.6);color:#fff;font-weight:800;font-size:12px;padding:6px 11px;border-radius:20px;cursor:pointer">📷 Ma photo</button><input id="cdphotoinput" type="file" accept="image/*" style="display:none" onchange="onCatPhotoFile(this)"></div>
     <div class="dtabs" id="cdtabs"><button data-ct="col" class="on">Collection</button><button data-ct="tar">Tarifs</button><button data-ct="det">D&eacute;tails</button></div>
+    <div id="cdResolve" style="padding:6px 12px 0"></div>
     <div id="cdbody"></div>
     <div id="cdprice" class="dprices"></div>
     <div id="cdprints"></div>
@@ -4210,7 +4211,7 @@ async function homeBriefing(){
   }catch(e){ box.innerHTML='<div class="txt" style="color:var(--muted);font-size:13px">Erreur, réessaie.</div><button class="hbriefbtn" onclick="homeBriefing()">Réessayer</button>'; }
 }
 document.getElementById('modeSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMode(b.dataset.m);});
-const APP_VERSION='Version b141 · 12/09 — Radar nouvelles cartes (rare & limited) dans Couverture ; reste UX inchangé';
+const APP_VERSION='Version b144 · 12/09 — Resolution Center + DISCOVERY (recherche image/mapping/sources réelles, ouverture depuis Catalogue) — LECTURE SEULE ; écriture admin ; reste UX inchangé';
 { const nv=document.getElementById('navVersion'); if(nv) nv.textContent=APP_VERSION; }
 document.getElementById('mktSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMarket(b.dataset.k);});
 const CATARRS=["catColors","catCats","catRarities","catTreats","catProvs","catEvents","catTiers","catRegions","catFinish","catSets"];
@@ -4635,6 +4636,10 @@ async function openCatDetail(c){
   renderCatDetail();
   document.getElementById("catOverlay").classList.remove("hidden");
   detailCatPid=c.printing_id||null;
+  { var rz=document.getElementById("cdResolve");
+    if(rz){ if(c.printing_id && typeof window.rcOpenByPrinting==='function' && c.game!=='NARUTO'){
+      rz.innerHTML='<button data-openpid="'+esc(c.printing_id)+'" style="width:100%;border:1px solid var(--cv-gold,#c79b3b);background:rgba(199,155,59,.12);color:inherit;font-weight:800;font-size:13px;padding:9px;border-radius:9px;cursor:pointer">🛠️ Traiter / Corriger cette impression</button>';
+    } else rz.innerHTML=''; } }
   loadCardPrices(c);
   loadCardVersions(c);
 }
@@ -7360,6 +7365,60 @@ const Fake = (function(){
 .covwrap .rown{font-size:11px;font-weight:700}
 .covwrap .rown.yes{color:var(--cv-green)}.covwrap .rown.no{color:var(--cv-mut)}
 .covwrap .raction{color:var(--cv-mut);font-size:11.5px;white-space:normal;min-width:150px}
+.covwrap .rd-open{background:var(--cv-gold);color:#1a1a1a;border:0;border-radius:7px;padding:5px 10px;font-size:12px;font-weight:800;cursor:pointer;white-space:nowrap}
+.rdrawer{position:fixed;inset:0;z-index:99999;display:flex;justify-content:flex-end;font:14px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+.rdrawer[hidden]{display:none!important}
+.rd-scrim{position:absolute;inset:0;background:rgba(0,0,0,.5)}
+.rd-panel{position:relative;background:var(--panel,#16191e);color:var(--ink,#e8eaed);width:min(560px,100%);height:100%;overflow-y:auto;border-left:1px solid var(--line,#262c36);box-shadow:-8px 0 30px rgba(0,0,0,.4)}
+.rd-panel *{box-sizing:border-box}
+.rd-panel{--rg:#2fa25f;--ro:#d0821f;--rr:#d8524a;--rm:var(--muted,#9aa3af);--rl:var(--line,#262c36);--rc2:var(--chip,#1c2027);--rgold:var(--gold,#d9b26a)}
+@media(max-width:640px){.rdrawer{align-items:flex-end;justify-content:stretch}.rd-panel{width:100%;height:92vh;border-left:0;border-radius:16px 16px 0 0}}
+.rd-head{position:sticky;top:0;background:var(--rc2);padding:12px 14px;border-bottom:1px solid var(--rl);display:flex;align-items:center;gap:8px;justify-content:space-between;z-index:2}
+.rd-head b{font-size:15px}
+.rd-close{background:transparent;border:1px solid var(--rl);color:inherit;border-radius:8px;width:32px;height:32px;font-size:16px;cursor:pointer}
+.rd-sec{padding:12px 14px;border-bottom:1px solid var(--rl)}
+.rd-sec h3{margin:0 0 8px;font-size:11.5px;text-transform:uppercase;letter-spacing:.4px;color:var(--rm)}
+.rd-kv{display:grid;grid-template-columns:auto 1fr;gap:3px 10px;font-size:13px}
+.rd-kv .k{color:var(--rm)}
+.rd-cand{border:1px solid var(--rl);border-radius:8px;padding:8px 10px;margin:6px 0;cursor:pointer;font-size:12.5px}
+.rd-cand.sel{border-color:var(--rgold);background:var(--rc2)}
+.rd-diff{display:grid;grid-template-columns:auto auto auto 1fr;gap:5px 8px;font-size:13px;align-items:center}
+.rd-diff .f{color:var(--rm)}
+.rd-old{color:var(--rm);text-decoration:line-through}
+.rd-new{color:var(--rg);font-weight:700}
+.rd-match{display:inline-block;padding:2px 9px;border-radius:99px;font-size:11px;font-weight:700;background:rgba(63,185,107,.16);color:var(--rg)}
+.rd-nomatch{display:inline-block;padding:2px 9px;border-radius:99px;font-size:11px;font-weight:700;background:rgba(224,145,47,.16);color:var(--ro)}
+.rd-actions{padding:12px 14px;display:flex;flex-wrap:wrap;gap:8px;position:sticky;bottom:0;background:var(--rc2);border-top:1px solid var(--rl)}
+.rd-btn{border-radius:8px;padding:9px 12px;font-size:13px;font-weight:700;cursor:pointer;border:1px solid var(--rl);background:var(--panel,#16191e);color:inherit}
+.rd-btn.primary{background:var(--rg);border-color:var(--rg);color:#08140d}
+.rd-btn.warn{background:transparent;color:var(--rm)}
+.rd-btn:disabled{opacity:.45;cursor:not-allowed}
+.rd-msg{padding:10px 14px;font-size:13px}
+.rd-msg.ok{color:var(--rg)}.rd-msg.err{color:var(--rr)}
+.rd-img{width:66px;height:92px;object-fit:cover;border-radius:6px;border:1px solid var(--rl);float:right;margin-left:10px}
+.rd-note{color:var(--rm);font-size:11.5px;margin-top:6px}
+.rd-tabs{display:flex;gap:4px;padding:8px 10px;border-bottom:1px solid var(--rl);position:sticky;top:56px;background:var(--rc2);overflow-x:auto;z-index:1}
+.rd-tab{border:1px solid var(--rl);background:transparent;color:var(--rm);border-radius:99px;padding:6px 12px;font-size:12.5px;font-weight:700;cursor:pointer;white-space:nowrap}
+.rd-tab.on{background:var(--rgold);color:#1a1a1a;border-color:var(--rgold)}
+.rd-list{font-size:12.5px}
+.rd-item{border:1px solid var(--rl);border-radius:8px;padding:8px 10px;margin:6px 0}
+.rd-pill2{display:inline-block;padding:1px 7px;border-radius:99px;font-size:11px;font-weight:700}
+.rd-pill2.A,.rd-pill2.OFFICIAL_BANDAI{background:rgba(63,185,107,.16);color:var(--rg)}
+.rd-pill2.B,.rd-pill2.OFFICIAL_PARTNER{background:rgba(79,140,217,.16);color:var(--blue,#4f8cd9)}
+.rd-pill2.C,.rd-pill2.STRONG_SECONDARY{background:rgba(224,145,47,.16);color:var(--ro)}
+.rd-pill2.D,.rd-pill2.MARKETPLACE{background:rgba(217,83,79,.16);color:var(--rr)}
+.rd-lock{display:inline-block;padding:1px 7px;border-radius:6px;font-size:11px;font-weight:700;background:rgba(217,173,106,.18);color:var(--rgold)}
+.rd-in{background:var(--panel,#16191e);color:inherit;border:1px solid var(--rl);border-radius:7px;padding:7px 9px;font-size:13px;width:100%;margin:4px 0}
+.rd-img2{width:54px;height:76px;object-fit:cover;border-radius:5px;border:1px solid var(--rl);vertical-align:middle;margin-right:8px}
+.rd-imgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px;margin:8px 0}
+.rd-imgc{border:1px solid var(--rl);border-radius:8px;padding:6px;font-size:11.5px;display:flex;flex-direction:column}
+.rd-imgc.sel{border-color:var(--rgold,#c79b3b);box-shadow:0 0 0 2px rgba(199,155,59,.35)}
+.rd-imgt{width:100%;aspect-ratio:5/7;object-fit:cover;border-radius:5px;border:1px solid var(--rl);background:var(--rl)}
+.rd-imm{margin-top:5px;line-height:1.5}
+.rd-mini{font-size:11px;margin-top:3px}
+.rd-linkbtn{background:none;border:none;color:var(--rgold,#c79b3b);cursor:pointer;padding:0;font-size:11px;text-decoration:underline}
+.rd-cap{font-size:11px;line-height:1.6;background:rgba(127,127,127,.08);border-radius:6px;padding:6px 8px;margin:6px 0}
+.rd-cat-treat{margin:8px 0}
 </style>
 <script>
 /* Couverture — module BOUNTY (namespacé, additif, lecture seule). Réutilise index_coverage.html + P3 santé/alertes. */
@@ -7501,7 +7560,8 @@ const Fake = (function(){
         '<td>'+esc(r.printed_language||'—')+'</td>'+
         '<td class="num">'+(r.n_sources||0)+'</td>'+
         '<td><span class="rown '+(r.owned_any?'yes':'no')+'">'+(r.owned_any?'possédé':'—')+'</span></td>'+
-        '<td class="raction">'+esc(r.recommended_action||'')+'</td></tr>';
+        '<td class="raction">'+esc(r.recommended_action||'')+'</td>'+
+        '<td><button class="rd-open" type="button" data-refid="'+esc(r.reference_id||'')+'">Traiter</button></td></tr>';
     }).join('');
     var btn=document.getElementById('radarAll'); if(btn){ btn.style.display=(rows.length>LIM)?'inline-block':'none'; btn.textContent=radarShowAll?'Réduire':('Voir tout le Radar ('+rows.length+')'); }
   }
@@ -7518,6 +7578,238 @@ const Fake = (function(){
       var btn=document.getElementById('radarAll'); if(btn&&!btn._rb){ btn.addEventListener('click',function(){radarShowAll=!radarShowAll;renderRadar();}); btn._rb=true; }
       radarSummary(); renderRadar();
     }).catch(function(e){ var el=document.getElementById('radarSummary'); if(el)el.innerHTML='<span class="rchip">Radar indisponible</span>'; });
+  }
+  /* ===== Radar Resolution (drawer Traiter) — STAGING ; RPC non activée pour anon tant que non-GO ===== */
+  function rpcResolve(body){
+    return fetch(SBc+"/rest/v1/rpc/resolve_coverage_gap",{method:"POST",headers:{apikey:ANONc,Authorization:"Bearer "+ANONc,"Content-Type":"application/json"},body:JSON.stringify(body)}).then(function(r){return r.json();});
+  }
+  function proposeFields(row){
+    var f=row.family,o={};
+    if(f==='flagship'){o.event_family='flagship'; if(row.event_tier)o.event_tier=row.event_tier;}
+    else if(f==='championship')o.event_family='championship';
+    else if(f==='world')o.event_family='world_championship';
+    else if(f==='regional')o.event_family='regional';
+    else if(f==='treasure_cup')o.event_family='treasure_cup';
+    else if(f==='TR')o.treatment_family_v2='treasure_rare';
+    else if(f==='MANGA')o.treatment_family_v2='manga';
+    else if(f==='serial')o.treatment_family_v2='serial_numbered';
+    else if(f==='SP')o.treatment_family_v2='sp';
+    return o;
+  }
+  function famExpectOk(fam,c){
+    if(fam==='flagship')return c.event_family==='flagship';
+    if(fam==='championship')return c.event_family==='championship';
+    if(fam==='world')return c.event_family==='world_championship'||c.event_family==='championship';
+    if(fam==='regional')return c.event_family==='regional';
+    if(fam==='treasure_cup')return c.event_family==='treasure_cup';
+    if(fam==='TR')return c.treatment_family_v2==='treasure_rare';
+    if(fam==='MANGA')return c.treatment_family_v2==='manga';
+    if(fam==='serial')return c.treatment_family_v2==='serial_numbered';
+    if(fam==='SP')return c.treatment_family_v2==='sp';
+    return false;
+  }
+  function regionOk(rr,pr){ return !rr||!pr||pr===rr||(rr==='EN'&&pr==='EN_WW')||(rr==='EN_WW'&&pr==='EN'); }
+  var CAN_WRITE=false; /* aucune session admin authentifiée => LECTURE SEULE ; mutations refusées serveur pour anon */
+  var RCUR=null;
+  function closeDrawer(){ var d=document.getElementById('rDrawer'); if(d)d.hidden=true; RCUR=null; }
+  function openResolve(refid){
+    var row=RADAR.filter(function(x){return String(x.reference_id)===String(refid);})[0]; if(!row)return;
+    RCUR={row:row,cands:[],sel:null,preview:null,msg:'',msgok:false,imgCands:null,imgSel:-1,links:null,mapRes:null};
+    var d=document.getElementById('rDrawer'); if(d)d.hidden=false;
+    document.getElementById('rdPanel').innerHTML='<div class="rd-head"><b>Traiter — '+esc(row.card_number)+'</b><button class="rd-close" data-rdclose="1">✕</button></div><div class="rd-msg">Chargement…</div>';
+    cq("app_resolution_candidates?card_number=eq."+encodeURIComponent(row.card_number)+"&select=*").then(function(cands){
+      RCUR.cands=Array.isArray(cands)?cands:[]; renderDrawer();
+    }).catch(function(){ RCUR.cands=[]; renderDrawer(); });
+  }
+  function roActions(actsHtml){ var roNote=''; if(!CAN_WRITE){ actsHtml=actsHtml.replace(/<button /g,'<button disabled '); roNote='<div class="rd-msg" style="color:var(--rm)">🔒 Connexion requise pour appliquer (admin). Lecture seule.</div>'; } return roNote+'<div class="rd-actions">'+actsHtml+'</div>'; }
+  /* ==== b144 : DISCOVERY (recherche réelle, RPC lecture anon-ok ; jamais de résultat simulé) ==== */
+  function rpcGet(fn,body){ return fetch(SBc+"/rest/v1/rpc/"+fn,{method:'POST',headers:{apikey:ANONc,Authorization:'Bearer '+ANONc,'Content-Type':'application/json'},body:JSON.stringify(body||{})}).then(function(r){if(!r.ok)throw new Error(fn+' '+r.status);return r.json();}); }
+  var RCAPS=null; /* capabilities honnêtes (cache) */
+  function loadCaps(cb){ if(RCAPS){cb&&cb();return;} rpcGet('rc_discovery_capabilities',{}).then(function(j){RCAPS=j||{};cb&&cb();}).catch(function(){RCAPS={};cb&&cb();}); }
+  function capBadge(st){ var m={operational:['✅ opérationnel','A'],links_only:['🔗 liens seulement','C'],unavailable:['⚠ indisponible','D'],empty:['○ vide','D']}; var x=m[st]||[st,'C']; return '<span class="rd-pill2 '+x[1]+'">'+x[0]+'</span>'; }
+  function renderCapNote(elId,domain){ loadCaps(function(){ var box=document.getElementById(elId); if(!box||!RCAPS)return; var arr=RCAPS[domain]||[]; box.innerHTML='<div class="rd-cap">'+arr.map(function(s){return capBadge(s.status)+' '+esc(s.source||s.provider||s.list||'')+(s.rows!=null?' <span style="color:var(--rm)">('+s.rows+')</span>':'')+(s.note?' <span style="color:var(--rm)">— '+esc(s.note)+'</span>':'');}).join('<br>')+'</div>'; }); }
+  /* Ouverture du Centre depuis une fiche Catalogue (par printing_id direct, hors Radar) */
+  function openResolveByPrinting(pid){
+    RCUR={row:{card_number:'…',reference_id:null,radar_status:'MANUAL_CATALOGUE',radar_label:'Ouvert depuis le catalogue (hors Radar)',region:null,character:null},cands:[],sel:null,preview:null,msg:'',msgok:false,manual:true,pid:pid,imgCands:null,imgSel:-1};
+    var d=document.getElementById('rDrawer'); if(d)d.hidden=false;
+    document.getElementById('rdPanel').innerHTML='<div class="rd-head"><b>Traiter</b><button class="rd-close" data-rdclose="1">✕</button></div><div class="rd-msg">Chargement…</div>';
+    rpcGet('rc_identity_candidates',{p_printing_id:pid}).then(function(res){
+      var list=(res&&res.candidates)||[];
+      RCUR.cands=list.map(function(c){return {card_number:res.card_number,printing_id:c.printing_id,distribution_region:c.distribution_region,printed_language:c.printed_language,variant:c.variant,variant_label:c.variant_label,treatment_family_v2:c.treatment_family_v2,event_family:c.event_family,event_tier:c.event_tier,official_print_id:c.official_print_id,rarity:c.rarity,image_url:c.image_url,owned:c.owned,finish_tags:c.finish_tags,provenance_family:c.provenance_family,external_ids:c.external_ids};});
+      RCUR.row.card_number=res?res.card_number:'?'; RCUR.row.character=res?res.character:null;
+      RCUR.sel=RCUR.cands.filter(function(c){return String(c.printing_id)===String(pid);})[0]||RCUR.cands[0]||null;
+      RCUR.tab='identite'; renderDrawer();
+    }).catch(function(){ RCUR.cands=[]; renderDrawer(); });
+  }
+  window.rcOpenByPrinting=openResolveByPrinting;
+  function curPid(){ return (RCUR&&RCUR.sel&&RCUR.sel.printing_id)||(RCUR&&RCUR.cands[0]&&RCUR.cands[0].printing_id)||(RCUR&&RCUR.pid)||null; }
+  function doImgSearch(){ var pid=curPid(); if(!pid||!RCUR)return; RCUR.imgCands='loading'; renderDrawer();
+    rpcGet('rc_image_candidates',{p_printing_id:pid}).then(function(a){ if(!RCUR)return; RCUR.imgCands=Array.isArray(a)?a:[]; renderDrawer(); }).catch(function(){ if(RCUR){RCUR.imgCands=[]; renderDrawer();} }); }
+  function doMapSearch(provider){ var pid=curPid(); if(!pid||!RCUR)return; RCUR.mapProv=provider; RCUR.mapRes='loading'; renderDrawer();
+    rpcGet('rc_price_mapping_candidates',{p_printing_id:pid,p_provider:provider}).then(function(j){ if(!RCUR)return; RCUR.mapRes=j||{}; renderDrawer(); }).catch(function(){ if(RCUR){RCUR.mapRes={status:'erreur'}; renderDrawer();} }); }
+  function doSearchLinks(){ var pid=curPid(); if(!pid||!RCUR)return; RCUR.links='loading'; renderDrawer();
+    rpcGet('rc_search_links',{p_printing_id:pid}).then(function(a){ if(!RCUR)return; RCUR.links=Array.isArray(a)?a:[]; renderDrawer(); }).catch(function(){ if(RCUR){RCUR.links=[]; renderDrawer();} }); }
+  function renderDrawer(){
+    if(!RCUR)return; var row=RCUR.row; if(!RCUR.tab)RCUR.tab='identite';
+    var head='<div class="rd-head"><b>Centre de résolution — '+esc(row.card_number)+'</b><button class="rd-close" data-rdclose="1">✕</button></div>';
+    var tabs=[['identite','Identité'],['image','Image'],['prix','Prix'],['sources','Sources'],['histo','Historique']];
+    var tabbar='<div class="rd-tabs">'+tabs.map(function(t){return '<button class="rd-tab'+(RCUR.tab===t[0]?' on':'')+'" data-rtab="'+t[0]+'" type="button">'+t[1]+'</button>';}).join('')+'</div>';
+    document.getElementById('rdPanel').innerHTML=head+tabbar+'<div id="rdTab"></div>';
+    renderTab();
+  }
+  function renderTab(){ var el=document.getElementById('rdTab'); if(!el||!RCUR)return; var t=RCUR.tab;
+    if(t==='sources') renderTabSources(el); else if(t==='histo') renderTabHisto(el);
+    else if(t==='image') renderTabImage(el); else if(t==='prix') renderTabPrix(el); else renderTabIdentite(el);
+  }
+  function renderTabIdentite(el){
+    var row=RCUR.row,cands=RCUR.cands,st=row.radar_status;
+    var img=(RCUR.sel&&RCUR.sel.image_url)||(cands[0]&&cands[0].image_url)||'';
+    var carte='<div class="rd-sec"><h3>Carte</h3>'+(img?'<img class="rd-img" src="'+esc(img)+'" alt="">':'')+
+      '<div class="rd-kv"><span class="k">N°</span><span>'+esc(row.card_number)+'</span>'+
+      '<span class="k">Perso</span><span>'+esc(row.character||'—')+'</span>'+
+      '<span class="k">Famille</span><span>'+esc(FAM_LABEL[row.family]||row.family)+'</span>'+
+      '<span class="k">Région</span><span>'+esc(row.region||'—')+'</span>'+
+      '<span class="k">Langue</span><span>'+esc(row.printed_language||'—')+'</span>'+
+      '<span class="k">Event/Tier</span><span>'+esc([row.event_tier,row.event_name].filter(Boolean).join(' · ')||'—')+'</span>'+
+      '<span class="k">Possession</span><span>'+(row.owned_any?'oui':'non')+'</span></div></div>';
+    var prob='<div class="rd-sec"><h3>Problème radar</h3><div class="rd-kv">'+
+      '<span class="k">Statut</span><span>'+esc(row.radar_label||st)+'</span>'+
+      '<span class="k">Raison</span><span>'+esc(row.radar_reason||'')+'</span>'+
+      '<span class="k">Preuve</span><span>'+esc(row.verification_status)+' / '+esc(row.source_level||'?')+'</span>'+
+      '<span class="k">Sources</span><span>'+(row.n_sources||0)+'</span>'+
+      '<span class="k">Code officiel</span><span>'+esc(row.official_asset_code||'—')+'</span></div></div>';
+    var catl=cands.map(function(c){ var sel=RCUR.sel&&RCUR.sel.printing_id===c.printing_id;
+      return '<div class="rd-cand'+(sel?' sel':'')+'" data-cand="'+esc(c.printing_id)+'"><b>'+esc(c.distribution_region||'?')+'</b> · '+esc(c.variant_label||c.variant||'base')+' · '+esc(c.rarity||'')+
+        '<br><span style="color:var(--rm)">event_family='+esc(c.event_family||'∅')+' · event_tier='+esc(c.event_tier||'∅')+' · treatment='+esc(c.treatment_family_v2||'∅')+' · opi='+esc(c.official_print_id||'∅')+'</span></div>';
+    }).join('');
+    var cat='<div class="rd-sec"><h3>Catalogue actuel ('+cands.length+')</h3>'+(cands.length?catl:'<div class="rd-note">Aucune impression au catalogue.</div>')+'</div>';
+    var prop='<div class="rd-sec"><h3>Proposition (avant → après)</h3><div id="rdPreview"><div class="rd-note">Sélectionne une impression cible.</div></div></div>';
+    var acts;
+    if(st==='C_PRESENT_UNCLASSIFIED') acts='<button class="rd-btn primary" data-raction="CLASSIFY" disabled>Valider la correction</button><button class="rd-btn warn" data-raction="KEEP_REVIEW">Laisser en REVIEW</button>';
+    else if(st==='D_METADATA_GAP') acts='<button class="rd-btn primary" data-raction="FIX_REGION" disabled>Confirmer la correction</button><button class="rd-btn warn" data-raction="KEEP_REVIEW">Garder en REVIEW</button>';
+    else if(st==='B_POTENTIAL_MISSING_PRINTING') acts='<button class="rd-btn primary" data-raction="CREATE_PRINTING">Créer l\'impression manquante</button><button class="rd-btn warn" data-raction="KEEP_REVIEW">Laisser en REVIEW</button>';
+    else acts='<button class="rd-btn" data-raction="ASSOCIATE">Associer manuellement</button><button class="rd-btn warn" data-raction="KEEP_REVIEW">Conserver en REVIEW</button><button class="rd-btn warn" data-raction="REJECT_REFERENCE">Marquer rejetée</button>';
+    var msg=RCUR.msg?'<div class="rd-msg '+(RCUR.msgok?'ok':'err')+'">'+esc(RCUR.msg)+'</div>':'';
+    var srch;
+    if(RCUR.links==null) srch='<div class="rd-actions"><button class="rd-btn" data-searchlinks="1">🔎 Rechercher cette carte</button></div>';
+    else if(RCUR.links==='loading') srch='<div class="rd-note">Génération des recherches…</div>';
+    else srch='<div class="rd-actions"><button class="rd-btn" data-searchlinks="1">🔎 Rechercher cette carte</button></div>'+
+      '<div class="rd-list">'+RCUR.links.map(function(l){return '<div class="rd-item"><a href="'+esc(l.url)+'" target="_blank" rel="noopener">'+esc(l.label)+'</a> <span class="rd-pill2 C">lien</span></div>';}).join('')+'</div>'+
+      '<div class="rd-note">Liens de recherche générés. Un résultat n\'est jamais une preuve tant qu\'une URL précise n\'est pas ajoutée dans « Sources ».</div>';
+    var searchBlk='<div class="rd-sec"><h3>Rechercher la bonne donnée</h3>'+srch+'</div>';
+    el.innerHTML=carte+prob+cat+prop+searchBlk+msg+roActions(acts);
+    if(RCUR.sel && (st==='C_PRESENT_UNCLASSIFIED'||st==='D_METADATA_GAP')){ doPreview(); }
+    else if(st==='C_PRESENT_UNCLASSIFIED'){ var ro=cands.filter(function(c){return regionOk(row.region,c.distribution_region);}); if(ro.length===1) selectCand(ro[0].printing_id); }
+    else if(st==='D_METADATA_GAP'){ var dc=cands.filter(function(c){return famExpectOk(row.family,c);}); if(dc.length>=1) selectCand(dc[0].printing_id); }
+  }
+  function renderTabSources(el){ var row=RCUR.row;
+    el.innerHTML='<div class="rd-sec"><h3>Sources / preuves</h3><div id="rdEv" class="rd-list">Chargement…</div>'+
+      '<div style="margin-top:10px"><h3>Ajouter une source</h3>'+
+      '<input class="rd-in" id="evUrl" placeholder="https://… (URL de preuve)" '+(CAN_WRITE?'':'disabled')+'>'+
+      '<select class="rd-in" id="evType" '+(CAN_WRITE?'':'disabled')+'><option value="OFFICIAL_BANDAI">Officiel Bandai</option><option value="OFFICIAL_PARTNER">Officiel partenaire</option><option value="STRONG_SECONDARY">Secondaire fort</option><option value="MARKETPLACE">Marketplace</option></select>'+
+      '<input class="rd-in" id="evNote" placeholder="ce que la source prouve (existence, région, event…)" '+(CAN_WRITE?'':'disabled')+'>'+
+      roActions('<button class="rd-btn primary" data-raction="ADD_EVIDENCE">Ajouter une source</button>')+
+      '<div class="rd-note">Ajouter une source renforce la preuve ; elle ne modifie jamais la carte.</div></div></div>';
+    cq("app_printing_evidence?reference_id=eq."+encodeURIComponent(row.reference_id)+"&select=*&order=created_at.desc").then(function(rows){
+      var box=document.getElementById('rdEv'); if(!box)return;
+      box.innerHTML=(rows&&rows.length)?rows.map(function(e){return '<div class="rd-item"><span class="rd-pill2 '+esc(e.source_type)+'">'+esc(e.source_type)+'</span> <span class="rd-pill2 '+esc(e.source_level)+'">niveau '+esc(e.source_level)+'</span> '+esc((e.evidence_scope||[]).join(', '))+'<br><a href="'+esc(e.url)+'" target="_blank" rel="noopener" style="color:var(--rgold)">'+esc(e.url)+'</a>'+(e.evidence_note?'<br><span style="color:var(--rm)">'+esc(e.evidence_note)+'</span>':'')+'</div>';}).join(''):'<div class="rd-note">Aucune source enregistrée.</div>';
+    }).catch(function(){ var b=document.getElementById('rdEv'); if(b)b.innerHTML='<div class="rd-note">Indisponible.</div>'; });
+  }
+  function renderTabHisto(el){ var row=RCUR.row;
+    el.innerHTML='<div class="rd-sec"><h3>Historique des corrections</h3><div id="rdHi" class="rd-list">Chargement…</div><div class="rd-note">Qui / quoi / pourquoi / quand — chaque correction est journalisée (rollback via before/after).</div></div>';
+    cq("app_resolution_history?reference_id=eq."+encodeURIComponent(row.reference_id)+"&select=*").then(function(rows){
+      var box=document.getElementById('rdHi'); if(!box)return;
+      box.innerHTML=(rows&&rows.length)?rows.map(function(h){return '<div class="rd-item"><b>'+esc(h.action)+'</b> · '+esc(h.result)+' · <span style="color:var(--rm)">'+esc(String(h.created_at||'').slice(0,16))+'</span><br>'+esc(h.reason||'')+(h.after_state?'<br><span style="color:var(--rm)">'+esc(JSON.stringify(h.after_state))+'</span>':'')+'</div>';}).join(''):'<div class="rd-note">Aucune correction enregistrée pour cette carte.</div>';
+    }).catch(function(){ var b=document.getElementById('rdHi'); if(b)b.innerHTML='<div class="rd-note">Indisponible.</div>'; });
+  }
+  function renderTabImage(el){
+    var pid=curPid(); var cur=(RCUR.sel&&RCUR.sel.image_url)||(RCUR.cands[0]&&RCUR.cands[0].image_url)||'';
+    var gal;
+    if(RCUR.imgCands==null) gal='<div class="rd-note">Clique « Rechercher des images » : interroge le cardlist JP officiel + les impressions internes de la même carte (sources réellement disponibles ci-dessous).</div>';
+    else if(RCUR.imgCands==='loading') gal='<div class="rd-note">Recherche…</div>';
+    else if(RCUR.imgCands.length===0) gal='<div class="rd-note">Aucune image candidate dans les sources internes interrogeables pour cette carte.</div>';
+    else gal='<div class="rd-imgrid">'+RCUR.imgCands.map(function(c,i){return '<div class="rd-imgc'+(RCUR.imgSel===i?' sel':'')+'"><img class="rd-imgt" src="'+esc(c.url)+'" alt="" loading="lazy">'+
+      '<div class="rd-imm"><span class="rd-pill2 '+(c.official?'A':'C')+'">'+(c.official?'officiel':'non off.')+'</span> <span class="rd-pill2">'+esc(c.source)+'</span> <span class="rd-pill2 '+(c.confidence==='HIGH'?'A':'C')+'">'+esc(c.confidence)+'</span>'+
+      '<div class="rd-mini" style="color:var(--rm)">'+esc(c.match_reason||'')+'</div>'+
+      '<div class="rd-mini"><a href="'+esc(c.url)+'" target="_blank" rel="noopener">ouvrir</a> · <button class="rd-linkbtn" data-imgpick="'+i+'">sélectionner</button> · <button class="rd-linkbtn" data-imgrej="'+i+'">rejeter</button></div></div></div>';}).join('')+'</div>';
+    el.innerHTML='<div class="rd-sec"><h3>Image — impression '+esc(String(pid||'').slice(0,8))+'</h3>'+
+      '<div id="rdCapImg" class="rd-cap">…</div>'+
+      '<div class="rd-actions"><button class="rd-btn" data-imgsearch="1">🔎 Rechercher des images</button></div>'+
+      (cur?'<div class="rd-note">Image canonique actuelle :</div><img class="rd-img2" src="'+esc(cur)+'">':'<div class="rd-note">Aucune image canonique actuelle.</div>')+
+      gal+
+      '<div style="margin-top:10px"><h3>Ajouter une URL image</h3><input class="rd-in" id="imgUrl" placeholder="https://… image source" '+(CAN_WRITE?'':'disabled')+'>'+
+      roActions('<button class="rd-btn primary" data-raction="SET_IMAGE">Sélectionner / cacher cette image</button><button class="rd-btn warn" data-raction="IMG_INCORRECT">Marquer image incorrecte</button>')+
+      '<div class="rd-note">Une URL externe passe par un fetch/cache backend contrôlé (allowlist SSRF), puis un storage interne lié au printing_id exact ; jamais un lien externe durable. L\'image validée est protégée d\'un sync moins fiable.</div></div></div>';
+    renderCapNote('rdCapImg','image');
+  }
+  function renderTabPrix(el){ var pid=curPid();
+    var mapHtml='';
+    if(RCUR.mapRes){ if(RCUR.mapRes==='loading') mapHtml='<div class="rd-note">Recherche mapping…</div>';
+      else { var mr=RCUR.mapRes; var cs=(mr.candidates||[]);
+        mapHtml='<div class="rd-note">'+esc(mr.provider||'')+' — '+capBadge(mr.status)+(mr.note?' '+esc(mr.note):'')+'</div>'+
+          (cs.length?cs.map(function(c){return '<div class="rd-item"><b>'+esc(c.label||'?')+'</b>'+(c.price_eur!=null?' · '+esc(String(c.price_eur))+' €':'')+(c.price_jpy!=null?' · '+esc(String(c.price_jpy))+' ¥':'')+'<br><span style="color:var(--rm)">'+esc(c.match_reason||'')+(c.blueprint_id?' · bp '+esc(String(c.blueprint_id)):'')+'</span>'+roActions('<button class="rd-btn primary" data-raction="MAP_SELECT">Définir ce mapping (durable)</button>')+'</div>';}).join('')
+            : (mr.search_url?'<div class="rd-item"><a href="'+esc(mr.search_url)+'" target="_blank" rel="noopener">Ouvrir la recherche '+esc(mr.provider)+'</a><div class="rd-mini" style="color:var(--rm)">sélection manuelle du bon produit, puis mapping durable</div></div>':'<div class="rd-note">Aucun candidat.</div>')); }
+    }
+    el.innerHTML='<div class="rd-sec"><h3>Prix — pourquoi ce prix ?</h3><div id="rdPxHead" class="rd-note">Chargement…</div>'+
+      '<h3 style="margin-top:10px">Données sous-jacentes</h3><div id="rdPx" class="rd-list">…</div>'+
+      roActions('<button class="rd-btn warn" data-raction="PRICE_EXCLUDE">Exclure cette source</button><button class="rd-btn" data-raction="PRICE_REACTIVATE">Réactiver source</button><button class="rd-btn warn" data-raction="PRICE_REVIEW">Garder en PRICE_REVIEW</button>')+
+      '<h3 style="margin-top:12px">Corriger le mapping fournisseur</h3><div id="rdCapPx" class="rd-cap">…</div>'+
+      '<div class="rd-actions"><button class="rd-btn" data-mapsearch="cardrush">Cardrush</button><button class="rd-btn" data-mapsearch="cardtrader">CardTrader</button><button class="rd-btn" data-mapsearch="pricecharting">PriceCharting</button></div>'+mapHtml+
+      '<div class="rd-note">Le mapping corrigé (printing_external_map) devient durable : le prochain cron récupère le prix du BON produit, price_point continue, Price Truth évolue. Une saisie manuelle = MANUAL_REFERENCE, jamais MARKET. On protège le mapping, pas la valeur marché.</div></div>';
+    renderCapNote('rdCapPx','price_mapping');
+    if(!pid){ var b0=document.getElementById('rdPx'); if(b0)b0.innerHTML='<div class="rd-note">Aucune impression cible.</div>'; return; }
+    rpcGet('rc_price_explain',{p_printing_id:pid}).then(function(j){
+      var h=document.getElementById('rdPxHead'); var d=(j&&j.display)||null;
+      if(h) h.innerHTML=d?('<b style="font-size:1.15em">'+esc(String(d.price))+' '+esc(d.currency||'EUR')+'</b> · '+esc(d.basis||'?')+' · '+esc(d.source||'?')+' · '+esc(d.confidence||'')+' · '+esc(String(d.captured_at||'').slice(0,10))+(d.age_days!=null?' ('+d.age_days+' j)':'')+' · '+esc(d.status||'')):'<span class="rd-note">Pas de prix canonique (hors scope owned/premium ou à vérifier).</span>';
+      var box=document.getElementById('rdPx'); var src=(j&&j.sources)||[];
+      if(box) box.innerHTML=src.length?src.map(function(p){return '<div class="rd-item">'+esc(p.source)+' · '+esc(p.price_kind)+' · <b>'+esc(String(p.price))+'</b> '+esc(p.currency)+(p.grade?' · grade '+esc(String(p.grade))+' '+esc(p.grading_company||''):'')+(p.excluded?' <span class="rd-lock">exclue</span>':'')+'<br><span style="color:var(--rm)">'+esc(String(p.captured_at||'').slice(0,10))+(p.product_id?' · id '+esc(String(p.product_id)):'')+'</span></div>';}).join(''):'<div class="rd-note">Aucune cote source pour cette impression.</div>';
+    }).catch(function(){ var b=document.getElementById('rdPx'); if(b)b.innerHTML='<div class="rd-note">Indisponible.</div>'; });
+  }
+  function selectCand(pid){ if(!RCUR)return; RCUR.sel=RCUR.cands.filter(function(c){return c.printing_id===pid;})[0]||null; RCUR.tab='identite'; renderDrawer(); }
+  function doPreview(){
+    /* Aperçu calculé CÔTÉ CLIENT (aucun appel RPC) : le front anon ne mute jamais.
+       La validation réelle (admin) revérifie toutes les gardes côté serveur. */
+    if(!RCUR||!RCUR.sel)return; var row=RCUR.row,c=RCUR.sel,st=row.radar_status,pv=document.getElementById('rdPreview'); if(!pv)return;
+    var action,fields,before={},overwrite=false,wouldMatch=false;
+    if(st==='D_METADATA_GAP'){ action='FIX_REGION'; fields={distribution_region:row.region}; before={distribution_region:(c.distribution_region==null?null:c.distribution_region)};
+      overwrite=(c.distribution_region!=null && String(c.distribution_region)!==String(row.region));
+      var md=Object.assign({},c,{distribution_region:row.region}); wouldMatch=famExpectOk(row.family,md)&&regionOk(row.region,md.distribution_region);
+    } else { action='CLASSIFY'; fields=proposeFields(row);
+      Object.keys(fields).forEach(function(k){ before[k]=(c[k]==null?null:c[k]); if(c[k]!=null && String(c[k])!==String(fields[k])) overwrite=true; });
+      var mc=Object.assign({},c,fields); wouldMatch=(famExpectOk(row.family,mc)&&regionOk(row.region,mc.distribution_region))||(!!row.official_asset_code && mc.official_print_id===row.official_asset_code);
+    }
+    RCUR.preview={action:action,fields:fields,expected:before,confirm:overwrite,pid:c.printing_id};
+    var rows=''; Object.keys(fields).forEach(function(k){ rows+='<span class="f">'+esc(k)+'</span><span class="rd-old">'+esc(String(before[k]==null?'∅':before[k]))+'</span><span>→</span><span class="rd-new">'+esc(String(fields[k]))+'</span>'; });
+    pv.innerHTML='<div class="rd-diff">'+rows+'</div><div style="margin-top:8px">'+(wouldMatch?'<span class="rd-match">deviendra MATCH → sortira du Radar</span>':'<span class="rd-nomatch">ne suffira pas à matcher seul</span>')+'</div>'+
+      (overwrite?'<div class="rd-note">⚠ écrase une valeur existante — confirmation explicite requise</div>':'')+
+      '<div class="rd-note">Aperçu indicatif ; la validation (admin) revérifie toutes les gardes côté serveur.</div>';
+    if(CAN_WRITE){ var b=document.querySelector('[data-raction="'+(st==='D_METADATA_GAP'?'FIX_REGION':'CLASSIFY')+'"]'); if(b)b.disabled=false; }
+  }
+  function doAction(action){
+    if(!RCUR)return;
+    if(!CAN_WRITE){ RCUR.msg='🔒 Connexion requise (admin) pour appliquer une correction.'; RCUR.msgok=false; renderDrawer(); return; }
+    var row=RCUR.row; var body={p_reference_id:row.reference_id,p_action:action,p_dry_run:false};
+    if(action==='CLASSIFY'||action==='FIX_REGION'){ if(!RCUR.preview)return; body.p_printing_id=RCUR.preview.pid; body.p_fields=RCUR.preview.fields; body.p_expected_before=RCUR.preview.expected; body.p_confirm_overwrite=RCUR.preview.confirm; }
+    else if(action==='ASSOCIATE'){ if(!RCUR.sel)return; body.p_printing_id=RCUR.sel.printing_id; body.p_fields={}; }
+    rpcResolve(body).then(function(res){
+      if(res&&(res.result==='APPLIED'||res.result==='NOOP')){ RCUR.msg=(res.result==='APPLIED'?'Correction appliquée. Le Radar se recalcule.':'Aucun changement (idempotent).'); RCUR.msgok=true; renderDrawer(); loadRadar(); setTimeout(closeDrawer,900); }
+      else { RCUR.msg='Refusé : '+((res&&(res.reason||res.message))||'garde non satisfaite'); RCUR.msgok=false; renderDrawer(); }
+    }).catch(function(){ RCUR.msg='Action non autorisée (résolution non activée en PROD).'; RCUR.msgok=false; renderDrawer(); });
+  }
+  if(!window.__rdBound){ window.__rdBound=true;
+    document.addEventListener('click',function(ev){
+      var o=ev.target.closest('.rd-open'); if(o){ openResolve(o.getAttribute('data-refid')); return; }
+      var op=ev.target.closest('[data-openpid]'); if(op){ openResolveByPrinting(op.getAttribute('data-openpid')); return; }
+      if(ev.target.closest('[data-rdclose]')){ closeDrawer(); return; }
+      var tb=ev.target.closest('[data-rtab]'); if(tb){ if(RCUR){ RCUR.tab=tb.getAttribute('data-rtab'); renderDrawer(); } return; }
+      if(ev.target.closest('[data-imgsearch]')){ doImgSearch(); return; }
+      var ip=ev.target.closest('[data-imgpick]'); if(ip){ if(RCUR){ RCUR.imgSel=+ip.getAttribute('data-imgpick'); renderDrawer(); } return; }
+      var ir=ev.target.closest('[data-imgrej]'); if(ir){ if(RCUR&&RCUR.imgCands&&RCUR.imgCands.splice){ RCUR.imgCands.splice(+ir.getAttribute('data-imgrej'),1); RCUR.imgSel=-1; renderDrawer(); } return; }
+      var ms=ev.target.closest('[data-mapsearch]'); if(ms){ doMapSearch(ms.getAttribute('data-mapsearch')); return; }
+      if(ev.target.closest('[data-searchlinks]')){ doSearchLinks(); return; }
+      var cd=ev.target.closest('[data-cand]'); if(cd){ selectCand(cd.getAttribute('data-cand')); return; }
+      var ra=ev.target.closest('[data-raction]'); if(ra){ doAction(ra.getAttribute('data-raction')); return; }
+    });
   }
   window.renderCoverage=function(){
     var stage=document.getElementById("stage"); if(!stage)return;
@@ -7547,7 +7839,7 @@ const Fake = (function(){
         '<div class="count" id="radarCount"></div>'+
         '<div class="scroll"><table><thead><tr>'+
           '<th class="num">Prio</th><th>Statut</th><th>Famille</th><th>Carte</th><th>Perso</th><th>Rég.</th>'+
-          '<th>Preuve</th><th>Event / Tier</th><th>Lang</th><th class="num">Src</th><th>Coll.</th><th>Action</th>'+
+          '<th>Preuve</th><th>Event / Tier</th><th>Lang</th><th class="num">Src</th><th>Coll.</th><th>Action</th><th></th>'+
         '</tr></thead><tbody id="radarbody"></tbody></table></div>'+
         '<div style="padding:10px 14px"><button id="radarAll" class="radar-btn" type="button">Voir tout le Radar</button></div>'+
       '</div>'+
@@ -7576,6 +7868,7 @@ const Fake = (function(){
         '</tr></thead><tbody id="gapbody"></tbody></table></div>'+
       '</div>'+
       '<div class="cov-card"><h2>Alertes couverture</h2><div id="alertbox"><div class="alert">Chargement…</div></div></div>'+
+      '<div class="rdrawer" id="rDrawer" hidden><div class="rd-scrim" data-rdclose="1"></div><div class="rd-panel" id="rdPanel"></div></div>'+
       '</div>';
     Promise.all([loadRadar(),loadSummary(),loadGaps(),loadAlerts(),loadHealth()]).then(function(){
       var a=document.getElementById("covAsof"); if(a)a.textContent="Données live · "+new Date().toLocaleString("fr-FR");
