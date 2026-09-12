@@ -958,6 +958,7 @@ body{-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
   <div class="sheet">
     <div class="dhead"><button class="dclose" id="dclose">&times;</button><button id="dprev" title="Carte précédente" style="position:absolute;left:6px;top:50%;transform:translateY(-50%);z-index:5;width:38px;height:38px;border-radius:50%;border:none;background:rgba(0,0,0,.45);color:#fff;font-size:22px;font-weight:800;cursor:pointer;line-height:1">&lsaquo;</button><button id="dnext" title="Carte suivante" style="position:absolute;right:6px;top:50%;transform:translateY(-50%);z-index:5;width:38px;height:38px;border-radius:50%;border:none;background:rgba(0,0,0,.45);color:#fff;font-size:22px;font-weight:800;cursor:pointer;line-height:1">&rsaquo;</button><img id="dimg" referrerpolicy="no-referrer"><div id="dvfy" style="display:none;position:absolute;top:8px;left:8px;background:#f97316;color:#fff;font-weight:800;font-size:11px;padding:3px 9px;border-radius:9px;z-index:4">🔍 à vérifier</div><button id="dphoto" onclick="pickOwnedPhoto()" title="Ajouter ma photo" style="position:absolute;bottom:8px;left:8px;z-index:6;border:none;background:rgba(0,0,0,.6);color:#fff;font-weight:800;font-size:12px;padding:6px 11px;border-radius:20px;cursor:pointer">📷 Ma photo</button><input id="dphotoinput" type="file" accept="image/*" style="display:none" onchange="onOwnedPhotoFile(this)"></div>
     <div class="dtabs"><button data-t="col" class="on">Collection</button><button data-t="tar">Tarifs</button><button data-t="det">D&eacute;tails</button></div>
+    <div id="dResolve" style="padding:6px 12px 0"></div>
     <div id="dbody"></div>
     <div id="dsrc" class="dprices"></div>
     <div id="dladder"></div>
@@ -4211,7 +4212,7 @@ async function homeBriefing(){
   }catch(e){ box.innerHTML='<div class="txt" style="color:var(--muted);font-size:13px">Erreur, réessaie.</div><button class="hbriefbtn" onclick="homeBriefing()">Réessayer</button>'; }
 }
 document.getElementById('modeSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMode(b.dataset.m);});
-const APP_VERSION='Version b146 · 13/09 — Resolution Center — FIX UX mobile (drawer plein écran dvh, header sticky + fermeture permanente, safe-area) — LECTURE SEULE ; reste inchangé';
+const APP_VERSION='Version b147 · 13/09 — Resolution Center — bouton Traiter/Corriger aussi sur la fiche COLLECTION (fiche possédée) — LECTURE SEULE ; reste inchangé';
 { const nv=document.getElementById('navVersion'); if(nv) nv.textContent=APP_VERSION; }
 document.getElementById('mktSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMarket(b.dataset.k);});
 const CATARRS=["catColors","catCats","catRarities","catTreats","catProvs","catEvents","catTiers","catRegions","catFinish","catSets"];
@@ -5319,7 +5320,12 @@ applyThemeIcon();
 let detailCard=null, detailTab="col";
 const LANG_LABELS={JP:"Japonais",EN:"Anglais",FR:"Français",CN:"Chinois"};
 function drow(k,v){ return v?('<div class="drow"><span class="k">'+k+'</span><span class="v">'+v+'</span></div>'):''; }
-function openDetail(c){ detailCard=c; detailTab="col"; const im=document.getElementById("dimg"); const vf=document.getElementById("dvfy"); const isV=VERIFY.has(c.item_id); if(vf) vf.style.display=isV?"inline-block":"none"; im.src=c.image_url||""; im.onerror=function(){this.style.visibility="hidden"}; im.style.visibility=c.image_url?"visible":"hidden"; document.querySelectorAll('.dtabs button').forEach(b=>b.classList.toggle('on',b.dataset.t==='col')); renderDetail(); document.getElementById("dprints").innerHTML=""; document.getElementById("dladder").innerHTML=""; document.getElementById("dsrc").innerHTML='<div class="pxhdr">Prix marché — toutes sources</div><div class="pxloading">…</div>'; document.getElementById("overlay").classList.remove("hidden"); loadCardPrices(c,'dsrc'); loadLadder(c); loadPrints(c.card_number); updDetailNavBtns(); }
+function openDetail(c){ detailCard=c; detailTab="col"; const im=document.getElementById("dimg"); const vf=document.getElementById("dvfy"); const isV=VERIFY.has(c.item_id); if(vf) vf.style.display=isV?"inline-block":"none"; im.src=c.image_url||""; im.onerror=function(){this.style.visibility="hidden"}; im.style.visibility=c.image_url?"visible":"hidden"; document.querySelectorAll('.dtabs button').forEach(b=>b.classList.toggle('on',b.dataset.t==='col')); renderDetail(); document.getElementById("dprints").innerHTML=""; document.getElementById("dladder").innerHTML=""; document.getElementById("dsrc").innerHTML='<div class="pxhdr">Prix marché — toutes sources</div><div class="pxloading">…</div>'; document.getElementById("overlay").classList.remove("hidden");
+  { var dz=document.getElementById("dResolve");
+    if(dz){ if(c.printing_id && typeof window.rcOpenByPrinting==='function' && c.game!=='NARUTO'){
+      dz.innerHTML='<button data-openpid="'+esc(c.printing_id)+'" style="width:100%;border:1px solid var(--cv-gold,#c79b3b);background:rgba(199,155,59,.12);color:inherit;font-weight:800;font-size:13px;padding:9px;border-radius:9px;cursor:pointer">🛠️ Traiter / Corriger cette impression</button>';
+    } else dz.innerHTML=''; } }
+  loadCardPrices(c,'dsrc'); loadLadder(c); loadPrints(c.card_number); updDetailNavBtns(); }
 async function loadLadder(c){
   const box=document.getElementById("dladder"); box.innerHTML="";
   if(!c || !c.is_graded || !c.printing_id) return;
@@ -7623,7 +7629,12 @@ const Fake = (function(){
   var CAN_WRITE=false; /* aucune session admin authentifiée => LECTURE SEULE ; mutations refusées serveur pour anon */
   var RCUR=null; var RD_SCROLL=0;
   /* b146 : portalise le drawer sous <body> (échappe tout stacking-context) + mémorise le scroll */
-  function rdShow(){ var d=document.getElementById('rDrawer'); if(!d)return; if(d.parentNode!==document.body) document.body.appendChild(d); RD_SCROLL=window.scrollY||window.pageYOffset||0; d.hidden=false; }
+  function rdShow(){ var d=document.getElementById('rDrawer');
+    if(!d){ /* b147 : crée la coquille du drawer à la demande — le Centre s'ouvre même sans avoir visité Couverture (fiche Catalogue/Collection directe) */
+      d=document.createElement('div'); d.className='rdrawer'; d.id='rDrawer'; d.hidden=true;
+      d.innerHTML='<div class="rd-scrim" data-rdclose="1"></div><div class="rd-panel" id="rdPanel"></div>';
+      document.body.appendChild(d); }
+    if(d.parentNode!==document.body) document.body.appendChild(d); RD_SCROLL=window.scrollY||window.pageYOffset||0; d.hidden=false; }
   function closeDrawer(){ var d=document.getElementById('rDrawer'); if(d)d.hidden=true; RCUR=null; try{ window.scrollTo(0,RD_SCROLL); }catch(e){} }
   function openResolve(refid,cn){
     /* b145 : robustesse — on retrouve la ligne par reference_id, sinon par card_number,
