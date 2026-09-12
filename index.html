@@ -1632,6 +1632,10 @@ async function refreshItemMarket(item){
 
 const COLL_CACHE_KEY='bounty_coll_cache_v2pt'; // v2pt : cache inclut disp_price (Price Truth par ligne)
 function saveCollCache(){ try{ if(Array.isArray(DATA)&&DATA.length) localStorage.setItem(COLL_CACHE_KEY, JSON.stringify(DATA)); }catch(e){} }
+/* b150 : le serveur pagine désormais par item_id (streamable, léger) au lieu de trier par disp_price
+   (tri lourd qui rematerialisait 5000+ lignes à chaque page → timeouts). Le tri par prix se fait ici,
+   côté client, instantanément — même résultat final, mais le chargement ne bloque plus. */
+function sortDispDesc(arr){ if(Array.isArray(arr)) arr.sort(function(a,b){ var x=(a&&a.disp_price!=null)?+a.disp_price:-Infinity, y=(b&&b.disp_price!=null)?+b.disp_price:-Infinity; return y-x; }); return arr; }
 async function load(){
   // 0) FAÇADE : afficher immédiatement le dernier état connu (cache local), le temps que le frais arrive.
   //    Évite l'écran vide / l'attente quand les vues serveur sont lentes.
@@ -1649,12 +1653,12 @@ async function load(){
   // 1) Fetch frais en arrière-plan
   let all=[],from=0,step=1000;
   while(true){
-    const r=await fetch(SB+"/rest/v1/app_collection_v2?select=item_id,printing_id,card_number,card_name,card_type,category,color,rarity,language,is_graded,grading_company,grade,cert_number,quantity,market_value_eur,seed_value_eur,live_value_eur,psa_estimate_eur,population,pop_higher,price_source,price_asof,image_url,set_code,set_name,variant,variant_label,origin,art_suffix,reverify,img_locked,acquired_from,acquired_date,acquired_price,disp_price,disp_basis,disp_confidence,disp_status,disp_captured_at,disp_var_7d,disp_var_30d,graded_value_eur,graded_source,cert_statut,graded_owned_market,graded_raw,event_family,event_tier,event_circuit,treatment_family_v2,treatment_tags,provenance_family_live,distribution_region,printed_language,finish_tags,is_errata&order=disp_price.desc.nullslast&limit="+step+"&offset="+from,{headers:{apikey:ANON,Authorization:"Bearer "+ANON}});
+    const r=await fetch(SB+"/rest/v1/app_collection_v2?select=item_id,printing_id,card_number,card_name,card_type,category,color,rarity,language,is_graded,grading_company,grade,cert_number,quantity,market_value_eur,seed_value_eur,live_value_eur,psa_estimate_eur,population,pop_higher,price_source,price_asof,image_url,set_code,set_name,variant,variant_label,origin,art_suffix,reverify,img_locked,acquired_from,acquired_date,acquired_price,disp_price,disp_basis,disp_confidence,disp_status,disp_captured_at,disp_var_7d,disp_var_30d,graded_value_eur,graded_source,cert_statut,graded_owned_market,graded_raw,event_family,event_tier,event_circuit,treatment_family_v2,treatment_tags,provenance_family_live,distribution_region,printed_language,finish_tags,is_errata&order=item_id.asc&limit="+step+"&offset="+from,{headers:{apikey:ANON,Authorization:"Bearer "+ANON}});
     if(!r.ok){ if(DATALOADED) return; document.getElementById("stage").innerHTML='<div class="empty">Erreur de chargement ('+r.status+').</div>';return;}
     const b=await r.json(); if(!Array.isArray(b)){ if(DATALOADED) return; break; } all=all.concat(b); if(b.length<step)break; from+=step;
   }
   if(!all.length && DATALOADED) return; // le frais a échoué mais on garde la façade
-  DATA=all; DATALOADED=true; buildFilterModal();
+  sortDispDesc(all); DATA=all; DATALOADED=true; buildFilterModal();
   // 2) Rendu depuis les données fraîches
   if(state.mode==="accueil"){ renderHome(); }
   else { render(); if(state.mode==="collection") loadBriefing(); }
@@ -3725,11 +3729,11 @@ async function ensureCollLoaded(){
   var all=[],from=0,step=1000;
   try{
     while(true){
-      var r=await fetch(SB+"/rest/v1/app_collection_v2?select=item_id,printing_id,card_number,card_name,card_type,category,color,rarity,language,is_graded,grading_company,grade,cert_number,quantity,market_value_eur,seed_value_eur,live_value_eur,psa_estimate_eur,population,pop_higher,price_source,price_asof,image_url,set_code,set_name,variant,variant_label,origin,art_suffix,reverify,img_locked,acquired_from,acquired_date,acquired_price,disp_price,disp_basis,disp_confidence,disp_status,disp_captured_at,disp_var_7d,disp_var_30d,graded_value_eur,graded_source,cert_statut,graded_owned_market,graded_raw,event_family,event_tier,event_circuit,treatment_family_v2,treatment_tags,provenance_family_live,distribution_region,printed_language,finish_tags,is_errata&order=disp_price.desc.nullslast&limit="+step+"&offset="+from,{headers:{apikey:ANON,Authorization:"Bearer "+ANON}});
+      var r=await fetch(SB+"/rest/v1/app_collection_v2?select=item_id,printing_id,card_number,card_name,card_type,category,color,rarity,language,is_graded,grading_company,grade,cert_number,quantity,market_value_eur,seed_value_eur,live_value_eur,psa_estimate_eur,population,pop_higher,price_source,price_asof,image_url,set_code,set_name,variant,variant_label,origin,art_suffix,reverify,img_locked,acquired_from,acquired_date,acquired_price,disp_price,disp_basis,disp_confidence,disp_status,disp_captured_at,disp_var_7d,disp_var_30d,graded_value_eur,graded_source,cert_statut,graded_owned_market,graded_raw,event_family,event_tier,event_circuit,treatment_family_v2,treatment_tags,provenance_family_live,distribution_region,printed_language,finish_tags,is_errata&order=item_id.asc&limit="+step+"&offset="+from,{headers:{apikey:ANON,Authorization:"Bearer "+ANON}});
       if(!r.ok) break;
       var b=await r.json(); if(!Array.isArray(b)) break; all=all.concat(b); if(b.length<step) break; from+=step;
     }
-    if(all.length){ DATA=all; DATALOADED=true; try{ buildFilterModal(); }catch(e){} try{ saveCollCache(); }catch(e){} }
+    if(all.length){ sortDispDesc(all); DATA=all; DATALOADED=true; try{ buildFilterModal(); }catch(e){} try{ saveCollCache(); }catch(e){} }
   }catch(e){}
 }
 async function b4Portfolio(){
@@ -4212,7 +4216,7 @@ async function homeBriefing(){
   }catch(e){ box.innerHTML='<div class="txt" style="color:var(--muted);font-size:13px">Erreur, réessaie.</div><button class="hbriefbtn" onclick="homeBriefing()">Réessayer</button>'; }
 }
 document.getElementById('modeSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMode(b.dataset.m);});
-const APP_VERSION='Version b148 · 13/09 — Resolution Center SIMPLIFIÉ : confiance + buckets, Mode Simple/Expert, galerie image reco+alternatives+comparer, prix groupé, Mode rapide — LECTURE SEULE ; reste inchangé';
+const APP_VERSION='Version b150 · 13/09 — Chargement démarrage allégé (collection paginée par item_id, tri prix côté client — plus de tri serveur lourd) + Resolution Center simplifié — LECTURE SEULE ; reste inchangé';
 { const nv=document.getElementById('navVersion'); if(nv) nv.textContent=APP_VERSION; }
 document.getElementById('mktSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMarket(b.dataset.k);});
 const CATARRS=["catColors","catCats","catRarities","catTreats","catProvs","catEvents","catTiers","catRegions","catFinish","catSets"];
@@ -7574,7 +7578,17 @@ const Fake = (function(){
     var el=document.getElementById('radarSummary'); if(!el)return;
     var bk={QUICK_VALIDATE:0,NEEDS_CHOICE:0,NEEDS_RESEARCH:0,REVIEW_ONLY:0,CONFLICT:0}; var hasConf=false;
     RADAR.forEach(function(r){ if(r.bucket!=null){ hasConf=true; if(bk[r.bucket]!=null)bk[r.bucket]++; } });
-    if(!hasConf){ el.innerHTML='<span class="rchip tot"><b>'+RADAR.length+'</b> à traiter</span><span class="rchip">chargement confiance…</span>'; return; }
+    if(!hasConf){
+      /* fallback immédiat (avant l'arrivée de la couche confiance) : chips par statut, radar déjà pleinement utilisable */
+      var c={B_POTENTIAL_MISSING_PRINTING:0,C_PRESENT_UNCLASSIFIED:0,D_METADATA_GAP:0,E_REVIEW_ONLY:0};
+      RADAR.forEach(function(r){ if(c[r.radar_status]!=null)c[r.radar_status]++; });
+      el.innerHTML='<span class="rchip tot"><b>'+RADAR.length+'</b> à traiter</span>'+
+        '<span class="rchip d"><b>'+c.D_METADATA_GAP+'</b> métadonnées à confirmer</span>'+
+        '<span class="rchip c"><b>'+c.C_PRESENT_UNCLASSIFIED+'</b> présentes mal qualifiées</span>'+
+        '<span class="rchip e"><b>'+c.E_REVIEW_ONLY+'</b> preuve insuffisante</span>'+
+        '<span class="rchip b"><b>'+c.B_POTENTIAL_MISSING_PRINTING+'</b> manque crédible</span>';
+      return;
+    }
     function chip(b,lbl){ return '<button class="rbk '+BUCKET_CLR[b]+(RBUCKET===b?' on':'')+'" data-bucket="'+b+'"><b>'+bk[b]+'</b> '+lbl+'</button>'; }
     el.innerHTML='<span class="rchip tot"><b>'+RADAR.length+'</b> à traiter</span>'+
       chip('QUICK_VALIDATE','validation rapide')+chip('NEEDS_CHOICE','à choisir')+
@@ -7631,12 +7645,13 @@ const Fake = (function(){
       if(regSel) Object.keys(regs).sort().forEach(function(g){var o=document.createElement('option');o.value=g;o.textContent=g;regSel.appendChild(o);});
       ['rFam','rStatus','rRegion','rProof','rOwned','rSort'].forEach(function(id){var e=document.getElementById(id); if(e&&!e._rb){e.addEventListener('change',renderRadar);e._rb=true;}});
       var btn=document.getElementById('radarAll'); if(btn&&!btn._rb){ btn.addEventListener('click',function(){radarShowAll=!radarShowAll;renderRadar();}); btn._rb=true; }
-      /* b148 : couche CONFIANCE (UX) — fusionne bucket/confidence/raisons par reference_id */
+      /* b149 : le Radar s'affiche IMMÉDIATEMENT — la couche confiance (vue plus lourde) enrichit APRÈS, sans jamais bloquer l'affichage */
+      radarSummary(); renderRadar();
       cq("app_radar_confidence?select=reference_id,bucket,confidence,problem_type,recommended,reasons,uncertainties,n_compat_uncl,n_region_exact&limit=500").then(function(cf){
         var by={}; (Array.isArray(cf)?cf:[]).forEach(function(x){ by[x.reference_id]=x; });
         RADAR.forEach(function(r){ var c=by[r.reference_id]; if(c){ r.bucket=c.bucket; r.confidence=c.confidence; r.problem_type=c.problem_type; r.recommended=c.recommended; r.reasons=c.reasons||[]; r.uncertainties=c.uncertainties||[]; r.n_compat_uncl=c.n_compat_uncl; r.n_region_exact=c.n_region_exact; } });
         RCONF_READY=true; radarSummary(); renderRadar();
-      }).catch(function(){ radarSummary(); renderRadar(); });
+      }).catch(function(){ /* confiance indisponible : le Radar reste pleinement fonctionnel sans les badges */ });
     }).catch(function(e){ var el=document.getElementById('radarSummary'); if(el)el.innerHTML='<span class="rchip">Radar indisponible</span>'; });
   }
   var RCONF_READY=false;
