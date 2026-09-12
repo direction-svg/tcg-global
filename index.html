@@ -4216,7 +4216,7 @@ async function homeBriefing(){
   }catch(e){ box.innerHTML='<div class="txt" style="color:var(--muted);font-size:13px">Erreur, réessaie.</div><button class="hbriefbtn" onclick="homeBriefing()">Réessayer</button>'; }
 }
 document.getElementById('modeSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMode(b.dataset.m);});
-const APP_VERSION='Version b156 · 12/09 — Choix d image plus clair : vignette par impression dans Identite (au lieu d un simple ?), images candidates chargees automatiquement dans l onglet Image. Conserve b155 (validation image) et tout l UX.';
+const APP_VERSION='Version b157 · 12/09 — Accueil repense en tableau depliable (familles existantes) : arrivee quasi-instantanee (total du dernier releve, aucune collection chargee au depart), vignettes seulement au depliage. Conserve tout le reste.';
 { const nv=document.getElementById('navVersion'); if(nv) nv.textContent=APP_VERSION; }
 document.getElementById('mktSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMarket(b.dataset.k);});
 const CATARRS=["catColors","catCats","catRarities","catTreats","catProvs","catEvents","catTiers","catRegions","catFinish","catSets"];
@@ -6368,6 +6368,9 @@ async function renderPremium(){
 })();
 /* ====== /PREMIUM MODULE ====== */
 setMode('accueil');
+/* b157 : l'Accueil (tableau de bord léger, renderHome4) s'affiche instantanément sans attendre la
+   collection. Le chargement de la collection reste au boot (non bloquant pour l'Accueil) pour que
+   la page Collection soit prête. */
 load();
 loadProductValue();
 </script>
@@ -7208,41 +7211,92 @@ const Fake = (function(){
       (go?'<button data-goto="'+go+'" style="font-size:11.5px;font-weight:800;color:var(--accent);background:none;border:0;cursor:pointer">'+E(goLbl||'Voir')+' →</button>':'')+'</div>'+inner+'</div>';
   }
   function miniRow(left,right){ return '<div style="display:flex;align-items:center;gap:9px;padding:6px 0;border-top:1px solid var(--line)">'+left+'<div style="margin-left:auto;text-align:right;white-space:nowrap">'+right+'</div></div>'; }
+  /* b157 : Accueil = tableau dépliable (accordéon) des familles existantes.
+     Arrivée quasi-instantanée : en-têtes + résumés légers seulement (total collection depuis le
+     DERNIER RELEVÉ = 1 ligne, plus le nombre « à vérifier »). AUCUNE image, AUCUN chargement de la
+     collection complète au départ. Le contenu + les vignettes d'une famille se chargent au dépliage. */
+  var B4SNAP=null, B4BACK=null, b4accLoaded={};
+  var B4GOTO='font-size:12px;font-weight:800;color:var(--accent);background:none;border:0;cursor:pointer;padding:0';
+  function b4acc(id,title,sumId){
+    return '<div class="b4acc" data-accid="'+id+'" style="background:var(--panel);border:1px solid var(--line);border-radius:14px;margin-bottom:10px;overflow:hidden">'+
+      '<button type="button" data-acctoggle="'+id+'" style="width:100%;display:flex;align-items:center;gap:9px;padding:14px;border:0;background:transparent;color:var(--ink);cursor:pointer;text-align:left">'+
+        '<span class="b4acc-chev" style="font-size:12px;color:var(--muted);width:14px;flex:none">▸</span>'+
+        '<span style="font-weight:900;font-size:14px;letter-spacing:-.01em">'+E(title)+'</span>'+
+        '<span id="'+sumId+'" style="margin-left:auto;text-align:right;font-size:13px;white-space:nowrap"><span style="color:var(--muted);font-size:11px">…</span></span>'+
+      '</button>'+
+      '<div id="b4body-'+id+'" hidden style="padding:0 14px 14px"></div>'+
+    '</div>';
+  }
   function renderHome4(){
     var s=stage(); if(!s)return; s.className='';
-    s.innerHTML='<div id="b4home"><div class="loading">…</div></div>';
-    var box=document.getElementById('b4home');
-    Promise.allSettled([
-      q('app_intel_movements_v2','select=card_number,character,variant_label,language,now_eur,pct_30d,price_basis,image_url&now_eur=gte.40&pct_30d=not.is.null&order=pct_30d.desc&limit=6'),
-      q('app_buy_hub_v2','select=card_number,character,variant_label,language,region,premium_family,tier,image_url,disp_price,disp_basis,disp_confidence,disp_status,disp_captured_at,disp_var_30d,buy_score_adj,jp_priority,is_grail,gap_completer&jp_priority=is.true&order=buy_score_adj.desc.nullslast&limit=6'),
-      b4Portfolio(),
-      q('app_ops_health','select=key,value,detail&category=eq.backlog')
-    ]).then(function(res){
-      if(!box)return;
-      var mov=res[0].value||[], buy=res[1].value||[], pf=res[2].value||{cards:0,sealed:0,total:0,pend:0}, back=res[3].value||[];
-      // 1) Ce qui a changé
-      var chg=mov.length? mov.map(function(o){ var has=(o.pct_30d!=null), up=(+o.pct_30d>=0);
-        var pctHtml=has?('<div style="font:800 11px ui-monospace,monospace;color:'+(up?'#059669':'#dc2626')+'">'+(up?'▲ +':'▼ ')+Math.round(o.pct_30d)+'%</div>')
-                       :('<div style="font:800 10px ui-monospace,monospace;color:#d97706">à vérifier</div>');
-        return miniRow(thumb(o.image_url,'28px','40px')+'<div style="min-width:0"><div style="font:700 11px ui-monospace,monospace;color:var(--muted)">'+E(o.card_number||'')+'</div><div style="font-size:12px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:150px">'+E(o.character||'')+'</div></div>',
-          '<div style="font:900 12.5px ui-monospace,monospace">'+eur(o.now_eur)+'</div>'+pctHtml); }).join('') : '<div style="color:var(--muted);font-size:12px;padding:6px 0">Rien de notable sur 30 j.</div>';
-      // 2) Que devrais-je acheter
-      var buyInner=buy.length? '<div class="grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:9px">'+buy.map(buyCard).join('')+'</div>' : '<div style="color:var(--muted);font-size:12px;padding:6px 0">Aucune reco JP prioritaire.</div>';
-      // 3) Ma collection — b133 : EXACTEMENT l'en-tête Collection (collValue hors PROD_EXCL + PROD_VALUE live, zéro double comptage, zéro snapshot)
-      var cardsPt=(+pf.cards||0), prod=(+pf.sealed||0), tot=(+pf.total||0), av=(+pf.pend||0);
-      var colInner='<div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap"><div style="font:900 24px ui-monospace,monospace">'+eur(tot)+'</div>'+
-        (av>0?'<div style="font:800 12px ui-monospace,monospace;color:#d97706">'+av+' à vérifier</div>':'')+'</div>'+
-        '<div style="font-size:11px;color:var(--muted);margin-top:4px">Cartes '+eur(cardsPt)+' · Scellés '+eur(prod)+' · prix courant Price Truth</div>';
-      // 4) Ce qui nécessite attention
-      var bk={}; back.forEach(function(b){ bk[b.key]=+b.value; });
-      var att=[['price_A_VERIFIER','Prix à vérifier','buy'],['price_PRICE_REVIEW','Prix en revue','buy'],['image_WRONG_ART','Images non conformes','marche'],['image_REVIEW','Images ambiguës','marche']];
-      var attInner=att.map(function(a){ var n=bk[a[0]]||0; return '<div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-top:1px solid var(--line)"><span style="font-size:12.5px">'+E(a[1])+'</span><span style="font:900 13px ui-monospace,monospace;color:'+(n>0?'#d97706':'var(--muted)')+'">'+n+'</span></div>'; }).join('');
-      box.innerHTML=
-        sectionCard('🟢 Que devrais-je acheter ?','buy','Hub À acheter',buyInner)+
-        sectionCard('📈 Qu\'est-ce qui a changé ?','marche','Marché',chg)+
-        sectionCard('💰 Ma collection','collection','Collection',colInner)+
-        sectionCard('⚠︎ À vérifier','buy','Détails',attInner);
-    });
+    s.innerHTML='<div id="b4home"></div>';
+    var box=document.getElementById('b4home'); if(!box)return;
+    box.innerHTML=
+      b4acc('coll','💰 Ma collection','b4sum-coll')+
+      b4acc('buy','🟢 Que devrais-je acheter ?','b4sum-buy')+
+      b4acc('marche','📈 Qu\'est-ce qui a changé ?','b4sum-marche')+
+      b4acc('verif','⚠︎ À vérifier','b4sum-verif');
+    // résumé collection : dernier relevé (1-2 lignes seulement)
+    q('app_value_snapshot','select=day,total_eur,cards,cards_eur,products_eur&order=day.desc&limit=2').then(function(sn){
+      B4SNAP=Array.isArray(sn)?sn:[]; var last=B4SNAP[0]||null, prev=B4SNAP[1]||null;
+      var el=document.getElementById('b4sum-coll'); if(!el)return;
+      if(last){ var d=prev?((+last.total_eur||0)-(+prev.total_eur||0)):null;
+        el.innerHTML='<b style="font-size:15px">'+eur(last.total_eur)+'</b>'+(d!=null&&d!==0?(' <span style="color:'+(d>=0?'#059669':'#dc2626')+';font-weight:800;font-size:11px">'+(d>=0?'▲ +':'▼ ')+eur0(Math.abs(d))+'</span>'):''); }
+      else el.textContent='—';
+    }).catch(function(){ var el=document.getElementById('b4sum-coll'); if(el)el.textContent='—'; });
+    // résumé à vérifier : compteurs backlog (léger)
+    q('app_ops_health','select=key,value,detail&category=eq.backlog').then(function(bk){
+      B4BACK=Array.isArray(bk)?bk:[]; var m={}; B4BACK.forEach(function(b){m[b.key]=+b.value;});
+      var n=(m.price_A_VERIFIER||0)+(m.price_PRICE_REVIEW||0)+(m.image_WRONG_ART||0)+(m.image_REVIEW||0);
+      var el=document.getElementById('b4sum-verif'); if(el) el.innerHTML=n>0?('<b style="color:#d97706">'+n+'</b> <span style="color:var(--muted);font-size:11px">à traiter</span>'):'<b style="color:var(--muted)">0</b>';
+    }).catch(function(){ var el=document.getElementById('b4sum-verif'); if(el)el.innerHTML='<span style="color:var(--muted);font-size:11px">déplier</span>'; });
+    ['b4sum-buy','b4sum-marche'].forEach(function(id){ var el=document.getElementById(id); if(el) el.innerHTML='<span style="color:var(--muted);font-size:11px">déplier ▸</span>'; });
+    // restaure les familles ouvertes précédemment
+    b4accLoaded={};
+    try{ var open=JSON.parse(localStorage.getItem('b4acc_open')||'[]')||[]; open.forEach(function(id){ b4accToggle(id,true); }); }catch(e){}
+  }
+  function b4accToggle(id,forceOpen){
+    var body=document.getElementById('b4body-'+id); var sec=document.querySelector('.b4acc[data-accid="'+id+'"]');
+    if(!body||!sec)return; var chev=sec.querySelector('.b4acc-chev');
+    var open = (forceOpen!=null)?forceOpen : body.hidden;
+    body.hidden=!open; if(chev)chev.textContent=open?'▾':'▸';
+    try{ var arr=JSON.parse(localStorage.getItem('b4acc_open')||'[]')||[]; arr=arr.filter(function(x){return x!==id;}); if(open)arr.push(id); localStorage.setItem('b4acc_open',JSON.stringify(arr)); }catch(e){}
+    if(open && !b4accLoaded[id]){ b4accLoaded[id]=true; b4accLoad(id,body); }
+  }
+  function b4accLoad(id,body){
+    if(id==='coll'){
+      var last=(B4SNAP&&B4SNAP[0])||null;
+      body.innerHTML='<div style="font-size:12.5px;color:var(--muted);line-height:1.8">Cartes <b style="color:var(--ink)">'+eur(last&&last.cards_eur)+'</b> · Scellés <b style="color:var(--ink)">'+eur(last&&last.products_eur)+'</b>'+((last&&last.cards)?' · '+last.cards+' cartes':'')+'</div>'+
+        '<div style="margin-top:9px"><button data-goto="collection" style="'+B4GOTO+'">Voir la collection complète →</button></div>'+
+        '<div style="font-size:11px;color:var(--muted);margin-top:6px">Total du dernier relevé (instantané). Le détail carte par carte est dans Collection.</div>';
+      return;
+    }
+    if(id==='verif'){
+      var m={}; (B4BACK||[]).forEach(function(b){m[b.key]=+b.value;});
+      var att=[['price_A_VERIFIER','Prix à vérifier'],['price_PRICE_REVIEW','Prix en revue'],['image_WRONG_ART','Images non conformes'],['image_REVIEW','Images ambiguës']];
+      body.innerHTML=att.map(function(a){var n=m[a[0]]||0;return '<div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-top:1px solid var(--line)"><span style="font-size:12.5px">'+E(a[1])+'</span><b style="font-family:ui-monospace,monospace;color:'+(n>0?'#d97706':'var(--muted)')+'">'+n+'</b></div>';}).join('')+
+        '<div style="margin-top:9px"><button data-goto="valider" style="'+B4GOTO+'">Aller au traitement →</button></div>';
+      return;
+    }
+    body.innerHTML='<div style="color:var(--muted);font-size:12px;padding:8px 0">Chargement…</div>';
+    if(id==='buy'){
+      q('app_buy_hub_v2','select=card_number,character,variant_label,language,region,premium_family,tier,image_url,disp_price,disp_basis,disp_confidence,disp_status,disp_captured_at,disp_var_30d,buy_score_adj,jp_priority,is_grail,gap_completer&jp_priority=is.true&order=buy_score_adj.desc.nullslast&limit=6').then(function(buy){
+        buy=Array.isArray(buy)?buy:[];
+        body.innerHTML=(buy.length?'<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:9px">'+buy.map(buyCard).join('')+'</div>':'<div style="color:var(--muted);font-size:12px">Aucune reco JP prioritaire.</div>')+
+          '<div style="margin-top:9px"><button data-goto="buy" style="'+B4GOTO+'">Voir le hub À acheter →</button></div>';
+      }).catch(function(){ body.innerHTML='<div style="color:var(--muted);font-size:12px">Indisponible.</div>'; });
+      return;
+    }
+    if(id==='marche'){
+      q('app_intel_movements_v2','select=card_number,character,variant_label,language,now_eur,pct_30d,price_basis,image_url&now_eur=gte.40&pct_30d=not.is.null&order=pct_30d.desc&limit=6').then(function(mov){
+        mov=Array.isArray(mov)?mov:[];
+        body.innerHTML=(mov.length?mov.map(function(o){ var up=(+o.pct_30d>=0);
+          var pctHtml=(o.pct_30d!=null)?('<div style="font:800 11px ui-monospace,monospace;color:'+(up?'#059669':'#dc2626')+'">'+(up?'▲ +':'▼ ')+Math.round(o.pct_30d)+'%</div>'):('<div style="font:800 10px ui-monospace,monospace;color:#d97706">à vérifier</div>');
+          return miniRow(thumb(o.image_url,'28px','40px')+'<div style="min-width:0"><div style="font:700 11px ui-monospace,monospace;color:var(--muted)">'+E(o.card_number||'')+'</div><div style="font-size:12px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:150px">'+E(o.character||'')+'</div></div>','<div style="font:900 12.5px ui-monospace,monospace">'+eur(o.now_eur)+'</div>'+pctHtml); }).join(''):'<div style="color:var(--muted);font-size:12px">Rien de notable sur 30 j.</div>')+
+          '<div style="margin-top:9px"><button data-goto="marche" style="'+B4GOTO+'">Voir le marché →</button></div>';
+      }).catch(function(){ body.innerHTML='<div style="color:var(--muted);font-size:12px">Indisponible.</div>'; });
+      return;
+    }
   }
 
   /* ---- NAV 5 ESPACES ---- */
@@ -7288,6 +7342,8 @@ const Fake = (function(){
     if(seg){ var vm=seg.getAttribute('data-vm'); BUY.vmode=vm; try{sessionStorage.setItem('int_vmode',vm);}catch(e){} var segp=seg.parentNode; if(segp)Array.prototype.forEach.call(segp.children,function(b){b.className=(b.getAttribute('data-vm')===vm?'on':'');}); if(b4active==='buy')loadBuy(); return; }
     var ch=ev.target.closest('#stage [data-id][data-v]');
     if(ch){ var id=ch.getAttribute('data-id'), v=ch.getAttribute('data-v'); if(id==='fam')BUY.fam=v; else if(id==='flt')BUY.flt=v; var par=ch.parentNode; if(par)Array.prototype.forEach.call(par.children,function(b){var s=b===ch; b.style.borderColor=s?'var(--accent)':'var(--line)'; b.style.background=s?'var(--accent)':'var(--panel)'; b.style.color=s?'#fff':'var(--muted)';}); loadBuy(); return; }
+    var at=ev.target.closest('[data-acctoggle]');
+    if(at){ b4accToggle(at.getAttribute('data-acctoggle')); return; }
     var gt=ev.target.closest('[data-goto]');
     if(gt){ go(gt.getAttribute('data-goto')); return; }
   });
