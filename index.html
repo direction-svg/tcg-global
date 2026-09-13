@@ -1637,6 +1637,9 @@ function saveCollCache(){ try{ if(Array.isArray(DATA)&&DATA.length) localStorage
    côté client, instantanément — même résultat final, mais le chargement ne bloque plus. */
 function sortDispDesc(arr){ if(Array.isArray(arr)) arr.sort(function(a,b){ var x=(a&&a.disp_price!=null)?+a.disp_price:-Infinity, y=(b&&b.disp_price!=null)?+b.disp_price:-Infinity; return y-x; }); return arr; }
 async function load(){
+  // b163 : lance TOUT DE SUITE la récupération des images épinglées (en parallèle du chargement collection),
+  //        pour les appliquer avant le 1er rendu frais — plus aucun délai de plusieurs secondes.
+  var pinsP = fetchOwnedPins();
   // 0) FAÇADE : afficher immédiatement le dernier état connu (cache local), le temps que le frais arrive.
   //    Évite l'écran vide / l'attente quand les vues serveur sont lentes.
   if(!Array.isArray(DATA)||!DATA.length){
@@ -1644,6 +1647,7 @@ async function load(){
       if(c){ const arr=JSON.parse(c);
         if(Array.isArray(arr)&&arr.length){ DATA=arr; DATALOADED=true;
           if(DATA.some(x=>x&&x._jp!=null)) MKT_OVERLAY_OK=true;
+          try{ applyPinsToData(loadPinsMapCache()); }catch(e){}   /* b163 : images épinglées dès la façade (cache, zéro réseau) */
           buildFilterModal();
           if(state.mode==="accueil"){ renderHome(); } else { render(); if(state.mode==="collection") loadBriefing(); }
         }
@@ -1659,6 +1663,9 @@ async function load(){
   }
   if(!all.length && DATALOADED) return; // le frais a échoué mais on garde la façade
   sortDispDesc(all); DATA=all; DATALOADED=true; buildFilterModal();
+  // b163 : applique les images épinglées AVANT le 1er rendu frais (cache instantané, puis map live déjà en vol).
+  try{ applyPinsToData(loadPinsMapCache()); }catch(e){}
+  try{ applyPinsToData(await pinsP); }catch(e){}
   // 2) Rendu depuis les données fraîches
   if(state.mode==="accueil"){ renderHome(); }
   else { render(); if(state.mode==="collection") loadBriefing(); }
@@ -1668,7 +1675,7 @@ async function load(){
   try{ await loadVerify(); }catch(e){}
   try{ await loadPending(); }catch(e){}
   try{ await loadPcImages(); }catch(e){}
-  try{ await loadOwnedPins(); }catch(e){}   /* b162 : réaffirme les images épinglées (live) par-dessus la matview */
+  try{ applyPinsToData(loadPinsMapCache()); }catch(e){}   /* b163 : ré-affirme les épinglées après PriceCharting (sync, sans réseau) */
   try{ await loadMarketVals(); }catch(e){}
   if(state.mode==="accueil"){ renderHome(); }
   else if(state.mode==="collection"||state.mode==="catalog"){ render(); }
@@ -1891,23 +1898,29 @@ async function loadPcImages(){
     DATA.forEach(c=>{ const u=PCIMG[c.printing_id]; if(u && !c.is_graded && !c.img_locked){ c.image_url=u; VERIFY.delete(c.item_id); NEWPHOTO.delete(c.item_id); } });
   }catch(e){}
 }
-/* b162 : les images ÉPINGLÉES par l'utilisateur (owned_image_url / img_locked, y compris PSA slab→normale)
-   sont relues depuis la vue LIVE app_collection_v2 (toujours à jour) puis superposées aux données de la
-   matview (qui peut être en retard de ~2 min après un choix). Corrige la non-persistance du choix d'image
-   à la réouverture de l'app. Léger : seuls les items épinglés (img_locked) sont renvoyés. */
-async function loadOwnedPins(){
+/* b162/b163 : images ÉPINGLÉES par l'utilisateur (owned_image_url / img_locked, y compris PSA slab→normale).
+   Source LIVE légère (app_owned_image_pins, ~53 lignes). b163 : appliquées IMMÉDIATEMENT —
+   map mise en cache local (appliquée dès le 1er rendu, zéro réseau) + fetch live lancé en parallèle
+   dès le début du chargement (plus en fin de chaîne derrière les images PriceCharting). Fini le délai. */
+const PINS_MAP_KEY='bounty_pins_map_v1';
+function loadPinsMapCache(){ try{ return JSON.parse(localStorage.getItem(PINS_MAP_KEY)||'{}')||{}; }catch(e){ return {}; } }
+function savePinsMapCache(m){ try{ localStorage.setItem(PINS_MAP_KEY, JSON.stringify(m||{})); }catch(e){} }
+async function fetchOwnedPins(){
+  var map={}, from=0, step=1000;
   try{
-    if(!Array.isArray(DATA)||!DATA.length) return;
-    var pins={}, from=0, step=1000;
     while(true){
       var r=await fetch(SB+'/rest/v1/app_owned_image_pins?select=item_id,image_url&limit='+step+'&offset='+from,{headers:{apikey:ANON,Authorization:'Bearer '+ANON}});
       if(!r.ok) break; var b=await r.json(); if(!Array.isArray(b)) break;
-      b.forEach(function(x){ if(x&&x.item_id) pins[x.item_id]=x.image_url; }); if(b.length<step) break; from+=step;
+      b.forEach(function(x){ if(x&&x.item_id&&x.image_url) map[x.item_id]=x.image_url; }); if(b.length<step) break; from+=step;
     }
-    var changed=false;
-    DATA.forEach(function(c){ if(c && Object.prototype.hasOwnProperty.call(pins,c.item_id)){ c.img_locked=true; var u=pins[c.item_id]; if(u && c.image_url!==u){ c.image_url=u; changed=true; } } });
-    if(changed){ try{ saveCollCache(); }catch(e){} }
+    savePinsMapCache(map);
   }catch(e){}
+  return map;
+}
+function applyPinsToData(map){
+  if(!map || !Array.isArray(DATA)) return false; var changed=false;
+  DATA.forEach(function(c){ if(c && Object.prototype.hasOwnProperty.call(map,c.item_id)){ c.img_locked=true; var u=map[c.item_id]; if(u && c.image_url!==u){ c.image_url=u; changed=true; } } });
+  return changed;
 }
 async function loadVerify(){
   try{
@@ -4235,7 +4248,7 @@ async function homeBriefing(){
   }catch(e){ box.innerHTML='<div class="txt" style="color:var(--muted);font-size:13px">Erreur, réessaie.</div><button class="hbriefbtn" onclick="homeBriefing()">Réessayer</button>'; }
 }
 document.getElementById('modeSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMode(b.dataset.m);});
-const APP_VERSION='Version b162 · 13/09 — Le choix d image via la fiche (et PSA slab -> image normale) PERSISTE a la reouverture : les images epinglees sont relues en direct par-dessus la vue rapide. Inclut la Couverture mobile (b161). Conserve le reste.';
+const APP_VERSION='Version b163 · 13/09 — Le choix d image via la fiche (et PSA slab -> image normale) persiste ET s affiche IMMEDIATEMENT a l ouverture de la collection (cache local + recuperation en parallele, fini le delai de quelques secondes). Inclut la Couverture mobile (b161). Conserve le reste.';
 { const nv=document.getElementById('navVersion'); if(nv) nv.textContent=APP_VERSION; }
 document.getElementById('mktSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMarket(b.dataset.k);});
 const CATARRS=["catColors","catCats","catRarities","catTreats","catProvs","catEvents","catTiers","catRegions","catFinish","catSets"];
