@@ -1668,6 +1668,7 @@ async function load(){
   try{ await loadVerify(); }catch(e){}
   try{ await loadPending(); }catch(e){}
   try{ await loadPcImages(); }catch(e){}
+  try{ await loadOwnedPins(); }catch(e){}   /* b162 : réaffirme les images épinglées (live) par-dessus la matview */
   try{ await loadMarketVals(); }catch(e){}
   if(state.mode==="accueil"){ renderHome(); }
   else if(state.mode==="collection"||state.mode==="catalog"){ render(); }
@@ -1888,6 +1889,24 @@ async function loadPcImages(){
       b.forEach(x=>{ PCIMG[x.printing_id]=x.pc_image_url; }); if(b.length<step)break; from+=step;
     }
     DATA.forEach(c=>{ const u=PCIMG[c.printing_id]; if(u && !c.is_graded && !c.img_locked){ c.image_url=u; VERIFY.delete(c.item_id); NEWPHOTO.delete(c.item_id); } });
+  }catch(e){}
+}
+/* b162 : les images ÉPINGLÉES par l'utilisateur (owned_image_url / img_locked, y compris PSA slab→normale)
+   sont relues depuis la vue LIVE app_collection_v2 (toujours à jour) puis superposées aux données de la
+   matview (qui peut être en retard de ~2 min après un choix). Corrige la non-persistance du choix d'image
+   à la réouverture de l'app. Léger : seuls les items épinglés (img_locked) sont renvoyés. */
+async function loadOwnedPins(){
+  try{
+    if(!Array.isArray(DATA)||!DATA.length) return;
+    var pins={}, from=0, step=1000;
+    while(true){
+      var r=await fetch(SB+'/rest/v1/app_owned_image_pins?select=item_id,image_url&limit='+step+'&offset='+from,{headers:{apikey:ANON,Authorization:'Bearer '+ANON}});
+      if(!r.ok) break; var b=await r.json(); if(!Array.isArray(b)) break;
+      b.forEach(function(x){ if(x&&x.item_id) pins[x.item_id]=x.image_url; }); if(b.length<step) break; from+=step;
+    }
+    var changed=false;
+    DATA.forEach(function(c){ if(c && Object.prototype.hasOwnProperty.call(pins,c.item_id)){ c.img_locked=true; var u=pins[c.item_id]; if(u && c.image_url!==u){ c.image_url=u; changed=true; } } });
+    if(changed){ try{ saveCollCache(); }catch(e){} }
   }catch(e){}
 }
 async function loadVerify(){
@@ -4216,7 +4235,7 @@ async function homeBriefing(){
   }catch(e){ box.innerHTML='<div class="txt" style="color:var(--muted);font-size:13px">Erreur, réessaie.</div><button class="hbriefbtn" onclick="homeBriefing()">Réessayer</button>'; }
 }
 document.getElementById('modeSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMode(b.dataset.m);});
-const APP_VERSION='Version b160 · 13/09 — Couverture remontee dans la nav principale (le hub a corriger) ; case A valider retiree de l Accueil (fini le doublon). Accueil = 3 familles claires. Conserve le reste.';
+const APP_VERSION='Version b162 · 13/09 — Le choix d image via la fiche (et PSA slab -> image normale) PERSISTE a la reouverture : les images epinglees sont relues en direct par-dessus la vue rapide. Inclut la Couverture mobile (b161). Conserve le reste.';
 { const nv=document.getElementById('navVersion'); if(nv) nv.textContent=APP_VERSION; }
 document.getElementById('mktSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMarket(b.dataset.k);});
 const CATARRS=["catColors","catCats","catRarities","catTreats","catProvs","catEvents","catTiers","catRegions","catFinish","catSets"];
@@ -5430,6 +5449,7 @@ async function chooseVariant(pid){
       if(eff){ try{ await fetch(SB+'/rest/v1/rpc/set_owned_image',{method:"POST",headers:{apikey:ANON,Authorization:"Bearer "+ANON,"Content-Type":"application/json"},body:JSON.stringify({p_item:item,p_url:eff})}); detailCard.img_locked=true; if(d) d.img_locked=true; }catch(e){} } }
     await refreshItemMarket(item);
     renderDetail(); loadLadder(detailCard); loadPrints(detailCard.card_number); render();
+    try{ if(typeof saveCollCache==='function') saveCollCache(); }catch(_){}   /* b162 : façade fraîche pour la réouverture */
   }catch(e){}
 }
 async function chooseArt(suf, imgurl){
@@ -5442,6 +5462,7 @@ async function chooseArt(suf, imgurl){
       try{ await fetch(SB+'/rest/v1/rpc/set_owned_image',{method:"POST",headers:{apikey:ANON,Authorization:"Bearer "+ANON,"Content-Type":"application/json"},body:JSON.stringify({p_item:detailCard.item_id,p_url:imgurl})}); if(d) d.img_locked=true; detailCard.img_locked=true; }catch(e){} }
     document.querySelectorAll('#dprints .pcard').forEach(x=>x.classList.toggle('sel', x.getAttribute('data-suf')===suf));
     render();
+    try{ if(typeof saveCollCache==='function') saveCollCache(); }catch(_){}   /* b162 : façade fraîche pour la réouverture */
   }catch(e){}
 }
 async function validateCurrent(){
@@ -7442,6 +7463,25 @@ const Fake = (function(){
 .covwrap .err{color:var(--cv-red)}
 .covwrap .scroll{overflow-x:auto}
 @media(max-width:640px){.covwrap th,.covwrap td{padding:7px 7px;font-size:12px}}
+/* b161 : resume par famille lisible sur mobile (cartes empilees, aucune donnee coupee hors ecran) */
+.covwrap .famsum{display:flex;flex-direction:column;gap:9px;padding:11px 14px}
+.covwrap .famrow{background:var(--cv-card2);border:1px solid var(--cv-line);border-radius:10px;padding:10px 12px}
+.covwrap .famrow-h{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px}
+.covwrap .famrow-h .fnm{font-weight:700;font-size:14px}
+.covwrap .famrow-h .fpct{margin-left:auto;font-size:12px;font-weight:700;font-variant-numeric:tabular-nums;display:flex;gap:10px}
+.covwrap .famrow-h .fpct .p{color:var(--cv-green)}.covwrap .famrow-h .fpct .d{color:var(--cv-orange)}.covwrap .famrow-h .fpct .na{color:var(--cv-gray)}
+.covwrap .famrow-chips{display:flex;flex-wrap:wrap;gap:6px}
+.covwrap .fchip{display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:99px;font-size:12px;font-weight:600;border:1px solid transparent}
+.covwrap .fchip b{font-variant-numeric:tabular-nums}
+.covwrap .fchip.off{background:rgba(63,185,107,.14);color:var(--cv-green);border-color:rgba(63,185,107,.3)}
+.covwrap .fchip.man{background:rgba(224,145,47,.14);color:var(--cv-orange);border-color:rgba(224,145,47,.3)}
+.covwrap .fchip.rev{background:rgba(107,114,128,.16);color:#aab2bd;border-color:rgba(107,114,128,.3)}
+.covwrap .fchip.warn{background:rgba(217,83,79,.14);color:var(--cv-red);border-color:rgba(217,83,79,.3)}
+.covwrap .fchip.np{background:rgba(217,83,79,.10);color:var(--cv-red);border-color:rgba(217,83,79,.28)}
+.covwrap .fchip.z{opacity:.5}
+/* cartes = mobile uniquement ; tableau detaille = ecrans larges */
+.covwrap .sumtbl-scroll{display:none}
+@media(min-width:641px){.covwrap .famsum{display:none}.covwrap .sumtbl-scroll{display:block}}
 .covwrap .cov-radar h2{color:var(--cv-tx)}
 .covwrap .radar-summary{display:flex;flex-wrap:wrap;gap:8px;padding:11px 14px;border-bottom:1px solid var(--cv-line)}
 .covwrap .rchip{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:99px;border:1px solid var(--cv-line);background:var(--cv-card2);font-size:12px;font-weight:600}
@@ -7576,7 +7616,18 @@ const Fake = (function(){
       var order=["flagship","TR","SP","MANGA","serial","championship","world","regional","treasure_cup"];
       rows.sort(function(a,b){return order.indexOf(a.family)-order.indexOf(b.family);});
       var tb=document.getElementById("sumbody"); if(!tb)return; tb.innerHTML="";
+      var cardBox=document.getElementById("sumcards"); if(cardBox) cardBox.innerHTML="";
       var famSel=document.getElementById("fFam");
+      function pctFrag(r){
+        var p=r.coverage_proven_pct, d=r.coverage_reviewed_pct;
+        return '<span class="fpct">'+
+          (p==null?'<span class="na">—</span>':'<span class="p">'+p+'% prouvé</span>')+
+          (d==null?'<span class="na">—</span>':'<span class="d">'+d+'% doc.</span>')+
+        '</span>';
+      }
+      function fchip(cls,label,n,strong){
+        return '<span class="fchip '+cls+(n>0?'':' z')+'">'+label+' <b>'+(n||0)+'</b></span>';
+      }
       rows.forEach(function(r){
         var tr=document.createElement("tr");
         tr.innerHTML='<td class="fam"><i class="dot '+famDot(r)+'"></i>'+esc(FAM_LABEL[r.family]||r.family)+'</td>'+
@@ -7589,6 +7640,20 @@ const Fake = (function(){
           '<td class="num">'+(r.missing||0)+'</td>'+
           pctCell(r.coverage_proven_pct,'proven')+pctCell(r.coverage_reviewed_pct,'rev');
         tb.appendChild(tr);
+        if(cardBox){
+          var wrong=r.wrong||0, miss=r.missing||0;
+          var row=document.createElement("div"); row.className="famrow";
+          row.innerHTML='<div class="famrow-h"><i class="dot '+famDot(r)+'"></i>'+
+              '<span class="fnm">'+esc(FAM_LABEL[r.family]||r.family)+'</span>'+pctFrag(r)+'</div>'+
+            '<div class="famrow-chips">'+
+              fchip('off','✅ officiel',r.verified_official||0)+
+              fchip('man','🟠 documenté',r.manual_reviewed||0)+
+              fchip('rev','⚪ review',r.review||0)+
+              (wrong>0?fchip('warn','✗ à corriger',wrong):'')+
+              (miss>0?fchip('warn','⛔ manquant',miss):'')+
+            '</div>';
+          cardBox.appendChild(row);
+        }
         var o=document.createElement("option");o.value=r.family;o.textContent=FAM_LABEL[r.family]||r.family;famSel.appendChild(o);
       });
       NOT_BOUNDED.forEach(function(p){
@@ -7597,6 +7662,13 @@ const Fake = (function(){
           '<td class="num" colspan="7" style="color:var(--cv-mut)">référentiel externe absent — non mesuré</td>'+
           '<td class="num pct na">—</td><td class="num pct na">—</td>';
         tb.appendChild(tr);
+        if(cardBox){
+          var row=document.createElement("div"); row.className="famrow"; row.style.opacity=".72";
+          row.innerHTML='<div class="famrow-h"><span class="fchip np">NON BORNÉ</span>'+
+              '<span class="fnm">'+esc(p[1])+'</span></div>'+
+            '<div class="famrow-chips" style="font-size:12px;color:var(--cv-mut)">référentiel externe absent — non mesuré</div>';
+          cardBox.appendChild(row);
+        }
       });
     });
   }
@@ -8276,7 +8348,9 @@ const Fake = (function(){
         '<span><i class="dot o"></i>MANUAL_REVIEWED — fortement documenté, non officiel (« documenté » séparé)</span>'+
         '<span><i class="dot gr"></i>REVIEW — incertain / marketplace / suspect</span>'+
       '</div>'+
-      '<div class="cov-card"><h2>Couverture par famille</h2><div class="scroll"><table id="sumtbl"><thead><tr>'+
+      '<div class="cov-card"><h2>Couverture par famille</h2>'+
+        '<div class="famsum" id="sumcards"></div>'+
+        '<div class="scroll sumtbl-scroll"><table id="sumtbl"><thead><tr>'+
         '<th>Famille</th><th class="num">Vérif. off.</th><th class="num">Manual rev.</th><th class="num">Review</th>'+
         '<th class="num">Match</th><th class="num">Non classé</th><th class="num">Wrong</th><th class="num">Missing</th>'+
         '<th class="num">Prouvé %</th><th class="num">Documenté %</th>'+
