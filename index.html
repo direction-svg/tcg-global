@@ -4216,7 +4216,7 @@ async function homeBriefing(){
   }catch(e){ box.innerHTML='<div class="txt" style="color:var(--muted);font-size:13px">Erreur, réessaie.</div><button class="hbriefbtn" onclick="homeBriefing()">Réessayer</button>'; }
 }
 document.getElementById('modeSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMode(b.dataset.m);});
-const APP_VERSION='Version b157 · 12/09 — Accueil repense en tableau depliable (familles existantes) : arrivee quasi-instantanee (total du dernier releve, aucune collection chargee au depart), vignettes seulement au depliage. Conserve tout le reste.';
+const APP_VERSION='Version b160 · 13/09 — Couverture remontee dans la nav principale (le hub a corriger) ; case A valider retiree de l Accueil (fini le doublon). Accueil = 3 familles claires. Conserve le reste.';
 { const nv=document.getElementById('navVersion'); if(nv) nv.textContent=APP_VERSION; }
 document.getElementById('mktSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMarket(b.dataset.k);});
 const CATARRS=["catColors","catCats","catRarities","catTreats","catProvs","catEvents","catTiers","catRegions","catFinish","catSets"];
@@ -7217,6 +7217,41 @@ const Fake = (function(){
      collection complète au départ. Le contenu + les vignettes d'une famille se chargent au dépliage. */
   var B4SNAP=null, B4BACK=null, b4accLoaded={};
   var B4GOTO='font-size:12px;font-weight:800;color:var(--accent);background:none;border:0;cursor:pointer;padding:0';
+  /* b158 : le total « Ma collection » = EXACTEMENT le portefeuille de la barre du haut
+     (portfolioMini : collValue() + PROD_VALUE, live). Une seule source de vérité, jamais un snapshot. */
+  function b4CollTotals(){
+    var ready=(typeof DATALOADED!=='undefined' && DATALOADED && typeof DATA!=='undefined' && Array.isArray(DATA) && DATA.length);
+    if(!ready) return {ok:false};
+    var cv=(typeof collValue==='function')?collValue():0;
+    var pv=(typeof PROD_VALUE!=='undefined'&&PROD_VALUE)?PROD_VALUE:0;
+    var qn=DATA.reduce(function(s,c){return s+(c.quantity||1);},0);
+    return {ok:true, total:cv+pv, cards:cv, sealed:pv, q:qn};
+  }
+  function b4FillCollSummary(tries){
+    var el=document.getElementById('b4sum-coll'); if(!el)return;
+    var t=b4CollTotals();
+    if(t.ok){ el.innerHTML='<b style="font-size:15px">'+eur0(t.total)+'</b>'; }
+    else { el.innerHTML='<span style="color:var(--muted);font-size:11px">…</span>'; if((tries||0)<25) setTimeout(function(){ b4FillCollSummary((tries||0)+1); }, 400); }
+  }
+  /* b159 : « À valider » compté SUR LA COLLECTION (DATA déjà chargée) — mêmes cartes que la page
+     « À valider ». Ce ne sont PAS les compteurs backlog catalogue (night_audit) qui affichaient 500+. */
+  function b4ValiderCounts(){
+    var ready=(typeof DATALOADED!=='undefined' && DATALOADED && typeof DATA!=='undefined' && Array.isArray(DATA));
+    if(!ready) return {ok:false};
+    var img=0,prix=0,grad=0;
+    DATA.forEach(function(c){ if(!c)return;
+      if(!c.image_url) img++;
+      if(!c.is_graded && (c.disp_status==='PRICE_REVIEW'||c.disp_status==='PRICE_A_VERIFIER')) prix++;
+      if(c.is_graded && (c.graded_source==='GRADED_ESTIMATE'||c.graded_source==='GRADED_PROXY'||c.graded_source==='GRADE_PRICE_REVIEW')) grad++;
+    });
+    return {ok:true, img:img, prix:prix, grad:grad, total:img+prix+grad};
+  }
+  function b4FillValiderSummary(tries){
+    var el=document.getElementById('b4sum-verif'); if(!el)return;
+    var t=b4ValiderCounts();
+    if(t.ok){ el.innerHTML=t.total>0?('<b style="color:#d97706">'+t.total+'</b> <span style="color:var(--muted);font-size:11px">à valider</span>'):'<b style="color:#059669">0</b> <span style="color:var(--muted);font-size:11px">tout propre</span>'; }
+    else { el.innerHTML='<span style="color:var(--muted);font-size:11px">…</span>'; if((tries||0)<25) setTimeout(function(){ b4FillValiderSummary((tries||0)+1); }, 400); }
+  }
   function b4acc(id,title,sumId){
     return '<div class="b4acc" data-accid="'+id+'" style="background:var(--panel);border:1px solid var(--line);border-radius:14px;margin-bottom:10px;overflow:hidden">'+
       '<button type="button" data-acctoggle="'+id+'" style="width:100%;display:flex;align-items:center;gap:9px;padding:14px;border:0;background:transparent;color:var(--ink);cursor:pointer;text-align:left">'+
@@ -7234,22 +7269,11 @@ const Fake = (function(){
     box.innerHTML=
       b4acc('coll','💰 Ma collection','b4sum-coll')+
       b4acc('buy','🟢 Que devrais-je acheter ?','b4sum-buy')+
-      b4acc('marche','📈 Qu\'est-ce qui a changé ?','b4sum-marche')+
-      b4acc('verif','⚠︎ À vérifier','b4sum-verif');
-    // résumé collection : dernier relevé (1-2 lignes seulement)
-    q('app_value_snapshot','select=day,total_eur,cards,cards_eur,products_eur&order=day.desc&limit=2').then(function(sn){
-      B4SNAP=Array.isArray(sn)?sn:[]; var last=B4SNAP[0]||null, prev=B4SNAP[1]||null;
-      var el=document.getElementById('b4sum-coll'); if(!el)return;
-      if(last){ var d=prev?((+last.total_eur||0)-(+prev.total_eur||0)):null;
-        el.innerHTML='<b style="font-size:15px">'+eur(last.total_eur)+'</b>'+(d!=null&&d!==0?(' <span style="color:'+(d>=0?'#059669':'#dc2626')+';font-weight:800;font-size:11px">'+(d>=0?'▲ +':'▼ ')+eur0(Math.abs(d))+'</span>'):''); }
-      else el.textContent='—';
-    }).catch(function(){ var el=document.getElementById('b4sum-coll'); if(el)el.textContent='—'; });
-    // résumé à vérifier : compteurs backlog (léger)
-    q('app_ops_health','select=key,value,detail&category=eq.backlog').then(function(bk){
-      B4BACK=Array.isArray(bk)?bk:[]; var m={}; B4BACK.forEach(function(b){m[b.key]=+b.value;});
-      var n=(m.price_A_VERIFIER||0)+(m.price_PRICE_REVIEW||0)+(m.image_WRONG_ART||0)+(m.image_REVIEW||0);
-      var el=document.getElementById('b4sum-verif'); if(el) el.innerHTML=n>0?('<b style="color:#d97706">'+n+'</b> <span style="color:var(--muted);font-size:11px">à traiter</span>'):'<b style="color:var(--muted)">0</b>';
-    }).catch(function(){ var el=document.getElementById('b4sum-verif'); if(el)el.innerHTML='<span style="color:var(--muted);font-size:11px">déplier</span>'; });
+      b4acc('marche','📈 Qu\'est-ce qui a changé ?','b4sum-marche');
+    /* b160 : la case « À valider » a été RETIRÉE de l'Accueil (elle embrouillait avec un chiffre
+       catalogue). Tout ce qui est à corriger vit désormais dans Couverture (nav principale). */
+    // résumé collection : LE MÊME total que la barre du haut (portefeuille live = cartes + scellés).
+    b4FillCollSummary(0);
     ['b4sum-buy','b4sum-marche'].forEach(function(id){ var el=document.getElementById(id); if(el) el.innerHTML='<span style="color:var(--muted);font-size:11px">déplier ▸</span>'; });
     // restaure les familles ouvertes précédemment
     b4accLoaded={};
@@ -7265,16 +7289,19 @@ const Fake = (function(){
   }
   function b4accLoad(id,body){
     if(id==='coll'){
-      var last=(B4SNAP&&B4SNAP[0])||null;
-      body.innerHTML='<div style="font-size:12.5px;color:var(--muted);line-height:1.8">Cartes <b style="color:var(--ink)">'+eur(last&&last.cards_eur)+'</b> · Scellés <b style="color:var(--ink)">'+eur(last&&last.products_eur)+'</b>'+((last&&last.cards)?' · '+last.cards+' cartes':'')+'</div>'+
+      var t=b4CollTotals();
+      if(!t.ok){ body.innerHTML='<div style="color:var(--muted);font-size:12px;padding:8px 0">Chargement de la collection…</div>'; setTimeout(function(){ if(!body.hidden) b4accLoad('coll',body); }, 500); return; }
+      body.innerHTML='<div style="font-size:12.5px;color:var(--muted);line-height:1.8">Total <b style="color:var(--ink)">'+eur0(t.total)+'</b> · Cartes <b style="color:var(--ink)">'+eur0(t.cards)+'</b> · Scellés <b style="color:var(--ink)">'+eur0(t.sealed)+'</b> · '+t.q+' cartes</div>'+
         '<div style="margin-top:9px"><button data-goto="collection" style="'+B4GOTO+'">Voir la collection complète →</button></div>'+
-        '<div style="font-size:11px;color:var(--muted);margin-top:6px">Total du dernier relevé (instantané). Le détail carte par carte est dans Collection.</div>';
+        '<div style="font-size:11px;color:var(--muted);margin-top:6px">Même total que la barre du haut (portefeuille live). Le détail carte par carte est dans Collection.</div>';
       return;
     }
     if(id==='verif'){
-      var m={}; (B4BACK||[]).forEach(function(b){m[b.key]=+b.value;});
-      var att=[['price_A_VERIFIER','Prix à vérifier'],['price_PRICE_REVIEW','Prix en revue'],['image_WRONG_ART','Images non conformes'],['image_REVIEW','Images ambiguës']];
-      body.innerHTML=att.map(function(a){var n=m[a[0]]||0;return '<div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-top:1px solid var(--line)"><span style="font-size:12.5px">'+E(a[1])+'</span><b style="font-family:ui-monospace,monospace;color:'+(n>0?'#d97706':'var(--muted)')+'">'+n+'</b></div>';}).join('')+
+      var t=b4ValiderCounts();
+      if(!t.ok){ body.innerHTML='<div style="color:var(--muted);font-size:12px;padding:8px 0">Chargement de la collection…</div>'; setTimeout(function(){ if(!body.hidden) b4accLoad('verif',body); }, 500); return; }
+      var att=[['Prix à vérifier',t.prix],['Cotes gradées à confirmer',t.grad],['Images manquantes',t.img]];
+      body.innerHTML=att.map(function(a){var n=a[1];return '<div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-top:1px solid var(--line)"><span style="font-size:12.5px">'+E(a[0])+'</span><b style="font-family:ui-monospace,monospace;color:'+(n>0?'#d97706':'var(--muted)')+'">'+n+'</b></div>';}).join('')+
+        '<div style="font-size:11px;color:var(--muted);margin-top:6px">Sur TES '+((typeof DATA!=='undefined'&&DATA)?DATA.length:'—')+' cartes. La validation rapide du Radar (flagship) est séparée, dans Couverture.</div>'+
         '<div style="margin-top:9px"><button data-goto="valider" style="'+B4GOTO+'">Aller au traitement →</button></div>';
       return;
     }
@@ -7300,8 +7327,9 @@ const Fake = (function(){
   }
 
   /* ---- NAV 5 ESPACES ---- */
-  var SPACES=[['home','🏠 Accueil'],['collection','📚 Collection'],['catalog','🗂️ Catalogue'],['buy','🎯 À acheter'],['marche','📈 Marché'],['suivi','🧾 Suivi']];
-  var SECOND=[['valider','✅ À valider'],['sets','Sets'],['objectifs','Objectifs'],['products','Produits scellés'],['ecarts','Écarts JP/EN'],['offre','Catalyseurs'],['int_fam','Familles'],['ops','Gradation'],['gradeia','Gradation IA'],['conviction','Portefeuille'],['premium','💎 Premium'],['live','Live'],['sante','Santé des données'],['couverture','🛡️ Couverture']];
+  /* b160 : Couverture remontée dans la nav principale (en haut), plus enterrée dans « Autres outils ». */
+  var SPACES=[['home','🏠 Accueil'],['couverture','🛡️ Couverture'],['collection','📚 Collection'],['catalog','🗂️ Catalogue'],['buy','🎯 À acheter'],['marche','📈 Marché'],['suivi','🧾 Suivi']];
+  var SECOND=[['valider','✅ À valider'],['sets','Sets'],['objectifs','Objectifs'],['products','Produits scellés'],['ecarts','Écarts JP/EN'],['offre','Catalyseurs'],['int_fam','Familles'],['ops','Gradation'],['gradeia','Gradation IA'],['conviction','Portefeuille'],['premium','💎 Premium'],['live','Live'],['sante','Santé des données']];
   var DELEG={collection:'collection',marche:'int_move',suivi:'achats'};
   var b4active='home';
   function navBtn(m,lbl,active){ return '<button data-b4="'+m+'" style="display:block;width:100%;text-align:left;padding:10px 14px;border:0;background:'+(active?'var(--chip)':'transparent')+';color:'+(active?'var(--ink)':'var(--muted)')+';font-weight:'+(active?'800':'700')+';font-size:13.5px;cursor:pointer;border-radius:9px">'+lbl+'</button>'; }
