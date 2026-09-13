@@ -4248,7 +4248,7 @@ async function homeBriefing(){
   }catch(e){ box.innerHTML='<div class="txt" style="color:var(--muted);font-size:13px">Erreur, réessaie.</div><button class="hbriefbtn" onclick="homeBriefing()">Réessayer</button>'; }
 }
 document.getElementById('modeSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMode(b.dataset.m);});
-const APP_VERSION='Version b163 · 13/09 — Le choix d image via la fiche (et PSA slab -> image normale) persiste ET s affiche IMMEDIATEMENT a l ouverture de la collection (cache local + recuperation en parallele, fini le delai de quelques secondes). Inclut la Couverture mobile (b161). Conserve le reste.';
+const APP_VERSION='Version b164 · 13/09 — SIMPLIFICATION PHASE 1 (menu + labels) : 6 espaces (Accueil / Collection / Catalogue / Acheter / Marche / Couverture), sous-onglets par espace, tout le reste range en Avance + Outils (0 fonction retiree, aucun renderer touche). Radar -> Manques. Ancienne nav b128 conservee en secours. Inclut b161-b163.';
 { const nv=document.getElementById('navVersion'); if(nv) nv.textContent=APP_VERSION; }
 document.getElementById('mktSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMarket(b.dataset.k);});
 const CATARRS=["catColors","catCats","catRarities","catTreats","catProvs","catEvents","catTiers","catRegions","catFinish","catSets"];
@@ -7360,17 +7360,39 @@ const Fake = (function(){
     }
   }
 
-  /* ---- NAV 5 ESPACES ---- */
-  /* b160 : Couverture remontée dans la nav principale (en haut), plus enterrée dans « Autres outils ». */
-  var SPACES=[['home','🏠 Accueil'],['couverture','🛡️ Couverture'],['collection','📚 Collection'],['catalog','🗂️ Catalogue'],['buy','🎯 À acheter'],['marche','📈 Marché'],['suivi','🧾 Suivi']];
-  var SECOND=[['valider','✅ À valider'],['sets','Sets'],['objectifs','Objectifs'],['products','Produits scellés'],['ecarts','Écarts JP/EN'],['offre','Catalyseurs'],['int_fam','Familles'],['ops','Gradation'],['gradeia','Gradation IA'],['conviction','Portefeuille'],['premium','💎 Premium'],['live','Live'],['sante','Santé des données']];
-  var DELEG={collection:'collection',marche:'int_move',suivi:'achats'};
+  /* ---- NAV 6 ESPACES (b164 / Phase 1 : menu + labels UNIQUEMENT — aucune fonction retirée,
+     aucun renderer touché. Chaque espace ouvre son 1er mode et affiche une barre de sous-onglets.
+     Les modes non rangés en sous-onglet restent atteignables via les groupes « Avancé » et « Outils »
+     du tiroir → 0 fonction devenue inaccessible. L'ancienne nav b128 reste en fallback (↺). ---- */
+  var SPACE_TABS={
+    home:[],
+    collection:[['collection','Cartes'],['ops','Gradation'],['products','Produits scellés'],['achats','Achats'],['ventes','Ventes'],['valider','À vérifier']],
+    catalog:[['catalog','Cartes du jeu'],['sets','Sets'],['objectifs','Objectifs']],
+    buy:[['buy','Opportunités'],['cibler','À cibler'],['ecarts','Comparer JP/EN'],['preachat','Avant d\'acheter']],
+    marche:[['int_move','Mouvements'],['int_new','Nouveautés & rares'],['premium','Premium & Grails'],['int_alert','Surveiller'],['offre','Catalyseurs']],
+    couverture:[['couverture','État & manques'],['sante','Santé des données']]
+  };
+  var SPACE_LIST=[['home','🏠 Accueil'],['collection','📚 Collection'],['catalog','🗂️ Catalogue'],['buy','🎯 Acheter'],['marche','📈 Marché'],['couverture','🛡️ Couverture']];
+  /* modes utiles pas encore rangés en sous-onglet (fusion = Phase 2), gardés accessibles */
+  var ADV_LIST=[['int_opp','Opportunités (marché)'],['int_fam','Familles'],['conviction','Portefeuille'],['risque','Risque'],['track','Track record'],['agenda','Agenda'],['gradation','Envois grading'],['ouvrir','Ouvrir ?']];
+  var TOOLS_LIST=[['live','Live'],['gradeia','Gradation IA'],['ia','Assistant IA']];
+  var MODE_SPACE={home:'home',couverture:'couverture'};
+  Object.keys(SPACE_TABS).forEach(function(sp){ SPACE_TABS[sp].forEach(function(t){ MODE_SPACE[t[0]]=sp; }); });
+  function firstMode(sp){ var t=SPACE_TABS[sp]; return (t&&t.length)?t[0][0]:sp; }
+  function renderSpaceTabs(sp,mode){
+    var bar=document.getElementById('subTabs'); if(!bar)return;
+    var tabs=SPACE_TABS[sp]||[];
+    if(!tabs.length){ bar.style.display='none'; bar.innerHTML=''; return; }
+    bar.style.display='flex';
+    bar.innerHTML=tabs.map(function(t){ return '<button class="subtab'+(t[0]===mode?' on':'')+'" data-spacetab="'+t[0]+'">'+E(t[1])+'</button>'; }).join('');
+  }
   var b4active='home';
   function navBtn(m,lbl,active){ return '<button data-b4="'+m+'" style="display:block;width:100%;text-align:left;padding:10px 14px;border:0;background:'+(active?'var(--chip)':'transparent')+';color:'+(active?'var(--ink)':'var(--muted)')+';font-weight:'+(active?'800':'700')+';font-size:13.5px;cursor:pointer;border-radius:9px">'+lbl+'</button>'; }
   function buildNav(){
     var nav=document.getElementById('modeSeg'); if(!nav)return;
-    var h='<div class="navgrp">BOUNTY 4.0</div>'+SPACES.map(function(x){return navBtn(x[0],x[1],x[0]===b4active);}).join('')+
-      '<div class="navgrp" style="margin-top:8px">Autres outils</div>'+SECOND.map(function(x){return navBtn(x[0],x[1],false);}).join('')+
+    var h='<div class="navgrp">Espaces</div>'+SPACE_LIST.map(function(x){return navBtn(x[0],x[1],x[0]===b4active);}).join('')+
+      '<div class="navgrp" style="margin-top:10px">Avancé · rangé en Phase 2</div>'+ADV_LIST.map(function(x){return navBtn(x[0],x[1],false);}).join('')+
+      '<div class="navgrp" style="margin-top:10px">Outils</div>'+TOOLS_LIST.map(function(x){return navBtn(x[0],x[1],false);}).join('')+
       '<button data-b4="__import" style="margin-top:10px;display:block;width:100%;text-align:left;padding:10px 14px;border:0;background:transparent;color:var(--accent);font-weight:800;font-size:13.5px;cursor:pointer;border-radius:9px">➕ Importer un achat (photo)</button>'+
       '<button data-b4="__revert" style="margin-top:14px;display:block;width:100%;text-align:left;padding:9px 14px;border:1px solid var(--line);background:var(--panel);color:var(--muted);font-weight:700;font-size:12px;cursor:pointer;border-radius:9px">↺ Revenir à l\'ancienne nav (b128)</button>'+
       '<div id="navVersion" style="margin-top:14px;padding:8px 12px 4px;font-size:11px;color:var(--muted);opacity:.8">'+E(typeof APP_VERSION!=='undefined'?APP_VERSION:'')+'</div>';
@@ -7382,17 +7404,28 @@ const Fake = (function(){
     });
   }
   function markNav(m){ var nav=document.getElementById('modeSeg'); if(!nav)return; Array.prototype.forEach.call(nav.querySelectorAll('[data-b4]'),function(b){ var a=b.getAttribute('data-b4')===m; b.style.background=a?'var(--chip)':'transparent'; b.style.color=a?'var(--ink)':'var(--muted)'; b.style.fontWeight=a?'800':'700'; }); }
+  /* goMode : ouvre un mode précis, puis affiche la barre de sous-onglets de SON espace (si espace connu).
+     Réutilise les renderers existants (renderHome4 / renderBuyHub / renderValider) ou setMode() pour tout
+     le reste — aucun renderer modifié. */
+  function goMode(mode){
+    var sp=MODE_SPACE[mode]||'';
+    if(mode==='home'){ b4active='home'; if(window.state)state.mode='b4_home'; setTitle(''); hideTools(); renderHome4(); markNav('home'); renderSpaceTabs('home','home'); return; }
+    if(mode==='buy'){ b4active='buy'; if(window.state)state.mode='b4_buy'; setTitle('Acheter'); hideTools(); renderBuyHub(); markNav('buy'); renderSpaceTabs('buy','buy'); return; }
+    if(mode==='valider'){ b4active='collection'; if(window.state)state.mode='b4_valider'; setTitle('À vérifier'); hideTools(); renderValider(); markNav('collection'); renderSpaceTabs('collection','valider'); return; }
+    b4active=sp;
+    if(typeof setMode==='function') setMode(mode);
+    if(sp){ markNav(sp); renderSpaceTabs(sp,mode);
+      var lbl=''; (SPACE_TABS[sp]||[]).forEach(function(t){ if(t[0]===mode) lbl=t[1]; });
+      var pt=document.getElementById('pageTitle'); if(pt&&lbl) pt.textContent=lbl;   /* b164 : titre lisible (pas « Intelligence ») */
+    } else { markNav(mode); }
+  }
   function go(m){
     try{ var d=document.getElementById('modeSeg'), sc=document.getElementById('navScrim'); if(d)d.classList.remove('open'); if(sc)sc.classList.remove('open'); }catch(e){}
     if(typeof markGameSeg==='function') markGameSeg(m==='naruto'?'NARUTO':'ONE_PIECE');
-    if(m==='home'){ b4active='home'; markNav('home'); if(window.state)state.mode='b4_home'; setTitle(''); hideTools(); renderHome4(); return; }
-    if(m==='buy'){ b4active='buy'; markNav('buy'); if(window.state)state.mode='b4_buy'; setTitle('À acheter'); hideTools(); renderBuyHub(); return; }
-    if(m==='naruto'){ b4active='naruto'; markNav('naruto'); if(window.state)state.mode='b4_naruto'; setTitle('🍥 Naruto'); hideTools(); renderNaruto(); return; }
-    if(m==='valider'){ b4active='valider'; markNav('valider'); if(window.state)state.mode='b4_valider'; setTitle('✅ À valider'); hideTools(); renderValider(); return; }
-    // espaces délégués + outils secondaires => modes existants
-    var target=DELEG[m]||m; b4active=(m in DELEG)?m:'';
-    markNav(b4active);
-    if(typeof setMode==='function') setMode(target);
+    if(m==='naruto'){ b4active='naruto'; markNav('naruto'); if(window.state)state.mode='b4_naruto'; setTitle('🍥 Naruto'); hideTools(); renderNaruto(); var bar=document.getElementById('subTabs'); if(bar){bar.style.display='none';bar.innerHTML='';} return; }
+    // clic sur un espace => ouvre son 1er mode ; sinon c'est un mode précis (Avancé / Outils)
+    var target=(m in SPACE_TABS)?firstMode(m):m;
+    goMode(target);
   }
   function setTitle(t){ var pt=document.getElementById('pageTitle'); if(pt)pt.textContent=t; var st=document.getElementById('subTabs'); if(st){ st.style.display='none'; st.innerHTML=''; } }
   function hideTools(){ ['viewBtn','filterBtn','sortBtn','scanFab'].forEach(function(id){var e=document.getElementById(id); if(e)e.classList.add('hidden');}); var sr=document.querySelector('.search'); if(sr)sr.classList.add('hidden'); }
@@ -7408,6 +7441,8 @@ const Fake = (function(){
     if(at){ b4accToggle(at.getAttribute('data-acctoggle')); return; }
     var gt=ev.target.closest('[data-goto]');
     if(gt){ go(gt.getAttribute('data-goto')); return; }
+    var stb=ev.target.closest('[data-spacetab]');   /* b164 : sous-onglet d'un espace */
+    if(stb){ goMode(stb.getAttribute('data-spacetab')); return; }
   });
 
   /* boot : si flag ON, remplace la nav et ouvre l'accueil décisionnel.
@@ -7801,7 +7836,7 @@ const Fake = (function(){
         '<td class="raction">'+esc(r.recommended_action||'')+'</td>'+
         '<td><button class="rd-open" type="button" data-refid="'+esc(r.reference_id||'')+'" data-cn="'+esc(r.card_number||'')+'">Traiter</button></td></tr>';
     }).join('');
-    var btn=document.getElementById('radarAll'); if(btn){ btn.style.display=(rows.length>LIM)?'inline-block':'none'; btn.textContent=radarShowAll?'Réduire':('Voir tout le Radar ('+rows.length+')'); }
+    var btn=document.getElementById('radarAll'); if(btn){ btn.style.display=(rows.length>LIM)?'inline-block':'none'; btn.textContent=radarShowAll?'Réduire':('Voir tous les manques ('+rows.length+')'); }
   }
   function loadRadar(){
     radarShowAll=false;
@@ -8333,7 +8368,7 @@ const Fake = (function(){
       '<div class="disclaimer">⚠ Couverture mesurée <b>uniquement sur les référentiels externes disponibles</b>. '+
         'Ce n\'est pas « X % du catalogue complet » : les familles non bornées apparaissent explicitement.</div>'+
       '<div class="cov-health" id="covHealth">🩺 …</div>'+
-      '<div class="cov-card cov-radar"><h2>🚨 Radar nouvelles cartes</h2>'+
+      '<div class="cov-card cov-radar"><h2>🚨 Manques — nouvelles cartes à traiter</h2>'+
         '<div class="radar-summary" id="radarSummary"></div>'+
         '<div class="filters">'+
           '<select id="rFam"><option value="">Toutes familles</option></select>'+
@@ -8354,12 +8389,12 @@ const Fake = (function(){
           '<th class="num">Prio</th><th>Statut</th><th>Famille</th><th>Carte</th><th>Perso</th><th>Rég.</th>'+
           '<th>Preuve</th><th>Event / Tier</th><th>Lang</th><th class="num">Src</th><th>Coll.</th><th>Action</th><th></th>'+
         '</tr></thead><tbody id="radarbody"></tbody></table></div>'+
-        '<div style="padding:10px 14px"><button id="radarAll" class="radar-btn" type="button">Voir tout le Radar</button></div>'+
+        '<div style="padding:10px 14px"><button id="radarAll" class="radar-btn" type="button">Voir tous les manques</button></div>'+
       '</div>'+
       '<div class="legend">'+
-        '<span><i class="dot g"></i>VERIFIED_OFFICIAL — preuve officielle A/B (compte dans « prouvé »)</span>'+
-        '<span><i class="dot o"></i>MANUAL_REVIEWED — fortement documenté, non officiel (« documenté » séparé)</span>'+
-        '<span><i class="dot gr"></i>REVIEW — incertain / marketplace / suspect</span>'+
+        '<span><i class="dot g"></i>Confirmé — preuve officielle A/B (compte dans « prouvé »)</span>'+
+        '<span><i class="dot o"></i>Documenté — fortement documenté, non officiel (compté à part)</span>'+
+        '<span><i class="dot gr"></i>À vérifier — incertain / marketplace / suspect</span>'+
       '</div>'+
       '<div class="cov-card"><h2>Couverture par famille</h2>'+
         '<div class="famsum" id="sumcards"></div>'+
