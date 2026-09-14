@@ -4267,7 +4267,7 @@ async function homeBriefing(){
   }catch(e){ box.innerHTML='<div class="txt" style="color:var(--muted);font-size:13px">Erreur, réessaie.</div><button class="hbriefbtn" onclick="homeBriefing()">Réessayer</button>'; }
 }
 document.getElementById('modeSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMode(b.dataset.m);});
-const APP_VERSION='Version b166 · 14/09 — OBJECTIFS PERSONNAGE : matching sur le nom CANONIQUE (vue app_card_names) au lieu du nom affiche → les cartes a nom localise (CN/EN) et les exclusivites des autres langues entrent bien dans l\'objectif (ex. P-066 promo CN). Inclut b165 (header mobile) + b161-b164.';
+const APP_VERSION='Version b166 · 14/09 — OBJECTIFS PERSONNAGE : (1) matching sur le nom CANONIQUE (vue app_card_names) → cartes a nom localise incluses ; (2) exclusivites autres langues = impressions non-JP PROMO/BATTLE_EVENT/PRODUCT_EXCLUSIVE/PREMIUM_COLLECTION gardees (les reprints STANDARD d\'un numero deja en JP restent ecartes) ; (3) detail d\'objectif : classification + filtre par LANGUE (Toutes / JP / EN / CN avec compte), combinable avec les filtres existants. Inclut b165 (header mobile) + b161-b164.';
 { const nv=document.getElementById('navVersion'); if(nv) nv.textContent=APP_VERSION; }
 /* b165 : région (#mktSeg) déplacée dans le tiroir, boutons câblés en onclick inline (setMarket) — plus de délégation ici */
 const CATARRS=["catColors","catCats","catRarities","catTreats","catProvs","catEvents","catTiers","catRegions","catFinish","catSets"];
@@ -5878,12 +5878,18 @@ function goalParams(g){
 function goalPx(r){ if(r.price_eur!=null) return Number(r.price_eur); if(r.jp_eur!=null) return Number(r.jp_eur); if(r.eu_eur!=null) return Number(r.eu_eur); if(r.us_eur!=null) return Number(r.us_eur); return null; }
 // Mode COMPLET : une seule ligne par carte unique (numéro+variante), JP prioritaire, + exclusifs des autres langues.
 // « Possédée » = possédée dans N'IMPORTE quelle langue (donc les chinoises comptent).
+// b166 : "exclusivité d'une autre langue" = impression non-JP qui est une vraie sortie régionale
+// (promo / event / produit exclusif / premium collection) OU dont le numéro n'existe pas en JP,
+// + tout ce que Christopher possède. Les simples reprints STANDARD d'un numéro déjà en JP sont écartés.
+const GOAL_EXCL_ORIGINS=new Set(['PROMO','BATTLE_EVENT','PRODUCT_EXCLUSIVE','PREMIUM_COLLECTION']);
 function goalDedup(rows){
-  // « Tout sans exception » = toutes les cartes JP + les cartes d'une AUTRE langue dont le
-  // numéro n'existe PAS du tout en JP (vraie exclusive) + celles que Christopher possède.
-  // On ne tente PLUS d'apparier une variante EN à sa jumelle JP (taxonomie non fiable : SP↔Special Alt Art…).
   const jpNums=new Set(rows.filter(r=>r.language==='JP').map(r=>String(r.card_number||'')));
-  return rows.filter(r=> r.language==='JP' || !jpNums.has(String(r.card_number||'')) || r.owned );
+  return rows.filter(function(r){
+    return r.language==='JP'
+      || !jpNums.has(String(r.card_number||''))
+      || GOAL_EXCL_ORIGINS.has(String(r.origin||''))
+      || r.owned;
+  });
 }
 async function ensurePcImages(){
   // Les images PriceCharting (art correct par variante) ne sont chargées que par le flux collection.
@@ -5912,7 +5918,7 @@ async function goalRows(g){
   let params;
   if(g.kind==='personnage'){ params=await goalParamsPerso(g); if(params===null) return []; }
   else params=goalParams(g);
-  const url=SB+'/rest/v1/app_catalog_priced?select=printing_id,card_number,name,variant,variant_label,rarity,set_code,set_name,language,color,category,owned,jp_eur,eu_eur,us_eur,price_eur,price_source,image_url,treatment_family,event_family,event_tier,event_circuit,treatment_family_v2,treatment_tags,provenance_family_live,distribution_region,printed_language&limit='+lim+params;
+  const url=SB+'/rest/v1/app_catalog_priced?select=printing_id,card_number,name,variant,variant_label,rarity,set_code,set_name,language,color,category,owned,origin,jp_eur,eu_eur,us_eur,price_eur,price_source,image_url,treatment_family,event_family,event_tier,event_circuit,treatment_family_v2,treatment_tags,provenance_family_live,distribution_region,printed_language&limit='+lim+params;
   try{ await ensurePcImages(); const r=await fetch(url,{headers:{apikey:ANON,Authorization:'Bearer '+ANON}}); const j=await r.json(); let rows=Array.isArray(j)?j:[]; if(g.language==='COMPLET') rows=goalDedup(rows); return rows; }catch(e){ return []; }
 }
 function goalKindLabel(g){ return g.kind==='personnage'?('Personnage · '+g.value):(g.kind==='set'?('Set · '+g.value):(g.kind==='traitement'?('Famille · '+(TREAT_LABELS[g.value]||g.value)):(g.kind==='rarete'?('Rareté · '+(RAR_LABELS[g.value]||g.value)):('Type · '+((typeof GOAL_TYPE_LABEL!=='undefined'&&GOAL_TYPE_LABEL[g.value])||g.value))))); }
@@ -5940,7 +5946,7 @@ async function computeGoalCard(g,i){
     '<div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px"><span style="font-weight:700;font-size:12.5px">'+goalMotiv(pct,missing)+'</span>'+(missing>0&&remain>0?('<span class="dt" style="font-size:11.5px;white-space:nowrap">≈ '+eur0(remain)+'</span>'):'')+'</div>';
 }
 let GOAL_CUR=null, GOAL_VIEW=[];
-const GV={view:'grid',sort:'price_desc',filter:'all',showPrice:true,supplier:false};
+const GV={view:'grid',sort:'price_desc',filter:'all',lang:'all',showPrice:true,supplier:false};
 const GV_SORTS=[['missing','À chasser d’abord'],['owned','Possédées d’abord'],['price_desc','Prix ↓'],['price_asc','Prix ↑'],['num','Numéro']];
 function goalImgUrl(r){
   // 1) Priorité à l'image PriceCharting/officielle par variante (art correct).
@@ -5968,7 +5974,7 @@ function goalMotiv(pct,missing){
 }
 async function openGoalDetail(id){
   const g=GOALS.find(x=>String(x.id)===String(id)); if(!g) return;
-  GOAL_CUR=g; GV.supplier=false;
+  GOAL_CUR=g; GV.supplier=false; GV.lang='all';
   const st=document.getElementById('stage');
   st.innerHTML='<div style="padding:2px"><button onclick="setMode(\'objectifs\')" style="border:0;background:transparent;color:var(--accent);font-weight:800;cursor:pointer;font-size:14px;padding:4px 0">‹ Objectifs</button><div id="goalHead" style="margin-top:8px"></div><div id="goalDetWrap"><div class="dt" style="padding:12px">Calcul…</div></div></div>';
   const rows=await goalRows(g); GOALDETAIL=rows;
@@ -5996,6 +6002,7 @@ function goalViewArray(){
   let a=(GOALDETAIL||[]).slice();
   if(GV.filter==='missing') a=a.filter(r=>!r.owned);
   else if(GV.filter==='owned') a=a.filter(r=>r.owned);
+  if(GV.lang && GV.lang!=='all') a=a.filter(r=>String(r.language||'')===GV.lang);  /* b166 : filtre langue */
   const px=r=>goalPx(r)||0;
   if(GV.sort==='missing') a.sort((x,y)=>((x.owned?1:0)-(y.owned?1:0))||(px(y)-px(x)));
   else if(GV.sort==='owned') a.sort((x,y)=>((y.owned?1:0)-(x.owned?1:0))||(px(y)-px(x)));
@@ -6021,6 +6028,15 @@ function renderGoalDetailBody(){
   } else {
     const chip=(k,v,lbl)=>'<div class="chip'+(GV[k]===v?' on':'')+'" onclick="setGV(\''+k+'\',\''+v+'\')">'+lbl+'</div>';
     const btn=(on,onclick,txt)=>'<button onclick="'+onclick+'" style="border:1px solid '+(on?'var(--accent)':'var(--line)')+';background:'+(on?'rgba(193,147,56,.12)':'var(--panel)')+';color:var(--ink);border-radius:8px;padding:6px 9px;cursor:pointer;font-size:13px;font-weight:700">'+txt+'</button>';
+    /* b166 : classification + filtre par langue (objectifs multi-langues) */
+    var _lc={}; (GOALDETAIL||[]).forEach(function(r){ var L=String(r.language||'?'); _lc[L]=(_lc[L]||0)+1; });
+    var _lk=Object.keys(_lc); var _ord=['JP','EN','CN']; _lk.sort(function(a,b){ var ia=_ord.indexOf(a),ib=_ord.indexOf(b); return (ia<0?9:ia)-(ib<0?9:ib); });
+    var _fl=(typeof FLAG!=='undefined'&&FLAG)?FLAG:{JP:'🇯🇵',EN:'🇺🇸',CN:'🇨🇳'};
+    var _lchip=function(v,lbl){ return '<div class="chip'+(((GV.lang||'all')===v)?' on':'')+'" onclick="setGV(\'lang\',\''+v+'\')">'+lbl+'</div>'; };
+    var langBar=(_lk.length>1)?('<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin:0 0 8px">'+
+        _lchip('all','🌍 Toutes ('+(GOALDETAIL||[]).length+')')+
+        _lk.map(function(L){ return _lchip(L,(_fl[L]||'🏳️')+' '+L+' ('+_lc[L]+')'); }).join('')+
+      '</div>'):'';
     bar='<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin:14px 0 8px">'+
       chip('filter','all','Toutes')+chip('filter','missing','À chasser')+chip('filter','owned','Possédées')+
       '<select onchange="setGV(\'sort\',this.value)" style="margin-left:auto;padding:6px 8px;border:1px solid var(--line);border-radius:8px;background:var(--panel);color:var(--ink);font-weight:700;font-size:12px">'+GV_SORTS.map(s=>'<option value="'+s[0]+'"'+(GV.sort===s[0]?' selected':'')+'>'+s[1]+'</option>').join('')+'</select>'+
@@ -6028,6 +6044,7 @@ function renderGoalDetailBody(){
       btn(GV.view==='grid',"setGV('view','grid')",'▦')+
       btn(GV.view==='list',"setGV('view','list')",'☰')+
     '</div>'+
+    langBar+
     '<div style="display:flex;gap:8px;margin-bottom:10px">'+
       '<button onclick="setGV(\'supplier\',true)" style="flex:1;border:1px solid var(--accent);background:rgba(193,147,56,.08);color:var(--accent);font-weight:800;padding:9px;border-radius:10px;cursor:pointer;font-size:12.5px">📤 Vue fournisseur</button>'+
       '<button onclick="goalCopyList()" style="flex:1;border:1px solid var(--accent);background:rgba(193,147,56,.08);color:var(--accent);font-weight:800;padding:9px;border-radius:10px;cursor:pointer;font-size:12.5px">📋 Copier la liste</button>'+
