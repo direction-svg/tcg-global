@@ -42,6 +42,19 @@ body{font-family:'Sora',-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helve
 .wrap{position:relative;z-index:1}
 .grow{flex:1}
 .iconbtn{border:1px solid var(--line);background:var(--panel);color:var(--ink);width:40px;height:40px;border-radius:12px;font-size:17px;cursor:pointer;flex:none}
+/* b165 — header simplifié : puce région (ouvre le tiroir), réglages région+thème rangés dans le menu */
+.topbar{min-width:0}
+.topbar .logo{min-width:0;overflow:hidden}
+.regchip{flex:none;border:1px solid var(--line);background:var(--chip);color:var(--ink);font-weight:800;font-size:13px;padding:9px 12px;border-radius:11px;cursor:pointer;white-space:nowrap;line-height:1}
+.navset{padding:2px 2px 8px;border-bottom:1px solid var(--line);margin-bottom:8px}
+.mktseg-drawer{display:flex;width:100%;margin-top:5px;box-sizing:border-box}
+.mktseg-drawer button{flex:1;justify-content:center;text-align:center;font-size:13px;padding:7px 6px}
+.navsetrow{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 8px 2px;color:var(--ink);font-weight:700;font-size:13.5px}
+@media(max-width:440px){
+  .topbar{gap:7px}
+  #gameSeg button{padding:5px 7px;font-size:11.5px}
+  .regchip{padding:8px 9px;font-size:12px}
+}
 .stats{display:flex;gap:10px;margin-top:12px}
 .stat{flex:1;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:10px 12px;box-shadow:var(--shadow)}
 .stat .k{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
@@ -854,18 +867,22 @@ body{-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
         <button data-game="NARUTO" onclick="gameSwitch('NARUTO')">🍥 Naruto</button>
       </div>
       <div class="grow"></div>
-      <div class="mktseg" id="mktSeg" title="Marché de valorisation">
-        <button data-k="JP" class="on">🇯🇵 JP</button>
-        <button data-k="EU">🇪🇺 EU</button>
-        <button data-k="US">🇺🇸 US</button>
-      </div>
-      <button class="iconbtn" id="themeBtn" title="Th&egrave;me">&#9790;</button>
+      <button class="regchip" id="mktActive" title="Marché de valorisation — ouvrir le menu" aria-label="Marché, ouvrir le menu" onclick="toggleNav()">🇯🇵 JP</button>
     </div>
     <div class="minibar" id="miniBar"></div>
   </div>
 
   <div class="navscrim" id="navScrim" onclick="closeNav()"></div>
   <nav class="navdrawer" id="modeSeg" aria-label="Navigation principale">
+    <div class="navset">
+      <div class="navgrp">Marché de valorisation</div>
+      <div class="mktseg mktseg-drawer" id="mktSeg" title="Marché">
+        <button data-k="JP" class="on" onclick="event.stopPropagation();setMarket('JP')">🇯🇵 JP</button>
+        <button data-k="EU" onclick="event.stopPropagation();setMarket('EU')">🇪🇺 EU</button>
+        <button data-k="US" onclick="event.stopPropagation();setMarket('US')">🇺🇸 US</button>
+      </div>
+      <div class="navsetrow"><span>Thème clair / sombre</span><button class="iconbtn" id="themeBtn" title="Thème" onclick="event.stopPropagation();toggleTheme()">&#9790;</button></div>
+    </div>
     <div class="navgrp">Tableau de bord</div>
     <button data-m="accueil" class="on">Accueil</button>
     <div class="navgrp">Ma collection</div>
@@ -1334,7 +1351,7 @@ function provenanceFamily(c){
   if(/^DON/.test(num) && !(nm==='don!!' && lab==='')) return 'promo';   // DON spéciaux (Gold perso, foil premium, Rainbow…) = promo ; DON!! de jeu = base
   return 'base';                 // set principal (normale + alt-art de série, etc.)
 }
-function variantFamily(c){ return treatmentFamily(c); }   // compat
+/* b165 dead-code: variantFamily (alias compat) supprimée (0 référence) */
 // b137 : TOURNOI — familles/tiers structurés (backend event_family, none/na déjà neutralisés en NULL par les vues)
 const EVENT_FAM_LABELS={flagship:"Flagship",championship:"Championship",regional:"Regional",store_championship:"Store Championship",store:"Store",standard_battle:"Standard Battle",sealed_battle:"Sealed Battle",deck_battle:"Deck Battle",treasure_cup:"Treasure Cup",tournament_pack:"Tournament Pack",release_event:"Release Event",judge:"Judge",anniversary_event:"Anniversary Event"};
 const EVENT_FAM_ORDER=["flagship","championship","regional","store_championship","store","standard_battle","sealed_battle","deck_battle","treasure_cup","tournament_pack","release_event","judge","anniversary_event"];
@@ -1564,6 +1581,8 @@ function setMarket(k){
   if(!MKT_FIELD[k]||k===MKT) { if(k) MKT=k; }
   MKT=k;
   document.querySelectorAll('#mktSeg button').forEach(b=>b.classList.toggle('on',b.dataset.k===k));
+  try{ window.MKT=k; }catch(e){}
+  { var _mc=document.getElementById('mktActive'); if(_mc){ var _f={JP:'🇯🇵',EU:'🇪🇺',US:'🇺🇸'}; _mc.textContent=(_f[k]||'')+' '+k; } }  /* b165 : puce région dans le header reflète le marché actif */
   const m=state.mode;
   if(m==='accueil') renderHome();
   else if(m==='collection') render();
@@ -2394,7 +2413,7 @@ const CONV_BUCKETS={
 const CONV_ORDER=['coeur','garder','surveiller','alleger','bulk'];
 function convOpen(id){ const c=(DATALOADED?DATA:[]).find(x=>String(x.item_id)===String(id)); if(c) openDetail(c); }
 function convMomBar(p){ if(p==null) return 50; return 50+Math.max(-30,Math.min(30,+p)); }
-function convRarWord(s){ return s>=95?'rareté au sommet':s>=85?'grande rareté':s>=70?'rare':s>=55?'promo / peu commune':s>=40?'peu rare':'commune'; }
+/* b165 dead-code: convRarWord supprimée (0 référence) */
 async function loadConvMap(force){
   if(CONVLOADED && !force) return;
   try{
@@ -3258,7 +3277,7 @@ function grTier(company, declaredEUR){
   if(company==='BGS'){ const usd=(declaredEUR||0)/GR_FX; let row=BGS_TIERS[BGS_TIERS.length-1]; for(const r of BGS_TIERS){ if(usd<=r[0]){ row=r; break; } } return {feeEUR:row[1]*GR_FX, label:row[2]}; }
   let row=PSA_TIERS[PSA_TIERS.length-1]; for(const r of PSA_TIERS){ if((declaredEUR||0)<=r[0]){ row=r; break; } } return {feeEUR:row[1], label:row[2]};
 }
-function gradingFeeEUR(company, declaredEUR){ return grTier(company,declaredEUR).feeEUR + GR_SHIP; }
+/* b165 dead-code: gradingFeeEUR supprimée (0 référence) */
 function grSetFeeCo(v){ GR_FEECO=v; renderGrading(); }
 function grSetShip(v){ const n=parseFloat(v); GR_SHIP=isNaN(n)?0:n; renderGrading(); }
 function grRaw(x){ const f=MKT.toLowerCase(); const v=x['raw_'+f]; return v!=null?Number(v):(x.mv_eur!=null?Number(x.mv_eur):0); }
@@ -3794,7 +3813,7 @@ function heroSpark(snaps){
     '<circle cx="'+lp[0].toFixed(1)+'" cy="'+lp[1].toFixed(1)+'" r="3.6" fill="#fff" style="filter:drop-shadow(0 0 5px rgba(255,255,255,.9))"/></svg>';
 }
 function nhAsk(){ const i=document.getElementById('nhAskInput'); const q=i?(i.value||'').trim():''; if(!q)return; if(i)i.value=''; setMode('ia'); setTimeout(function(){ try{iaSubmit(q);}catch(e){} },80); }
-function nhAskKey(e){ if(e.key==='Enter'){ e.preventDefault(); nhAsk(); } }
+/* b165 dead-code: nhAskKey supprimée (0 référence) */
 function homeChart(snaps){
   if(!snaps||snaps.length<2) return '<div class="chdates" style="justify-content:center;padding:14px 0">La courbe se remplit chaque jour (un relevé par nuit). Reviens demain pour voir l’évolution.</div>';
   const W=328,H=118,pad=5;
@@ -4248,15 +4267,15 @@ async function homeBriefing(){
   }catch(e){ box.innerHTML='<div class="txt" style="color:var(--muted);font-size:13px">Erreur, réessaie.</div><button class="hbriefbtn" onclick="homeBriefing()">Réessayer</button>'; }
 }
 document.getElementById('modeSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMode(b.dataset.m);});
-const APP_VERSION='Version b164 · 13/09 — SIMPLIFICATION PHASE 1 (menu + labels) : 6 espaces (Accueil / Collection / Catalogue / Acheter / Marche / Couverture), sous-onglets par espace, tout le reste range en Avance + Outils (0 fonction retiree, aucun renderer touche). Radar -> Manques. Ancienne nav b128 conservee en secours. Inclut b161-b163.';
+const APP_VERSION='Version b165 · 14/09 — HEADER MOBILE CORRIGE : region (JP/EU/US) et theme ranges dans le tiroir, puce region active dans le header (ouvre le menu), 0 overflow horizontal a 390px et largeurs iPhone mini. Aucune fonction retiree. Inclut b161-b164 (Phase 1 menu).';
 { const nv=document.getElementById('navVersion'); if(nv) nv.textContent=APP_VERSION; }
-document.getElementById('mktSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMarket(b.dataset.k);});
+/* b165 : région (#mktSeg) déplacée dans le tiroir, boutons câblés en onclick inline (setMarket) — plus de délégation ici */
 const CATARRS=["catColors","catCats","catRarities","catTreats","catProvs","catEvents","catTiers","catRegions","catFinish","catSets"];
 const FINISH_LABELS={parallel:"Parallèle",super_parallel:"Super Parallèle",full_art:"Full Art",gold:"Gold",silver:"Silver",textured:"Texturée",foil:"Foil",jolly:"Jolly Roger",wanted:"Wanted"};
 const REGION_LABELS={ASIA:"Asie",CN:"Chine",EN_WW:"EN / Worldwide",JP:"Japon"};
 const FINISH_ORDER=["parallel","super_parallel","full_art","gold","silver","textured","foil","jolly","wanted"];
 function finishChips(c){ var f=c&&c.finish_tags; if(!Array.isArray(f)||!f.length) return ''; var st='display:inline-block;padding:1px 7px;margin:1px 3px 1px 0;border-radius:9px;font-size:11px;font-weight:700;background:rgba(120,120,140,.16);color:var(--muted)'; return f.slice().sort().map(function(t){ return '<span style="'+st+'">'+esc(FINISH_LABELS[t]||t)+'</span>'; }).join(''); }
-function finishRow(c){ var h=finishChips(c); return h?('<div class="s" style="margin-top:3px">✨ '+h+'</div>'):''; }
+/* b165 dead-code: finishRow supprimée (0 référence) */
 function errataBadge(c){ return (c&&c.is_errata)?'<span style="display:inline-block;padding:1px 7px;border-radius:9px;font-size:11px;font-weight:800;background:rgba(220,120,40,.18);color:#c8781e">Errata</span>':''; }
 function toggleCat(key,code){ if(code==="all"){ state[key]=[]; } else { const a=state[key]; state[key]=a.includes(code)?a.filter(x=>x!==code):a.concat([code]); } }
 function catActiveCount(){ return state.catColors.length+state.catCats.length+state.catRarities.length+state.catTreats.length+state.catProvs.length+state.catEvents.length+state.catTiers.length+state.catRegions.length+state.catFinish.length+state.catSets.length; }
@@ -5348,7 +5367,8 @@ document.getElementById("mChar").addEventListener("change",e=>{state.character=e
 document.getElementById("mVariant").addEventListener("change",e=>{state.variant=e.target.value;afterFilter()});
 document.getElementById("viewBtn").addEventListener("click",()=>{ state.view=state.view==="grid"?"list":"grid"; document.getElementById("viewBtn").innerHTML=state.view==="grid"?"▦":"☰"; render(); });
 function applyThemeIcon(){ const d=document.documentElement.classList.contains("dark"); const b=document.getElementById("themeBtn"); if(b){ b.innerHTML=d?"&#9728;&#65038;":"&#9790;"; b.title=d?"Passer en mode jour":"Passer en mode nuit"; } }
-document.getElementById("themeBtn").addEventListener("click",()=>{ const d=document.documentElement.classList.toggle("dark"); try{ localStorage.setItem("tcg-theme",d?"dark":"light"); }catch(e){} applyThemeIcon(); });
+function toggleTheme(){ const d=document.documentElement.classList.toggle("dark"); try{ localStorage.setItem("tcg-theme",d?"dark":"light"); }catch(e){} applyThemeIcon(); }
+window.toggleTheme=toggleTheme;
 applyThemeIcon();
 [["smodal",closeSort],["fmodal",closeFilters]].forEach(([id,fn])=>document.getElementById(id).addEventListener("click",e=>{ if(e.target.id===id)fn(); }));
 
@@ -6156,7 +6176,7 @@ var PMX={tab:'dash',loaded:false,universe:[],owned:[],missing:[],grails:[],reco:
   colFam:'',colLang:'',colTier:'',colGrade:'',colPrice:'',colSort:'val',colQ:''};
 
 async function pmFetch(view,qs){ var r=await fetch(SB+'/rest/v1/'+view+'?'+qs,{headers:{apikey:ANON,Authorization:'Bearer '+ANON}}); if(!r.ok) throw new Error(view+' '+r.status); return r.json(); }
-function pmNum(v){ return (v===null||v===undefined)?null:Number(v); }
+/* b165 dead-code: pmNum supprimée (0 référence) */
 function pmEur(v){ return (v===null||v===undefined)?'<span style="color:#e0685f;font-size:11px">PRICE REVIEW</span>':(Number(v).toLocaleString('fr-FR',{maximumFractionDigits:0})+' €'); }
 function pmTier(t){ var c=t==='S+'?'#e6c877':t==='S'?'#d9b44a':t==='A'?'#b9a06a':'#9aa0aa'; return '<b style="color:'+c+'">'+esc(t||'')+'</b>'; }
 function pmGradeTxt(r){ return r.owned_grade?((esc(r.owned_company||'')+' '+esc(String(r.owned_grade))).trim()):'RAW'; }
@@ -7390,13 +7410,23 @@ const Fake = (function(){
   function navBtn(m,lbl,active){ return '<button data-b4="'+m+'" style="display:block;width:100%;text-align:left;padding:10px 14px;border:0;background:'+(active?'var(--chip)':'transparent')+';color:'+(active?'var(--ink)':'var(--muted)')+';font-weight:'+(active?'800':'700')+';font-size:13.5px;cursor:pointer;border-radius:9px">'+lbl+'</button>'; }
   function buildNav(){
     var nav=document.getElementById('modeSeg'); if(!nav)return;
-    var h='<div class="navgrp">Espaces</div>'+SPACE_LIST.map(function(x){return navBtn(x[0],x[1],x[0]===b4active);}).join('')+
+    var h='<div class="navset">'+
+        '<div class="navgrp">Marché de valorisation</div>'+
+        '<div class="mktseg mktseg-drawer" id="mktSeg" title="Marché">'+
+          '<button data-k="JP" onclick="event.stopPropagation();setMarket(\'JP\')">🇯🇵 JP</button>'+
+          '<button data-k="EU" onclick="event.stopPropagation();setMarket(\'EU\')">🇪🇺 EU</button>'+
+          '<button data-k="US" onclick="event.stopPropagation();setMarket(\'US\')">🇺🇸 US</button>'+
+        '</div>'+
+        '<div class="navsetrow"><span>Thème clair / sombre</span><button class="iconbtn" id="themeBtn" title="Thème" onclick="event.stopPropagation();toggleTheme()">&#9790;</button></div>'+
+      '</div>'+
+      '<div class="navgrp">Espaces</div>'+SPACE_LIST.map(function(x){return navBtn(x[0],x[1],x[0]===b4active);}).join('')+
       '<div class="navgrp" style="margin-top:10px">Avancé · rangé en Phase 2</div>'+ADV_LIST.map(function(x){return navBtn(x[0],x[1],false);}).join('')+
       '<div class="navgrp" style="margin-top:10px">Outils</div>'+TOOLS_LIST.map(function(x){return navBtn(x[0],x[1],false);}).join('')+
       '<button data-b4="__import" style="margin-top:10px;display:block;width:100%;text-align:left;padding:10px 14px;border:0;background:transparent;color:var(--accent);font-weight:800;font-size:13.5px;cursor:pointer;border-radius:9px">➕ Importer un achat (photo)</button>'+
       '<button data-b4="__revert" style="margin-top:14px;display:block;width:100%;text-align:left;padding:9px 14px;border:1px solid var(--line);background:var(--panel);color:var(--muted);font-weight:700;font-size:12px;cursor:pointer;border-radius:9px">↺ Revenir à l\'ancienne nav (b128)</button>'+
       '<div id="navVersion" style="margin-top:14px;padding:8px 12px 4px;font-size:11px;color:var(--muted);opacity:.8">'+E(typeof APP_VERSION!=='undefined'?APP_VERSION:'')+'</div>';
     nav.innerHTML=h;
+    try{ var _mk=(window.MKT||'JP'); nav.querySelectorAll('#mktSeg button').forEach(function(b){ b.classList.toggle('on', b.getAttribute('data-k')===_mk); }); if(typeof applyThemeIcon==='function') applyThemeIcon(); }catch(e){}
     nav.addEventListener('click',function(ev){ var b=ev.target.closest('[data-b4]'); if(!b)return; var m=b.getAttribute('data-b4');
       if(m==='__revert'){ setOn(false); location.reload(); return; }
       if(m==='__import'){ try{ var d=document.getElementById('modeSeg'),sc=document.getElementById('navScrim'); if(d)d.classList.remove('open'); if(sc)sc.classList.remove('open'); }catch(e){} if(typeof openPurImport==='function') openPurImport(); return; }
