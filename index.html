@@ -4267,7 +4267,7 @@ async function homeBriefing(){
   }catch(e){ box.innerHTML='<div class="txt" style="color:var(--muted);font-size:13px">Erreur, réessaie.</div><button class="hbriefbtn" onclick="homeBriefing()">Réessayer</button>'; }
 }
 document.getElementById('modeSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMode(b.dataset.m);});
-const APP_VERSION='Version b165 · 14/09 — HEADER MOBILE CORRIGE : region (JP/EU/US) et theme ranges dans le tiroir, puce region active dans le header (ouvre le menu), 0 overflow horizontal a 390px et largeurs iPhone mini. Aucune fonction retiree. Inclut b161-b164 (Phase 1 menu).';
+const APP_VERSION='Version b166 · 14/09 — OBJECTIFS PERSONNAGE : matching sur le nom CANONIQUE (vue app_card_names) au lieu du nom affiche → les cartes a nom localise (CN/EN) et les exclusivites des autres langues entrent bien dans l\'objectif (ex. P-066 promo CN). Inclut b165 (header mobile) + b161-b164.';
 { const nv=document.getElementById('navVersion'); if(nv) nv.textContent=APP_VERSION; }
 /* b165 : région (#mktSeg) déplacée dans le tiroir, boutons câblés en onclick inline (setMarket) — plus de délégation ici */
 const CATARRS=["catColors","catCats","catRarities","catTreats","catProvs","catEvents","catTiers","catRegions","catFinish","catSets"];
@@ -5890,9 +5890,29 @@ async function ensurePcImages(){
   // Sur la page Objectifs on peut arriver avant : on garantit qu'elles sont là AVANT d'afficher.
   try{ if(!PCIMG || !Object.keys(PCIMG).length){ await loadPcImages(); } }catch(e){}
 }
+/* b166 — objectif PERSONNAGE : matcher sur le nom CANONIQUE (app_card_names) et non le nom affiché.
+   On récupère d'abord tous les numéros dont le nom canonique contient le personnage, puis on filtre le
+   catalogue PAR NUMÉRO. Ainsi les cartes à nom localisé (CN/EN) et les exclusivités des autres langues
+   sont bien incluses dans l'objectif (avant, le filtre sur le nom affiché chinois les ratait). */
+async function goalParamsPerso(g){
+  var p='';
+  if(g.language && g.language!=='ALL' && g.language!=='COMPLET') p+='&language=eq.'+encodeURIComponent(g.language);
+  var nums=[];
+  try{
+    var rn=await fetch(SB+'/rest/v1/app_card_names?select=card_number&card_name=ilike.'+encodeURIComponent('%'+g.value+'%'),{headers:{apikey:ANON,Authorization:'Bearer '+ANON}});
+    var jn=await rn.json();
+    nums=Array.from(new Set((Array.isArray(jn)?jn:[]).map(function(x){return x.card_number;}).filter(Boolean)));
+  }catch(e){ return '&name=ilike.'+encodeURIComponent('%'+g.value+'%'); } /* repli : ancien comportement si la vue échoue */
+  if(!nums.length) return null;
+  p+='&card_number=in.('+nums.map(function(n){return encodeURIComponent(n);}).join(',')+')';
+  return p;
+}
 async function goalRows(g){
   const lim=(g.language==='COMPLET'||g.language==='ALL')?6000:3000;
-  const url=SB+'/rest/v1/app_catalog_priced?select=printing_id,card_number,name,variant,variant_label,rarity,set_code,set_name,language,color,category,owned,jp_eur,eu_eur,us_eur,price_eur,price_source,image_url,treatment_family,event_family,event_tier,event_circuit,treatment_family_v2,treatment_tags,provenance_family_live,distribution_region,printed_language&limit='+lim+goalParams(g);
+  let params;
+  if(g.kind==='personnage'){ params=await goalParamsPerso(g); if(params===null) return []; }
+  else params=goalParams(g);
+  const url=SB+'/rest/v1/app_catalog_priced?select=printing_id,card_number,name,variant,variant_label,rarity,set_code,set_name,language,color,category,owned,jp_eur,eu_eur,us_eur,price_eur,price_source,image_url,treatment_family,event_family,event_tier,event_circuit,treatment_family_v2,treatment_tags,provenance_family_live,distribution_region,printed_language&limit='+lim+params;
   try{ await ensurePcImages(); const r=await fetch(url,{headers:{apikey:ANON,Authorization:'Bearer '+ANON}}); const j=await r.json(); let rows=Array.isArray(j)?j:[]; if(g.language==='COMPLET') rows=goalDedup(rows); return rows; }catch(e){ return []; }
 }
 function goalKindLabel(g){ return g.kind==='personnage'?('Personnage · '+g.value):(g.kind==='set'?('Set · '+g.value):(g.kind==='traitement'?('Famille · '+(TREAT_LABELS[g.value]||g.value)):(g.kind==='rarete'?('Rareté · '+(RAR_LABELS[g.value]||g.value)):('Type · '+((typeof GOAL_TYPE_LABEL!=='undefined'&&GOAL_TYPE_LABEL[g.value])||g.value))))); }
