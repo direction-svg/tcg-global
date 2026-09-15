@@ -942,6 +942,14 @@ body{-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
   </div>
 </div>
 
+<!-- Saisie manuelle d'une carte (recherche catalogue interne + lookup en ligne) -->
+<div id="maOverlay" class="overlay hidden">
+  <div class="sheet ssheet" style="max-height:94vh;overflow-y:auto">
+    <div class="fbar"><b>&#9997;&#65039; Saisie manuelle</b><button class="x" onclick="closeManualAdd()">&times;</button></div>
+    <div id="maBody" style="padding:12px 14px 40px"></div>
+  </div>
+</div>
+
 <!-- Modal filtres -->
 <div id="fmodal" class="overlay hidden">
   <div class="sheet fsheet">
@@ -4267,7 +4275,7 @@ async function homeBriefing(){
   }catch(e){ box.innerHTML='<div class="txt" style="color:var(--muted);font-size:13px">Erreur, réessaie.</div><button class="hbriefbtn" onclick="homeBriefing()">Réessayer</button>'; }
 }
 document.getElementById('modeSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMode(b.dataset.m);});
-const APP_VERSION='Version b166 · 14/09 — OBJECTIFS PERSONNAGE : (1) matching sur le nom CANONIQUE (vue app_card_names) → cartes a nom localise incluses ; (2) exclusivites autres langues = impressions non-JP PROMO/BATTLE_EVENT/PRODUCT_EXCLUSIVE/PREMIUM_COLLECTION gardees (les reprints STANDARD d\'un numero deja en JP restent ecartes) ; (3) detail d\'objectif : classification + filtre par LANGUE (Toutes / JP / EN / CN avec compte), combinable avec les filtres existants. Inclut b165 (header mobile) + b161-b164.';
+const APP_VERSION='Version b166 · 14/09 — OBJECTIFS PERSONNAGE : (1) matching sur le nom CANONIQUE (vue app_card_names) → cartes a nom localise incluses ; (2) exclusivites autres langues AUTOMATIQUES via cle (numero + traitement + provenance) : une carte non-JP n\'entre que si ce collectible n\'existe pas en JP (vraies exclus : Judge, PSA Magazine, Release Event, promos CN...) ; les versions EN/CN exactes d\'une carte JP (meme art) sont ecartees ; (3) detail d\'objectif : classification + filtre par LANGUE (Toutes / JP / EN / CN avec compte), combinable avec les filtres existants. Inclut b165 (header mobile) + b161-b164.';
 { const nv=document.getElementById('navVersion'); if(nv) nv.textContent=APP_VERSION; }
 /* b165 : région (#mktSeg) déplacée dans le tiroir, boutons câblés en onclick inline (setMarket) — plus de délégation ici */
 const CATARRS=["catColors","catCats","catRarities","catTreats","catProvs","catEvents","catTiers","catRegions","catFinish","catSets"];
@@ -5147,6 +5155,185 @@ async function purSave(){
     setTimeout(function(){ closePurImport(); try{ if(state.mode==='achats'&&typeof fetchAchats==='function') fetchAchats(); }catch(e){} },1500);
   }catch(e){ purSetStatus('❌ Erreur réseau.'); }
 }
+
+/* ===================== Saisie manuelle (b167) =====================
+   Bouton menu → recherche catalogue interne (image+cote) d'abord, puis web
+   (edge fn manual-lookup / PriceCharting) en secours. On enregistre via
+   rpc/manual_add_card (achat + collection, comme un achat eBay). */
+var MA={sel:null,results:[],web:[]};
+function openManualAdd(){ try{ closeNav(); }catch(e){} MA={sel:null,results:[],web:[]}; var o=document.getElementById('maOverlay'); if(!o)return; o.classList.remove('hidden'); maStepSearch(); }
+function closeManualAdd(){ var o=document.getElementById('maOverlay'); if(o)o.classList.add('hidden'); MA={sel:null,results:[],web:[]}; }
+function maIsNum(q){ return /^[A-Za-z]{1,4}\d{0,2}-?\d+$/.test(q)||/-\d/.test(q); }
+function maStepSearch(){
+  var b=document.getElementById('maBody'); if(!b)return;
+  b.innerHTML=
+    '<div class="dt" style="font-size:13px;margin-bottom:10px">Cherche la carte dans <b>ton catalogue</b> (image + cote), sinon <b>en ligne</b> 🌐, puis renseigne l’achat.</div>'+
+    '<div style="display:flex;gap:8px">'+
+      '<input id="maQ" placeholder="Numéro (OP13-051) ou nom" onkeydown="if(event.key===\'Enter\')maRunSearch()" style="flex:1;padding:10px;border:1px solid var(--line);border-radius:9px;background:var(--panel);color:var(--ink);font-size:14px;box-sizing:border-box">'+
+      '<button onclick="maRunSearch()" style="border:1px solid var(--accent);background:rgba(193,147,56,.1);color:var(--accent);border-radius:9px;padding:0 14px;font-weight:800;cursor:pointer;font-size:15px">🔍</button>'+
+    '</div>'+
+    '<div style="display:flex;gap:8px;margin-top:8px">'+
+      '<button onclick="maRunWeb()" style="flex:1;border:1px solid var(--line);background:var(--panel);color:var(--ink);border-radius:9px;padding:8px;font-weight:700;cursor:pointer;font-size:12.5px">🌐 Chercher en ligne</button>'+
+      '<button onclick="maFree()" style="flex:1;border:1px solid var(--line);background:var(--panel);color:var(--ink);border-radius:9px;padding:8px;font-weight:700;cursor:pointer;font-size:12.5px">✍️ Saisie libre</button>'+
+    '</div>'+
+    '<div id="maResults" style="margin-top:12px"></div>';
+}
+async function maRunSearch(){
+  var qi=document.getElementById('maQ'); var q=(qi?qi.value:'').trim(); var box=document.getElementById('maResults'); if(!box)return;
+  if(!q){ box.innerHTML='<div class="dt" style="font-size:12px">Entre un numéro (ex : OP13-051) ou un nom.</div>'; return; }
+  box.innerHTML='<div class="dt" style="font-size:12px">Recherche dans ton catalogue…</div>';
+  var sel='printing_id,card_number,name,variant_label,language,rarity,owned,price_eur,image_url';
+  var ord='&order=owned.desc,price_eur.desc.nullslast';
+  var rows=[];
+  try{
+    if(typeof ensurePcImages==='function'){ try{ await ensurePcImages(); }catch(e){} }
+    if(maIsNum(q)){
+      var no=q.toUpperCase();
+      var r=await fetch(SB+'/rest/v1/app_catalog_priced?card_number=eq.'+encodeURIComponent(no)+'&select='+sel+ord+'&limit=40',{headers:{apikey:ANON,Authorization:'Bearer '+ANON}});
+      rows=await r.json();
+    }
+    if(!Array.isArray(rows)||!rows.length){
+      var nums=[];
+      try{ var rn=await fetch(SB+'/rest/v1/app_card_names?select=card_number&card_name=ilike.'+encodeURIComponent('%'+q+'%')+'&limit=30',{headers:{apikey:ANON,Authorization:'Bearer '+ANON}}); var jn=await rn.json(); if(Array.isArray(jn)){ var seen={}; jn.forEach(function(x){ if(x.card_number)seen[x.card_number]=1; }); nums=Object.keys(seen).slice(0,30); } }catch(e){}
+      if(nums.length){
+        var inlist=nums.map(function(n){return '"'+n+'"';}).join(',');
+        var r2=await fetch(SB+'/rest/v1/app_catalog_priced?card_number=in.('+encodeURIComponent(inlist)+')&select='+sel+ord+'&limit=60',{headers:{apikey:ANON,Authorization:'Bearer '+ANON}});
+        rows=await r2.json();
+      } else {
+        var r3=await fetch(SB+'/rest/v1/app_catalog_priced?name=ilike.'+encodeURIComponent('%'+q+'%')+'&select='+sel+ord+'&limit=40',{headers:{apikey:ANON,Authorization:'Bearer '+ANON}});
+        rows=await r3.json();
+      }
+    }
+  }catch(e){ rows=[]; }
+  if(!Array.isArray(rows)) rows=[];
+  MA.results=rows; maRenderResults(rows,false);
+}
+async function maRunWeb(){
+  var qi=document.getElementById('maQ'); var q=(qi?qi.value:'').trim(); var box=document.getElementById('maResults'); if(!box)return;
+  if(!q){ box.innerHTML='<div class="dt" style="font-size:12px">Entre un numéro ou un nom d’abord.</div>'; return; }
+  box.innerHTML='<div class="dt" style="font-size:12px">🌐 Recherche en ligne (PriceCharting)…</div>';
+  var j=null;
+  try{
+    var r=await fetch(SB+'/functions/v1/manual-lookup',{method:'POST',headers:{'Content-Type':'application/json',apikey:ANON,Authorization:'Bearer '+ANON},body:JSON.stringify(maIsNum(q)?{number:q}:{name:q})});
+    j=await r.json();
+  }catch(e){ j={ok:false}; }
+  var res=(j&&j.ok&&Array.isArray(j.results))?j.results:[];
+  MA.web=res;
+  if(!res.length){ box.innerHTML='<div class="dt" style="font-size:12.5px">Rien trouvé en ligne. Utilise la <b>saisie libre</b> ci-dessous.</div><div style="margin-top:8px"><button onclick="maFree()" style="border:1px solid var(--line);background:var(--panel);color:var(--ink);border-radius:9px;padding:8px 12px;font-weight:700;cursor:pointer;font-size:12.5px">✍️ Saisie libre</button></div>'; return; }
+  maRenderResults(res,true);
+}
+function maRenderResults(rows,isWeb){
+  var box=document.getElementById('maResults'); if(!box)return;
+  if(!rows.length){ box.innerHTML='<div class="dt" style="font-size:12.5px">Rien trouvé'+(isWeb?' en ligne':' dans ton catalogue')+'.</div>'; return; }
+  var cards=rows.map(function(r,i){
+    var u=isWeb?(r.image_url||''):(((typeof PCIMG!=='undefined'&&PCIMG&&PCIMG[r.printing_id])||r.image_url||''));
+    var img=u?('<img referrerpolicy="no-referrer" src="'+esc(u)+'" style="width:100%;aspect-ratio:5/7;object-fit:cover;display:block" onerror="this.style.visibility=\'hidden\'">'):('<div style="width:100%;aspect-ratio:5/7;display:flex;align-items:center;justify-content:center;font-size:9px;color:var(--muted);text-align:center;padding:4px">photo à venir</div>');
+    var px=(r.price_eur!=null)?(Math.round(r.price_eur)+' €'):'—';
+    var fl=((typeof FLAG!=='undefined'&&FLAG[r.language])||'');
+    var lab=isWeb?esc(r.name||''):esc(r.variant_label||'Normale');
+    return '<div class="macand" onclick="'+(isWeb?'maPickWeb':'maPick')+'('+i+')" style="border:2px solid var(--line);border-radius:9px;overflow:hidden;cursor:pointer;background:var(--panel)">'+
+      '<div style="position:relative">'+img+((!isWeb&&r.owned)?'<span style="position:absolute;top:3px;left:3px;background:#3fae70;color:#fff;font-size:9px;font-weight:800;border-radius:10px;padding:1px 5px">✓</span>':'')+'</div>'+
+      '<div style="padding:4px 5px"><div style="font-size:10px;font-weight:700;line-height:1.15">'+fl+' '+lab+'</div><div style="font-size:10px;color:var(--accent);font-weight:800">'+px+'</div></div>'+
+    '</div>';
+  }).join('');
+  box.innerHTML='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(94px,1fr));gap:8px">'+cards+'</div>'+
+    '<div style="text-align:center;margin-top:10px"><button onclick="maFree()" style="border:0;background:transparent;color:var(--muted);font-size:12px;text-decoration:underline;cursor:pointer">Aucune ne correspond ? Saisie libre</button></div>';
+}
+function maPick(i){ var r=MA.results[i]; if(!r)return; MA.sel={printing_id:r.printing_id,card_number:r.card_number,name:r.name,variant_label:r.variant_label,language:r.language,rarity:r.rarity,price_eur:(r.price_eur!=null?Number(r.price_eur):null),image_url:(((typeof PCIMG!=='undefined'&&PCIMG&&PCIMG[r.printing_id])||r.image_url||'')),owned:r.owned,free:false}; maStepForm(); }
+function maPickWeb(i){ var r=MA.web[i]; if(!r)return; var qi=document.getElementById('maQ'); var q=(qi?qi.value:'').trim(); MA.sel={printing_id:null,card_number:(maIsNum(q)?q.toUpperCase():''),name:r.name,variant_label:'',language:r.language||'JP',rarity:'',price_eur:(r.price_eur!=null?Number(r.price_eur):null),image_url:r.image_url||'',owned:false,free:true}; maStepForm(); }
+function maFree(){ var qi=document.getElementById('maQ'); var q=(qi?qi.value:'').trim(); MA.sel={printing_id:null,card_number:(maIsNum(q)?q.toUpperCase():''),name:(maIsNum(q)?'':q),variant_label:'',language:'JP',rarity:'',price_eur:null,image_url:'',owned:false,free:true}; maStepForm(); }
+function maStepForm(){
+  var b=document.getElementById('maBody'); var s=MA.sel; if(!b||!s)return;
+  var lbl=function(t){ return '<div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);margin:11px 0 3px">'+t+'</div>'; };
+  var inp=function(id,val,ph,extra){ return '<input id="'+id+'" value="'+esc(val==null?'':String(val))+'" placeholder="'+esc(ph||'')+'" '+(extra||'')+' style="width:100%;padding:9px 10px;border:1px solid var(--line);border-radius:9px;background:var(--panel);color:var(--ink);font-size:14px;box-sizing:border-box">'; };
+  var fl=((typeof FLAG!=='undefined'&&FLAG[s.language])||'');
+  var u=s.image_url||'';
+  var thumb=u?('<img referrerpolicy="no-referrer" src="'+esc(u)+'" style="width:66px;aspect-ratio:5/7;object-fit:cover;border-radius:8px;flex:none" onerror="this.style.visibility=\'hidden\'">'):('<div style="width:66px;aspect-ratio:5/7;border-radius:8px;background:var(--chip);flex:none"></div>');
+  var head='<div style="display:flex;gap:10px;align-items:center;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:8px;margin-bottom:6px">'+thumb+
+    '<div style="min-width:0"><div style="font-weight:800;font-size:14px">'+esc(s.name||s.card_number||'Carte')+'</div>'+
+    '<div style="font-size:12px;color:var(--muted)">'+fl+' '+esc(s.card_number||'')+(s.variant_label?(' · '+esc(s.variant_label)):'')+(s.free?' · <span style="color:var(--accent)">saisie libre</span>':'')+'</div>'+
+    (s.price_eur!=null?('<div style="font-size:12px;color:var(--accent);font-weight:800">cote ≈ '+Math.round(s.price_eur)+' €</div>'):'')+'</div></div>';
+  var free='';
+  if(s.free){
+    free=lbl('Numéro')+inp('maNum',s.card_number,'OP13-051')+
+      lbl('Nom')+inp('maName',s.name,'Boa Hancock')+
+      '<div style="display:flex;gap:8px">'+
+        '<div style="flex:1">'+lbl('Langue')+'<select id="maLang" style="width:100%;padding:9px;border:1px solid var(--line);border-radius:9px;background:var(--panel);color:var(--ink);font-size:14px">'+['JP','EN','CN','FR'].map(function(L){return '<option value="'+L+'"'+(s.language===L?' selected':'')+'>'+L+'</option>';}).join('')+'</select></div>'+
+        '<div style="flex:1">'+lbl('Rareté')+inp('maRar',s.rarity,'R / SR / SEC…')+'</div>'+
+      '</div>'+
+      lbl('Variante (Full Art, Parallel…)')+inp('maVar',s.variant_label,'vide si normale')+
+      lbl('URL image (facultatif)')+inp('maImg',s.image_url,'https://…')+
+      lbl('Cote actuelle € (facultatif)')+inp('maMkt',(s.price_eur!=null?s.price_eur:''),'ex : 40','inputmode="decimal"');
+  }
+  b.innerHTML=head+free+
+    '<div style="display:flex;gap:8px">'+
+      '<div style="width:88px">'+lbl('Quantité')+inp('maQty','1','1','inputmode="numeric"')+'</div>'+
+      '<div style="flex:1">'+lbl('Vendeur (facultatif)')+inp('maSeller','','ex : YuruYuru Japan')+'</div>'+
+    '</div>'+
+    '<div style="display:flex;gap:8px">'+
+      '<div style="flex:1">'+lbl('Plateforme')+inp('maPlat','ebay','ebay / whatnot / shop')+'</div>'+
+      '<div style="flex:1">'+lbl('Date')+inp('maDate',(new Date()).toISOString().slice(0,10),'AAAA-MM-JJ')+'</div>'+
+    '</div>'+
+    lbl('Prix payé € (tout compris)')+inp('maPaid','','ex : 137.21','inputmode="decimal"')+
+    '<label style="display:flex;align-items:center;gap:8px;margin-top:12px;font-size:13px;cursor:pointer"><input type="checkbox" id="maGraded" onchange="maToggleGrade()"> Carte gradée</label>'+
+    '<div id="maGradeBox" style="display:none;margin-top:6px">'+
+      '<div style="display:flex;gap:8px">'+
+        '<div style="flex:1">'+lbl('Société')+'<select id="maGc" style="width:100%;padding:9px;border:1px solid var(--line);border-radius:9px;background:var(--panel);color:var(--ink);font-size:14px">'+['PSA','BGS','CGC','SGC','ARS','NOVA','OTHER'].map(function(G){return '<option>'+G+'</option>';}).join('')+'</select></div>'+
+        '<div style="width:90px">'+lbl('Note')+inp('maGrade','','10','inputmode="decimal"')+'</div>'+
+      '</div>'+
+      lbl('N° cert (facultatif)')+inp('maCert','','')+
+    '</div>'+
+    '<label style="display:flex;align-items:center;gap:8px;margin-top:12px;font-size:13px;cursor:pointer"><input type="checkbox" id="maRecv"> Déjà reçue (sinon : en route)</label>'+
+    '<div style="display:flex;gap:8px;margin-top:16px">'+
+      '<button onclick="maStepSearch()" style="border:1px solid var(--line);background:var(--panel);color:var(--muted);border-radius:12px;padding:13px 16px;font-weight:700;cursor:pointer">‹ Retour</button>'+
+      '<button onclick="maSave()" style="flex:1;border:0;background:var(--accent);color:#1a1204;font-weight:800;font-size:15px;padding:13px;border-radius:12px;cursor:pointer">✓ Enregistrer</button>'+
+    '</div>'+
+    '<div id="maStatus" class="dt" style="font-size:12.5px;margin-top:10px;text-align:center"></div>';
+}
+function maToggleGrade(){ var c=document.getElementById('maGraded'); var box=document.getElementById('maGradeBox'); if(box) box.style.display=(c&&c.checked)?'block':'none'; }
+async function maSave(){
+  var g=function(id){ var e=document.getElementById(id); return e?e.value:''; };
+  var st=function(h){ var e=document.getElementById('maStatus'); if(e)e.innerHTML=h; };
+  var s=MA.sel; if(!s)return;
+  var graded=!!(document.getElementById('maGraded')&&document.getElementById('maGraded').checked);
+  var recv=!!(document.getElementById('maRecv')&&document.getElementById('maRecv').checked);
+  var num=(s.free?(g('maNum')||'').trim().toUpperCase():s.card_number);
+  if(!s.printing_id && !num){ st('⚠️ Indique au moins le numéro de la carte.'); return; }
+  var paid=parseFloat(g('maPaid')); var mkt=s.free?parseFloat(g('maMkt')):(s.price_eur);
+  var payload={
+    p_printing_id:s.printing_id||null,
+    p_card_number:s.free?num:s.card_number,
+    p_name:s.free?((g('maName')||'').trim()||null):s.name,
+    p_language:s.free?(g('maLang')||'JP'):s.language,
+    p_variant_label:s.free?((g('maVar')||'').trim()||null):s.variant_label,
+    p_rarity:s.free?((g('maRar')||'').trim()||null):s.rarity,
+    p_image_url:s.free?((g('maImg')||'').trim()||null):(s.image_url||null),
+    p_quantity:Math.max(parseInt(g('maQty'),10)||1,1),
+    p_is_graded:graded,
+    p_grading_company:graded?(g('maGc')||null):null,
+    p_grade:graded?(parseFloat(g('maGrade'))||null):null,
+    p_cert_number:graded?((g('maCert')||'').trim()||null):null,
+    p_seller:(g('maSeller')||'').trim()||null,
+    p_platform:(g('maPlat')||'').trim()||null,
+    p_paid_eur:isNaN(paid)?null:paid,
+    p_paid_currency:'EUR',
+    p_purchase_date:(g('maDate')||'').trim()||null,
+    p_market_eur:(mkt!=null&&!isNaN(mkt))?mkt:null,
+    p_received:recv
+  };
+  st('💾 Enregistrement…');
+  var j=null;
+  try{
+    var r=await fetch(SB+'/rest/v1/rpc/manual_add_card',{method:'POST',headers:{'Content-Type':'application/json',apikey:ANON,Authorization:'Bearer '+ANON},body:JSON.stringify(payload)});
+    j=await r.json();
+    if(!r.ok){ st('❌ Échec : '+esc(JSON.stringify(j).slice(0,140))); return; }
+  }catch(e){ st('❌ Erreur réseau.'); return; }
+  if(j&&j.ok===false){ st('❌ '+esc(String(j.error||'échec'))); return; }
+  st('✅ Enregistrée (achat + collection). Elle apparaîtra dans la collection au prochain rafraîchissement.');
+  setTimeout(function(){ closeManualAdd(); },1800);
+}
+/* =================== fin Saisie manuelle (b167) =================== */
+
 // crop the centered card-shaped region (matches the on-screen frame: 88% height, 63/88 ratio, object-fit:cover)
 function cropCardRegion(v){
   const vw=v.videoWidth, vh=v.videoHeight; if(!vw||!vh) return null;
@@ -5878,17 +6065,15 @@ function goalParams(g){
 function goalPx(r){ if(r.price_eur!=null) return Number(r.price_eur); if(r.jp_eur!=null) return Number(r.jp_eur); if(r.eu_eur!=null) return Number(r.eu_eur); if(r.us_eur!=null) return Number(r.us_eur); return null; }
 // Mode COMPLET : une seule ligne par carte unique (numéro+variante), JP prioritaire, + exclusifs des autres langues.
 // « Possédée » = possédée dans N'IMPORTE quelle langue (donc les chinoises comptent).
-// b166 : "exclusivité d'une autre langue" = impression non-JP qui est une vraie sortie régionale
-// (promo / event / produit exclusif / premium collection) OU dont le numéro n'existe pas en JP,
-// + tout ce que Christopher possède. Les simples reprints STANDARD d'un numéro déjà en JP sont écartés.
-const GOAL_EXCL_ORIGINS=new Set(['PROMO','BATTLE_EVENT','PRODUCT_EXCLUSIVE','PREMIUM_COLLECTION']);
+// b166 : "meme carte" = cle (numero + traitement d'art + provenance/event). Une impression NON-JP n'est
+// gardee que si ce collectible n'existe PAS en JP (vraie exclu regionale : Judge, PSA Magazine, Release
+// Event, promos CN...), + TOUJOURS ce que Christopher possede. Les versions EN/CN exactes d'une carte
+// japonaise (meme art + meme provenance, ex. EN "Full Art" = JP "Full Art PRB01") sont ecartees.
+function goalKey(r){ return String(r.card_number||'')+'|'+String(r.treatment_family||'')+'|'+String(r.provenance_family_live||''); }
 function goalDedup(rows){
-  const jpNums=new Set(rows.filter(r=>r.language==='JP').map(r=>String(r.card_number||'')));
+  const jpKeys=new Set(rows.filter(r=>r.language==='JP').map(goalKey));
   return rows.filter(function(r){
-    return r.language==='JP'
-      || !jpNums.has(String(r.card_number||''))
-      || GOAL_EXCL_ORIGINS.has(String(r.origin||''))
-      || r.owned;
+    return r.language==='JP' || r.owned || !jpKeys.has(goalKey(r));
   });
 }
 async function ensurePcImages(){
@@ -7460,6 +7645,7 @@ const Fake = (function(){
       '<div class="navgrp" style="margin-top:10px">Avancé · rangé en Phase 2</div>'+ADV_LIST.map(function(x){return navBtn(x[0],x[1],false);}).join('')+
       '<div class="navgrp" style="margin-top:10px">Outils</div>'+TOOLS_LIST.map(function(x){return navBtn(x[0],x[1],false);}).join('')+
       '<button data-b4="__import" style="margin-top:10px;display:block;width:100%;text-align:left;padding:10px 14px;border:0;background:transparent;color:var(--accent);font-weight:800;font-size:13.5px;cursor:pointer;border-radius:9px">➕ Importer un achat (photo)</button>'+
+      '<button data-b4="__manual" style="margin-top:4px;display:block;width:100%;text-align:left;padding:10px 14px;border:0;background:transparent;color:var(--accent);font-weight:800;font-size:13.5px;cursor:pointer;border-radius:9px">✍️ Saisie manuelle (image + prix en ligne)</button>'+
       '<button data-b4="__revert" style="margin-top:14px;display:block;width:100%;text-align:left;padding:9px 14px;border:1px solid var(--line);background:var(--panel);color:var(--muted);font-weight:700;font-size:12px;cursor:pointer;border-radius:9px">↺ Revenir à l\'ancienne nav (b128)</button>'+
       '<div id="navVersion" style="margin-top:14px;padding:8px 12px 4px;font-size:11px;color:var(--muted);opacity:.8">'+E(typeof APP_VERSION!=='undefined'?APP_VERSION:'')+'</div>';
     nav.innerHTML=h;
@@ -7467,6 +7653,7 @@ const Fake = (function(){
     nav.addEventListener('click',function(ev){ var b=ev.target.closest('[data-b4]'); if(!b)return; var m=b.getAttribute('data-b4');
       if(m==='__revert'){ setOn(false); location.reload(); return; }
       if(m==='__import'){ try{ var d=document.getElementById('modeSeg'),sc=document.getElementById('navScrim'); if(d)d.classList.remove('open'); if(sc)sc.classList.remove('open'); }catch(e){} if(typeof openPurImport==='function') openPurImport(); return; }
+      if(m==='__manual'){ try{ var d2=document.getElementById('modeSeg'),sc2=document.getElementById('navScrim'); if(d2)d2.classList.remove('open'); if(sc2)sc2.classList.remove('open'); }catch(e){} if(typeof openManualAdd==='function') openManualAdd(); return; }
       go(m);
     });
   }
