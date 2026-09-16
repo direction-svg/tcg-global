@@ -4275,7 +4275,7 @@ async function homeBriefing(){
   }catch(e){ box.innerHTML='<div class="txt" style="color:var(--muted);font-size:13px">Erreur, réessaie.</div><button class="hbriefbtn" onclick="homeBriefing()">Réessayer</button>'; }
 }
 document.getElementById('modeSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMode(b.dataset.m);});
-const APP_VERSION='Version b166 · 14/09 — OBJECTIFS PERSONNAGE : (1) matching sur le nom CANONIQUE (vue app_card_names) → cartes a nom localise incluses ; (2) exclusivites autres langues AUTOMATIQUES via cle (numero + traitement + provenance) : une carte non-JP n\'entre que si ce collectible n\'existe pas en JP (vraies exclus : Judge, PSA Magazine, Release Event, promos CN...) ; les versions EN/CN exactes d\'une carte JP (meme art) sont ecartees ; (3) detail d\'objectif : classification + filtre par LANGUE (Toutes / JP / EN / CN avec compte), combinable avec les filtres existants. Inclut b165 (header mobile) + b161-b164.';
+const APP_VERSION='Version b168 · 16/09 — Saisie manuelle (catalogue interne + recherche en ligne image/prix) + création de carte hors catalogue (exclusivités FR, Musée Grévin…). Inclut b165 (header mobile) et b166 (objectifs personnage).';
 { const nv=document.getElementById('navVersion'); if(nv) nv.textContent=APP_VERSION; }
 /* b165 : région (#mktSeg) déplacée dans le tiroir, boutons câblés en onclick inline (setMarket) — plus de délégation ici */
 const CATARRS=["catColors","catCats","catRarities","catTreats","catProvs","catEvents","catTiers","catRegions","catFinish","catSets"];
