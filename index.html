@@ -5172,11 +5172,14 @@ function maStepSearch(){
       '<input id="maQ" placeholder="Numéro (OP13-051) ou nom" onkeydown="if(event.key===\'Enter\')maRunSearch()" style="flex:1;padding:10px;border:1px solid var(--line);border-radius:9px;background:var(--panel);color:var(--ink);font-size:14px;box-sizing:border-box">'+
       '<button onclick="maRunSearch()" style="border:1px solid var(--accent);background:rgba(193,147,56,.1);color:var(--accent);border-radius:9px;padding:0 14px;font-weight:800;cursor:pointer;font-size:15px">🔍</button>'+
     '</div>'+
-    '<div style="display:flex;gap:8px;margin-top:8px">'+
-      '<button onclick="maRunWeb()" style="flex:1;border:1px solid var(--line);background:var(--panel);color:var(--ink);border-radius:9px;padding:8px;font-weight:700;cursor:pointer;font-size:12.5px">🌐 Chercher en ligne</button>'+
-      '<button onclick="maFree()" style="flex:1;border:1px solid var(--line);background:var(--panel);color:var(--ink);border-radius:9px;padding:8px;font-weight:700;cursor:pointer;font-size:12.5px">✍️ Saisie libre</button>'+
+    '<div style="margin-top:8px">'+
+      '<button onclick="maRunWeb()" style="width:100%;border:1px solid var(--line);background:var(--panel);color:var(--ink);border-radius:9px;padding:8px;font-weight:700;cursor:pointer;font-size:12.5px">🌐 Chercher en ligne (image + prix)</button>'+
     '</div>'+
-    '<div id="maResults" style="margin-top:12px"></div>';
+    '<div id="maResults" style="margin-top:12px"></div>'+
+    '<div style="margin-top:14px;border-top:1px dashed var(--line);padding-top:12px">'+
+      '<div class="dt" style="font-size:12px;margin-bottom:6px">La carte n’existe nulle part (exclusivité FR, promo Musée Grévin, carte introuvable…) ? Crée-la toi-même, on ajoute numéro, prix et image.</div>'+
+      '<button onclick="maFree()" style="width:100%;border:0;background:var(--accent);color:#1a1204;font-weight:800;font-size:14px;padding:12px;border-radius:12px;cursor:pointer">➕ Créer une carte manuellement</button>'+
+    '</div>';
 }
 async function maRunSearch(){
   var qi=document.getElementById('maQ'); var q=(qi?qi.value:'').trim(); var box=document.getElementById('maResults'); if(!box)return;
@@ -5255,14 +5258,16 @@ function maStepForm(){
     (s.price_eur!=null?('<div style="font-size:12px;color:var(--accent);font-weight:800">cote ≈ '+Math.round(s.price_eur)+' €</div>'):'')+'</div></div>';
   var free='';
   if(s.free){
-    free=lbl('Numéro')+inp('maNum',s.card_number,'OP13-051')+
-      lbl('Nom')+inp('maName',s.name,'Boa Hancock')+
+    free='<div class="dt" style="font-size:12px;margin:2px 0 4px;color:var(--accent)">Création d’une carte hors catalogue — remplis ce que tu peux.</div>'+
+      lbl('Numéro (laisse vide si la carte n’en a pas)')+inp('maNum',s.card_number,'ex : P-066 · ou vide')+
+      lbl('Nom')+inp('maName',s.name,'ex : Monkey D. Luffy')+
+      lbl('Série / collection (facultatif)')+inp('maSetName','','ex : Musée Grévin')+
       '<div style="display:flex;gap:8px">'+
-        '<div style="flex:1">'+lbl('Langue')+'<select id="maLang" style="width:100%;padding:9px;border:1px solid var(--line);border-radius:9px;background:var(--panel);color:var(--ink);font-size:14px">'+['JP','EN','CN','FR'].map(function(L){return '<option value="'+L+'"'+(s.language===L?' selected':'')+'>'+L+'</option>';}).join('')+'</select></div>'+
-        '<div style="flex:1">'+lbl('Rareté')+inp('maRar',s.rarity,'R / SR / SEC…')+'</div>'+
+        '<div style="flex:1">'+lbl('Langue')+'<select id="maLang" style="width:100%;padding:9px;border:1px solid var(--line);border-radius:9px;background:var(--panel);color:var(--ink);font-size:14px">'+['JP','EN','CN','FR'].map(function(L){return '<option value="'+L+'"'+(s.language===L?' selected':'')+'>'+({JP:'🇯🇵 JP',EN:'🇬🇧 EN',CN:'🇨🇳 CN',FR:'🇫🇷 FR'})[L]+'</option>';}).join('')+'</select></div>'+
+        '<div style="flex:1">'+lbl('Rareté')+inp('maRar',s.rarity,'R / SR / PR…')+'</div>'+
       '</div>'+
-      lbl('Variante (Full Art, Parallel…)')+inp('maVar',s.variant_label,'vide si normale')+
-      lbl('URL image (facultatif)')+inp('maImg',s.image_url,'https://…')+
+      lbl('Variante / description (facultatif)')+inp('maVar',s.variant_label,'ex : Full Art, promo…')+
+      lbl('URL image (facultatif — sinon 📷 Ma photo après)')+inp('maImg',s.image_url,'https://…')+
       lbl('Cote actuelle € (facultatif)')+inp('maMkt',(s.price_eur!=null?s.price_eur:''),'ex : 40','inputmode="decimal"');
   }
   b.innerHTML=head+free+
@@ -5298,15 +5303,18 @@ async function maSave(){
   var graded=!!(document.getElementById('maGraded')&&document.getElementById('maGraded').checked);
   var recv=!!(document.getElementById('maRecv')&&document.getElementById('maRecv').checked);
   var num=(s.free?(g('maNum')||'').trim().toUpperCase():s.card_number);
-  if(!s.printing_id && !num){ st('⚠️ Indique au moins le numéro de la carte.'); return; }
+  var freeName=s.free?((g('maName')||'').trim()):'';
+  if(!s.printing_id && !num && !freeName){ st('⚠️ Indique au moins un nom ou un numéro de carte.'); return; }
   var paid=parseFloat(g('maPaid')); var mkt=s.free?parseFloat(g('maMkt')):(s.price_eur);
   var payload={
     p_printing_id:s.printing_id||null,
-    p_card_number:s.free?num:s.card_number,
-    p_name:s.free?((g('maName')||'').trim()||null):s.name,
+    p_card_number:s.free?(num||null):s.card_number,
+    p_name:s.free?(freeName||null):s.name,
     p_language:s.free?(g('maLang')||'JP'):s.language,
     p_variant_label:s.free?((g('maVar')||'').trim()||null):s.variant_label,
     p_rarity:s.free?((g('maRar')||'').trim()||null):s.rarity,
+    p_origin:s.free?'PROMO':null,
+    p_set_name:s.free?((g('maSetName')||'').trim()||null):null,
     p_image_url:s.free?((g('maImg')||'').trim()||null):(s.image_url||null),
     p_quantity:Math.max(parseInt(g('maQty'),10)||1,1),
     p_is_graded:graded,
@@ -5329,8 +5337,9 @@ async function maSave(){
     if(!r.ok){ st('❌ Échec : '+esc(JSON.stringify(j).slice(0,140))); return; }
   }catch(e){ st('❌ Erreur réseau.'); return; }
   if(j&&j.ok===false){ st('❌ '+esc(String(j.error||'échec'))); return; }
-  st('✅ Enregistrée (achat + collection). Elle apparaîtra dans la collection au prochain rafraîchissement.');
-  setTimeout(function(){ closeManualAdd(); },1800);
+  var cn=(j&&j.card_number)?(' — n° '+esc(String(j.card_number))):'';
+  st('✅ '+((j&&j.created_card)?'Carte créée':'Enregistrée')+' (achat + collection)'+cn+'. Elle apparaîtra dans la collection au prochain rafraîchissement'+((s.free&&!(g('maImg')||'').trim())?' — pense à ajouter ta photo (📷 Ma photo) sur la fiche.':'.'));
+  setTimeout(function(){ closeManualAdd(); },2400);
 }
 /* =================== fin Saisie manuelle (b167) =================== */
 
