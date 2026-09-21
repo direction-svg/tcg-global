@@ -920,7 +920,7 @@ body{-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
   <div class="toolbar">
     <div class="search">
       <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="color:var(--muted);flex:none"><circle cx="11" cy="11" r="7"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-      <input id="q" placeholder="Rechercher (nom ou num&eacute;ro)&hellip;" autocomplete="off">
+      <input id="q" placeholder="Rechercher (nom, num&eacute;ro, variante, set, raret&eacute;&hellip;)" autocomplete="off">
     </div>
     <button class="tbtn" id="sortBtn" title="Trier">&#8645;</button>
     <button class="tbtn" id="filterBtn" title="Filtres">&#9776;<span class="fbadge" id="fbadge" style="display:none">0</span></button>
@@ -1893,7 +1893,19 @@ function apply(){
   if(state.recvf==="pending") a=a.filter(c=>PENDING.has(c.item_id));
   if(state.pricef==="noprice") a=a.filter(c=>{const k=priceConf(c);return k&&k.lvl==='none';});
   else if(state.pricef==="doubt") a=a.filter(c=>{const k=priceConf(c);return k&&(k.lvl==='warn'||k.lvl==='bad');});
-  if(state.q){const q=state.q.toLowerCase();a=a.filter(c=>(c.card_name||"").toLowerCase().includes(q)||(c.card_number||"").toLowerCase().includes(q));}
+  if(state.q){
+    // b169 : recherche sur TOUT le détail de la carte (nom, numéro, variante, set, rareté, langue,
+    // traitement, provenance, événement, grading…), en multi-mots (tous les mots doivent matcher).
+    const toks=state.q.toLowerCase().split(/\s+/).filter(Boolean);
+    a=a.filter(c=>{
+      const hay=[c.card_name,c.card_number,c.variant,c.variant_label,c.set_code,c.set_name,c.rarity,
+        c.language,c.origin,c.category,c.treatment_family_v2,c.provenance_family_live,c.event_family,
+        c.event_tier,c.event_circuit,c.distribution_region,c.printed_language,c.grading_company,c.cert_number,
+        Array.isArray(c.treatment_tags)?c.treatment_tags.join(' '):'',Array.isArray(c.finish_tags)?c.finish_tags.join(' '):'']
+        .map(v=>String(v==null?'':v)).join(' ').toLowerCase();
+      return toks.every(t=>hay.includes(t));
+    });
+  }
   if(state.set&&state.set!=='all') a=a.filter(c=>setFamily(c.card_number)===state.set);
   const s=state.sort;
   a.sort((x,y)=> s==="val_asc"?val(x)-val(y): s==="name"?(x.card_name||"").localeCompare(y.card_name||""): s==="num"?(x.card_number||"").localeCompare(y.card_number||""): s==="qty"?(y.quantity||1)-(x.quantity||1): s==="achat"?((achatKey(y)).localeCompare(achatKey(x))||val(y)-val(x)): s==="set"?(setKeyC(x.set_code).localeCompare(setKeyC(y.set_code))||(x.card_number||"").localeCompare(y.card_number||"")): val(y)-val(x));
@@ -2114,7 +2126,7 @@ function setMode(m){
   const vfr=document.getElementById('valFilterRow'); if(vfr){ if(m==='collection'){ vfr.style.display='block'; buildValRow(); } else { vfr.style.display='none'; } }
   // recherche : réinitialisée à chaque changement de page ; placeholder adapté
   state.pageQ=''; { const qi=document.getElementById('q'); if(qi){ if(m==='collection'){ state.q=''; qi.value=''; } else if(m!=='catalog'){ qi.value=''; } } }
-  document.getElementById('q').placeholder=cat?"Chercher une carte (nom ou numéro), toutes langues…":(PAGE_Q_PH[m]||"Rechercher (nom ou numéro)…");
+  document.getElementById('q').placeholder=cat?"Chercher (nom, numéro, variante, set, rareté…), toutes langues":(PAGE_Q_PH[m]||"Rechercher (nom, numéro, variante, set, rareté…)");
   const brief=document.getElementById('briefing'); if(brief){ brief.innerHTML=''; }
   // mini portfolio line: shown everywhere except the Accueil dashboard
   const mb=document.getElementById('miniBar');
@@ -4275,7 +4287,7 @@ async function homeBriefing(){
   }catch(e){ box.innerHTML='<div class="txt" style="color:var(--muted);font-size:13px">Erreur, réessaie.</div><button class="hbriefbtn" onclick="homeBriefing()">Réessayer</button>'; }
 }
 document.getElementById('modeSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMode(b.dataset.m);});
-const APP_VERSION='Version b168 · 16/09 — Saisie manuelle (catalogue interne + recherche en ligne image/prix) + création de carte hors catalogue (exclusivités FR, Musée Grévin…). Inclut b165 (header mobile) et b166 (objectifs personnage).';
+const APP_VERSION='Version b169 · 21/09 — Recherche étendue : le champ de recherche (catalogue + collection) fouille tout le détail des cartes (nom, numéro, variante, set, rareté, traitement, provenance…), en multi-mots. Inclut b168 (saisie manuelle + création hors catalogue).';
 { const nv=document.getElementById('navVersion'); if(nv) nv.textContent=APP_VERSION; }
 /* b165 : région (#mktSeg) déplacée dans le tiroir, boutons câblés en onclick inline (setMarket) — plus de délégation ici */
 const CATARRS=["catColors","catCats","catRarities","catTreats","catProvs","catEvents","catTiers","catRegions","catFinish","catSets"];
@@ -4326,8 +4338,15 @@ async function ensureCtxTier(){
   const term=(state.catQuery||"").replace(/[%*(),]/g," ").trim();
   const groups=[];
   if(state.catColors.length) groups.push("or("+state.catColors.map(c=>"color.ilike.*"+c+"*").join(",")+")");
-  if(term){ const pat="*"+encodeURIComponent(term)+"*"; groups.push("or(card_number.ilike."+pat+",name.ilike."+pat+")"); }
-  if(groups.length===1) url+="&"+groups[0].replace(/^or\(/,"or=(");
+  if(term){
+    // b169 : recherche sur TOUT le détail (numéro, nom, variante, set, rareté, traitement,
+    // provenance, événement…), multi-mots (chaque mot doit matcher au moins un champ).
+    const FIELDS=['card_number','name','variant_label','set_code','set_name','rarity','treatment_family_v2','provenance_family_live','event_family','event_circuit'];
+    const toks=term.split(/\s+/).filter(Boolean);
+    const perTok=toks.map(function(t){ const pat="*"+encodeURIComponent(t)+"*"; return "or("+FIELDS.map(f=>f+".ilike."+pat).join(",")+")"; });
+    groups.push(perTok.length===1?perTok[0]:("and("+perTok.join(",")+")"));
+  }
+  if(groups.length===1){ const g=groups[0]; url+="&"+(g.indexOf("or(")===0?g.replace(/^or\(/,"or=("):g.replace(/^and\(/,"and=(")); }
   else if(groups.length===2) url+="&and=("+groups.join(",")+")";
   try{
     const r=await fetch(url,{headers:{apikey:ANON,Authorization:"Bearer "+ANON}});
@@ -4440,8 +4459,15 @@ async function fetchCatalog(append){
   if(state.catSets.length) url+="&set_family=in.("+state.catSets.join(",")+")";
   const groups=[];
   if(state.catColors.length) groups.push("or("+state.catColors.map(c=>"color.ilike.*"+c+"*").join(",")+")");
-  if(term){ const pat="*"+encodeURIComponent(term)+"*"; groups.push("or(card_number.ilike."+pat+",name.ilike."+pat+")"); }
-  if(groups.length===1) url+="&"+groups[0].replace(/^or\(/,"or=(");
+  if(term){
+    // b169 : recherche sur TOUT le détail (numéro, nom, variante, set, rareté, traitement,
+    // provenance, événement…), multi-mots (chaque mot doit matcher au moins un champ).
+    const FIELDS=['card_number','name','variant_label','set_code','set_name','rarity','treatment_family_v2','provenance_family_live','event_family','event_circuit'];
+    const toks=term.split(/\s+/).filter(Boolean);
+    const perTok=toks.map(function(t){ const pat="*"+encodeURIComponent(t)+"*"; return "or("+FIELDS.map(f=>f+".ilike."+pat).join(",")+")"; });
+    groups.push(perTok.length===1?perTok[0]:("and("+perTok.join(",")+")"));
+  }
+  if(groups.length===1){ const g=groups[0]; url+="&"+(g.indexOf("or(")===0?g.replace(/^or\(/,"or=("):g.replace(/^and\(/,"and=(")); }
   else if(groups.length===2) url+="&and=("+groups.join(",")+")";
   try{
     const r=await fetch(url,{headers:{apikey:ANON,Authorization:"Bearer "+ANON}});
