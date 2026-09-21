@@ -4287,7 +4287,7 @@ async function homeBriefing(){
   }catch(e){ box.innerHTML='<div class="txt" style="color:var(--muted);font-size:13px">Erreur, réessaie.</div><button class="hbriefbtn" onclick="homeBriefing()">Réessayer</button>'; }
 }
 document.getElementById('modeSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setMode(b.dataset.m);});
-const APP_VERSION='Version b169 · 21/09 — Recherche étendue : le champ de recherche (catalogue + collection) fouille tout le détail des cartes (nom, numéro, variante, set, rareté, traitement, provenance…), en multi-mots. Inclut b168 (saisie manuelle + création hors catalogue).';
+const APP_VERSION='Version b170 · 21/09 — Recherche « façon Claude » : le bouton « Chercher en ligne » de la saisie manuelle utilise Claude (IA + web) pour trouver image + prix, même sur les promos de niche. Inclut b169 (recherche étendue tous champs) et b168 (saisie manuelle).';
 { const nv=document.getElementById('navVersion'); if(nv) nv.textContent=APP_VERSION; }
 /* b165 : région (#mktSeg) déplacée dans le tiroir, boutons câblés en onclick inline (setMarket) — plus de délégation ici */
 const CATARRS=["catColors","catCats","catRarities","catTreats","catProvs","catEvents","catTiers","catRegions","catFinish","catSets"];
@@ -5240,16 +5240,33 @@ async function maRunSearch(){
 async function maRunWeb(){
   var qi=document.getElementById('maQ'); var q=(qi?qi.value:'').trim(); var box=document.getElementById('maResults'); if(!box)return;
   if(!q){ box.innerHTML='<div class="dt" style="font-size:12px">Entre un numéro ou un nom d’abord.</div>'; return; }
-  box.innerHTML='<div class="dt" style="font-size:12px">🌐 Recherche en ligne (PriceCharting)…</div>';
+  // b170 : recherche « façon Claude » (IA + web) — trouve image + prix même pour les promos de niche.
+  box.innerHTML='<div class="dt" style="font-size:12.5px">🤖 Recherche IA sur le web… <span style="color:var(--muted)">(ça peut prendre ~20 s)</span></div>';
+  var isNum=maIsNum(q);
+  var payload=isNum?{number:q}:{name:q};
   var j=null;
   try{
-    var r=await fetch(SB+'/functions/v1/manual-lookup',{method:'POST',headers:{'Content-Type':'application/json',apikey:ANON,Authorization:'Bearer '+ANON},body:JSON.stringify(maIsNum(q)?{number:q}:{name:q})});
+    var r=await fetch(SB+'/functions/v1/claude-card-lookup',{method:'POST',headers:{'Content-Type':'application/json',apikey:ANON,Authorization:'Bearer '+ANON},body:JSON.stringify(payload)});
     j=await r.json();
-  }catch(e){ j={ok:false}; }
-  var res=(j&&j.ok&&Array.isArray(j.results))?j.results:[];
-  MA.web=res;
-  if(!res.length){ box.innerHTML='<div class="dt" style="font-size:12.5px">Rien trouvé en ligne. Utilise la <b>saisie libre</b> ci-dessous.</div><div style="margin-top:8px"><button onclick="maFree()" style="border:1px solid var(--line);background:var(--panel);color:var(--ink);border-radius:9px;padding:8px 12px;font-weight:700;cursor:pointer;font-size:12.5px">✍️ Saisie libre</button></div>'; return; }
-  maRenderResults(res,true);
+  }catch(e){ j={ok:false,error:'network'}; }
+  var rez=(j&&j.ok&&j.result)?j.result:null;
+  if(!rez || (rez.price_eur==null && !rez.image_url)){
+    MA.web=[];
+    box.innerHTML='<div class="dt" style="font-size:12.5px">L’IA n’a pas trouvé de résultat fiable en ligne'+((j&&j.error)?(' ('+esc(String(j.error)).slice(0,60)+')'):'')+'. Utilise la <b>saisie libre</b>.</div><div style="margin-top:8px"><button onclick="maFree()" style="border:1px solid var(--line);background:var(--panel);color:var(--ink);border-radius:9px;padding:8px 12px;font-weight:700;cursor:pointer;font-size:12.5px">✍️ Créer la carte manuellement</button></div>';
+    return;
+  }
+  var disp=(isNum?q.toUpperCase():q)+(rez.variant?(' · '+rez.variant):'');
+  MA.web=[{ name:(isNum?'':q), card_number:(isNum?q.toUpperCase():''), display:disp, language:'JP',
+    price_eur:(rez.price_eur!=null?Number(rez.price_eur):null), image_url:rez.image_url||'',
+    variant:rez.variant||'', note:rez.price_note||'', sources:rez.sources||[] }];
+  maRenderResults(MA.web,true);
+  // note prix + sources sous la vignette
+  try{
+    var extra='';
+    if(rez.price_note) extra+='<div class="dt" style="font-size:11.5px;margin-top:8px">💡 '+esc(rez.price_note)+((rez.price_low_eur!=null&&rez.price_high_eur!=null)?(' ('+Math.round(rez.price_low_eur)+'–'+Math.round(rez.price_high_eur)+' €)'):'')+'</div>';
+    if(Array.isArray(rez.sources)&&rez.sources.length) extra+='<div class="dt" style="font-size:11px;margin-top:3px;color:var(--muted)">Sources : '+rez.sources.slice(0,3).map(function(s){return '<a href="'+esc(s)+'" target="_blank" rel="noopener" style="color:var(--accent)">lien</a>';}).join(' · ')+'</div>';
+    if(extra) box.insertAdjacentHTML('beforeend', extra);
+  }catch(e){}
 }
 function maRenderResults(rows,isWeb){
   var box=document.getElementById('maResults'); if(!box)return;
@@ -5259,7 +5276,7 @@ function maRenderResults(rows,isWeb){
     var img=u?('<img referrerpolicy="no-referrer" src="'+esc(u)+'" style="width:100%;aspect-ratio:5/7;object-fit:cover;display:block" onerror="this.style.visibility=\'hidden\'">'):('<div style="width:100%;aspect-ratio:5/7;display:flex;align-items:center;justify-content:center;font-size:9px;color:var(--muted);text-align:center;padding:4px">photo à venir</div>');
     var px=(r.price_eur!=null)?(Math.round(r.price_eur)+' €'):'—';
     var fl=((typeof FLAG!=='undefined'&&FLAG[r.language])||'');
-    var lab=isWeb?esc(r.name||''):esc(r.variant_label||'Normale');
+    var lab=isWeb?esc(r.display||r.name||r.variant||'Résultat'):esc(r.variant_label||'Normale');
     return '<div class="macand" onclick="'+(isWeb?'maPickWeb':'maPick')+'('+i+')" style="border:2px solid var(--line);border-radius:9px;overflow:hidden;cursor:pointer;background:var(--panel)">'+
       '<div style="position:relative">'+img+((!isWeb&&r.owned)?'<span style="position:absolute;top:3px;left:3px;background:#3fae70;color:#fff;font-size:9px;font-weight:800;border-radius:10px;padding:1px 5px">✓</span>':'')+'</div>'+
       '<div style="padding:4px 5px"><div style="font-size:10px;font-weight:700;line-height:1.15">'+fl+' '+lab+'</div><div style="font-size:10px;color:var(--accent);font-weight:800">'+px+'</div></div>'+
@@ -5269,7 +5286,7 @@ function maRenderResults(rows,isWeb){
     '<div style="text-align:center;margin-top:10px"><button onclick="maFree()" style="border:0;background:transparent;color:var(--muted);font-size:12px;text-decoration:underline;cursor:pointer">Aucune ne correspond ? Saisie libre</button></div>';
 }
 function maPick(i){ var r=MA.results[i]; if(!r)return; MA.sel={printing_id:r.printing_id,card_number:r.card_number,name:r.name,variant_label:r.variant_label,language:r.language,rarity:r.rarity,price_eur:(r.price_eur!=null?Number(r.price_eur):null),image_url:(((typeof PCIMG!=='undefined'&&PCIMG&&PCIMG[r.printing_id])||r.image_url||'')),owned:r.owned,free:false}; maStepForm(); }
-function maPickWeb(i){ var r=MA.web[i]; if(!r)return; var qi=document.getElementById('maQ'); var q=(qi?qi.value:'').trim(); MA.sel={printing_id:null,card_number:(maIsNum(q)?q.toUpperCase():''),name:r.name,variant_label:'',language:r.language||'JP',rarity:'',price_eur:(r.price_eur!=null?Number(r.price_eur):null),image_url:r.image_url||'',owned:false,free:true}; maStepForm(); }
+function maPickWeb(i){ var r=MA.web[i]; if(!r)return; var qi=document.getElementById('maQ'); var q=(qi?qi.value:'').trim(); MA.sel={printing_id:null,card_number:(r.card_number||(maIsNum(q)?q.toUpperCase():'')),name:(r.name||''),variant_label:(r.variant||''),language:r.language||'JP',rarity:'',price_eur:(r.price_eur!=null?Number(r.price_eur):null),image_url:r.image_url||'',owned:false,free:true}; maStepForm(); }
 function maFree(){ var qi=document.getElementById('maQ'); var q=(qi?qi.value:'').trim(); MA.sel={printing_id:null,card_number:(maIsNum(q)?q.toUpperCase():''),name:(maIsNum(q)?'':q),variant_label:'',language:'JP',rarity:'',price_eur:null,image_url:'',owned:false,free:true}; maStepForm(); }
 function maStepForm(){
   var b=document.getElementById('maBody'); var s=MA.sel; if(!b||!s)return;
