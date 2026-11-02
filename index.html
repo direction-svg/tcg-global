@@ -122,6 +122,7 @@ body{font-family:'Sora',-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helve
 .pbadge{position:absolute;top:6px;left:6px;font-size:12px;line-height:1;background:var(--panel);border:1.5px solid var(--line);border-radius:8px;padding:2px 4px;z-index:5;box-shadow:0 1px 4px rgba(0,0,0,.18)}
 .pbadge.pbnew{border-color:#a67c27;box-shadow:0 0 0 1px rgba(193,147,56,.25),0 1px 5px rgba(193,147,56,.35)}
 .pbadge.pbver{border-color:#f59e0b}
+.pbadge.pbgrad{top:auto;bottom:6px;left:6px;right:auto;background:#1d4ed8;color:#fff;border-color:#1d4ed8;font-size:10px;font-weight:800}
 .pbadge.pbrecv{top:auto;bottom:6px;left:auto;right:6px;background:#a67c27;color:#fff;border-color:#a67c27;box-shadow:0 0 0 1px rgba(193,147,56,.25),0 1px 5px rgba(193,147,56,.4)}
 .lthumb{position:relative}
 .vfy.vfynew{color:#a67c27}
@@ -1400,7 +1401,7 @@ function setFamily(code){ const s=String(code||'').toUpperCase().trim(); if(!s) 
   return pre;
 }
 function setFamRank(fam){ const m=String(fam).match(/^([A-Z]+)(\d+)?/); const g=({OP:0,EB:1,PRB:2,ST:3})[m?m[1]:'']; return [(g==null?8:g), m?m[1]:'zz', (m&&m[2])?+m[2]:999]; }
-const DEF={q:"",lang:"all",color:"all",type:"all",prov:"all",event:"all",cat:"all",rarity:"all",character:"all",grade:"all",set:"all",minVal:0,imgf:"all",authf:"all",recvf:"all",pricef:"all",variant:"all",achatPeriod:"all",openRatio:null,openLiquid:false,gapView:"mine",tgtLang:"JP",tgtBudget:0,sort:"val_desc",view:"grid",mode:"accueil",catLang:"all",catQuery:"",catLangs:[],catColors:[],catCats:[],catRarities:[],catTypes:[],catTreats:[],catProvs:[],catEvents:[],catTiers:[],catRegions:[],catFinish:[],catSets:[],catSort:"price_desc",catGroup:true,catView:"grid",setLang:"JP",prodLang:"JP"};
+const DEF={q:"",lang:"all",color:"all",type:"all",prov:"all",event:"all",cat:"all",rarity:"all",character:"all",grade:"all",set:"all",minVal:0,imgf:"all",authf:"all",recvf:"all",gradf:"all",pricef:"all",variant:"all",achatPeriod:"all",openRatio:null,openLiquid:false,gapView:"mine",tgtLang:"JP",tgtBudget:0,sort:"val_desc",view:"grid",mode:"accueil",catLang:"all",catQuery:"",catLangs:[],catColors:[],catCats:[],catRarities:[],catTypes:[],catTreats:[],catProvs:[],catEvents:[],catTiers:[],catRegions:[],catFinish:[],catSets:[],catSort:"price_desc",catGroup:true,catView:"grid",setLang:"JP",prodLang:"JP"};
 let PROD_VALUE=0;
 // Barre du haut : portefeuille détaillé (total = cartes + scellés), même valeur live que l'accueil
 function portfolioMini(){
@@ -1701,6 +1702,7 @@ async function load(){
   // 3) Enrichissements non bloquants (verify / images PriceCharting / valeurs marché)
   try{ await loadVerify(); }catch(e){}
   try{ await loadPending(); }catch(e){}
+  try{ await loadGradingPot(); }catch(e){}
   try{ await loadPcImages(); }catch(e){}
   try{ applyPinsToData(loadPinsMapCache()); }catch(e){}   /* b163 : ré-affirme les épinglées après PriceCharting (sync, sans réseau) */
   try{ await loadMarketVals(); }catch(e){}
@@ -1839,6 +1841,7 @@ function valSummary(){
   if(state.imgf==='new') bits.push('Nouvelles photos'); else if(state.imgf==='verify') bits.push('À vérifier'); else if(state.imgf==='noimg') bits.push('Sans image');
   if(state.authf==='reverify') bits.push('À revérifier');
   if(state.recvf==='pending') bits.push('À réceptionner');
+  if(state.gradf==='sent') bits.push('En gradation');
   return bits.length?bits.join(' · '):'Tout affiché';
 }
 function buildValRow(){ const row=document.getElementById('valFilterRow'); if(!row)return;
@@ -1861,6 +1864,8 @@ function buildValRow(){ const row=document.getElementById('valFilterRow'); if(!r
   b+=lbl('Photos')+'<div class="chiprow">'+ph+'</div>';
   if(nRv>0) b+=lbl('Authenticité')+'<div class="chiprow">'+chip(state.authf==='all','',"setAuthf('all')",'Toutes')+chip(state.authf==='reverify','#ef4444',"setAuthf('reverify')",'À revérifier ('+nRv+')')+'</div>';
   const nRecv=DATA.filter(c=>PENDING.has(c.item_id)).length;
+  const nGr=DATA.filter(c=>inGrading(c)).length;
+  if(nGr>0) b+=lbl('Gradation')+'<div class="chiprow">'+chip(state.gradf!=='sent','',"setGradf('all')",'Toutes')+chip(state.gradf==='sent','#1d4ed8',"setGradf('sent')",'⏳ En gradation ('+nGr+')')+'</div>';
   if(nRecv>0) b+=lbl('Réception')+'<div class="chiprow">'+chip(state.recvf==='all','',"setRecvf('all')",'Toutes')+chip(state.recvf==='pending','#a67c27',"setRecvf('pending')",'📦 À réceptionner ('+nRecv+')')+'</div>';
   row.innerHTML='<details class="pxdet valdet"'+(state.valPanelOpen?' open':'')+' ontoggle="state.valPanelOpen=this.open">'+
     '<summary><span>Affichage &amp; fiabilité<span class="valsum">· '+esc(valSummary())+'</span></span></summary>'+
@@ -1869,6 +1874,7 @@ function setMinVal(v){ state.minVal=v; buildValRow(); render(); }
 function setImgf(v){ state.imgf=v; buildValRow(); render(); }
 function setAuthf(v){ state.authf=v; buildValRow(); render(); }
 function setRecvf(v){ state.recvf=v; buildValRow(); render(); }
+function setGradf(v){ state.gradf=v; buildValRow(); render(); }
 function setPricef(v){ state.pricef=v; buildValRow(); render(); }
 
 function apply(){
@@ -1891,6 +1897,7 @@ function apply(){
   else if(state.imgf==="noimg") a=a.filter(c=>!c.image_url && !VERIFY.has(c.item_id));
   if(state.authf==="reverify") a=a.filter(c=>c.reverify);
   if(state.recvf==="pending") a=a.filter(c=>PENDING.has(c.item_id));
+  if(state.gradf==="sent") a=a.filter(c=>inGrading(c));
   if(state.pricef==="noprice") a=a.filter(c=>{const k=priceConf(c);return k&&k.lvl==='none';});
   else if(state.pricef==="doubt") a=a.filter(c=>{const k=priceConf(c);return k&&(k.lvl==='warn'||k.lvl==='bad');});
   if(state.q){
@@ -1923,6 +1930,64 @@ async function loadPending(){
     const r=await fetch(SB+'/rest/v1/app_receipt_pending?select=item_id&limit=5000',{headers:{apikey:ANON,Authorization:'Bearer '+ANON}});
     if(!r.ok)return; const b=await r.json(); if(Array.isArray(b)) b.forEach(x=>PENDING.add(x.item_id));
   }catch(e){}
+}
+/* b170 : suivi « envoyée en gradation » directement dans la collection */
+let GRPOT={};
+async function loadGradingPot(){
+  try{
+    const r=await fetch(SB+'/rest/v1/app_grading_potential?select=item_id,grading_status,grade_target_company,grade_submit_date,psa10_eur,psa10_src,psa9_eur,psa9_src&is_graded=eq.false&limit=5000',{headers:{apikey:ANON,Authorization:'Bearer '+ANON}});
+    if(!r.ok)return; const b=await r.json(); const m={}; if(Array.isArray(b)) b.forEach(x=>{ m[x.item_id]=x; }); GRPOT=m;
+  }catch(e){}
+}
+function inGrading(c){ const g=GRPOT[c.item_id]; return !!(g && !c.is_graded && (g.grading_status==='submitted'||g.grading_status==='to_submit')); }
+function gradingBadge(c){ if(!inGrading(c)) return ''; const co=(GRPOT[c.item_id].grade_target_company||'PSA'); return '<span class="pbadge pbgrad" title="En gradation chez '+esc(co)+'">⏳ '+esc(co)+'</span>'; }
+function grPotCell(lbl,v,src){ return '<div style="flex:1;border:1px solid var(--line);border-radius:10px;padding:8px 10px;background:var(--panel)"><div class="s" style="font-size:11px">Si '+lbl+'</div><div style="font-weight:900;font-size:16px">'+(v!=null?eur(v):'<span style="opacity:.5;font-size:13px">pas de cote</span>')+'</div>'+(src&&v!=null?'<div class="s" style="font-size:10px;opacity:.7">'+esc(src)+'</div>':'')+'</div>'; }
+function gradingBlock(c){
+  if(c.is_graded) return '';
+  const g=GRPOT[c.item_id]||{}; const co=g.grade_target_company||'PSA';
+  const pot='<div style="display:flex;gap:8px;margin-top:8px">'+grPotCell('PSA 10',g.psa10_eur,g.psa10_src)+grPotCell('PSA 9',g.psa9_eur,g.psa9_src)+'</div>';
+  if(inGrading(c)){
+    const since=g.grade_submit_date?(' depuis le '+new Date(g.grade_submit_date).toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit',year:'numeric'})):'';
+    return '<div style="margin:8px 0;padding:11px 12px;border:1px solid #3b82f6;background:rgba(59,130,246,.12);border-radius:10px;font-size:13px;color:var(--ink)">'+
+      '⏳ <b>En gradation chez '+esc(co)+'</b>'+since+'.<div style="font-size:12px;margin-top:2px;opacity:.85">Valeur potentielle au retour :</div>'+pot+
+      '<div style="display:flex;gap:7px;flex-wrap:wrap;margin-top:9px">'+
+        '<button onclick="grReceived()" style="flex:1;border:0;background:#059669;color:#fff;font-weight:800;padding:9px 11px;border-radius:9px;cursor:pointer">✅ Reçue — saisir la note</button>'+
+        '<button onclick="grCancelSent()" style="border:1px solid #3b82f6;background:transparent;color:var(--ink);font-weight:700;padding:9px 11px;border-radius:9px;cursor:pointer">Annuler</button>'+
+      '</div></div>';
+  }
+  return '<details class="pxdet" style="margin:8px 0">'+
+    '<summary><span style="font-weight:800">📮 Envoyer en gradation</span></summary>'+
+    '<div class="pxbody" style="padding-top:8px"><div class="s" style="font-size:12px">Valeur potentielle de cette carte une fois gradée :</div>'+pot+
+    '<div style="display:flex;gap:7px;flex-wrap:wrap;margin-top:10px">'+
+      ['PSA','BGS','CGC'].map(function(k){ return '<button onclick="grMarkSent(\''+k+'\')" style="flex:1;border:'+(k==='PSA'?'0':'1px solid var(--accent)')+';background:'+(k==='PSA'?'var(--accent)':'transparent')+';color:'+(k==='PSA'?'#fff':'var(--accent)')+';font-weight:800;padding:9px 11px;border-radius:9px;cursor:pointer">Envoyée chez '+k+'</button>'; }).join('')+
+    '</div></div></details>';
+}
+async function grPost(body){
+  const r=await fetch(SB+'/rest/v1/rpc/gr_set_status',{method:'POST',headers:{apikey:ANON,Authorization:'Bearer '+ANON,'Content-Type':'application/json'},body:JSON.stringify(body)});
+  if(!r.ok){ let t=''; try{ t=await r.text(); }catch(_){} throw new Error(t||('HTTP '+r.status)); }
+}
+async function grMarkSent(co){
+  const c=detailCard; if(!c)return;
+  try{
+    await grPost({p_id:c.item_id,p_status:'submitted',p_company:co||'PSA',p_target:10});
+    GRPOT[c.item_id]=Object.assign(GRPOT[c.item_id]||{item_id:c.item_id},{grading_status:'submitted',grade_target_company:co||'PSA',grade_submit_date:new Date().toISOString().slice(0,10)});
+    renderDetail(); if(typeof buildValRow==='function')buildValRow(); render();
+  }catch(e){ alert('Impossible d’enregistrer l’envoi en gradation.'); }
+}
+async function grCancelSent(){
+  const c=detailCard; if(!c)return;
+  try{
+    await grPost({p_id:c.item_id,p_status:null});
+    if(GRPOT[c.item_id]) GRPOT[c.item_id].grading_status=null;
+    renderDetail(); if(typeof buildValRow==='function')buildValRow(); render();
+  }catch(e){ alert('Impossible d’annuler.'); }
+}
+function grReceived(){
+  const c=detailCard; if(!c)return; const g=GRPOT[c.item_id]||{};
+  const det=document.getElementById('geDet'); if(det) det.open=true;
+  geMode(true);
+  const el=document.querySelector('#geCo .chip[data-co="'+(g.grade_target_company||'PSA')+'"]'); if(el) gePickCo(el);
+  if(det) det.scrollIntoView({behavior:'smooth',block:'center'});
 }
 function pendingBadge(c){ return PENDING.has(c.item_id)?'<span class="pbadge pbrecv" title="À réceptionner — confirmer la réception">📦</span>':''; }
 let PCIMG={};
@@ -1998,13 +2063,13 @@ function render(){
     stage.className=""; stage.innerHTML='<div class="grid">'+a.map(c=>{
       const g=c.is_graded?'<span class="grade">'+(c.grading_company||"")+' '+(c.grade!=null?String(c.grade).replace(/\.0$/,''):'')+'</span>':'<span></span>';
       const q=(c.quantity>1)?'<span class="qty">x'+c.quantity+'</span>':'';
-      return '<div class="card" data-id="'+c.item_id+'"'+confFrame(c)+'><div class="imgwrap">'+imgTag(c)+'<div class="badges">'+g+'</div><span class="flag">'+(FLAG[c.language]||"")+'</span>'+q+photoBadge(c)+pendingBadge(c)+(c.reverify?'<span class="rvdot" title="À revérifier (authenticité)"></span>':'')+'</div>'+
+      return '<div class="card" data-id="'+c.item_id+'"'+confFrame(c)+'><div class="imgwrap">'+imgTag(c)+'<div class="badges">'+g+'</div><span class="flag">'+(FLAG[c.language]||"")+'</span>'+q+photoBadge(c)+pendingBadge(c)+gradingBadge(c)+(c.reverify?'<span class="rvdot" title="À revérifier (authenticité)"></span>':'')+'</div>'+
       '<div class="meta"><p class="nm">'+esc(c.card_name||"")+'</p><div class="tagrow"><span class="code">'+esc(c.card_number||"")+'</span>'+descTags(c)+'</div><div class="valrow"><div class="val">'+valHtml(c)+'</div>'+varBadge(c)+'</div><div class="foot">'+confGauge(c)+'</div></div></div>';
     }).join("")+'</div>';
   } else {
     stage.className="list"; stage.innerHTML=a.map(c=>{
       const g=c.is_graded?'<span class="grade">'+(c.grading_company||"")+' '+(c.grade!=null?String(c.grade).replace(/\.0$/,''):'')+'</span>':'';
-      return '<div class="row" data-id="'+c.item_id+'"><div class="lthumb"'+confFrame(c)+'>'+imgTag(c)+photoBadge(c)+pendingBadge(c)+'</div><div><p class="nm">'+(c.reverify?'<span class="rvdot rvinline" title="À revérifier (authenticité)"></span>':'')+esc(c.card_name||"")+'</p><div class="sub"><span>'+(FLAG[c.language]||"")+'</span><span>'+esc(c.card_number||"")+'</span>'+descTags(c)+' '+g+'</div></div><div class="r"><div class="val">'+valHtml(c)+'</div>'+varBadge(c)+confGauge(c)+(c.quantity>1?'<div class="sub">x'+c.quantity+'</div>':'')+'</div></div>';
+      return '<div class="row" data-id="'+c.item_id+'"><div class="lthumb"'+confFrame(c)+'>'+imgTag(c)+photoBadge(c)+pendingBadge(c)+gradingBadge(c)+'</div><div><p class="nm">'+(c.reverify?'<span class="rvdot rvinline" title="À revérifier (authenticité)"></span>':'')+esc(c.card_name||"")+'</p><div class="sub"><span>'+(FLAG[c.language]||"")+'</span><span>'+esc(c.card_number||"")+'</span>'+descTags(c)+' '+g+'</div></div><div class="r"><div class="val">'+valHtml(c)+'</div>'+varBadge(c)+confGauge(c)+(c.quantity>1?'<div class="sub">x'+c.quantity+'</div>':'')+'</div></div>';
     }).join("");
   }
 }
@@ -5944,9 +6009,10 @@ function renderDetail(){ const c=detailCard; if(!c)return; const body=document.g
       (PENDING.has(c.item_id)?'<div style="margin:8px 0;padding:10px 12px;border:1px solid #dcc48a;background:#f3ecdc;border-radius:10px;font-size:13px;color:#7a5b1e">📦 <b>&Agrave; r&eacute;ceptionner.</b> Carte command&eacute;e, en attente de r&eacute;ception. V&eacute;rifie &agrave; l\'arriv&eacute;e qu\'elle est conforme et sans dommage, puis <button onclick=\'confirmReceipt()\' style="border:0;background:#a67c27;color:#fff;font-weight:800;padding:4px 10px;border-radius:8px;cursor:pointer;margin-left:4px">&#10003; Confirmer la r&eacute;ception</button></div>':'')+
       (NEWPHOTO.has(c.item_id)?'<div style="margin:8px 0;padding:10px 12px;border:1px solid #dcc48a;background:#f3ecdc;border-radius:10px;font-size:13px;color:#a67c27">🆕 <b>Nouvelle photo reçue — à valider.</b> Une illustration vient d\'arriver pour cette carte. Tape la bonne ci-dessous pour la valider, ou <button onclick=\'validateCurrent()\' style="border:0;background:#a67c27;color:#fff;font-weight:800;padding:4px 10px;border-radius:8px;cursor:pointer">✓ Valider cette photo</button></div>':(VERIFY.has(c.item_id)?'<div style="margin:8px 0;padding:10px 12px;border:1px solid #fdba74;background:#fff7ed;border-radius:10px;font-size:13px;color:#9a3412">🔍 <b>Photo à vérifier.</b> Tape la bonne illustration ci-dessous pour la valider, ou <button onclick=\'validateCurrent()\' style="border:0;background:#f97316;color:#fff;font-weight:800;padding:4px 10px;border-radius:8px;cursor:pointer">✓ Valider cette photo</button></div>':''))+
       (c.reverify?'<div style="margin:8px 0;padding:10px 12px;border:1px solid #fecaca;background:#fef2f2;border-radius:10px;font-size:13px;color:#991b1b">🔴 <b>À revérifier — authenticité.</b> Carte à contrôler (test de la tranche / lumière / comparaison avec une vraie). <button onclick=\'clearReverify()\' style="border:0;background:#ef4444;color:#fff;font-weight:800;padding:4px 10px;border-radius:8px;cursor:pointer;margin-left:4px">✓ Vérifiée (authentique)</button></div>':'')+
+      gradingBlock(c)+
       '<div class="qtybox"><span class="s">Possédé :</span> <span class="b">'+(c.quantity||1)+'</span></div>'+
       drow("Acheté chez", achFrom)+drow("Date d’achat", achDate)+drow("Prix payé", achPrice)+drow("État", g)+
-      '<details class="pxdet" style="margin-top:10px"'+(c.is_graded?'':'')+'>'+
+      '<details id="geDet" class="pxdet" style="margin-top:10px"'+(c.is_graded?'':'')+'>'+
         '<summary><span style="font-weight:800">🏅 Modifier l’état / gradation</span></summary>'+
         '<div class="pxbody" style="padding-top:12px;display:flex;flex-direction:column;gap:9px">'+
           '<div style="display:flex;gap:8px">'+
@@ -6078,6 +6144,7 @@ async function gradeSave(id){
       const jv=await rv.json(); if(Array.isArray(jv)&&jv[0]) Object.assign(c,jv[0]);
     }catch(_){}
     const d=Array.isArray(DATA)?DATA.find(x=>String(x.item_id)===String(c.item_id)):null; if(d) Object.assign(d,{is_graded:c.is_graded,grading_company:c.grading_company,grade:c.grade,cert_number:c.cert_number,market_value_eur:c.market_value_eur,live_value_eur:c.live_value_eur,seed_value_eur:c.seed_value_eur,price_source:c.price_source,price_asof:c.price_asof});
+    if(c.is_graded && GRPOT[c.item_id]) GRPOT[c.item_id].grading_status='returned';
     GEDIT=null;
     renderDetail(); if(typeof buildValRow==='function')buildValRow(); render();
     try{ if(typeof saveCollCache==='function') saveCollCache(); }catch(_){}
