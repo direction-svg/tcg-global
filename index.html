@@ -859,6 +859,10 @@ body{-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
 .nv-date.nv-mut{opacity:.65;font-weight:600}
 .nv-b.nvsoon{background:#5b21b6;color:#fff}
 .pgchip.nv-miss.on{background:#0f9d6b;border-color:#0f9d6b;color:#fff}
+.nv-fltlabel{font-size:11.5px;font-weight:700;color:var(--ink);margin:4px 2px 7px}
+.nv-fltlabel .nv-mut{color:var(--muted);font-weight:600}
+.nv-mut{color:var(--muted)}
+.pgchip.nv-ck{letter-spacing:.2px}
 .nv-prog{flex:none;width:84px;height:6px;border-radius:999px;background:var(--line);overflow:hidden}
 .nv-prog i{display:block;height:100%;background:linear-gradient(90deg,var(--accent2),var(--accent))}
 .nv-cnt{flex:none;color:var(--muted);font-size:11.5px;font-weight:700}
@@ -2873,8 +2877,15 @@ function renderCalendar(){
   document.getElementById('countLine').textContent=up.length+' à venir';
 }
 // ---------- Hub « Nouveautés » (b171) — vue live JP consolidée (agenda + produits + sets/cartes) ----------
-let NV_PROD=null, NV_SETS=null, NV_TAB='agenda', NV_PAST=false, NV_PCAT='all', NV_PQ='', NV_SGRP='all', NV_SQ='', NV_PMISS=false;
+let NV_PROD=null, NV_SETS=null, NV_TAB='agenda', NV_PAST=false, NV_PHIDE=null, NV_PQ='', NV_SGRP='all', NV_SQ='', NV_PMISS=false, NV_FLTINIT=false;
 let NV_CALDATE=null, NV_KEYDATE=null, NV_CODEDATE=null;
+function nvLoad(k,d){ try{ const v=localStorage.getItem(k); return v==null?d:JSON.parse(v); }catch(e){ return d; } }
+function nvSave(k,v){ try{ localStorage.setItem(k,JSON.stringify(v)); }catch(e){} }
+function nvFltInit(){ if(NV_FLTINIT) return; NV_FLTINIT=true; try{ NV_PHIDE=new Set(nvLoad('nv_phide',[])); NV_PMISS=!!nvLoad('nv_pmiss',false); }catch(e){ NV_PHIDE=new Set(); } }
+function nvToggleCat(c){ nvFltInit(); if(NV_PHIDE.has(c)) NV_PHIDE.delete(c); else NV_PHIDE.add(c); nvSave('nv_phide',[...NV_PHIDE]); nvRenderProd(nvBody()); }
+function nvCatAll(){ nvFltInit(); NV_PHIDE.clear(); nvSave('nv_phide',[]); nvRenderProd(nvBody()); }
+function nvCatNone(cats){ nvFltInit(); NV_PHIDE=new Set(cats); nvSave('nv_phide',[...NV_PHIDE]); nvRenderProd(nvBody()); }
+function nvToggleMiss(){ nvFltInit(); NV_PMISS=!NV_PMISS; nvSave('nv_pmiss',NV_PMISS); nvRenderProd(nvBody()); }
 const NV_SENT='2999-12-31';
 const NV_MO=['janv.','févr.','mars','avr.','mai','juin','juil.','août','sept.','oct.','nov.','déc.'];
 const NV_MOL=['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
@@ -2902,6 +2913,29 @@ function nvMonthLabel(s){ const d=nvDparse(s); return d?(NV_MOL[d.getMonth()]+' 
 function nvDateBadge(s){ const d=nvDparse(s); if(!d) return ''; const t=new Date(); t.setHours(0,0,0,0); const diff=(d-t)/86400000;
   if(diff>0) return '<span class="nv-b nvsoon">À VENIR</span>'; if(diff>=-75) return '<span class="nv-b nvnew">RÉCENT</span>'; return ''; }
 function nvByDateDesc(a,b){ if(a._eff&&b._eff) return a._eff<b._eff?1:(a._eff>b._eff?-1:0); if(a._eff) return -1; if(b._eff) return 1; return 0; }
+// ---- dédup agenda : une seule ligne par set/événement (fusion des doublons) ----
+function nvCanonSet(code){ const n=nvNorm(code); const m=n.match(/^([A-Z]+\d+)/); return m?m[1]:''; }
+function nvTitleKey(t){ return (t||'').toLowerCase()
+  .replace(/—.*$/,'').replace(/\(.*?\)/g,'')
+  .replace(/\b(op|eb|st|prb|peb|bs|sd|lt)-?\d+\b/g,'')
+  .replace(/release event cards|pre-?release cards|tournament cards|sortie japon|super pre-?release edition/g,'')
+  .replace(/[^a-z0-9]/g,''); }
+function nvRowScore(r){ let s=0; const reg=r.region==='JP'?3:(r.region==='WW'?2:(!r.region?1:0)); const et={set_release:3,reprint:2,anniversary:1,event:0}[r.etype]||0; s=reg*100+et*10+(r.confidence==='confirme'?1:0); return s; }
+function nvDedupAgenda(rows){
+  const parent=[]; const find=x=>{ while(parent[x]!==x){ parent[x]=parent[parent[x]]; x=parent[x]; } return x; }; const uni=(a,b)=>{ parent[find(a)]=find(b); };
+  rows.forEach((r,i)=>parent[i]=i);
+  const byCanon={}, byTitle={};
+  rows.forEach((r,i)=>{ const cs=nvCanonSet(r.scope_code); if(cs){ if(byCanon[cs]!=null) uni(i,byCanon[cs]); else byCanon[cs]=i; }
+    const tk=nvTitleKey(r.title); if(tk&&tk.length>4){ if(byTitle[tk]!=null) uni(i,byTitle[tk]); else byTitle[tk]=i; } });
+  const groups={}; rows.forEach((r,i)=>{ const g=find(i); (groups[g]=groups[g]||[]).push(r); });
+  return Object.keys(groups).map(k=>{ const g=groups[k];
+    let best=g[0]; g.forEach(r=>{ if(nvRowScore(r)>nvRowScore(best)) best=r; });
+    const prim=Object.assign({},best);
+    const anns=g.filter(r=>r!==best && r.etype==='anniversary');
+    if(anns.length){ const ex=anns.map(a=>a.title).join(' · '); if((prim.impact||'').indexOf(ex)<0) prim.impact=(prim.impact?prim.impact+' · ':'')+'🎂 '+ex; }
+    return prim;
+  });
+}
 function nvSetVariants(code){ const n=nvNorm(code); if(!n) return []; const m=n.match(/^([A-Z]+)(\d+)$/); const s=new Set([n]); if(m){ s.add(m[1]+'-'+m[2]); } return [...s]; }
 function nvGroupOf(sc){ const p=nvNorm(sc).replace(/\d+$/,''); if(p==='OP'||p==='EB'||p==='PRB'||p==='PEB')return'BOOSTER'; if(p==='ST')return'STARTER'; return'AUTRE'; }
 function nvSetKey(sc){ const m=nvNorm(sc).match(/^([A-Z]+)(\d+)$/); const pref=m?m[1]:nvNorm(sc), num=m?parseInt(m[2],10):0; const ord={OP:5,EB:4,PRB:3,PEB:3,ST:2}[pref]||1; return ord*100000+num; }
@@ -2933,9 +2967,10 @@ async function nvEnsureProd(){ if(NV_PROD) return; try{ const r=await fetch(SB+'
 async function nvEnsureSets(){ if(NV_SETS) return; try{ const r=await fetch(SB+'/rest/v1/app_set_completion?language=eq.JP&select=language,groupe,set_code,set_name,total,owned',{headers:{apikey:ANON,Authorization:'Bearer '+ANON}}); const rows=await r.json(); NV_SETS=Array.isArray(rows)?rows:[]; }catch(e){ NV_SETS=[]; } }
 function nvRenderAgenda(body){
   const today=new Date(); today.setHours(0,0,0,0);
-  const rows=(CAL||[]).filter(x=>x.region!=='EN');
-  const up=rows.filter(x=>x.event_date && new Date(x.event_date+'T00:00:00')>=today);
-  const past=rows.filter(x=>x.event_date && new Date(x.event_date+'T00:00:00')<today).sort((a,b)=>a.event_date<b.event_date?1:-1);
+  let rows=(CAL||[]).filter(x=>x.region!=='EN' && x.event_date);
+  rows=nvDedupAgenda(rows);
+  const up=rows.filter(x=>new Date(x.event_date+'T00:00:00')>=today).sort((a,b)=>a.event_date<b.event_date?-1:(a.event_date>b.event_date?1:0));
+  const past=rows.filter(x=>new Date(x.event_date+'T00:00:00')<today).sort((a,b)=>a.event_date<b.event_date?1:-1);
   let h='';
   if(up.length){ h+='<div style="display:flex;flex-direction:column;gap:9px">'+up.map(calRow).join('')+'</div>'; }
   else h+='<div class="empty">Aucune sortie à venir connue — le rafraîchissement hebdo en ajoutera.</div>';
@@ -2957,20 +2992,24 @@ function nvProdCard(p,CATL){
   '</div>';
 }
 function nvRenderProd(body){
-  nvBuildDateMaps();
-  const cats=[...new Set((NV_PROD||[]).map(p=>p.category).filter(Boolean))];
-  const q=(NV_PQ||'').toLowerCase().trim();
+  nvFltInit(); nvBuildDateMaps();
   const CATL=(typeof PROD_CAT_LABELS!=='undefined')?PROD_CAT_LABELS:{};
+  const CORD=(typeof PROD_CAT_ORDER!=='undefined')?PROD_CAT_ORDER:null;
+  let cats=[...new Set((NV_PROD||[]).map(p=>p.category).filter(Boolean))];
+  if(CORD) cats.sort((a,b)=>{ const ia=CORD.indexOf(a),ib=CORD.indexOf(b); return (ia<0?99:ia)-(ib<0?99:ib); }); else cats.sort();
+  const q=(NV_PQ||'').toLowerCase().trim();
   let rows=(NV_PROD||[]).slice();
   rows.forEach(p=>{ p._eff=nvProdDate(p); });
-  if(NV_PCAT!=='all') rows=rows.filter(p=>p.category===NV_PCAT);
+  if(NV_PHIDE&&NV_PHIDE.size) rows=rows.filter(p=>!NV_PHIDE.has(p.category));
   if(NV_PMISS) rows=rows.filter(p=>!(p.owned_qty>0));
   if(q) rows=rows.filter(p=>((p.name||'').toLowerCase().indexOf(q)>=0)||(nvNorm(p.set_code).indexOf(nvNorm(q))>=0));
   rows.sort((a,b)=>{ const d=nvByDateDesc(a,b); return d!==0?d:((a.name||'').localeCompare(b.name||'')); });
+  const allOn=!(NV_PHIDE&&NV_PHIDE.size);
   let h='<div class="nv-tools"><input id="nvProdSearch" class="nv-search" placeholder="Rechercher un produit…" value="'+esc(NV_PQ||'')+'" oninput="NV_PQ=this.value;nvRenderProd(nvBody())"></div>';
-  h+='<div class="pgnav nv-cats"><button class="pgchip'+(NV_PCAT==='all'?' on':'')+'" onclick="NV_PCAT=\'all\';nvRenderProd(nvBody())">Tous</button>'+
-     cats.map(c=>'<button class="pgchip'+(NV_PCAT===c?' on':'')+'" onclick="NV_PCAT=\''+esc(c)+'\';nvRenderProd(nvBody())">'+esc(CATL[c]||c)+'</button>').join('')+
-     '<button class="pgchip nv-miss'+(NV_PMISS?' on':'')+'" onclick="NV_PMISS=!NV_PMISS;nvRenderProd(nvBody())">🛒 À acheter</button></div>';
+  h+='<div class="nv-fltlabel">Afficher les catégories <span class="nv-mut">(coché = visible, décoché = masqué · mémorisé)</span></div>';
+  h+='<div class="pgnav nv-cats"><button class="pgchip nv-ck'+(allOn?' on':'')+'" onclick="nvCatAll()">'+(allOn?'☑':'☐')+' Tous</button>'+
+     cats.map(c=>{ const on=!(NV_PHIDE&&NV_PHIDE.has(c)); return '<button class="pgchip nv-ck'+(on?' on':'')+'" onclick="nvToggleCat(\''+esc(c)+'\')">'+(on?'☑':'☐')+' '+esc(CATL[c]||c)+'</button>'; }).join('')+
+     '<button class="pgchip nv-miss'+(NV_PMISS?' on':'')+'" onclick="nvToggleMiss()">🛒 À acheter</button></div>';
   if(!rows.length){ h+='<div class="empty">Aucun produit'+(NV_PMISS?' à acheter dans ce filtre':'')+'.</div>'; body.innerHTML=h; const inp0=document.getElementById('nvProdSearch'); if(NV_PQ&&inp0){ inp0.focus(); try{ inp0.setSelectionRange(inp0.value.length,inp0.value.length); }catch(e){} } return; }
   let curK=null, open=false;
   rows.forEach(p=>{ const k=p._eff?nvMonthKey(p._eff):'zzzz'; if(k!==curK){ if(open) h+='</div>'; curK=k; h+='<div class="nv-month">'+(p._eff?nvMonthLabel(p._eff):'Date inconnue')+'</div><div class="nv-grid">'; open=true; } h+=nvProdCard(p,CATL); });
