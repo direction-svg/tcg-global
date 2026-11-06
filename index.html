@@ -863,6 +863,33 @@ body{-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
 .nv-fltlabel .nv-mut{color:var(--muted);font-weight:600}
 .nv-mut{color:var(--muted)}
 .pgchip.nv-ck{letter-spacing:.2px}
+/* barre d'outils compacte : bouton filtres + bascule vue */
+.nv-toolrow{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:0 0 10px}
+.nv-fltbtn{border:1px solid var(--line);background:var(--panel);color:var(--ink);font-weight:800;font-size:12.5px;padding:8px 13px;border-radius:10px;cursor:pointer}
+.nv-fltbtn.on{border-color:var(--accent);color:var(--accent)}
+.nv-fltbtn:hover{border-color:var(--accent)}
+.nv-viewseg{display:inline-flex;border:1px solid var(--line);border-radius:10px;overflow:hidden;margin-left:auto}
+.nv-vbtn{border:0;background:var(--panel);color:var(--muted);font-weight:800;font-size:12px;padding:8px 11px;cursor:pointer}
+.nv-vbtn.on{background:var(--chipOn);color:var(--chipOnInk)}
+.nv-fltpanel{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:8px 6px;margin:0 0 14px;box-shadow:var(--shadow);display:flex;flex-direction:column;max-width:340px}
+.nv-ckrow{display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:8px;font-size:13px;font-weight:600;color:var(--ink);cursor:pointer}
+.nv-ckrow:hover{background:var(--chip)}
+.nv-ckrow input{width:17px;height:17px;accent-color:var(--accent);cursor:pointer;flex:none}
+.nv-ckrow .nv-mut{font-weight:600}
+.nv-ckdiv{height:1px;background:var(--line);margin:5px 10px}
+/* vue liste */
+.nv-list{display:flex;flex-direction:column;gap:8px}
+.nv-lrow{display:flex;align-items:center;gap:12px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:9px 12px}
+.nv-lthumb{flex:none;width:46px;height:46px;border-radius:8px;overflow:hidden;background:var(--chip);display:flex;align-items:center;justify-content:center}
+.nv-lthumb img{width:100%;height:100%;object-fit:contain}
+.nv-lthumb.nvph::after{content:"📦";font-size:20px;opacity:.5}
+.nv-lmid{flex:1;min-width:0}
+.nv-lnm{font-size:13px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:flex;align-items:center;gap:6px}
+.nv-lnm .nv-b{font-size:9px;padding:1px 6px}
+.nv-lsub{font-size:11px;color:var(--muted);font-weight:600;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.nv-lright{flex:none;text-align:right}
+.nv-lpx{font-weight:800;color:var(--accent);font-size:13.5px;white-space:nowrap}
+.nv-lpx.na{color:var(--muted);font-weight:600;font-size:11.5px}
 .nv-prog{flex:none;width:84px;height:6px;border-radius:999px;background:var(--line);overflow:hidden}
 .nv-prog i{display:block;height:100%;background:linear-gradient(90deg,var(--accent2),var(--accent))}
 .nv-cnt{flex:none;color:var(--muted);font-size:11.5px;font-weight:700}
@@ -2877,15 +2904,16 @@ function renderCalendar(){
   document.getElementById('countLine').textContent=up.length+' à venir';
 }
 // ---------- Hub « Nouveautés » (b171) — vue live JP consolidée (agenda + produits + sets/cartes) ----------
-let NV_PROD=null, NV_SETS=null, NV_TAB='agenda', NV_PAST=false, NV_PHIDE=null, NV_PQ='', NV_SGRP='all', NV_SQ='', NV_PMISS=false, NV_FLTINIT=false;
+let NV_PROD=null, NV_SETS=null, NV_TAB='agenda', NV_PAST=false, NV_PHIDE=null, NV_PQ='', NV_SGRP='all', NV_SQ='', NV_PMISS=false, NV_FLTINIT=false, NV_PVIEW='grid', NV_FLTOPEN=false;
 let NV_CALDATE=null, NV_KEYDATE=null, NV_CODEDATE=null;
 function nvLoad(k,d){ try{ const v=localStorage.getItem(k); return v==null?d:JSON.parse(v); }catch(e){ return d; } }
 function nvSave(k,v){ try{ localStorage.setItem(k,JSON.stringify(v)); }catch(e){} }
-function nvFltInit(){ if(NV_FLTINIT) return; NV_FLTINIT=true; try{ NV_PHIDE=new Set(nvLoad('nv_phide',[])); NV_PMISS=!!nvLoad('nv_pmiss',false); }catch(e){ NV_PHIDE=new Set(); } }
+function nvFltInit(){ if(NV_FLTINIT) return; NV_FLTINIT=true; try{ NV_PHIDE=new Set(nvLoad('nv_phide',[])); NV_PMISS=!!nvLoad('nv_pmiss',false); NV_PVIEW=(nvLoad('nv_pview','grid')==='list')?'list':'grid'; }catch(e){ NV_PHIDE=new Set(); } }
 function nvToggleCat(c){ nvFltInit(); if(NV_PHIDE.has(c)) NV_PHIDE.delete(c); else NV_PHIDE.add(c); nvSave('nv_phide',[...NV_PHIDE]); nvRenderProd(nvBody()); }
 function nvCatAll(){ nvFltInit(); NV_PHIDE.clear(); nvSave('nv_phide',[]); nvRenderProd(nvBody()); }
-function nvCatNone(cats){ nvFltInit(); NV_PHIDE=new Set(cats); nvSave('nv_phide',[...NV_PHIDE]); nvRenderProd(nvBody()); }
 function nvToggleMiss(){ nvFltInit(); NV_PMISS=!NV_PMISS; nvSave('nv_pmiss',NV_PMISS); nvRenderProd(nvBody()); }
+function nvSetView(v){ nvFltInit(); NV_PVIEW=(v==='list')?'list':'grid'; nvSave('nv_pview',NV_PVIEW); nvRenderProd(nvBody()); }
+function nvFltToggle(){ NV_FLTOPEN=!NV_FLTOPEN; nvRenderProd(nvBody()); }
 const NV_SENT='2999-12-31';
 const NV_MO=['janv.','févr.','mars','avr.','mai','juin','juil.','août','sept.','oct.','nov.','déc.'];
 const NV_MOL=['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
@@ -2991,9 +3019,21 @@ function nvProdCard(p,CATL){
     '<div class="nv-meta"><div class="nv-nm">'+esc(p.name)+'</div>'+dl+'<div class="nv-row"><span class="chip">'+esc(CATL[p.category]||p.category||'—')+'</span>'+px+'</div></div>'+
   '</div>';
 }
+function nvProdRowList(p,CATL){
+  const img=p.image_url?('<img referrerpolicy="no-referrer" loading="lazy" src="'+esc(p.image_url)+'" onerror="this.parentNode.classList.add(\'nvph\');this.remove()">'):'';
+  const px=(p.price_eur!=null)?('<span class="nv-lpx">'+eur0(p.price_eur)+'</span>'):'<span class="nv-lpx na">n.c.</span>';
+  const dl=p._eff?nvDlabel(p._eff):'date inconnue';
+  return '<div class="nv-lrow">'+
+    '<div class="nv-lthumb'+(p.image_url?'':' nvph')+'">'+img+'</div>'+
+    '<div class="nv-lmid"><div class="nv-lnm">'+esc(p.name)+(p.owned_qty>0?' <span class="nv-b nvown">✓</span>':'')+' '+nvDateBadge(p._eff)+'</div>'+
+      '<div class="nv-lsub">📅 '+dl+' · '+esc(CATL[p.category]||p.category||'—')+'</div></div>'+
+    '<div class="nv-lright">'+px+'</div>'+
+  '</div>';
+}
 function nvRenderProd(body){
   nvFltInit(); nvBuildDateMaps();
-  const CATL=(typeof PROD_CAT_LABELS!=='undefined')?PROD_CAT_LABELS:{};
+  const CATL=Object.assign({}, (typeof PROD_CAT_LABELS!=='undefined'?PROD_CAT_LABELS:{}));
+  CATL.OTHER='🎴 Playmat / Autre';
   const CORD=(typeof PROD_CAT_ORDER!=='undefined')?PROD_CAT_ORDER:null;
   let cats=[...new Set((NV_PROD||[]).map(p=>p.category).filter(Boolean))];
   if(CORD) cats.sort((a,b)=>{ const ia=CORD.indexOf(a),ib=CORD.indexOf(b); return (ia<0?99:ia)-(ib<0?99:ib); }); else cats.sort();
@@ -3005,14 +3045,24 @@ function nvRenderProd(body){
   if(q) rows=rows.filter(p=>((p.name||'').toLowerCase().indexOf(q)>=0)||(nvNorm(p.set_code).indexOf(nvNorm(q))>=0));
   rows.sort((a,b)=>{ const d=nvByDateDesc(a,b); return d!==0?d:((a.name||'').localeCompare(b.name||'')); });
   const allOn=!(NV_PHIDE&&NV_PHIDE.size);
+  const visN=cats.filter(c=>!(NV_PHIDE&&NV_PHIDE.has(c))).length;
   let h='<div class="nv-tools"><input id="nvProdSearch" class="nv-search" placeholder="Rechercher un produit…" value="'+esc(NV_PQ||'')+'" oninput="NV_PQ=this.value;nvRenderProd(nvBody())"></div>';
-  h+='<div class="nv-fltlabel">Afficher les catégories <span class="nv-mut">(coché = visible, décoché = masqué · mémorisé)</span></div>';
-  h+='<div class="pgnav nv-cats"><button class="pgchip nv-ck'+(allOn?' on':'')+'" onclick="nvCatAll()">'+(allOn?'☑':'☐')+' Tous</button>'+
-     cats.map(c=>{ const on=!(NV_PHIDE&&NV_PHIDE.has(c)); return '<button class="pgchip nv-ck'+(on?' on':'')+'" onclick="nvToggleCat(\''+esc(c)+'\')">'+(on?'☑':'☐')+' '+esc(CATL[c]||c)+'</button>'; }).join('')+
-     '<button class="pgchip nv-miss'+(NV_PMISS?' on':'')+'" onclick="nvToggleMiss()">🛒 À acheter</button></div>';
+  h+='<div class="nv-toolrow">'+
+     '<button class="nv-fltbtn'+((NV_FLTOPEN||!allOn||NV_PMISS)?' on':'')+'" onclick="nvFltToggle()">⚙️ Filtres · '+visN+'/'+cats.length+' catég.'+(NV_PMISS?' · 🛒':'')+' '+(NV_FLTOPEN?'▴':'▾')+'</button>'+
+     '<div class="nv-viewseg"><button class="nv-vbtn'+(NV_PVIEW!=='list'?' on':'')+'" title="Vue grille" onclick="nvSetView(\'grid\')">▦ Grille</button><button class="nv-vbtn'+(NV_PVIEW==='list'?' on':'')+'" title="Vue liste" onclick="nvSetView(\'list\')">☰ Liste</button></div>'+
+     '</div>';
+  if(NV_FLTOPEN){
+    h+='<div class="nv-fltpanel">'+
+       '<label class="nv-ckrow"><input type="checkbox"'+(allOn?' checked':'')+' onclick="nvCatAll()"> <b>Tout afficher</b></label>'+
+       cats.map(c=>{ const on=!(NV_PHIDE&&NV_PHIDE.has(c)); return '<label class="nv-ckrow"><input type="checkbox"'+(on?' checked':'')+' onclick="nvToggleCat(\''+esc(c)+'\')"> '+esc(CATL[c]||c)+'</label>'; }).join('')+
+       '<div class="nv-ckdiv"></div>'+
+       '<label class="nv-ckrow"><input type="checkbox"'+(NV_PMISS?' checked':'')+' onclick="nvToggleMiss()"> 🛒 À acheter seulement <span class="nv-mut">(masquer ce que j\'ai)</span></label>'+
+       '</div>';
+  }
   if(!rows.length){ h+='<div class="empty">Aucun produit'+(NV_PMISS?' à acheter dans ce filtre':'')+'.</div>'; body.innerHTML=h; const inp0=document.getElementById('nvProdSearch'); if(NV_PQ&&inp0){ inp0.focus(); try{ inp0.setSelectionRange(inp0.value.length,inp0.value.length); }catch(e){} } return; }
+  const listView=(NV_PVIEW==='list');
   let curK=null, open=false;
-  rows.forEach(p=>{ const k=p._eff?nvMonthKey(p._eff):'zzzz'; if(k!==curK){ if(open) h+='</div>'; curK=k; h+='<div class="nv-month">'+(p._eff?nvMonthLabel(p._eff):'Date inconnue')+'</div><div class="nv-grid">'; open=true; } h+=nvProdCard(p,CATL); });
+  rows.forEach(p=>{ const k=p._eff?nvMonthKey(p._eff):'zzzz'; if(k!==curK){ if(open) h+='</div>'; curK=k; h+='<div class="nv-month">'+(p._eff?nvMonthLabel(p._eff):'Date inconnue')+'</div><div class="'+(listView?'nv-list':'nv-grid')+'">'; open=true; } h+=(listView?nvProdRowList(p,CATL):nvProdCard(p,CATL)); });
   if(open) h+='</div>';
   h+='<div style="margin-top:14px"><button class="pgchip" onclick="setMode(\'products\')">Gérer mes produits scellés →</button></div>';
   body.innerHTML=h;
