@@ -2909,7 +2909,7 @@ function renderCalendar(){
   document.getElementById('countLine').textContent=up.length+' à venir';
 }
 // ---------- Hub « Nouveautés » (b171) — vue live JP consolidée (agenda + produits + sets/cartes) ----------
-let NV_PROD=null, NV_SETS=null, NV_TAB='agenda', NV_PAST=false, NV_PHIDE=null, NV_PQ='', NV_SGRP='all', NV_SQ='', NV_PMISS=false, NV_FLTINIT=false, NV_PVIEW='grid', NV_FLTOPEN=false, NV_PSORT='date';
+let NV_PROD=null, NV_SETS=null, NV_TAB='agenda', NV_PAST=false, NV_PHIDE=null, NV_PQ='', NV_SGRP='all', NV_SQ='', NV_PMISS=false, NV_FLTINIT=false, NV_PVIEW='grid', NV_FLTOPEN=false, NV_PSORT='date', NV_VINTAGE=null;
 let NV_CALDATE=null, NV_KEYDATE=null, NV_CODEDATE=null;
 function nvLoad(k,d){ try{ const v=localStorage.getItem(k); return v==null?d:JSON.parse(v); }catch(e){ return d; } }
 function nvSave(k,v){ try{ localStorage.setItem(k,JSON.stringify(v)); }catch(e){} }
@@ -3012,6 +3012,7 @@ async function renderNouveautes(){
       '<button class="pgchip'+(NV_TAB==='agenda'?' on':'')+'" onclick="nvSetTab(\'agenda\')">📅 Agenda</button>'+
       '<button class="pgchip'+(NV_TAB==='prod'?' on':'')+'" onclick="nvSetTab(\'prod\')">📦 Produits &amp; coffrets</button>'+
       '<button class="pgchip'+(NV_TAB==='sets'?' on':'')+'" onclick="nvSetTab(\'sets\')">🃏 Sets &amp; cartes</button>'+
+      '<button class="pgchip'+(NV_TAB==='vintage'?' on':'')+'" onclick="nvSetTab(\'vintage\')">🕰️ Cartes anciennes</button>'+
     '</div><div id="nvBody"><div class="loading">Chargement…</div></div>';
   nvRenderTab();
 }
@@ -3020,7 +3021,29 @@ async function nvRenderTab(){
   const body=nvBody(); if(!body) return;
   if(NV_TAB==='agenda'){ await nvEnsureCal(); if(state.mode!=='nouveautes')return; nvRenderAgenda(body); }
   else if(NV_TAB==='prod'){ body.innerHTML='<div class="loading">Chargement des produits…</div>'; await nvEnsureCal(); await nvEnsureProd(); if(state.mode!=='nouveautes')return; nvRenderProd(body); }
-  else { body.innerHTML='<div class="loading">Chargement des sets…</div>'; await nvEnsureCal(); await nvEnsureProd(); await nvEnsureSets(); if(state.mode!=='nouveautes')return; nvRenderSets(body); }
+  else if(NV_TAB==='sets'){ body.innerHTML='<div class="loading">Chargement des sets…</div>'; await nvEnsureCal(); await nvEnsureProd(); await nvEnsureSets(); if(state.mode!=='nouveautes')return; nvRenderSets(body); }
+  else { body.innerHTML='<div class="loading">Chargement des cartes anciennes…</div>'; await nvEnsureVintage(); if(state.mode!=='nouveautes')return; nvRenderVintage(body); }
+}
+async function nvEnsureVintage(){ if(NV_VINTAGE) return; try{ const r=await fetch(SB+'/rest/v1/app_vintage?select=*',{headers:{apikey:ANON,Authorization:'Bearer '+ANON}}); const rows=await r.json(); NV_VINTAGE=Array.isArray(rows)?rows:[]; }catch(e){ NV_VINTAGE=[]; } }
+function nvRenderVintage(body){
+  const rows=(NV_VINTAGE||[]).slice();
+  const totPaid=rows.reduce((s,r)=>s+(+r.paid_eur||0),0);
+  let h='<div class="note" style="background:var(--panel);border:1px solid var(--line);border-left:3px solid var(--accent);border-radius:11px;padding:11px 14px;margin-bottom:14px;font-size:12.5px;color:var(--muted)">'+
+    '<b style="color:var(--ink)">🕰️ Cartes anciennes</b> — cartes vintage / promos hors catalogue TCG (ex. Weekly Shonen Jump 40th 2008, One Piece × Dragon Ball). '+rows.length+' pièce'+(rows.length>1?'s':'')+' · <b>'+eur0(totPaid)+'</b> payés. Les cotes de marché et images sont en cours de recherche.</div>';
+  if(!rows.length){ h+='<div class="empty">Aucune carte ancienne pour l\'instant.</div>'; body.innerHTML=h; return; }
+  h+='<div class="nv-list">'+rows.map(v=>{
+    const paid=(v.paid_eur!=null)?('<span class="nv-lpx">'+eur0(v.paid_eur)+'</span>'):'';
+    const mkt=(v.market_eur!=null)?('<span class="nv-mut" style="font-size:11px">cote '+eur0(v.market_eur)+'</span>'):'<span class="nv-mut" style="font-size:11px">cote à venir</span>';
+    const badges=(v.received==='Non'?'<span class="nv-b" style="background:var(--accent);color:#fff;font-size:9px;padding:1px 6px">réception ⏳</span>':'')+(v.needs_id?' <span class="nv-b" style="background:#b45309;color:#fff;font-size:9px;padding:1px 6px">à préciser</span>':'');
+    return '<div class="nv-lrow">'+
+      '<div class="nv-lthumb nvph" style="font-size:20px">🃏</div>'+
+      '<div class="nv-lmid"><div class="nv-lnm">'+esc(v.item_name||'')+' '+badges+'</div>'+
+        '<div class="nv-lsub">'+esc(v.seller||'')+(v.year_guess?(' · '+esc(v.year_guess)):'')+' · '+mkt+'</div></div>'+
+      '<div class="nv-lright">'+paid+'</div>'+
+    '</div>';
+  }).join('')+'</div>';
+  body.innerHTML=h;
+  const cnt=document.getElementById('countLine'); if(cnt) cnt.textContent=rows.length+' cartes anciennes';
 }
 async function nvEnsureCal(){ if(CALLOADED) return; try{ const r=await fetch(SB+'/rest/v1/app_calendar?select=*&order=event_date.asc&limit=2000',{headers:{apikey:ANON,Authorization:'Bearer '+ANON}}); const rows=await r.json(); CAL=Array.isArray(rows)?rows:[]; CALLOADED=true; }catch(e){ CAL=CAL||[]; } }
 async function nvEnsureProd(){ if(NV_PROD) return; try{ const r=await fetch(SB+'/rest/v1/app_products?language=eq.JP&select=product_id,name,category,image_url,price_eur,owned_qty,set_code,sort_date,sort_key&order=name.asc',{headers:{apikey:ANON,Authorization:'Bearer '+ANON}}); const rows=await r.json(); NV_PROD=Array.isArray(rows)?rows:[]; }catch(e){ NV_PROD=[]; } }
