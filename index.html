@@ -868,6 +868,8 @@ body{-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
 .nv-fltbtn{border:1px solid var(--line);background:var(--panel);color:var(--ink);font-weight:800;font-size:12.5px;padding:8px 13px;border-radius:10px;cursor:pointer}
 .nv-fltbtn.on{border-color:var(--accent);color:var(--accent)}
 .nv-fltbtn:hover{border-color:var(--accent)}
+.nv-sort{border:1px solid var(--line);background:var(--panel);color:var(--ink);font-weight:800;font-size:12.5px;padding:8px 10px;border-radius:10px;cursor:pointer}
+.nv-sort:hover{border-color:var(--accent)}
 .nv-viewseg{display:inline-flex;border:1px solid var(--line);border-radius:10px;overflow:hidden;margin-left:auto}
 .nv-vbtn{border:0;background:var(--panel);color:var(--muted);font-weight:800;font-size:12px;padding:8px 11px;cursor:pointer}
 .nv-vbtn.on{background:var(--chipOn);color:var(--chipOnInk)}
@@ -877,6 +879,9 @@ body{-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
 .nv-ckrow input{width:17px;height:17px;accent-color:var(--accent);cursor:pointer;flex:none}
 .nv-ckrow .nv-mut{font-weight:600}
 .nv-ckdiv{height:1px;background:var(--line);margin:5px 10px}
+.nv-ckhdr{display:flex;gap:6px;padding:4px 8px 8px;border-bottom:1px solid var(--line);margin-bottom:4px}
+.nv-ckbtn{flex:1;border:1px solid var(--line);background:var(--chip);color:var(--ink);font-weight:800;font-size:11.5px;padding:7px 8px;border-radius:8px;cursor:pointer}
+.nv-ckbtn:hover{border-color:var(--accent);color:var(--accent)}
 /* vue liste */
 .nv-list{display:flex;flex-direction:column;gap:8px}
 .nv-lrow{display:flex;align-items:center;gap:12px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:9px 12px}
@@ -2904,14 +2909,41 @@ function renderCalendar(){
   document.getElementById('countLine').textContent=up.length+' à venir';
 }
 // ---------- Hub « Nouveautés » (b171) — vue live JP consolidée (agenda + produits + sets/cartes) ----------
-let NV_PROD=null, NV_SETS=null, NV_TAB='agenda', NV_PAST=false, NV_PHIDE=null, NV_PQ='', NV_SGRP='all', NV_SQ='', NV_PMISS=false, NV_FLTINIT=false, NV_PVIEW='grid', NV_FLTOPEN=false;
+let NV_PROD=null, NV_SETS=null, NV_TAB='agenda', NV_PAST=false, NV_PHIDE=null, NV_PQ='', NV_SGRP='all', NV_SQ='', NV_PMISS=false, NV_FLTINIT=false, NV_PVIEW='grid', NV_FLTOPEN=false, NV_PSORT='date';
 let NV_CALDATE=null, NV_KEYDATE=null, NV_CODEDATE=null;
 function nvLoad(k,d){ try{ const v=localStorage.getItem(k); return v==null?d:JSON.parse(v); }catch(e){ return d; } }
 function nvSave(k,v){ try{ localStorage.setItem(k,JSON.stringify(v)); }catch(e){} }
-function nvFltInit(){ if(NV_FLTINIT) return; NV_FLTINIT=true; try{ NV_PHIDE=new Set(nvLoad('nv_phide',[])); NV_PMISS=!!nvLoad('nv_pmiss',false); NV_PVIEW=(nvLoad('nv_pview','grid')==='list')?'list':'grid'; }catch(e){ NV_PHIDE=new Set(); } }
+function nvFltInit(){ if(NV_FLTINIT) return; NV_FLTINIT=true; try{ NV_PHIDE=new Set(nvLoad('nv_phide',[])); NV_PMISS=!!nvLoad('nv_pmiss',false); NV_PVIEW=(nvLoad('nv_pview','grid')==='list')?'list':'grid'; const s=nvLoad('nv_psort','date'); NV_PSORT=['date','serie','prix','nom'].indexOf(s)>=0?s:'date'; }catch(e){ NV_PHIDE=new Set(); } }
+function nvSetSort(v){ nvFltInit(); NV_PSORT=['date','serie','prix','nom'].indexOf(v)>=0?v:'date'; nvSave('nv_psort',NV_PSORT); nvRenderProd(nvBody()); }
+function nvSerie(p,CATL){
+  let m=(nvNorm(p.set_code)||'').match(/^([A-Z]+?)(\d+)$/);
+  if(!m){ const mm=(p.name||'').match(/\b(OP|EB|PRB|PEB|BS|ST|SD|LT)-?(\d{1,3})\b/i); if(mm) m=[null,mm[1].toUpperCase(),mm[2]]; }
+  if(m){ const pref=m[1], num=parseInt(m[2],10);
+    const MAP={OP:['Boosters OP',1],EB:['Extra Boosters EB',2],PRB:['Premium Booster PRB',3],PEB:['Premium Extra Booster PEB',4],BS:['Best Selection',5],ST:['Starter / Ultra Decks ST',6],SD:['Decks SD',7],LT:['Learn Together',8]};
+    const e=MAP[pref]; if(e) return {label:e[0],order:e[1],num:num}; }
+  if(p.category==='CARD_COLLECTION_SET'||p.category==='GIFT_COLLECTION') return {label:'Coffrets & collections',order:15,num:0};
+  if(p.category==='OTHER') return {label:'🎴 Playmat / Autre',order:16,num:0};
+  if(p.category==='PROMO_PACK') return {label:'Promos',order:17,num:0};
+  if(p.category==='CASE') return {label:'Cases',order:18,num:0};
+  return {label:(CATL&&CATL[p.category])||p.category||'Autres',order:30,num:0};
+}
+function nvGroupProducts(rows,CATL){
+  if(NV_PSORT==='serie'){
+    rows.forEach(p=>{ p._ser=nvSerie(p,CATL); });
+    rows.sort((a,b)=>(a._ser.order-b._ser.order)||(a._ser.num-b._ser.num)||((a.price_eur!=null?0:1)-(b.price_eur!=null?0:1))||((a.name||'').localeCompare(b.name||'')));
+    const g=[]; let cur=null; rows.forEach(p=>{ if(!cur||cur.key!==p._ser.label){ cur={key:p._ser.label,header:p._ser.label,items:[]}; g.push(cur); } cur.items.push(p); }); return g;
+  }
+  if(NV_PSORT==='prix'){ rows.sort((a,b)=>((b.price_eur||0)-(a.price_eur||0))||((a.name||'').localeCompare(b.name||''))); return [{key:'_',header:null,items:rows}]; }
+  if(NV_PSORT==='nom'){ rows.sort((a,b)=>(a.name||'').localeCompare(b.name||'')); return [{key:'_',header:null,items:rows}]; }
+  rows.sort((a,b)=>{ const d=nvByDateDesc(a,b); return d!==0?d:((a.name||'').localeCompare(b.name||'')); });
+  const g=[]; let cur=null; rows.forEach(p=>{ const k=p._eff?nvMonthKey(p._eff):'zzzz'; const lbl=p._eff?nvMonthLabel(p._eff):'Date inconnue'; if(!cur||cur.key!==k){ cur={key:k,header:lbl,items:[]}; g.push(cur); } cur.items.push(p); }); return g;
+}
 function nvToggleCat(c){ nvFltInit(); if(NV_PHIDE.has(c)) NV_PHIDE.delete(c); else NV_PHIDE.add(c); nvSave('nv_phide',[...NV_PHIDE]); nvRenderProd(nvBody()); }
 function nvCatAll(){ nvFltInit(); NV_PHIDE.clear(); nvSave('nv_phide',[]); nvRenderProd(nvBody()); }
+function nvCatNone(){ nvFltInit(); const cats=[...new Set((NV_PROD||[]).map(p=>p.category).filter(Boolean))]; NV_PHIDE=new Set(cats); nvSave('nv_phide',[...NV_PHIDE]); nvRenderProd(nvBody()); }
 function nvToggleMiss(){ nvFltInit(); NV_PMISS=!NV_PMISS; nvSave('nv_pmiss',NV_PMISS); nvRenderProd(nvBody()); }
+function nvApprox(p){ if(p.category!=='OTHER'||!p._eff) return false; const d=nvDparse(p._eff); return !!(d&&d.getDate()===1); }
+function nvDateTxt(p){ if(!p._eff) return 'date inconnue'; if(nvApprox(p)){ const d=nvDparse(p._eff); return '≈ '+NV_MO[d.getMonth()]+' '+d.getFullYear(); } return '📅 '+nvDlabel(p._eff); }
 function nvSetView(v){ nvFltInit(); NV_PVIEW=(v==='list')?'list':'grid'; nvSave('nv_pview',NV_PVIEW); nvRenderProd(nvBody()); }
 function nvFltToggle(){ NV_FLTOPEN=!NV_FLTOPEN; nvRenderProd(nvBody()); }
 const NV_SENT='2999-12-31';
@@ -3012,7 +3044,7 @@ function nvRenderAgenda(body){
 function nvProdCard(p,CATL){
   const img=p.image_url?('<img referrerpolicy="no-referrer" loading="lazy" src="'+esc(p.image_url)+'" onerror="this.parentNode.classList.add(\'nvph\');this.remove()">'):'';
   const px=(p.price_eur!=null)?('<span class="nv-px">'+eur0(p.price_eur)+'</span>'):'<span class="nv-px na">prix n.c.</span>';
-  const dl=p._eff?('<div class="nv-date">📅 '+nvDlabel(p._eff)+'</div>'):'<div class="nv-date nv-mut">date inconnue</div>';
+  const dl='<div class="nv-date'+(p._eff?'':' nv-mut')+'">'+esc(nvDateTxt(p))+'</div>';
   return '<div class="nv-card">'+
     '<div class="nv-badges">'+nvDateBadge(p._eff)+(p.owned_qty>0?'<span class="nv-b nvown">✓ en collec</span>':'')+'</div>'+
     '<div class="nv-thumb'+(p.image_url?'':' nvph')+'">'+img+'</div>'+
@@ -3022,11 +3054,10 @@ function nvProdCard(p,CATL){
 function nvProdRowList(p,CATL){
   const img=p.image_url?('<img referrerpolicy="no-referrer" loading="lazy" src="'+esc(p.image_url)+'" onerror="this.parentNode.classList.add(\'nvph\');this.remove()">'):'';
   const px=(p.price_eur!=null)?('<span class="nv-lpx">'+eur0(p.price_eur)+'</span>'):'<span class="nv-lpx na">n.c.</span>';
-  const dl=p._eff?nvDlabel(p._eff):'date inconnue';
   return '<div class="nv-lrow">'+
     '<div class="nv-lthumb'+(p.image_url?'':' nvph')+'">'+img+'</div>'+
     '<div class="nv-lmid"><div class="nv-lnm">'+esc(p.name)+(p.owned_qty>0?' <span class="nv-b nvown">✓</span>':'')+' '+nvDateBadge(p._eff)+'</div>'+
-      '<div class="nv-lsub">📅 '+dl+' · '+esc(CATL[p.category]||p.category||'—')+'</div></div>'+
+      '<div class="nv-lsub">'+esc(nvDateTxt(p))+' · '+esc(CATL[p.category]||p.category||'—')+'</div></div>'+
     '<div class="nv-lright">'+px+'</div>'+
   '</div>';
 }
@@ -3049,11 +3080,12 @@ function nvRenderProd(body){
   let h='<div class="nv-tools"><input id="nvProdSearch" class="nv-search" placeholder="Rechercher un produit…" value="'+esc(NV_PQ||'')+'" oninput="NV_PQ=this.value;nvRenderProd(nvBody())"></div>';
   h+='<div class="nv-toolrow">'+
      '<button class="nv-fltbtn'+((NV_FLTOPEN||!allOn||NV_PMISS)?' on':'')+'" onclick="nvFltToggle()">⚙️ Filtres · '+visN+'/'+cats.length+' catég.'+(NV_PMISS?' · 🛒':'')+' '+(NV_FLTOPEN?'▴':'▾')+'</button>'+
+     '<select class="nv-sort" onchange="nvSetSort(this.value)">'+['date','serie','prix','nom'].map(s=>'<option value="'+s+'"'+(NV_PSORT===s?' selected':'')+'>'+({date:'Trier : Date',serie:'Trier : Série',prix:'Trier : Prix €',nom:'Trier : Nom'}[s])+'</option>').join('')+'</select>'+
      '<div class="nv-viewseg"><button class="nv-vbtn'+(NV_PVIEW!=='list'?' on':'')+'" title="Vue grille" onclick="nvSetView(\'grid\')">▦ Grille</button><button class="nv-vbtn'+(NV_PVIEW==='list'?' on':'')+'" title="Vue liste" onclick="nvSetView(\'list\')">☰ Liste</button></div>'+
      '</div>';
   if(NV_FLTOPEN){
     h+='<div class="nv-fltpanel">'+
-       '<label class="nv-ckrow"><input type="checkbox"'+(allOn?' checked':'')+' onclick="nvCatAll()"> <b>Tout afficher</b></label>'+
+       '<div class="nv-ckhdr"><button class="nv-ckbtn" onclick="nvCatAll()">☑ Tout cocher</button><button class="nv-ckbtn" onclick="nvCatNone()">☐ Tout décocher</button></div>'+
        cats.map(c=>{ const on=!(NV_PHIDE&&NV_PHIDE.has(c)); return '<label class="nv-ckrow"><input type="checkbox"'+(on?' checked':'')+' onclick="nvToggleCat(\''+esc(c)+'\')"> '+esc(CATL[c]||c)+'</label>'; }).join('')+
        '<div class="nv-ckdiv"></div>'+
        '<label class="nv-ckrow"><input type="checkbox"'+(NV_PMISS?' checked':'')+' onclick="nvToggleMiss()"> 🛒 À acheter seulement <span class="nv-mut">(masquer ce que j\'ai)</span></label>'+
@@ -3061,9 +3093,8 @@ function nvRenderProd(body){
   }
   if(!rows.length){ h+='<div class="empty">Aucun produit'+(NV_PMISS?' à acheter dans ce filtre':'')+'.</div>'; body.innerHTML=h; const inp0=document.getElementById('nvProdSearch'); if(NV_PQ&&inp0){ inp0.focus(); try{ inp0.setSelectionRange(inp0.value.length,inp0.value.length); }catch(e){} } return; }
   const listView=(NV_PVIEW==='list');
-  let curK=null, open=false;
-  rows.forEach(p=>{ const k=p._eff?nvMonthKey(p._eff):'zzzz'; if(k!==curK){ if(open) h+='</div>'; curK=k; h+='<div class="nv-month">'+(p._eff?nvMonthLabel(p._eff):'Date inconnue')+'</div><div class="'+(listView?'nv-list':'nv-grid')+'">'; open=true; } h+=(listView?nvProdRowList(p,CATL):nvProdCard(p,CATL)); });
-  if(open) h+='</div>';
+  const groups=nvGroupProducts(rows,CATL);
+  groups.forEach(g=>{ if(g.header) h+='<div class="nv-month">'+esc(g.header)+'</div>'; h+='<div class="'+(listView?'nv-list':'nv-grid')+'">'+g.items.map(p=>listView?nvProdRowList(p,CATL):nvProdCard(p,CATL)).join('')+'</div>'; });
   h+='<div style="margin-top:14px"><button class="pgchip" onclick="setMode(\'products\')">Gérer mes produits scellés →</button></div>';
   body.innerHTML=h;
   if(NV_PQ){ const inp=document.getElementById('nvProdSearch'); if(inp){ inp.focus(); try{ inp.setSelectionRange(inp.value.length,inp.value.length); }catch(e){} } }
