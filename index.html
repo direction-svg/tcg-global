@@ -947,7 +947,7 @@ body{-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
       <div class="logo"><div class="mark"><svg viewBox="0 0 240 320"><use href="#bounty-mark"/></svg></div> <span class="logotxt">BOUNTY</span><span id="pageTitle" style="font-weight:800;color:var(--muted);margin-left:8px;font-size:14px"></span></div>
       <div class="mktseg" id="gameSeg" title="Changer de collection" style="margin-left:8px">
         <button data-game="ONE_PIECE" class="on" onclick="gameSwitch('ONE_PIECE')">🏴‍☠️ OP</button>
-        <button data-game="NARUTO" onclick="gameSwitch('NARUTO')">🍥 Naruto</button>
+        <button data-game="NARUTO" onclick="gameSwitch('NARUTO')">🍥 Naruto</button><button data-game="VINTAGE" onclick="gameSwitch('VINTAGE')">🕰️ Anciennes</button>
       </div>
       <div class="grow"></div>
       <button class="regchip" id="mktActive" title="Marché de valorisation — ouvrir le menu" aria-label="Marché, ouvrir le menu" onclick="toggleNav()">🇯🇵 JP</button>
@@ -3012,7 +3012,6 @@ async function renderNouveautes(){
       '<button class="pgchip'+(NV_TAB==='agenda'?' on':'')+'" onclick="nvSetTab(\'agenda\')">📅 Agenda</button>'+
       '<button class="pgchip'+(NV_TAB==='prod'?' on':'')+'" onclick="nvSetTab(\'prod\')">📦 Produits &amp; coffrets</button>'+
       '<button class="pgchip'+(NV_TAB==='sets'?' on':'')+'" onclick="nvSetTab(\'sets\')">🃏 Sets &amp; cartes</button>'+
-      '<button class="pgchip'+(NV_TAB==='vintage'?' on':'')+'" onclick="nvSetTab(\'vintage\')">🕰️ Cartes anciennes</button>'+
     '</div><div id="nvBody"><div class="loading">Chargement…</div></div>';
   nvRenderTab();
 }
@@ -3021,30 +3020,7 @@ async function nvRenderTab(){
   const body=nvBody(); if(!body) return;
   if(NV_TAB==='agenda'){ await nvEnsureCal(); if(state.mode!=='nouveautes')return; nvRenderAgenda(body); }
   else if(NV_TAB==='prod'){ body.innerHTML='<div class="loading">Chargement des produits…</div>'; await nvEnsureCal(); await nvEnsureProd(); if(state.mode!=='nouveautes')return; nvRenderProd(body); }
-  else if(NV_TAB==='sets'){ body.innerHTML='<div class="loading">Chargement des sets…</div>'; await nvEnsureCal(); await nvEnsureProd(); await nvEnsureSets(); if(state.mode!=='nouveautes')return; nvRenderSets(body); }
-  else { body.innerHTML='<div class="loading">Chargement des cartes anciennes…</div>'; await nvEnsureVintage(); if(state.mode!=='nouveautes')return; nvRenderVintage(body); }
-}
-async function nvEnsureVintage(){ if(NV_VINTAGE) return; try{ const r=await fetch(SB+'/rest/v1/app_vintage?select=*',{headers:{apikey:ANON,Authorization:'Bearer '+ANON}}); const rows=await r.json(); NV_VINTAGE=Array.isArray(rows)?rows:[]; }catch(e){ NV_VINTAGE=[]; } }
-function nvRenderVintage(body){
-  const rows=(NV_VINTAGE||[]).slice();
-  const totPaid=rows.reduce((s,r)=>s+(+r.paid_eur||0),0);
-  let h='<div class="note" style="background:var(--panel);border:1px solid var(--line);border-left:3px solid var(--accent);border-radius:11px;padding:11px 14px;margin-bottom:14px;font-size:12.5px;color:var(--muted)">'+
-    '<b style="color:var(--ink)">🕰️ Cartes anciennes</b> — cartes vintage / promos hors catalogue TCG (ex. Weekly Shonen Jump 40th 2008, One Piece × Dragon Ball). '+rows.length+' pièce'+(rows.length>1?'s':'')+' · <b>'+eur0(totPaid)+'</b> payés. Les cotes de marché et images sont en cours de recherche.</div>';
-  if(!rows.length){ h+='<div class="empty">Aucune carte ancienne pour l\'instant.</div>'; body.innerHTML=h; return; }
-  h+='<div class="nv-list">'+rows.map(v=>{
-    const paid=(v.paid_eur!=null)?('<span class="nv-lpx">'+eur0(v.paid_eur)+'</span>'):'';
-    const mkt=(v.market_eur!=null)?('<span class="nv-mut" style="font-size:11px">cote '+eur0(v.market_eur)+'</span>'):'<span class="nv-mut" style="font-size:11px">cote à venir</span>';
-    const badges=(v.received==='Non'?'<span class="nv-b" style="background:var(--accent);color:#fff;font-size:9px;padding:1px 6px">réception ⏳</span>':'')+(v.needs_id?' <span class="nv-b" style="background:#b45309;color:#fff;font-size:9px;padding:1px 6px">à préciser</span>':'');
-    return '<div class="nv-lrow">'+
-      '<div class="nv-lthumb nvph" style="font-size:20px">🃏</div>'+
-      '<div class="nv-lmid"><div class="nv-lnm">'+esc(v.item_name||'')+' '+badges+'</div>'+
-        '<div class="nv-lsub">'+esc(v.seller||'')+(v.year_guess?(' · '+esc(v.year_guess)):'')+' · '+mkt+'</div>'+
-        (v.note?'<div class="nv-lsub" style="white-space:normal;opacity:.85;margin-top:3px">'+esc(v.note)+'</div>':'')+'</div>'+
-      '<div class="nv-lright">'+paid+'</div>'+
-    '</div>';
-  }).join('')+'</div>';
-  body.innerHTML=h;
-  const cnt=document.getElementById('countLine'); if(cnt) cnt.textContent=rows.length+' cartes anciennes';
+  else { body.innerHTML='<div class="loading">Chargement des sets…</div>'; await nvEnsureCal(); await nvEnsureProd(); await nvEnsureSets(); if(state.mode!=='nouveautes')return; nvRenderSets(body); }
 }
 async function nvEnsureCal(){ if(CALLOADED) return; try{ const r=await fetch(SB+'/rest/v1/app_calendar?select=*&order=event_date.asc&limit=2000',{headers:{apikey:ANON,Authorization:'Bearer '+ANON}}); const rows=await r.json(); CAL=Array.isArray(rows)?rows:[]; CALLOADED=true; }catch(e){ CAL=CAL||[]; } }
 async function nvEnsureProd(){ if(NV_PROD) return; try{ const r=await fetch(SB+'/rest/v1/app_products?language=eq.JP&select=product_id,name,category,image_url,price_eur,owned_qty,set_code,sort_date,sort_key&order=name.asc',{headers:{apikey:ANON,Authorization:'Bearer '+ANON}}); const rows=await r.json(); NV_PROD=Array.isArray(rows)?rows:[]; }catch(e){ NV_PROD=[]; } }
@@ -7796,6 +7772,16 @@ const Fake = (function(){
         '<div style="margin-top:auto;padding-top:6px">'+(c.price_eur!=null?('<span style="font:900 13px ui-monospace,monospace">'+eur(c.price_eur)+'</span>'):'<span style="font:800 10px ui-monospace,monospace;color:#d97706;border:1px solid #d97706;border-radius:5px;padding:1px 6px">À CHIFFRER</span>')+'</div>'+
       '</div></div>';
   }
+  function renderVintage(){
+    var s=stage(); if(!s)return; s.className='';
+    s.innerHTML='<div style="background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:11px 13px;margin-bottom:12px"><div style="font-weight:900;font-size:15px">\u{1F570}\uFE0F Cartes anciennes <span style="font-size:11px;color:var(--muted);font-weight:700">\u00B7 vintage &amp; promos hors TCG</span></div><div style="font-size:12px;color:var(--muted);margin-top:4px">Cartes de collection anciennes (ex. Weekly Shonen Jump 40th 2008 \u2014 One Piece \u00D7 Dragon Ball). Touche une carte : cote, achats, saisie d\'achat \u2014 exactement comme One Piece, compt\u00E9 \u00E0 part.</div></div><div id="narutoList"><div class="loading" style="padding:20px;color:var(--muted)">\u2026</div></div>';
+    q('app_games_catalog','select=card_number,name,image_url,language,variant,variant_label,rarity,set_code,set_name,game,printing_id,owned,price_eur,event_family,event_tier,event_circuit,treatment_family_v2,treatment_tags,provenance_family,distribution_region,printed_language&game=eq.VINTAGE&order=card_number').then(function(d){
+      var t=document.getElementById('narutoList'); if(!t)return;
+      d.forEach(function(c){ if(!c.image_url&&NARUTO_IMG[c.printing_id]) c.image_url=NARUTO_IMG[c.printing_id]; NARUTO_CARDS[c.printing_id]=c; });
+      if(!d.length){ t.innerHTML='<div style="padding:20px;text-align:center;color:var(--muted)">Aucune carte ancienne pour l\'instant.</div>'; return; }
+      t.innerHTML='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px">'+d.map(narutoCard).join('')+'</div>';
+    }).catch(function(e){ var t=document.getElementById('narutoList'); if(t)t.innerHTML='<div style="padding:20px;color:#dc2626">Erreur : '+E(e.message)+'</div>'; });
+  }
   function renderNaruto(){
     var s=stage(); if(!s)return; s.className='';
     s.innerHTML='<div style="background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:11px 13px;margin-bottom:12px"><div style="font-weight:900;font-size:15px">🍥 Naruto Card Game <span style="font-size:11px;color:var(--muted);font-weight:700">· Bandai</span></div><div style="font-size:12px;color:var(--muted);margin-top:4px">Le jeu officiel Bandai démarre : seules les promos existent à date (sortie complète 2027). Touche une carte pour l\'ouvrir : cote, achats, saisie d\'achat — comme One Piece, mais compté à part.</div></div><div id="narutoList"><div class="loading" style="padding:20px;color:var(--muted)">…</div></div>';
@@ -7895,7 +7881,7 @@ const Fake = (function(){
 
   /* ---- Sélecteur de collection (haut de page) : One Piece ⇆ Naruto ---- */
   function markGameSeg(g){ var seg=document.getElementById('gameSeg'); if(!seg)return; Array.prototype.forEach.call(seg.querySelectorAll('[data-game]'),function(bt){ bt.className=(bt.getAttribute('data-game')===g)?'on':''; }); }
-  window.gameSwitch=function(g){ try{localStorage.setItem('tcg_game',g);}catch(e){} markGameSeg(g); if(g==='NARUTO') go('naruto'); else go('home'); };
+  window.gameSwitch=function(g){ try{localStorage.setItem('tcg_game',g);}catch(e){} markGameSeg(g); if(g==='NARUTO') go('naruto'); else if(g==='VINTAGE') go('vintage'); else go('home'); };
 
   /* ============ ✅ À VALIDER — cockpit de correction (câblé sur admin-curate) ============ */
   var ADMIN_PIN=null;
@@ -8142,8 +8128,9 @@ const Fake = (function(){
   }
   function go(m){
     try{ var d=document.getElementById('modeSeg'), sc=document.getElementById('navScrim'); if(d)d.classList.remove('open'); if(sc)sc.classList.remove('open'); }catch(e){}
-    if(typeof markGameSeg==='function') markGameSeg(m==='naruto'?'NARUTO':'ONE_PIECE');
+    if(typeof markGameSeg==='function') markGameSeg(m==='naruto'?'NARUTO':(m==='vintage'?'VINTAGE':'ONE_PIECE'));
     if(m==='naruto'){ b4active='naruto'; markNav('naruto'); if(window.state)state.mode='b4_naruto'; setTitle('🍥 Naruto'); hideTools(); renderNaruto(); var bar=document.getElementById('subTabs'); if(bar){bar.style.display='none';bar.innerHTML='';} return; }
+    if(m==='vintage'){ b4active='vintage'; markNav('vintage'); if(window.state)state.mode='b4_vintage'; setTitle('🕰️ Cartes anciennes'); hideTools(); renderVintage(); var barV=document.getElementById('subTabs'); if(barV){barV.style.display='none';barV.innerHTML='';} return; }
     // clic sur un espace => ouvre son 1er mode ; sinon c'est un mode précis (Avancé / Outils)
     var target=(m in SPACE_TABS)?firstMode(m):m;
     goMode(target);
