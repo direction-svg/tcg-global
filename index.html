@@ -3038,7 +3038,8 @@ function nvRenderVintage(body){
     return '<div class="nv-lrow">'+
       '<div class="nv-lthumb nvph" style="font-size:20px">🃏</div>'+
       '<div class="nv-lmid"><div class="nv-lnm">'+esc(v.item_name||'')+' '+badges+'</div>'+
-        '<div class="nv-lsub">'+esc(v.seller||'')+(v.year_guess?(' · '+esc(v.year_guess)):'')+' · '+mkt+'</div></div>'+
+        '<div class="nv-lsub">'+esc(v.seller||'')+(v.year_guess?(' · '+esc(v.year_guess)):'')+' · '+mkt+'</div>'+
+        (v.note?'<div class="nv-lsub" style="white-space:normal;opacity:.85;margin-top:3px">'+esc(v.note)+'</div>':'')+'</div>'+
       '<div class="nv-lright">'+paid+'</div>'+
     '</div>';
   }).join('')+'</div>';
