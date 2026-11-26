@@ -7888,7 +7888,7 @@ const Fake = (function(){
     var sb=document.getElementById('vtSum'); if(sb) sb.innerHTML=vtSummary(a);
     var ch=document.getElementById('vtChips'); if(ch) ch.innerHTML=vtChips();
     var fb=document.getElementById('vtFbadge'); if(fb){ var n=vtActive(); fb.textContent=n; fb.style.display=n?'':'none'; }
-    var vb=document.getElementById('vtViewBtn'); if(vb) vb.innerHTML=s.view==='list'?'&#9638;':'&#9776;';
+    var vb=document.getElementById('vtViewBtn'); if(vb){ vb.innerHTML=s.view==='list'?'&#9638;':'&#9636;'; vb.title=s.view==='list'?'Passer en grille':'Passer en liste'; }
     var cl=document.getElementById('vtCount'); if(cl){ var sl=VT_SORTS.filter(function(x){return x[0]===s.sort;})[0]; cl.textContent=a.length+' carte'+(a.length>1?'s':'')+' · tri : '+(sl?sl[1]:''); }
     if(!a.length){ t.innerHTML='<div style="padding:20px;text-align:center;color:var(--muted)">Aucune carte pour ces filtres.</div>'; return; }
     var draw=function(arr){ return s.view==='list'?('<div style="display:flex;flex-direction:column;gap:7px">'+arr.map(vtRow).join('')+'</div>'):('<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px">'+arr.map(vtCard).join('')+'</div>'); };
