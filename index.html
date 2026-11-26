@@ -1741,6 +1741,15 @@ async function refreshItemMarket(item){
   }catch(e){}
 }
 
+/* b171 : les jeux hors One Piece TCG (cartes anciennes VINTAGE, Naruto…) sont gérés à part — jamais mêlés à la collection One Piece (Bandai 2022+). */
+const OTHER_GAME_SETS=new Set(['JA40','OPHB','OPVA','OPWC','OPOM','OPBM','OPMB','OPWF','OPCD']);
+let OTHER_GAME_PIDS=(function(){ try{ return new Set(JSON.parse(localStorage.getItem('bounty_other_game_pids')||'[]')); }catch(e){ return new Set(); } })();
+function opOnly(arr){ if(!Array.isArray(arr)) return arr; return arr.filter(function(c){ return !(c && (OTHER_GAME_PIDS.has(c.printing_id) || OTHER_GAME_SETS.has(c.set_code))); }); }
+(function refreshOtherGamePids(){ try{ fetch(SB+'/rest/v1/app_games_catalog?select=printing_id,set_code',{headers:{apikey:ANON,Authorization:'Bearer '+ANON}}).then(function(r){return r.ok?r.json():[];}).then(function(b){ if(!Array.isArray(b)||!b.length) return;
+  OTHER_GAME_PIDS=new Set(b.map(function(x){return x.printing_id;})); b.forEach(function(x){ if(x.set_code) OTHER_GAME_SETS.add(x.set_code); });
+  try{ localStorage.setItem('bounty_other_game_pids',JSON.stringify(Array.from(OTHER_GAME_PIDS))); }catch(e){}
+  if(Array.isArray(DATA)&&DATA.length){ var n=DATA.length; DATA=opOnly(DATA); if(DATA.length!==n){ try{ saveCollCache(); buildFilterModal(); if(state.mode==="accueil"){ if(typeof renderHome==='function') renderHome(); } else if(String(state.mode).indexOf('b4_')!==0) render(); }catch(e){} } }
+}).catch(function(){}); }catch(e){} })();
 const COLL_CACHE_KEY='bounty_coll_cache_v2pt'; // v2pt : cache inclut disp_price (Price Truth par ligne)
 function saveCollCache(){ try{ if(Array.isArray(DATA)&&DATA.length) localStorage.setItem(COLL_CACHE_KEY, JSON.stringify(DATA)); }catch(e){} }
 /* b150 : le serveur pagine désormais par item_id (streamable, léger) au lieu de trier par disp_price
@@ -1756,7 +1765,7 @@ async function load(){
   if(!Array.isArray(DATA)||!DATA.length){
     try{ const c=localStorage.getItem(COLL_CACHE_KEY);
       if(c){ const arr=JSON.parse(c);
-        if(Array.isArray(arr)&&arr.length){ DATA=arr; DATALOADED=true;
+        if(Array.isArray(arr)&&arr.length){ DATA=opOnly(arr); DATALOADED=true;
           if(DATA.some(x=>x&&x._jp!=null)) MKT_OVERLAY_OK=true;
           try{ applyPinsToData(loadPinsMapCache()); }catch(e){}   /* b163 : images épinglées dès la façade (cache, zéro réseau) */
           buildFilterModal();
@@ -1773,7 +1782,7 @@ async function load(){
     const b=await r.json(); if(!Array.isArray(b)){ if(DATALOADED) return; break; } all=all.concat(b); if(b.length<step)break; from+=step;
   }
   if(!all.length && DATALOADED) return; // le frais a échoué mais on garde la façade
-  sortDispDesc(all); DATA=all; DATALOADED=true; buildFilterModal();
+  sortDispDesc(all); DATA=opOnly(all); DATALOADED=true; buildFilterModal();
   // b163 : applique les images épinglées AVANT le 1er rendu frais (cache instantané, puis map live déjà en vol).
   try{ applyPinsToData(loadPinsMapCache()); }catch(e){}
   try{ applyPinsToData(await pinsP); }catch(e){}
@@ -4193,7 +4202,7 @@ async function ensureCollLoaded(){
       if(!r.ok) break;
       var b=await r.json(); if(!Array.isArray(b)) break; all=all.concat(b); if(b.length<step) break; from+=step;
     }
-    if(all.length){ sortDispDesc(all); DATA=all; DATALOADED=true; try{ buildFilterModal(); }catch(e){} try{ saveCollCache(); }catch(e){} }
+    if(all.length){ sortDispDesc(all); DATA=opOnly(all); DATALOADED=true; try{ buildFilterModal(); }catch(e){} try{ saveCollCache(); }catch(e){} }
   }catch(e){}
 }
 async function b4Portfolio(){
@@ -7886,6 +7895,7 @@ const Fake = (function(){
     var t=document.getElementById('vtList'); if(!t) return;
     var a=vtFilter(), s=VT.st;
     var sb=document.getElementById('vtSum'); if(sb) sb.innerHTML=vtSummary(a);
+    var qk=document.getElementById('vtQuick'); if(qk) qk.innerHTML=vtQuick();
     var ch=document.getElementById('vtChips'); if(ch) ch.innerHTML=vtChips();
     var fb=document.getElementById('vtFbadge'); if(fb){ var n=vtActive(); fb.textContent=n; fb.style.display=n?'':'none'; }
     var vb=document.getElementById('vtViewBtn'); if(vb){ vb.innerHTML=s.view==='list'?'&#9638;':'&#9636;'; vb.title=s.view==='list'?'Passer en grille':'Passer en liste'; }
@@ -7899,6 +7909,20 @@ const Fake = (function(){
       }).join('');
     } else t.innerHTML=draw(a);
   }
+  function vtQuickRow(label,key,opts){
+    var s=VT.st;
+    return '<div style="display:flex;align-items:center;gap:6px;overflow-x:auto;padding:0 0 7px;scrollbar-width:none"><span style="font:800 10.5px system-ui;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;white-space:nowrap;min-width:52px">'+label+'</span>'+
+      opts.map(function(o){ var on=s[key]===o[0]; return '<span class="chip'+(on?' on':'')+'" style="padding:5px 11px;font-size:12px;flex:none" onclick="vtSetQ(\''+key+'\',\''+String(o[0]).replace(/'/g,"\\'")+'\')">'+E(o[1])+'</span>'; }).join('')+'</div>';
+  }
+  function vtQuick(){
+    var sets={},rars={}; VT.data.forEach(function(c){ var k=c.set_code||'—'; if(!sets[k]) sets[k]=vtSetLabel(c); rars[c.rarity||'—']=1; });
+    var setOpts=[['all','Toutes']].concat(Object.keys(sets).sort(function(a,b){return sets[a].localeCompare(sets[b],'fr');}).map(function(k){return [k,sets[k].replace(/\s*\(.*\)\s*$/,'')];}));
+    var rarOpts=[['all','Tous']].concat(Object.keys(rars).sort().map(function(k){return [k,k];}));
+    var sortSel='<div style="display:flex;align-items:center;gap:6px;padding:0 0 8px"><span style="font:800 10.5px system-ui;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;min-width:52px">Trier</span><select onchange="vtSort(this.value)" style="flex:1;border:1px solid var(--line);background:var(--panel);color:var(--ink);border-radius:10px;padding:7px 10px;font-size:13px;font-weight:700">'+
+      VT_SORTS.map(function(o){ return '<option value="'+o[0]+'"'+(VT.st.sort===o[0]?' selected':'')+'>'+E(o[1])+'</option>'; }).join('')+'</select></div>';
+    return vtQuickRow('Série','set',setOpts)+vtQuickRow('Type','rar',rarOpts)+vtQuickRow('Prix','price',VT_PRICE)+sortSel;
+  }
+  window.vtSetQ=function(k,v){ VT.st[k]=v; vtSave(); vtList(); };
   window.vtClear=function(k){ VT.st[k]='all'; vtSave(); vtList(); };
   window.vtReset=function(){ ['own','set','rar','price','spec','img','pl'].forEach(function(k){VT.st[k]='all';}); vtSave(); vtList(); var m=document.getElementById('vtFmodal'); if(m&&!m.classList.contains('hidden')) vtBuildFilters(); };
   window.vtToggleView=function(){ VT.st.view=VT.st.view==='list'?'grid':'list'; vtSave(); vtList(); };
@@ -7922,7 +7946,7 @@ const Fake = (function(){
     var setOpts=[['all','Tous']].concat(Object.keys(sets).sort(function(a,b){return sets[a].localeCompare(sets[b],'fr');}).map(function(k){return [k,sets[k]];}));
     var rarOpts=[['all','Toutes']].concat(Object.keys(rars).sort().map(function(k){return [k,k];}));
     var cnt=function(key){ return function(v){ return v==='all'?null:vtWith(key,v); }; };
-    b.innerHTML=vtSec('Possession','own',VT_OWN,cnt('own'))+vtSec('Famille / produit','set',setOpts,cnt('set'))+vtSec('Rareté','rar',rarOpts,cnt('rar'))+
+    b.innerHTML=vtSec('Possession','own',VT_OWN,cnt('own'))+vtSec('Série / type de produit','set',setOpts,cnt('set'))+vtSec('Type / rareté','rar',rarOpts,cnt('rar'))+
       vtSec('Cote','price',VT_PRICE,cnt('price'))+vtSec('Particularités','spec',VT_SPEC,cnt('spec'))+vtSec('Plus-value','pl',VT_PL,cnt('pl'))+vtSec('Photo','img',VT_IMG,cnt('img'));
   }
   window.vtSet=function(k,v){ VT.st[k]=v; vtSave(); vtBuildFilters(); vtList(); };
@@ -7941,11 +7965,11 @@ const Fake = (function(){
       '<div style="display:flex;gap:8px;align-items:center;margin:0 0 10px">'+
         '<div class="search" style="flex:1"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="color:var(--muted);flex:none"><circle cx="11" cy="11" r="7"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>'+
         '<input id="vtQ" placeholder="Rechercher (nom, numéro, famille, rareté, vendeur…)" autocomplete="off" value="'+E(VT.st.q||'')+'" oninput="vtSearch(this.value)" style="flex:1;border:0;background:transparent;color:var(--ink);font-size:15px;outline:none;min-width:0"></div>'+
-        '<button class="tbtn" title="Trier" onclick="vtOpenS()">&#8645;</button>'+
-        '<button class="tbtn" title="Filtres" onclick="vtOpenF()">&#9776;<span class="fbadge" id="vtFbadge" style="display:none">0</span></button>'+
+        '<button class="tbtn" title="Trier" onclick="vtOpenS()" style="font-size:13px">&#8645; Trier</button>'+
+        '<button class="tbtn" title="Filtres" onclick="vtOpenF()" style="font-size:13px">&#9881; Filtres<span class="fbadge" id="vtFbadge" style="display:none">0</span></button>'+
         '<button class="tbtn" id="vtViewBtn" title="Grille / liste" onclick="vtToggleView()">&#9638;</button>'+
       '</div>'+
-      '<div id="vtSum"></div><div id="vtChips"></div><div class="count" id="vtCount" style="margin:0 0 8px"></div>'+
+      '<div id="vtSum"></div><div id="vtQuick"></div><div id="vtChips"></div><div class="count" id="vtCount" style="margin:0 0 8px"></div>'+
       '<div id="vtList"><div class="loading">…</div></div>';
     q('app_vintage_cards','select=*&order=card_number').then(function(d){
       d.forEach(function(c){ if(!c.image_url&&NARUTO_IMG[c.printing_id]) c.image_url=NARUTO_IMG[c.printing_id]; c.owned=vtQty(c)>0; NARUTO_CARDS[c.printing_id]=c; });
