@@ -7772,15 +7772,192 @@ const Fake = (function(){
         '<div style="margin-top:auto;padding-top:6px">'+(c.price_eur!=null?('<span style="font:900 13px ui-monospace,monospace">'+eur(c.price_eur)+'</span>'):'<span style="font:800 10px ui-monospace,monospace;color:#d97706;border:1px solid #d97706;border-radius:5px;padding:1px 6px">À CHIFFRER</span>')+'</div>'+
       '</div></div>';
   }
+  /* ============ 🕰️ CARTES ANCIENNES — collection complète : recherche, filtres, tri, vues, totaux (lit app_vintage_cards) ============ */
+  var VT={data:[],st:null};
+  var VT_DEF={q:'',own:'all',set:'all',rar:'all',price:'all',spec:'all',img:'all',pl:'all',sort:'val_desc',view:'grid',group:true};
+  var VT_SORTS=[['val_desc','Valeur ↓ (décroissant)'],['val_asc','Valeur ↑ (croissant)'],['achat','Date d\'achat (récent)'],['set','Par set'],['name','Nom (A→Z)'],['num','Numéro'],['qty','Quantité'],['pl_desc','Plus-value ↓'],['pl_asc','Moins-value d\'abord'],['paid_desc','Prix payé ↓'],['psa_desc','Cote PSA 10 ↓']];
+  var VT_PRICE=[['all','Tous'],['none','À chiffrer'],['lt20','< 20 €'],['20_50','20–50 €'],['50_100','50–100 €'],['gt100','> 100 €']];
+  var VT_OWN=[['all','Toutes'],['owned','Possédées'],['route','En route / pas encore']];
+  var VT_SPEC=[['all','Toutes'],['errata','⚠️ Erreur d\'impression'],['multi','En plusieurs exemplaires'],['psa','Cote PSA connue'],['sealed','Scellées']];
+  var VT_IMG=[['all','Toutes'],['with','Avec photo'],['without','Sans photo']];
+  var VT_PL=[['all','Toutes'],['gain','En plus-value'],['loss','En moins-value'],['nopaid','Prix payé inconnu']];
+  function vtLoad(){ try{ var o=JSON.parse(localStorage.getItem('vt_state')||'{}'); var s={}; for(var k in VT_DEF) s[k]=(o[k]!=null?o[k]:VT_DEF[k]); s.q=''; return s; }catch(e){ return JSON.parse(JSON.stringify(VT_DEF)); } }
+  function vtSave(){ try{ var o={}; for(var k in VT.st) if(k!=='q') o[k]=VT.st[k]; localStorage.setItem('vt_state',JSON.stringify(o)); }catch(e){} }
+  function vtNum(v){ return v==null||v===''?null:Number(v); }
+  function vtPrice(c){ return vtNum(c.price_eur); }
+  function vtQty(c){ var n=vtNum(c.quantity); return n&&n>0?n:0; }
+  function vtVal(c){ var p=vtPrice(c); if(p==null) return 0; return p*(vtQty(c)||1); }
+  function vtPaid(c){ var a=vtNum(c.paid_purchase_eur); if(a==null) a=vtNum(c.paid_eur); return a; }
+  function vtPL(c){ var p=vtPaid(c); if(p==null||vtPrice(c)==null) return null; return vtVal(c)-p; }
+  function vtDate(c){ return String(c.last_purchase_date||c.acquired_date||''); }
+  function vtSetLabel(c){ return c.set_name||c.set_code||'—'; }
+  function vtSealed(c){ return /scell|sealed|未開封/i.test((c.name||'')+' '+(c.variant_label||'')); }
+  function vtFilter(){
+    var s=VT.st, a=VT.data.slice();
+    if(s.q){ var toks=s.q.toLowerCase().split(/\s+/).filter(Boolean);
+      a=a.filter(function(c){ var hay=[c.name,c.card_number,c.set_code,c.set_name,c.set_series,c.rarity,c.variant,c.variant_label,c.seller,c.language].map(function(v){return String(v==null?'':v);}).join(' ').toLowerCase(); return toks.every(function(t){return hay.indexOf(t)>=0;}); }); }
+    if(s.own==='owned') a=a.filter(function(c){return vtQty(c)>0;});
+    else if(s.own==='route') a=a.filter(function(c){return vtQty(c)===0;});
+    if(s.set!=='all') a=a.filter(function(c){return c.set_code===s.set;});
+    if(s.rar!=='all') a=a.filter(function(c){return (c.rarity||'—')===s.rar;});
+    if(s.price!=='all') a=a.filter(function(c){ var p=vtPrice(c); if(s.price==='none') return p==null; if(p==null) return false;
+      return s.price==='lt20'?p<20: s.price==='20_50'?(p>=20&&p<50): s.price==='50_100'?(p>=50&&p<100): p>=100; });
+    if(s.spec==='errata') a=a.filter(function(c){return !!c.is_errata;});
+    else if(s.spec==='multi') a=a.filter(function(c){return vtQty(c)>1;});
+    else if(s.spec==='psa') a=a.filter(function(c){return c.psa9_eur!=null||c.psa10_eur!=null;});
+    else if(s.spec==='sealed') a=a.filter(vtSealed);
+    if(s.img==='with') a=a.filter(function(c){return !!narutoImg(c);}); else if(s.img==='without') a=a.filter(function(c){return !narutoImg(c);});
+    if(s.pl==='gain') a=a.filter(function(c){var v=vtPL(c);return v!=null&&v>0;});
+    else if(s.pl==='loss') a=a.filter(function(c){var v=vtPL(c);return v!=null&&v<0;});
+    else if(s.pl==='nopaid') a=a.filter(function(c){return vtPaid(c)==null;});
+    var k=s.sort, cmpS=function(x,y){return String(x||'').localeCompare(String(y||''),'fr',{numeric:true});};
+    a.sort(function(x,y){
+      if(k==='val_asc') return vtVal(x)-vtVal(y);
+      if(k==='name') return cmpS(x.name,y.name);
+      if(k==='num') return cmpS(x.card_number,y.card_number);
+      if(k==='qty') return vtQty(y)-vtQty(x)||vtVal(y)-vtVal(x);
+      if(k==='achat') return cmpS(vtDate(y),vtDate(x))||vtVal(y)-vtVal(x);
+      if(k==='set') return cmpS(vtSetLabel(x),vtSetLabel(y))||cmpS(x.card_number,y.card_number);
+      if(k==='pl_desc'||k==='pl_asc'){ var px=vtPL(x),py=vtPL(y); if(px==null&&py==null) return 0; if(px==null) return 1; if(py==null) return -1; return k==='pl_desc'?py-px:px-py; }
+      if(k==='paid_desc') return (vtPaid(y)||0)-(vtPaid(x)||0);
+      if(k==='psa_desc') return (vtNum(y.psa10_eur)||0)-(vtNum(x.psa10_eur)||0);
+      return vtVal(y)-vtVal(x);
+    });
+    return a;
+  }
+  function vtActive(){ var s=VT.st,n=0; ['own','set','rar','price','spec','img','pl'].forEach(function(k){ if(s[k]!=='all') n++; }); return n; }
+  function vtBadge(t,bg,fg){ return '<span style="font:800 9.5px ui-monospace,monospace;padding:1px 6px;border-radius:5px;background:'+bg+';color:'+fg+'">'+t+'</span>'; }
+  function vtBadges(c){
+    var b=[];
+    if(c.is_errata) b.push(vtBadge('ERREUR','#fee2e2','#b91c1c'));
+    if(vtQty(c)>1) b.push(vtBadge('×'+vtQty(c),'var(--accent)','#fff'));
+    if(vtQty(c)===0) b.push(vtBadge('EN ROUTE','#fef3c7','#b45309'));
+    if(c.psa10_eur!=null) b.push(vtBadge('PSA10 '+eur(Number(c.psa10_eur)),'#ede9fe','#6d28d9'));
+    return b.join(' ');
+  }
+  function vtPLtag(c){ var v=vtPL(c); if(v==null) return ''; var up=v>=0; return '<span style="font:800 10.5px ui-monospace,monospace;color:'+(up?'#059669':'#dc2626')+'">'+(up?'+':'−')+eur(Math.abs(v))+'</span>'; }
+  function vtPriceTag(c){ var p=vtPrice(c); return p!=null?('<span style="font:900 13px ui-monospace,monospace">'+eur(p)+'</span>'+(vtQty(c)>1?'<span style="font-size:10.5px;color:var(--muted)"> ×'+vtQty(c)+' = '+eur(vtVal(c))+'</span>':'')):'<span style="font:800 10px ui-monospace,monospace;color:#d97706;border:1px solid #d97706;border-radius:5px;padding:1px 6px">À CHIFFRER</span>'; }
+  function vtCard(c){
+    return '<div onclick="narutoOpen(\''+E(c.printing_id)+'\')" style="background:var(--panel);border:1px solid var(--line);border-radius:12px;overflow:hidden;display:flex;flex-direction:column;cursor:pointer'+(vtQty(c)===0?';opacity:.72':'')+'" onmouseover="this.style.borderColor=\'var(--accent)\'" onmouseout="this.style.borderColor=\'var(--line)\'">'+
+      thumb(narutoImg(c))+
+      '<div style="padding:8px 9px 10px;display:flex;flex-direction:column;gap:3px;flex:1">'+
+        '<div style="font:700 11px/1.2 ui-monospace,monospace;color:var(--muted)">'+E(c.card_number||'')+' · '+E(c.set_code||'')+'</div>'+
+        '<div style="font-weight:800;font-size:12.5px;line-height:1.2">'+E(c.name||'')+'</div>'+
+        '<div style="font-size:10.5px;color:var(--muted)">'+E(c.rarity||'')+'</div>'+
+        '<div style="display:flex;gap:4px;flex-wrap:wrap">'+vtBadges(c)+'</div>'+
+        '<div style="margin-top:auto;padding-top:6px;display:flex;justify-content:space-between;align-items:baseline;gap:6px;flex-wrap:wrap">'+vtPriceTag(c)+vtPLtag(c)+'</div>'+
+      '</div></div>';
+  }
+  function vtRow(c){
+    var paid=vtPaid(c);
+    return '<div onclick="narutoOpen(\''+E(c.printing_id)+'\')" style="display:flex;gap:10px;align-items:center;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:8px 11px;cursor:pointer'+(vtQty(c)===0?';opacity:.72':'')+'">'+thumb(narutoImg(c),'38px','53px')+
+      '<div style="flex:1;min-width:0"><div style="font-weight:800;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+E(c.name||'')+'</div>'+
+      '<div style="font:700 11px ui-monospace,monospace;color:var(--muted);margin-top:2px">'+E(c.card_number||'')+' · '+E(c.set_code||'')+(c.rarity?' · '+E(c.rarity):'')+'</div>'+
+      '<div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:3px">'+vtBadges(c)+'</div></div>'+
+      '<div style="text-align:right;white-space:nowrap">'+vtPriceTag(c)+
+      '<div style="font-size:10.5px;color:var(--muted);margin-top:2px">'+(paid!=null?('payé '+eur(paid)+' '):'')+vtPLtag(c)+'</div></div></div>';
+  }
+  function vtSummary(a){
+    var val=0,paid=0,paidKnown=0,n=0,ex=0,nop=0,valPaid=0;
+    a.forEach(function(c){ var q=vtQty(c); if(q>0){ n++; ex+=q; } val+=vtVal(c); if(vtPrice(c)==null) nop++; var p=vtPaid(c); if(p!=null){ paid+=p; paidKnown++; valPaid+=vtVal(c); } });
+    var pl=valPaid-paid;
+    function box(l,v,sub){ return '<div style="flex:1;min-width:92px;border:1px solid var(--line);border-radius:10px;padding:7px 10px;background:var(--panel)"><div style="font-size:10.5px;color:var(--muted);font-weight:700">'+l+'</div><div style="font:900 15px ui-monospace,monospace">'+v+'</div>'+(sub?'<div style="font-size:10px;color:var(--muted)">'+sub+'</div>':'')+'</div>'; }
+    return '<div style="display:flex;gap:8px;flex-wrap:wrap;margin:0 0 10px">'+
+      box('Valeur',eur(val),n+' réf. · '+ex+' ex.')+
+      box('Payé',paidKnown?eur(paid):'—',paidKnown+' réf. connues')+
+      box('Plus-value',paidKnown?('<span style="color:'+(pl>=0?'#059669':'#dc2626')+'">'+(pl>=0?'+':'−')+eur(Math.abs(pl))+'</span>'):'—','sur les réf. au prix payé connu')+
+      (nop?box('À chiffrer',String(nop),'sans cote'):'')+
+    '</div>';
+  }
+  function vtChips(){
+    var s=VT.st,out=[],lab=function(arr,v){ for(var i=0;i<arr.length;i++) if(arr[i][0]===v) return arr[i][1]; return v; };
+    if(s.own!=='all') out.push(['own',lab(VT_OWN,s.own)]);
+    if(s.set!=='all'){ var f=VT.data.filter(function(c){return c.set_code===s.set;})[0]; out.push(['set',f?vtSetLabel(f):s.set]); }
+    if(s.rar!=='all') out.push(['rar',s.rar]);
+    if(s.price!=='all') out.push(['price',lab(VT_PRICE,s.price)]);
+    if(s.spec!=='all') out.push(['spec',lab(VT_SPEC,s.spec)]);
+    if(s.img!=='all') out.push(['img',lab(VT_IMG,s.img)]);
+    if(s.pl!=='all') out.push(['pl',lab(VT_PL,s.pl)]);
+    if(!out.length) return '';
+    return '<div style="display:flex;gap:6px;flex-wrap:wrap;margin:0 0 8px">'+out.map(function(o){ return '<span class="chip on" style="padding:5px 10px;font-size:12px" onclick="vtClear(\''+o[0]+'\')">'+E(o[1])+' ✕</span>'; }).join('')+
+      '<span class="chip" style="padding:5px 10px;font-size:12px" onclick="vtReset()">Tout effacer</span></div>';
+  }
+  function vtList(){
+    var t=document.getElementById('vtList'); if(!t) return;
+    var a=vtFilter(), s=VT.st;
+    var sb=document.getElementById('vtSum'); if(sb) sb.innerHTML=vtSummary(a);
+    var ch=document.getElementById('vtChips'); if(ch) ch.innerHTML=vtChips();
+    var fb=document.getElementById('vtFbadge'); if(fb){ var n=vtActive(); fb.textContent=n; fb.style.display=n?'':'none'; }
+    var vb=document.getElementById('vtViewBtn'); if(vb) vb.innerHTML=s.view==='list'?'&#9638;':'&#9776;';
+    var cl=document.getElementById('vtCount'); if(cl){ var sl=VT_SORTS.filter(function(x){return x[0]===s.sort;})[0]; cl.textContent=a.length+' carte'+(a.length>1?'s':'')+' · tri : '+(sl?sl[1]:''); }
+    if(!a.length){ t.innerHTML='<div style="padding:20px;text-align:center;color:var(--muted)">Aucune carte pour ces filtres.</div>'; return; }
+    var draw=function(arr){ return s.view==='list'?('<div style="display:flex;flex-direction:column;gap:7px">'+arr.map(vtRow).join('')+'</div>'):('<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px">'+arr.map(vtCard).join('')+'</div>'); };
+    if(s.sort==='set'){
+      var g={},order=[]; a.forEach(function(c){ var k=c.set_code||'—'; if(!g[k]){g[k]=[];order.push(k);} g[k].push(c); });
+      t.innerHTML=order.map(function(k){ var arr=g[k],v=0; arr.forEach(function(c){v+=vtVal(c);}); var c0=arr[0];
+        return '<div style="margin:4px 0 14px"><div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin:0 2px 7px"><div><div style="font-weight:900;font-size:13.5px">'+E(vtSetLabel(c0))+'</div>'+(c0.set_series?'<div style="font-size:11px;color:var(--muted)">'+E(c0.set_series)+'</div>':'')+'</div><div style="font:800 12px ui-monospace,monospace;white-space:nowrap">'+arr.length+' · '+eur(v)+'</div></div>'+draw(arr)+'</div>';
+      }).join('');
+    } else t.innerHTML=draw(a);
+  }
+  window.vtClear=function(k){ VT.st[k]='all'; vtSave(); vtList(); };
+  window.vtReset=function(){ ['own','set','rar','price','spec','img','pl'].forEach(function(k){VT.st[k]='all';}); vtSave(); vtList(); var m=document.getElementById('vtFmodal'); if(m&&!m.classList.contains('hidden')) vtBuildFilters(); };
+  window.vtToggleView=function(){ VT.st.view=VT.st.view==='list'?'grid':'list'; vtSave(); vtList(); };
+  function vtEnsureModals(){
+    if(document.getElementById('vtFmodal')) return;
+    var w=document.createElement('div');
+    w.innerHTML='<div id="vtFmodal" class="overlay hidden" onclick="if(event.target===this)vtCloseF()"><div class="sheet fsheet"><div class="fbar"><b>Filtres — cartes anciennes</b><button class="x" onclick="vtCloseF()">&times;</button></div><div id="vtFbody"></div><div class="ffoot"><button class="reset" onclick="vtReset()">R&eacute;initialiser</button><button class="apply" onclick="vtCloseF()">Voir les cartes</button></div></div></div>'+
+      '<div id="vtSmodal" class="overlay hidden" onclick="if(event.target===this)vtCloseS()"><div class="sheet ssheet"><div class="fbar"><b>Trier par</b><button class="x" onclick="vtCloseS()">&times;</button></div><div id="vtSortList"></div><div style="height:calc(14px + env(safe-area-inset-bottom))"></div></div></div>';
+    while(w.firstChild) document.body.appendChild(w.firstChild);
+  }
+  function vtCount(pred){ return VT.data.filter(pred).length; }
+  function vtSec(title,key,opts,countFn){
+    var s=VT.st;
+    return '<div class="fsec"><h5>'+title+'</h5><div class="chipwrap">'+opts.map(function(o){ var n=countFn?countFn(o[0]):null; if(o[0]!=='all'&&n===0) return '';
+      return '<div class="chip'+(s[key]===o[0]?' on':'')+'" onclick="vtSet(\''+key+'\',\''+String(o[0]).replace(/'/g,"\\'")+'\')">'+E(o[1])+(n!=null?' <span class="n">'+n+'</span>':'')+'</div>'; }).join('')+'</div></div>';
+  }
+  function vtWith(key,val){ var keep=VT.st[key]; VT.st[key]=val; var n=vtFilter().length; VT.st[key]=keep; return n; }
+  function vtBuildFilters(){
+    var b=document.getElementById('vtFbody'); if(!b) return;
+    var sets={},rars={}; VT.data.forEach(function(c){ var k=c.set_code||'—'; if(!sets[k]) sets[k]=vtSetLabel(c); rars[c.rarity||'—']=1; });
+    var setOpts=[['all','Tous']].concat(Object.keys(sets).sort(function(a,b){return sets[a].localeCompare(sets[b],'fr');}).map(function(k){return [k,sets[k]];}));
+    var rarOpts=[['all','Toutes']].concat(Object.keys(rars).sort().map(function(k){return [k,k];}));
+    var cnt=function(key){ return function(v){ return v==='all'?null:vtWith(key,v); }; };
+    b.innerHTML=vtSec('Possession','own',VT_OWN,cnt('own'))+vtSec('Famille / produit','set',setOpts,cnt('set'))+vtSec('Rareté','rar',rarOpts,cnt('rar'))+
+      vtSec('Cote','price',VT_PRICE,cnt('price'))+vtSec('Particularités','spec',VT_SPEC,cnt('spec'))+vtSec('Plus-value','pl',VT_PL,cnt('pl'))+vtSec('Photo','img',VT_IMG,cnt('img'));
+  }
+  window.vtSet=function(k,v){ VT.st[k]=v; vtSave(); vtBuildFilters(); vtList(); };
+  window.vtOpenF=function(){ vtEnsureModals(); vtBuildFilters(); document.getElementById('vtFmodal').classList.remove('hidden'); };
+  window.vtCloseF=function(){ var m=document.getElementById('vtFmodal'); if(m) m.classList.add('hidden'); };
+  window.vtOpenS=function(){ vtEnsureModals(); var box=document.getElementById('vtSortList');
+    box.innerHTML=VT_SORTS.map(function(o){ return '<div class="srow'+(VT.st.sort===o[0]?' on':'')+'" onclick="vtSort(\''+o[0]+'\')"><span>'+E(o[1])+'</span><span class="tick">✓</span></div>'; }).join('');
+    document.getElementById('vtSmodal').classList.remove('hidden'); };
+  window.vtCloseS=function(){ var m=document.getElementById('vtSmodal'); if(m) m.classList.add('hidden'); };
+  window.vtSort=function(k){ VT.st.sort=k; vtSave(); vtCloseS(); vtList(); };
+  window.vtSearch=function(v){ VT.st.q=v||''; vtList(); };
   function renderVintage(){
     var s=stage(); if(!s)return; s.className='';
-    s.innerHTML='<div style="background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:11px 13px;margin-bottom:12px"><div style="font-weight:900;font-size:15px">\u{1F570}\uFE0F Cartes anciennes <span style="font-size:11px;color:var(--muted);font-weight:700">\u00B7 vintage &amp; promos hors TCG</span></div><div style="font-size:12px;color:var(--muted);margin-top:4px">Cartes de collection anciennes (ex. Weekly Shonen Jump 40th 2008 \u2014 One Piece \u00D7 Dragon Ball). Touche une carte : cote, achats, saisie d\'achat \u2014 exactement comme One Piece, compt\u00E9 \u00E0 part.</div></div><div id="narutoList"><div class="loading" style="padding:20px;color:var(--muted)">\u2026</div></div>';
-    q('app_games_catalog','select=card_number,name,image_url,language,variant,variant_label,rarity,set_code,set_name,game,printing_id,owned,price_eur,event_family,event_tier,event_circuit,treatment_family_v2,treatment_tags,provenance_family,distribution_region,printed_language&game=eq.VINTAGE&order=card_number').then(function(d){
-      var t=document.getElementById('narutoList'); if(!t)return;
-      d.forEach(function(c){ if(!c.image_url&&NARUTO_IMG[c.printing_id]) c.image_url=NARUTO_IMG[c.printing_id]; NARUTO_CARDS[c.printing_id]=c; });
-      if(!d.length){ t.innerHTML='<div style="padding:20px;text-align:center;color:var(--muted)">Aucune carte ancienne pour l\'instant.</div>'; return; }
-      t.innerHTML='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px">'+d.map(narutoCard).join('')+'</div>';
-    }).catch(function(e){ var t=document.getElementById('narutoList'); if(t)t.innerHTML='<div style="padding:20px;color:#dc2626">Erreur : '+E(e.message)+'</div>'; });
+    if(!VT.st) VT.st=vtLoad();
+    s.innerHTML='<div style="background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:11px 13px;margin-bottom:10px"><div style="font-weight:900;font-size:15px">\u{1F570}\uFE0F Cartes anciennes <span style="font-size:11px;color:var(--muted);font-weight:700">\u00B7 vintage &amp; promos hors TCG</span></div><div style="font-size:12px;color:var(--muted);margin-top:4px">Cote = médiane des dernières ventes réelles (eBay / Mercari), cartes non gradées. Touchez une carte pour sa fiche (prix, image, achats).</div></div>'+
+      '<div style="display:flex;gap:8px;align-items:center;margin:0 0 10px">'+
+        '<div class="search" style="flex:1"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="color:var(--muted);flex:none"><circle cx="11" cy="11" r="7"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>'+
+        '<input id="vtQ" placeholder="Rechercher (nom, numéro, famille, rareté, vendeur…)" autocomplete="off" value="'+E(VT.st.q||'')+'" oninput="vtSearch(this.value)" style="flex:1;border:0;background:transparent;color:var(--ink);font-size:15px;outline:none;min-width:0"></div>'+
+        '<button class="tbtn" title="Trier" onclick="vtOpenS()">&#8645;</button>'+
+        '<button class="tbtn" title="Filtres" onclick="vtOpenF()">&#9776;<span class="fbadge" id="vtFbadge" style="display:none">0</span></button>'+
+        '<button class="tbtn" id="vtViewBtn" title="Grille / liste" onclick="vtToggleView()">&#9638;</button>'+
+      '</div>'+
+      '<div id="vtSum"></div><div id="vtChips"></div><div class="count" id="vtCount" style="margin:0 0 8px"></div>'+
+      '<div id="vtList"><div class="loading">…</div></div>';
+    q('app_vintage_cards','select=*&order=card_number').then(function(d){
+      d.forEach(function(c){ if(!c.image_url&&NARUTO_IMG[c.printing_id]) c.image_url=NARUTO_IMG[c.printing_id]; c.owned=vtQty(c)>0; NARUTO_CARDS[c.printing_id]=c; });
+      VT.data=d;
+      if(!d.length){ var t=document.getElementById('vtList'); if(t) t.innerHTML='<div style="padding:20px;text-align:center;color:var(--muted)">Aucune carte ancienne pour l\'instant.</div>'; return; }
+      vtList();
+    }).catch(function(e){
+      /* repli : ancienne source si la vue n'est pas encore disponible */
+      q('app_games_catalog','select=card_number,name,image_url,language,variant,variant_label,rarity,set_code,set_name,game,printing_id,owned,price_eur&game=eq.VINTAGE&order=card_number').then(function(d){
+        d.forEach(function(c){ c.quantity=c.owned?1:0; NARUTO_CARDS[c.printing_id]=c; }); VT.data=d; vtList();
+      }).catch(function(e2){ var t=document.getElementById('vtList'); if(t)t.innerHTML='<div style="padding:20px;color:#dc2626">Erreur : '+E(e2.message)+'</div>'; });
+    });
   }
   function renderNaruto(){
     var s=stage(); if(!s)return; s.className='';
