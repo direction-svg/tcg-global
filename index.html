@@ -7961,7 +7961,7 @@ const Fake = (function(){
   function renderVintage(){
     var s=stage(); if(!s)return; s.className='';
     if(!VT.st) VT.st=vtLoad();
-    s.innerHTML='<div style="background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:11px 13px;margin-bottom:10px"><div style="font-weight:900;font-size:15px">\u{1F570}\uFE0F Cartes anciennes <span style="font-size:11px;color:var(--muted);font-weight:700">\u00B7 vintage &amp; promos hors TCG</span></div><div style="font-size:12px;color:var(--muted);margin-top:4px">Cote = médiane des dernières ventes réelles (eBay / Mercari), cartes non gradées. Touchez une carte pour sa fiche (prix, image, achats).</div></div>'+
+    s.innerHTML='<div style="background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:11px 13px;margin-bottom:10px"><div style="font-weight:900;font-size:15px">\u{1F570}\uFE0F Cartes anciennes <span style="font-size:11px;color:var(--muted);font-weight:700">\u00B7 vintage &amp; promos hors TCG</span></div><div style="font-size:12px;color:var(--muted);margin-top:4px">Cote = médiane des dernières ventes réelles (eBay / Mercari), cartes non gradées. Touchez une carte pour sa fiche (prix, image, achats).</div>'+'<button class="tbtn" onclick="vcOpen()" style="margin-top:9px;font-size:13px;font-weight:800">\u{1F4DA} Catalogue complet des cartes anciennes &#8594;</button></div>'+
       '<div style="display:flex;gap:8px;align-items:center;margin:0 0 10px">'+
         '<div class="search" style="flex:1"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="color:var(--muted);flex:none"><circle cx="11" cy="11" r="7"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>'+
         '<input id="vtQ" placeholder="Rechercher (nom, numéro, famille, rareté, vendeur…)" autocomplete="off" value="'+E(VT.st.q||'')+'" oninput="vtSearch(this.value)" style="flex:1;border:0;background:transparent;color:var(--ink);font-size:15px;outline:none;min-width:0"></div>'+
@@ -7983,6 +7983,135 @@ const Fake = (function(){
       }).catch(function(e2){ var t=document.getElementById('vtList'); if(t)t.innerHTML='<div style="padding:20px;color:#dc2626">Erreur : '+E(e2.message)+'</div>'; });
     });
   }
+  /* ============ 📚 CATALOGUE COMPLET DES CARTES ANCIENNES (avant 2022) — lit app_vintage_catalog_series / app_vintage_catalog ============
+     Séparé de la collection One Piece : tables tcg_global.vintage_cat_* (source vintageopcards.com), affiché UNIQUEMENT ici. */
+  var VC={series:null,col:null,ser:null,cards:[],q:'',miss:false};
+  function vcFetch(path){ return fetch(SB+'/rest/v1/'+path,{headers:{apikey:ANON,Authorization:'Bearer '+ANON}}).then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); }); }
+  function vcImg(c,cls){
+    var t=c.thumb_url||c.image_url||''; var f=c.image_url||'';
+    if(!t) return '<div style="aspect-ratio:63/88;background:#ece3d2;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:11px">sans image</div>';
+    return '<div style="aspect-ratio:63/88;background:#ece3d2;display:flex;align-items:center;justify-content:center;overflow:hidden"><img loading="lazy" src="'+E(t)+'" data-full="'+E(f)+'" onerror="if(this.dataset.full&&this.src!==this.dataset.full){this.src=this.dataset.full}else{this.style.opacity=.15}" style="width:100%;height:100%;object-fit:contain'+(cls||'')+'"></div>';
+  }
+  function vcBar(owned,total){
+    var p=total?Math.round(owned*100/total):0;
+    return '<div style="height:5px;background:var(--line);border-radius:3px;overflow:hidden;margin-top:5px"><div style="height:100%;width:'+p+'%;background:'+(owned?'#059669':'transparent')+'"></div></div>';
+  }
+  function vcHead(title,sub,back){
+    return '<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">'+
+      '<button class="tbtn" onclick="'+back+'" style="font-size:13px">&#8592; Retour</button>'+
+      '<div style="min-width:0"><div style="font-weight:900;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+title+'</div>'+
+      (sub?'<div style="font-size:11.5px;color:var(--muted)">'+sub+'</div>':'')+'</div></div>';
+  }
+  function vcSearchBox(){
+    return '<div class="search" style="margin:0 0 10px"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="color:var(--muted);flex:none"><circle cx="11" cy="11" r="7"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>'+
+      '<input id="vcQ" placeholder="Chercher dans tout le catalogue (nom, numéro : C339-W, S127…)" autocomplete="off" value="'+E(VC.q)+'" oninput="vcSearch(this.value)" style="flex:1;border:0;background:transparent;color:var(--ink);font-size:15px;outline:none;min-width:0"></div>';
+  }
+  /* --- niveau 1 : collections (groupées par famille, triées par année) --- */
+  window.vcOpen=function(){
+    var s=stage(); if(!s)return; s.className='';
+    s.innerHTML=vcHead('\u{1F4DA} Catalogue des cartes anciennes','Toutes les séries japonaises sorties avant 2022 · source vintageopcards.com','gameSwitch(\'VINTAGE\')')+vcSearchBox()+'<div id="vcBody"><div class="loading">…</div></div>';
+    var p=VC.series?Promise.resolve(VC.series):vcFetch('app_vintage_catalog_series?select=*&order=year_start,collection_name,sort_order').then(function(d){ VC.series=d; return d; });
+    p.then(function(d){ if(VC.q) vcSearch(VC.q); else vcRenderCols(d); }).catch(function(e){ var b=document.getElementById('vcBody'); if(b) b.innerHTML='<div style="padding:20px;color:#dc2626">Erreur : '+E(e.message)+'</div>'; });
+  };
+  function vcRenderCols(d){
+    var b=document.getElementById('vcBody'); if(!b)return;
+    var cols={}, order=[];
+    d.forEach(function(r){ var k=r.collection_slug; if(!cols[k]){ cols[k]={slug:k,name:r.collection_name,cat:r.category,yr:r.year_range,y:r.year_start,cards:0,owned:0,series:0,cover:r.cover_url}; order.push(k); } var c=cols[k]; c.cards+=r.cards; c.owned+=r.owned; c.series++; if(!c.cover&&r.cover_url) c.cover=r.cover_url; });
+    var tot=0, own=0; order.forEach(function(k){ tot+=cols[k].cards; own+=cols[k].owned; });
+    var cats={'Card Games':'\u{1F3B4} Jeux de cartes','Food & Snack Cards':'\u{1F36C} Cartes de friandises (gum, wafers…)','Premium & Special Cards':'✨ Cartes spéciales & premium'};
+    var html='<div style="background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px 13px;margin-bottom:12px;font-size:13px"><b>'+tot.toLocaleString('fr-FR')+'</b> cartes référencées · <b style="color:#059669">'+own+'</b> dans ta collection'+vcBar(own,tot)+'</div>';
+    Object.keys(cats).forEach(function(cat){
+      var ks=order.filter(function(k){ return cols[k].cat===cat; }); if(!ks.length) return;
+      html+='<div style="font-weight:900;font-size:13px;margin:14px 0 8px">'+cats[cat]+'</div><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px">';
+      ks.forEach(function(k){ var c=cols[k];
+        html+='<div onclick="vcCol(\''+E(k)+'\')" style="display:flex;gap:10px;align-items:center;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:8px;cursor:pointer">'+
+          '<div style="width:46px;height:64px;flex:none;border-radius:6px;overflow:hidden;background:#ece3d2">'+(c.cover?'<img loading="lazy" src="'+E(c.cover)+'" style="width:100%;height:100%;object-fit:cover">':'')+'</div>'+
+          '<div style="min-width:0;flex:1"><div style="font-weight:800;font-size:13px;line-height:1.2">'+E(c.name)+'</div>'+
+          '<div style="font-size:11px;color:var(--muted);margin-top:2px">'+E(c.yr||'')+' · '+c.series+' série'+(c.series>1?'s':'')+' · '+c.cards+' cartes</div>'+
+          '<div style="font-size:11px;margin-top:2px">'+(c.owned?'<b style="color:#059669">'+c.owned+'</b> possédée'+(c.owned>1?'s':''):'<span style="color:var(--muted)">aucune possédée</span>')+'</div>'+vcBar(c.owned,c.cards)+'</div></div>';
+      });
+      html+='</div>';
+    });
+    b.innerHTML=html;
+  }
+  /* --- niveau 2 : séries d'une collection --- */
+  window.vcCol=function(slug){
+    VC.col=slug; VC.q='';
+    var rows=(VC.series||[]).filter(function(r){ return r.collection_slug===slug; }); if(!rows.length) return vcOpen();
+    var s=stage(); if(!s)return;
+    var own=0,tot=0; rows.forEach(function(r){ own+=r.owned; tot+=r.cards; });
+    var html=vcHead(E(rows[0].collection_name),E(rows[0].year_range||'')+' · '+tot+' cartes · '+own+' possédée'+(own>1?'s':''),'vcOpen()')+
+      '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px">';
+    rows.forEach(function(r){
+      html+='<div onclick="vcSer(\''+E(r.series_id)+'\')" style="background:var(--panel);border:1px solid var(--line);border-radius:12px;overflow:hidden;cursor:pointer">'+
+        '<div style="aspect-ratio:63/88;background:#ece3d2;overflow:hidden">'+(r.cover_url?'<img loading="lazy" src="'+E(r.cover_url)+'" style="width:100%;height:100%;object-fit:contain">':'')+'</div>'+
+        '<div style="padding:7px 9px 9px"><div style="font-weight:800;font-size:12.5px;line-height:1.2">'+E(r.series_name)+'</div>'+
+        '<div style="font-size:11px;color:var(--muted);margin-top:2px">'+r.cards+' cartes'+(r.owned?' · <b style="color:#059669">'+r.owned+'</b> possédée'+(r.owned>1?'s':''):'')+'</div>'+vcBar(r.owned,r.cards)+'</div></div>';
+    });
+    s.innerHTML=html+'</div>';
+    window.scrollTo(0,0);
+  };
+  /* --- niveau 3 : cartes d'une série --- */
+  window.vcSer=function(sid){
+    VC.ser=sid;
+    var meta=(VC.series||[]).filter(function(r){ return r.series_id===sid; })[0]||{};
+    var s=stage(); if(!s)return;
+    s.innerHTML=vcHead(E(meta.series_name||''),E(meta.collection_name||'')+' · '+E(meta.year_range||''),'vcCol(\''+E(meta.collection_slug||'')+'\')')+
+      '<div style="display:flex;gap:8px;align-items:center;margin-bottom:10px"><button class="tbtn" id="vcMissBtn" onclick="vcToggleMiss()" style="font-size:12.5px">'+(VC.miss?'Voir toutes':'Seulement celles qui me manquent')+'</button><span id="vcCount" class="count"></span></div>'+
+      '<div id="vcGrid"><div class="loading">…</div></div>';
+    vcFetch('app_vintage_catalog?series_id=eq.'+encodeURIComponent(sid)+'&select=id,display_number,set_number,name,rarity,card_type,image_url,thumb_url,owned,quantity,printing_id,psa_total,psa10_pop,collection_name,series_name,year_range&order=sort_order&limit=2000')
+      .then(function(d){ VC.cards=d; vcGrid(); window.scrollTo(0,0); })
+      .catch(function(e){ var g=document.getElementById('vcGrid'); if(g) g.innerHTML='<div style="padding:20px;color:#dc2626">Erreur : '+E(e.message)+'</div>'; });
+  };
+  window.vcToggleMiss=function(){ VC.miss=!VC.miss; var b=document.getElementById('vcMissBtn'); if(b) b.textContent=VC.miss?'Voir toutes':'Seulement celles qui me manquent'; vcGrid(); };
+  function vcTile(c,i){
+    var num=c.set_number||c.display_number||'';
+    return '<div onclick="vcCard('+i+')" style="background:var(--panel);border:'+(c.owned?'2px solid #059669':'1px solid var(--line)')+';border-radius:12px;overflow:hidden;cursor:pointer;display:flex;flex-direction:column">'+
+      vcImg(c, c.owned?'':';filter:saturate(.75)')+
+      '<div style="padding:6px 8px 8px;display:flex;flex-direction:column;gap:2px">'+
+        '<div style="font:700 10.5px/1.1 ui-monospace,monospace;color:var(--muted)">'+E(num)+(c.owned?' · <span style="color:#059669">✓ ×'+(c.quantity||1)+'</span>':'')+'</div>'+
+        '<div style="font-weight:800;font-size:12px;line-height:1.2">'+E(c.name||'—')+'</div>'+
+        (c.rarity?'<div style="font-size:10.5px;color:var(--muted)">'+E(c.rarity)+'</div>':'')+
+      '</div></div>';
+  }
+  function vcGrid(){
+    var g=document.getElementById('vcGrid'); if(!g)return;
+    var list=VC.cards.map(function(c,i){ return [c,i]; }).filter(function(x){ return !VC.miss||!x[0].owned; });
+    var n=document.getElementById('vcCount'); if(n){ var o=VC.cards.filter(function(c){return c.owned;}).length; n.textContent=VC.cards.length+' cartes · '+o+' possédée'+(o>1?'s':''); }
+    g.innerHTML=list.length?'<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(118px,1fr));gap:9px">'+list.map(function(x){ return vcTile(x[0],x[1]); }).join('')+'</div>':'<div class="empty">Tu as toute la série \u{1F389}</div>';
+  }
+  /* --- recherche globale --- */
+  var vcT=null;
+  window.vcSearch=function(v){
+    VC.q=(v||'').trim(); clearTimeout(vcT);
+    vcT=setTimeout(function(){
+      var b=document.getElementById('vcBody'); if(!b) return;
+      if(!VC.q){ vcRenderCols(VC.series||[]); return; }
+      var t=VC.q.replace(/[,()*%]/g,' ').trim(); if(t.length<2){ return; }
+      var pat=encodeURIComponent('*'+t+'*');
+      b.innerHTML='<div class="loading">…</div>';
+      vcFetch('app_vintage_catalog?or=(name.ilike.'+pat+',set_number.ilike.'+pat+',series_name.ilike.'+pat+',collection_name.ilike.'+pat+')&select=id,display_number,set_number,name,rarity,card_type,image_url,thumb_url,owned,quantity,printing_id,psa_total,psa10_pop,collection_name,series_name,year_range&order=year_start,series_order,sort_order&limit=300')
+        .then(function(d){ VC.cards=d; var bb=document.getElementById('vcBody'); if(!bb) return;
+          bb.innerHTML='<div class="count" style="margin:0 0 8px">'+d.length+(d.length===300?'+':'')+' résultat'+(d.length>1?'s':'')+'</div>'+(d.length?'<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(118px,1fr));gap:9px">'+d.map(vcTile).join('')+'</div>':'<div class="empty">Aucune carte trouvée.</div>'); })
+        .catch(function(e){ var bb=document.getElementById('vcBody'); if(bb) bb.innerHTML='<div style="padding:20px;color:#dc2626">Erreur : '+E(e.message)+'</div>'; });
+    },300);
+  };
+  /* --- fiche carte du catalogue --- */
+  window.vcCard=function(i){
+    var c=VC.cards[i]; if(!c) return;
+    var ov=document.getElementById('vcOv');
+    if(!ov){ ov=document.createElement('div'); ov.id='vcOv'; ov.className='overlay hidden'; ov.onclick=function(e){ if(e.target===ov) vcClose(); }; document.body.appendChild(ov); }
+    var num=c.set_number||c.display_number||'';
+    var rows=[['Collection',c.collection_name],['Série',c.series_name],['Année',c.year_range],['Numéro',num],['Rareté',c.rarity],['Type',c.card_type],['Population PSA',c.psa_total?(c.psa_total+' gradées dont '+(c.psa10_pop||0)+' PSA 10'):null]].filter(function(r){ return r[1]; });
+    ov.innerHTML='<div class="sheet"><div class="dhead">'+(c.image_url?'<img src="'+E(c.image_url)+'">':'')+'<button class="dclose" onclick="vcClose()">✕</button></div>'+
+      '<div style="padding:0 16px 10px"><div style="font-weight:900;font-size:18px">'+E(c.name||'—')+'</div>'+
+      '<div style="margin:6px 0 10px">'+(c.owned?'<span style="font:800 11px system-ui;padding:2px 8px;border-radius:6px;background:#dcfce7;color:#059669">✓ Dans ma collection ×'+(c.quantity||1)+'</span>':'<span style="font:800 11px system-ui;padding:2px 8px;border-radius:6px;background:var(--line);color:var(--muted)">Pas dans ma collection</span>')+'</div>'+
+      rows.map(function(r){ return '<div style="display:flex;justify-content:space-between;gap:12px;padding:7px 0;border-bottom:1px solid var(--line);font-size:13.5px"><span style="color:var(--muted)">'+E(r[0])+'</span><b style="text-align:right">'+E(String(r[1]))+'</b></div>'; }).join('')+
+      (c.printing_id?'<button class="tbtn" style="margin-top:12px;width:100%;justify-content:center;font-size:14px" onclick="vcClose();narutoOpen(\''+E(c.printing_id)+'\')">Ouvrir ma fiche (cote, achats)</button>':'')+
+      '</div></div>';
+    ov.classList.remove('hidden');
+  };
+  window.vcClose=function(){ var ov=document.getElementById('vcOv'); if(ov) ov.classList.add('hidden'); };
   function renderNaruto(){
     var s=stage(); if(!s)return; s.className='';
     s.innerHTML='<div style="background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:11px 13px;margin-bottom:12px"><div style="font-weight:900;font-size:15px">🍥 Naruto Card Game <span style="font-size:11px;color:var(--muted);font-weight:700">· Bandai</span></div><div style="font-size:12px;color:var(--muted);margin-top:4px">Le jeu officiel Bandai démarre : seules les promos existent à date (sortie complète 2027). Touche une carte pour l\'ouvrir : cote, achats, saisie d\'achat — comme One Piece, mais compté à part.</div></div><div id="narutoList"><div class="loading" style="padding:20px;color:var(--muted)">…</div></div>';
