@@ -8059,7 +8059,7 @@ const Fake = (function(){
     s.innerHTML=vcHead(E(meta.series_name||''),E(meta.collection_name||'')+' · '+E(meta.year_range||''),'vcCol(\''+E(meta.collection_slug||'')+'\')')+
       '<div style="display:flex;gap:8px;align-items:center;margin-bottom:10px"><button class="tbtn" id="vcMissBtn" onclick="vcToggleMiss()" style="font-size:12.5px">'+(VC.miss?'Voir toutes':'Seulement celles qui me manquent')+'</button><span id="vcCount" class="count"></span></div>'+
       '<div id="vcGrid"><div class="loading">…</div></div>';
-    vcFetch('app_vintage_catalog?series_id=eq.'+encodeURIComponent(sid)+'&select=id,display_number,set_number,name,rarity,card_type,image_url,thumb_url,owned,quantity,printing_id,psa_total,psa10_pop,collection_name,series_name,year_range,raw_count,raw_med5_eur,raw_last5,psa10_eur,psa10_count,psa9_eur,psa9_count,psa8below_eur,psa8below_count,price_fetched_at&order=sort_order&limit=2000')
+    vcFetch('app_vintage_catalog?series_id=eq.'+encodeURIComponent(sid)+'&select=id,display_number,set_number,name,rarity,card_type,image_url,thumb_url,owned,quantity,printing_id,psa_total,psa10_pop,collection_name,series_name,year_range,raw_count,raw_med5_eur,raw_last5,psa10_eur,psa10_count,psa9_eur,psa9_count,psa8below_eur,psa8below_count,price_fetched_at,raw_recent_count,raw_med12_eur&order=sort_order&limit=2000')
       .then(function(d){ VC.cards=d; vcGrid(); window.scrollTo(0,0); })
       .catch(function(e){ var g=document.getElementById('vcGrid'); if(g) g.innerHTML='<div style="padding:20px;color:#dc2626">Erreur : '+E(e.message)+'</div>'; });
   };
@@ -8067,13 +8067,14 @@ const Fake = (function(){
   function vcEur(v){ return v==null?'—':(Math.round(Number(v)*100)/100).toLocaleString('fr-FR',{minimumFractionDigits:Number(v)<100?2:0,maximumFractionDigits:Number(v)<100?2:0})+' €'; }
   function vcPriceLine(c){
     var a=[];
-    if(c.raw_med5_eur!=null&&c.raw_count) a.push('<span title="Médiane des 5 dernières ventes brutes">'+vcEur(c.raw_med5_eur)+'</span>');
+    if(c.raw_med12_eur!=null&&c.raw_recent_count) a.push('<span title="Médiane des ventes brutes des 12 derniers mois">'+vcEur(c.raw_med12_eur)+'</span>');
     if(c.psa10_eur!=null) a.push('<span style="color:#b45309" title="Moyenne ventes PSA 10">P10 '+vcEur(c.psa10_eur)+'</span>');
     return a.length?'<div style="font:700 10.5px/1.25 ui-monospace,monospace;margin-top:2px;display:flex;flex-wrap:wrap;gap:0 6px">'+a.join('')+'</div>':'';
   }
   function vcPriceBlock(c){
     var rows=[];
-    if(c.raw_count){ rows.push(['Brute (médiane 5 dernières)',vcEur(c.raw_med5_eur)+' · '+c.raw_count+' vente'+(c.raw_count>1?'s':'')+(c.raw_count<3?' ⚠️ peu de ventes':'')]); }
+    if(c.raw_recent_count){ rows.push(['Brute (médiane 12 derniers mois)',vcEur(c.raw_med12_eur)+' · '+c.raw_recent_count+' vente'+(c.raw_recent_count>1?'s':'')+(c.raw_recent_count<3?' ⚠️ peu de ventes':'')]); }
+    else if(c.raw_count){ rows.push(['Brute','aucune vente depuis 12 mois ('+c.raw_count+' plus ancienne'+(c.raw_count>1?'s':'')+')']); }
     if(c.psa10_count) rows.push(['PSA 10 (moyenne)',vcEur(c.psa10_eur)+' · '+c.psa10_count+' vente'+(c.psa10_count>1?'s':'')]);
     if(c.psa9_count) rows.push(['PSA 9 (moyenne)',vcEur(c.psa9_eur)+' · '+c.psa9_count+' vente'+(c.psa9_count>1?'s':'')]);
     if(c.psa8below_count) rows.push(['PSA ≤ 8 (moyenne)',vcEur(c.psa8below_eur)+' · '+c.psa8below_count+' vente'+(c.psa8below_count>1?'s':'')]);
@@ -8112,7 +8113,7 @@ const Fake = (function(){
       var t=VC.q.replace(/[,()*%]/g,' ').trim(); if(t.length<2){ return; }
       var pat=encodeURIComponent('*'+t+'*');
       b.innerHTML='<div class="loading">…</div>';
-      vcFetch('app_vintage_catalog?or=(name.ilike.'+pat+',set_number.ilike.'+pat+',series_name.ilike.'+pat+',collection_name.ilike.'+pat+')&select=id,display_number,set_number,name,rarity,card_type,image_url,thumb_url,owned,quantity,printing_id,psa_total,psa10_pop,collection_name,series_name,year_range,raw_count,raw_med5_eur,raw_last5,psa10_eur,psa10_count,psa9_eur,psa9_count,psa8below_eur,psa8below_count,price_fetched_at&order=year_start,series_order,sort_order&limit=300')
+      vcFetch('app_vintage_catalog?or=(name.ilike.'+pat+',set_number.ilike.'+pat+',series_name.ilike.'+pat+',collection_name.ilike.'+pat+')&select=id,display_number,set_number,name,rarity,card_type,image_url,thumb_url,owned,quantity,printing_id,psa_total,psa10_pop,collection_name,series_name,year_range,raw_count,raw_med5_eur,raw_last5,psa10_eur,psa10_count,psa9_eur,psa9_count,psa8below_eur,psa8below_count,price_fetched_at,raw_recent_count,raw_med12_eur&order=year_start,series_order,sort_order&limit=300')
         .then(function(d){ VC.cards=d; var bb=document.getElementById('vcBody'); if(!bb) return;
           bb.innerHTML='<div class="count" style="margin:0 0 8px">'+d.length+(d.length===300?'+':'')+' résultat'+(d.length>1?'s':'')+'</div>'+(d.length?'<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(118px,1fr));gap:9px">'+d.map(vcTile).join('')+'</div>':'<div class="empty">Aucune carte trouvée.</div>'); })
         .catch(function(e){ var bb=document.getElementById('vcBody'); if(bb) bb.innerHTML='<div style="padding:20px;color:#dc2626">Erreur : '+E(e.message)+'</div>'; });
