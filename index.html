@@ -1491,7 +1491,7 @@ let PROD_VALUE=0;
    Même logique de valeur que collValue() (val(c) × quantité, hors cartes déjà comptées dans un scellé). */
 function collSplit(){
   const r={op:0,naruto:0,vintage:0,qOp:0,qNaruto:0,qVintage:0};
-  (DATA||[]).forEach(c=>{ const q=c.quantity||1; const v=PROD_EXCL.has(String(c.item_id))?0:val(c)*q; const g=c.game||'ONE_PIECE';
+  (DATA||[]).concat(OTHER_ROWS||[]).forEach(c=>{ const q=c.quantity||1; const v=PROD_EXCL.has(String(c.item_id))?0:val(c)*q; const g=c.game||((OTHER_ROWS||[]).indexOf(c)>=0?'VINTAGE':'ONE_PIECE');
     if(g==='NARUTO'){ r.naruto+=v; r.qNaruto+=q; } else if(g==='VINTAGE'){ r.vintage+=v; r.qVintage+=q; } else { r.op+=v; r.qOp+=q; } });
   r.sealed=PROD_VALUE||0; r.cards=r.op+r.naruto+r.vintage; r.total=r.cards+r.sealed; return r;
 }
@@ -1750,7 +1750,9 @@ async function refreshItemMarket(item){
 /* b171 : les jeux hors One Piece TCG (cartes anciennes VINTAGE, Naruto…) sont gérés à part — jamais mêlés à la collection One Piece (Bandai 2022+). */
 const OTHER_GAME_SETS=new Set(['JA40','OPHB','OPVA','OPWC','OPOM','OPBM','OPMB','OPWF','OPCD']);
 let OTHER_GAME_PIDS=(function(){ try{ return new Set(JSON.parse(localStorage.getItem('bounty_other_game_pids')||'[]')); }catch(e){ return new Set(); } })();
-function opOnly(arr){ if(!Array.isArray(arr)) return arr; return arr.filter(function(c){ return !(c && (OTHER_GAME_PIDS.has(c.printing_id) || OTHER_GAME_SETS.has(c.set_code))); }); }
+var OTHER_ROWS=[]; /* lignes Naruto / cartes anciennes retirées de DATA (collection One Piece) mais comptées dans le portefeuille global */
+function opOnly(arr){ if(!Array.isArray(arr)) return arr; var isOther=function(c){ return !!(c && (OTHER_GAME_PIDS.has(c.printing_id) || OTHER_GAME_SETS.has(c.set_code) || (c.game && c.game!=='ONE_PIECE'))); };
+  var others=arr.filter(isOther); if(others.length) OTHER_ROWS=others; return arr.filter(function(c){ return !isOther(c); }); }
 (function refreshOtherGamePids(){ try{ fetch(SB+'/rest/v1/app_games_catalog?select=printing_id,set_code',{headers:{apikey:ANON,Authorization:'Bearer '+ANON}}).then(function(r){return r.ok?r.json():[];}).then(function(b){ if(!Array.isArray(b)||!b.length) return;
   OTHER_GAME_PIDS=new Set(b.map(function(x){return x.printing_id;})); b.forEach(function(x){ if(x.set_code) OTHER_GAME_SETS.add(x.set_code); });
   try{ localStorage.setItem('bounty_other_game_pids',JSON.stringify(Array.from(OTHER_GAME_PIDS))); }catch(e){}
@@ -4272,7 +4274,7 @@ async function renderHome(){
   const cardsVal=collValue();
   let cardsStrict=0, covQty=0, totQty=0;
   DATA.forEach(c=>{ const q=c.quantity||1; totQty+=q; const sv=mkStrict(c); if(sv!=null && !PROD_EXCL.has(String(c.item_id))){ cardsStrict+=sv*q; covQty+=q; } });
-  const prodVal=PROD_VALUE||0, global=cardsVal+prodVal;
+  const prodVal=PROD_VALUE||0, global=collSplit().total;
   const prodStrict=(MKT==='JP')?prodVal:0;
   const globalStrict=cardsStrict+prodStrict;
   const cov= totQty? Math.round(covQty/totQty*100):0;
