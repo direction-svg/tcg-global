@@ -1487,11 +1487,17 @@ function setFamRank(fam){ const m=String(fam).match(/^([A-Z]+)(\d+)?/); const g=
 const DEF={q:"",lang:"all",color:"all",type:"all",prov:"all",event:"all",cat:"all",rarity:"all",character:"all",grade:"all",set:"all",minVal:0,imgf:"all",authf:"all",recvf:"all",gradf:"all",pricef:"all",variant:"all",achatPeriod:"all",openRatio:null,openLiquid:false,gapView:"mine",tgtLang:"JP",tgtBudget:0,sort:"val_desc",view:"grid",mode:"accueil",catLang:"all",catQuery:"",catLangs:[],catColors:[],catCats:[],catRarities:[],catTypes:[],catTreats:[],catProvs:[],catEvents:[],catTiers:[],catRegions:[],catFinish:[],catSets:[],catSort:"price_desc",catGroup:true,catView:"grid",setLang:"JP",prodLang:"JP"};
 let PROD_VALUE=0;
 // Barre du haut : portefeuille détaillé (total = cartes + scellés), même valeur live que l'accueil
+/* Répartition du portefeuille par famille : One Piece (Bandai, nouvelle collection) · Naruto · Cartes anciennes · Scellés.
+   Même logique de valeur que collValue() (val(c) × quantité, hors cartes déjà comptées dans un scellé). */
+function collSplit(){
+  const r={op:0,naruto:0,vintage:0,qOp:0,qNaruto:0,qVintage:0};
+  (DATA||[]).forEach(c=>{ const q=c.quantity||1; const v=PROD_EXCL.has(String(c.item_id))?0:val(c)*q; const g=c.game||'ONE_PIECE';
+    if(g==='NARUTO'){ r.naruto+=v; r.qNaruto+=q; } else if(g==='VINTAGE'){ r.vintage+=v; r.qVintage+=q; } else { r.op+=v; r.qOp+=q; } });
+  r.sealed=PROD_VALUE||0; r.cards=r.op+r.naruto+r.vintage; r.total=r.cards+r.sealed; return r;
+}
 function portfolioMini(){
-  const cv=collValue();
-  const pv=PROD_VALUE||0;
-  const q=DATA.reduce((s,c)=>s+(c.quantity||1),0);
-  return 'Portefeuille ('+MKT_LABEL[MKT]+') : <b>'+eur0(cv+pv)+'</b> <span class="dt">&middot; cartes '+eur0(cv)+' &middot; scellés '+eur0(pv)+' &middot; '+q+' cartes</span>';
+  const t=collSplit();
+  return 'Portefeuille ('+MKT_LABEL[MKT]+') : <b>'+eur0(t.total)+'</b> <span class="dt">&middot; One Piece '+eur0(t.op)+' &middot; scellés '+eur0(t.sealed)+' &middot; anciennes '+eur0(t.vintage)+' &middot; Naruto '+eur0(t.naruto)+'</span>';
 }
 const CATLANGS=[["all","Toutes"],["JP","Japonais"],["EN","Anglais"]];
 const CATCATS=[["all","Toutes catégories"],["LEADER","Leader"],["CHARACTER","Personnage"],["EVENT","Event"],["STAGE","Stage"],["DON","DON!!"]];
@@ -1777,7 +1783,7 @@ async function load(){
   // 1) Fetch frais en arrière-plan
   let all=[],from=0,step=1000;
   while(true){
-    const r=await fetch(SB+"/rest/v1/app_collection_v2_mat?select=item_id,printing_id,card_number,card_name,card_type,category,color,rarity,language,is_graded,grading_company,grade,cert_number,quantity,market_value_eur,seed_value_eur,live_value_eur,psa_estimate_eur,population,pop_higher,price_source,price_asof,image_url,set_code,set_name,variant,variant_label,origin,art_suffix,reverify,img_locked,acquired_from,acquired_date,acquired_price,disp_price,disp_basis,disp_confidence,disp_status,disp_captured_at,disp_var_7d,disp_var_30d,graded_value_eur,graded_source,cert_statut,graded_owned_market,graded_raw,event_family,event_tier,event_circuit,treatment_family_v2,treatment_tags,provenance_family_live,distribution_region,printed_language,finish_tags,is_errata&order=item_id.asc&limit="+step+"&offset="+from,{headers:{apikey:ANON,Authorization:"Bearer "+ANON}});
+    const r=await fetch(SB+"/rest/v1/app_collection_v2_mat?select=item_id,printing_id,card_number,card_name,card_type,category,color,rarity,language,is_graded,grading_company,grade,cert_number,quantity,market_value_eur,seed_value_eur,live_value_eur,psa_estimate_eur,population,pop_higher,price_source,price_asof,image_url,set_code,set_name,variant,variant_label,origin,art_suffix,reverify,img_locked,acquired_from,acquired_date,acquired_price,disp_price,disp_basis,disp_confidence,disp_status,disp_captured_at,disp_var_7d,disp_var_30d,graded_value_eur,graded_source,cert_statut,graded_owned_market,graded_raw,event_family,event_tier,event_circuit,treatment_family_v2,treatment_tags,provenance_family_live,distribution_region,printed_language,finish_tags,is_errata,game&order=item_id.asc&limit="+step+"&offset="+from,{headers:{apikey:ANON,Authorization:"Bearer "+ANON}});
     if(!r.ok){ if(DATALOADED) return; document.getElementById("stage").innerHTML='<div class="empty">Erreur de chargement ('+r.status+').</div>';return;}
     const b=await r.json(); if(!Array.isArray(b)){ if(DATALOADED) return; break; } all=all.concat(b); if(b.length<step)break; from+=step;
   }
@@ -4198,7 +4204,7 @@ async function ensureCollLoaded(){
   var all=[],from=0,step=1000;
   try{
     while(true){
-      var r=await fetch(SB+"/rest/v1/app_collection_v2_mat?select=item_id,printing_id,card_number,card_name,card_type,category,color,rarity,language,is_graded,grading_company,grade,cert_number,quantity,market_value_eur,seed_value_eur,live_value_eur,psa_estimate_eur,population,pop_higher,price_source,price_asof,image_url,set_code,set_name,variant,variant_label,origin,art_suffix,reverify,img_locked,acquired_from,acquired_date,acquired_price,disp_price,disp_basis,disp_confidence,disp_status,disp_captured_at,disp_var_7d,disp_var_30d,graded_value_eur,graded_source,cert_statut,graded_owned_market,graded_raw,event_family,event_tier,event_circuit,treatment_family_v2,treatment_tags,provenance_family_live,distribution_region,printed_language,finish_tags,is_errata&order=item_id.asc&limit="+step+"&offset="+from,{headers:{apikey:ANON,Authorization:"Bearer "+ANON}});
+      var r=await fetch(SB+"/rest/v1/app_collection_v2_mat?select=item_id,printing_id,card_number,card_name,card_type,category,color,rarity,language,is_graded,grading_company,grade,cert_number,quantity,market_value_eur,seed_value_eur,live_value_eur,psa_estimate_eur,population,pop_higher,price_source,price_asof,image_url,set_code,set_name,variant,variant_label,origin,art_suffix,reverify,img_locked,acquired_from,acquired_date,acquired_price,disp_price,disp_basis,disp_confidence,disp_status,disp_captured_at,disp_var_7d,disp_var_30d,graded_value_eur,graded_source,cert_statut,graded_owned_market,graded_raw,event_family,event_tier,event_circuit,treatment_family_v2,treatment_tags,provenance_family_live,distribution_region,printed_language,finish_tags,is_errata,game&order=item_id.asc&limit="+step+"&offset="+from,{headers:{apikey:ANON,Authorization:"Bearer "+ANON}});
       if(!r.ok) break;
       var b=await r.json(); if(!Array.isArray(b)) break; all=all.concat(b); if(b.length<step) break; from+=step;
     }
@@ -4324,8 +4330,10 @@ async function renderHome(){
       (deltaHtml?deltaHtml.replace('class="delta','class="nh-delta'):'')+
       '<div class="nh-spark">'+heroSpark(snaps)+'</div>'+
       '<div class="nh-real">Valeur réelle '+esc(MKT_LABEL[MKT])+' : <b>'+eur0(globalStrict)+'</b> — '+cov+' % couverte par un vrai prix '+MKT+(MKT==='JP'?'':' (reste estimé JP)')+(MKT_OVERLAY_OK?'':' <span style="color:#f59e0b;font-weight:800">⚠ prix marché non chargés — réessaie</span>')+'<div class="nh-cov"><i style="width:'+cov+'%"></i></div></div>'+
-      '<div class="nh-split"><div class="nh-seg"><div class="k"><span class="dotc" style="background:#e6d6ad"></span>Cartes</div><div class="v">'+eur0(cardsVal)+'</div></div>'+
-        '<div class="nh-seg"><div class="k"><span class="dotc" style="background:#fcd34d"></span>Produits &amp; sets</div><div class="v">'+eur0(prodVal)+'</div></div></div>'+
+      (function(){ const t=collSplit(); return '<div class="nh-split"><div class="nh-seg"><div class="k"><span class="dotc" style="background:#e6d6ad"></span>One Piece</div><div class="v">'+eur0(t.op)+'</div></div>'+
+        '<div class="nh-seg"><div class="k"><span class="dotc" style="background:#fcd34d"></span>Scellés</div><div class="v">'+eur0(prodVal)+'</div></div>'+
+        '<div class="nh-seg"><div class="k"><span class="dotc" style="background:#a67c27"></span>Anciennes</div><div class="v">'+eur0(t.vintage)+'</div></div>'+
+        '<div class="nh-seg"><div class="k"><span class="dotc" style="background:#f97316"></span>Naruto</div><div class="v">'+eur0(t.naruto)+'</div></div></div>'; })()+
     '</div>'+
     '<div class="nh-card2 nh-novacard"><div class="ianew">'+novaInnerHTML(false)+'</div></div>'+
     '<div class="nh-stats">'+
@@ -8305,10 +8313,9 @@ const Fake = (function(){
   function b4CollTotals(){
     var ready=(typeof DATALOADED!=='undefined' && DATALOADED && typeof DATA!=='undefined' && Array.isArray(DATA) && DATA.length);
     if(!ready) return {ok:false};
-    var cv=(typeof collValue==='function')?collValue():0;
-    var pv=(typeof PROD_VALUE!=='undefined'&&PROD_VALUE)?PROD_VALUE:0;
+    var t=collSplit();
     var qn=DATA.reduce(function(s,c){return s+(c.quantity||1);},0);
-    return {ok:true, total:cv+pv, cards:cv, sealed:pv, q:qn};
+    return {ok:true, total:t.total, cards:t.cards, sealed:t.sealed, op:t.op, naruto:t.naruto, vintage:t.vintage, qOp:t.qOp, qNaruto:t.qNaruto, qVintage:t.qVintage, q:qn};
   }
   function b4FillCollSummary(tries){
     var el=document.getElementById('b4sum-coll'); if(!el)return;
@@ -8374,7 +8381,12 @@ const Fake = (function(){
     if(id==='coll'){
       var t=b4CollTotals();
       if(!t.ok){ body.innerHTML='<div style="color:var(--muted);font-size:12px;padding:8px 0">Chargement de la collection…</div>'; setTimeout(function(){ if(!body.hidden) b4accLoad('coll',body); }, 500); return; }
-      body.innerHTML='<div style="font-size:12.5px;color:var(--muted);line-height:1.8">Total <b style="color:var(--ink)">'+eur0(t.total)+'</b> · Cartes <b style="color:var(--ink)">'+eur0(t.cards)+'</b> · Scellés <b style="color:var(--ink)">'+eur0(t.sealed)+'</b> · '+t.q+' cartes</div>'+
+      var seg=function(lbl,v,sub,col){ var pc=t.total?Math.round(v/t.total*100):0; return '<div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-top:1px solid var(--line)"><span style="width:9px;height:9px;border-radius:50%;background:'+col+';flex:none"></span><span style="font-size:13px;flex:1">'+lbl+(sub?' <span style="color:var(--muted);font-size:11px">'+sub+'</span>':'')+'</span><b style="font-family:ui-monospace,monospace;font-size:13px">'+eur0(v)+'</b><span style="color:var(--muted);font-size:11px;width:34px;text-align:right">'+pc+' %</span></div>'; };
+      body.innerHTML='<div style="font-size:13px;margin-bottom:4px">Total <b style="font-size:15px">'+eur0(t.total)+'</b></div>'+
+        seg('🏴‍☠️ One Piece · Bandai (nouvelle collection)',t.op,t.qOp+' cartes','#e6d6ad')+
+        seg('📦 Objets scellés',t.sealed,'','#fcd34d')+
+        seg('🕰️ Cartes anciennes One Piece',t.vintage,t.qVintage+' cartes','#a67c27')+
+        seg('🍥 Naruto',t.naruto,t.qNaruto+' cartes','#f97316')+
         '<div style="margin-top:9px"><button data-goto="collection" style="'+B4GOTO+'">Voir la collection complète →</button></div>'+
         '<div style="font-size:11px;color:var(--muted);margin-top:6px">Même total que la barre du haut (portefeuille live). Le détail carte par carte est dans Collection.</div>';
       return;
